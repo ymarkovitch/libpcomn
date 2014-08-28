@@ -1,0 +1,597 @@
+#-*- mode: jam; jam-indent-size: 2; tab-width: 2; indent-tabs-mode: nil; -*-
+#------------------------------------------------------------------------------
+# FILE         :  pcommon.jam
+# COPYRIGHT    :  Yakov Markovitch, 2006-2014. All rights reserved.
+#                 See LICENSE for information on usage/redistribution.
+#
+# DESCRIPTION  :  Boost.Build v2 PCommon utilities and build options
+#
+# PROGRAMMED BY:  Yakov Markovitch
+# CREATION DATE:  24 Mar 2008
+#------------------------------------------------------------------------------
+import project ;
+import path ;
+import errors ;
+import utility string sequence ;
+
+module {
+  import os path modules ;
+  import utility sequence ;
+
+  if $(OS) = LINUX
+  {
+    local uname = [ SHELL "uname -m" ] ;
+    OSBITS = [ MATCH .*(64).* : $(uname) ] ;
+    if [ MATCH i.(86).* : $(uname) ]
+      { CPUX86 = x86 ; }
+  }
+
+  OSBITS ?= 32 ;
+
+  ECHO Building for $(OS), $(OSBITS) bits $(CPUX86)" architecture" ;
+
+  LF =
+"
+" ;
+
+  ## Get the list of varible names visible in a module
+  rule varnames ( __@source_module ? )
+  {
+    __@source_module ?= [ CALLER_MODULE ] ;
+    local __@vars ;
+    for local __@varname in [ VARNAMES $(__@source_module) ]
+    {
+      if ( ! ( $(__@varname) in __@varname __@source_module __@vars ) || $(__@source_module) ) &&
+        [ modules.peek $(__@source_module) : $(__@varname) ]
+        { __@vars += $(__@varname) ; }
+    }
+    return $(__@vars) ;
+  }
+
+  ## Print names and values of specified variables visible in a module
+  rule dumpvars ( __@vars * : __@source_module ? )
+  {
+    __@source_module ?= [ CALLER_MODULE ] ;
+    __@vars ?= [ varnames $(__@source_module) ] ;
+    for local __@varname in $(__@vars)
+    {
+      ECHO $(__@varname) "=" [ modules.peek $(__@source_module) : $(__@varname) ] ;
+    }
+  }
+
+  ## Print names and values of all variables visible in a module
+  rule dumpmod ( __@source_module ? )
+  {
+    dumpvars [ varnames $(__@source_module) ] : $(__@source_module) ;
+  }
+
+  rule expand
+  {
+    return $($(1)) ;
+  }
+
+  ################################################################################
+  # Logical operations a la Lisp
+  ################################################################################
+  rule defined ( _v + )
+  {
+    return [ ifdef $(_v) : true ] ;
+  }
+
+  rule and ( lhs * : rhs * )
+  {
+    if $(lhs) { return $(rhs) ; }
+    else { return $(lhs) ; }
+  }
+
+  rule or ( lhs * : rhs * )
+  {
+    if ! $(lhs) { return $(rhs) ; }
+    else { return $(lhs) ; }
+  }
+
+  rule not ( v * )
+  {
+    if ! $(v) { return true ; }
+    else { return ; }
+  }
+
+  rule is ( a * : b * )
+  {
+    if $(a) = $(b) { return true ; }
+    else { return ; }
+  }
+
+  rule iif ( _v * : _yes * : _no * )
+  {
+    if $(_v) { return $(_yes) ; }
+    else     { return $(_no) ; }
+  }
+
+  rule ifval ( _val * : _yes * : _no * )
+  {
+    if a$(_val) { return $(_yes) ; }
+    else        { return $(_no) ; }
+  }
+
+  rule ifdef ( _v + : _yes * : _no * )
+  {
+    if a$($(_v)) { return $(_yes) ; }
+    else         { return $(_no) ; }
+  }
+
+  # List constructor
+  # [ [] a b c ... ]
+  rule [] ( _items * )
+  {
+    return $(_items) ;
+  }
+
+  # Get the nth element of a sequence.
+  rule nth ( n : seq * )
+  {
+    return $(seq[$(n)]) ;
+  }
+
+  # Create a cartesian product of left and right: allows to compute a cartesian product
+  # w/o creation of temporary variables
+  rule prod ( left * : right * )
+  {
+    return $(left)$(right) ;
+  }
+
+  rule strseq ( values * )
+  {
+    return
+      [ sequence.transform utility.str : $(values) ] ;
+  }
+
+  # If a variant does not exist, declares a new build variant the same way
+  # builtin.variant does; if the variant already exists, redefines it (which is
+  # impossible with builtin.variant). See builtin.variant for more help.
+  rule variant-replace ( name # Name of the variant
+    : parents-or-properties * # Specifies parent variants, if
+                              # 'explicit-properties' are given,
+                              # and explicit-properties otherwise.
+    : explicit-properties *   # Explicit properties.
+    )
+  {
+    import feature ;
+    feature.remove-variants $(name) ;
+    variant $(name) : $(parents-or-properties) : $(explicit-properties) ;
+  }
+
+  rule variant-augment ( name # Name of the variant
+    : replace-properties *
+    )
+  {
+    import feature ;
+    import set ;
+    import sequence ;
+
+    local varprops = [ feature.expand <variant>$(name) ] ;
+    local newprops = [ feature.expand <variant>$(name) $(replace-properties) ] ;
+
+    if [ sequence.length $(varprops) ] != [ sequence.length $(newprops) ] ||
+      [ set.difference $(varprops) : $(newprops) ]
+      { variant-replace $(name) : [ set.difference $(newprops) : <variant>$(name) ] ; }
+  }
+
+} # End of global module
+
+LF = [ modules.peek : LF ] ;
+
+################################################################################
+# Extending module feature with ability to remove variants
+################################################################################
+module feature {
+  rule print-feature ( f )
+  {
+    f = [ grist $(f) ] ;
+    ECHO "$(f) attributes are " $($(f).attributes) ;
+    ECHO "$(f) values are " $($(f).values) ;
+    ECHO "$(f) default is " $($(f).default) ;
+  }
+
+  # Remove value(s) of <variant> feature, to enable variants redefinition.
+  rule remove-variants (
+    v + # List of variants (e.g. "debug profile"), or "*" to remove all variants.
+    )
+  {
+    local _vv ;
+    if $(1) != "*"
+      { _vv = [ set.intersection $(<variant>.values) : $(v) ] ; }
+    else
+      { _vv = $(<variant>.values) ; }
+
+    for local vv in $(_vv)
+    {
+      $(vv).implicit-feature = ;
+      <variant>$(vv).components = ;
+    }
+    <variant>.values = [ set.difference $(<variant>.values) : $(_vv) ] ;
+  }
+}
+
+module property {
+
+  import property : as-path : as-path-orig ;
+  import regex ;
+
+  rule as-path ( properties * )
+  {
+    local result = [ as-path-orig $(properties) ] ;
+    if $(result)
+      { return [ regex.replace $(result) "/" "." ] ; }
+    else
+      { return $(result) ; }
+  }
+} # end of module property
+
+# Must be imported to ensure it is already imported to the moment testing.make-test is
+# being overriden (see module testing below)
+import testing ;
+
+module testing {
+
+  # Hack: replace the testing.make-test rule to remove <location-prefix>$(target-name).test
+  # requirement from the test target.
+  # Below is the patched version of testing.make-test as it appears in
+  # Boost.Build v2 Milestone 11; in Milestone 12 it is exactly the same
+  rule make-test ( target-type : sources + : requirements * : target-name ? )
+  {
+    target-name ?= $(sources[1]:D=:S=) ;
+
+    local project = [ project.current ] ;
+    # HERE BE PATCH: no <location-prefix>$(target-name).test additional requirement
+    local t =
+      [ targets.create-typed-target
+      [ type.type-from-rule-name $(target-type) ] : $(project)
+      : $(target-name) : $(sources)
+      : $(requirements) ] ;
+
+    # Remember the test (for --dump-test).
+    .all-tests += $(t) ;
+    return $(t) ;
+  }
+
+} # end of module testing
+
+module gcc {
+  import toolset ;
+  # Boost.Build handles instruction-set feature only for MSVC
+  for local isa in pentium3 pentium3m pentium4 pentium4m
+  {
+    toolset.flags gcc.compile OPTIONS <address-model>32/<instruction-set>$(isa) : -march=$(isa) ;
+  }
+  toolset.flags gcc.compile OPTIONS <address-model>32/<instruction-set> : -march=pentium3 ;
+}
+
+OSBITS = [ modules.peek : OSBITS ] ;
+CPUX86 = [ modules.peek : CPUX86 ] ;
+
+local file-offset-def =  [ iif [ is $(OSBITS) : 32 ] : _FILE_OFFSET_BITS=64 ] ;
+
+################################################################################
+################################################################################
+# Custom features
+################################################################################
+################################################################################
+import feature ;
+import toolset ;
+
+module feature {
+  rule compose-augment ( composite-property : component-properties * )
+  {
+    if ! ( composite in [ attributes $(composite-property:G) ] )
+      { error "$(composite-property:G)" is not a composite feature ; }
+
+    $(composite-property).components ?= ;
+    if $(composite-property) in $(component-properties)
+      { error composite property "$(composite-property)" cannot have itself as a component ; }
+
+    $(composite-property).components += $(component-properties) ;
+  }
+}
+
+################################################################################
+# Check/trace
+################################################################################
+feature.feature trace : on off : composite propagated ; # Define __PCOMN_TRACE
+feature.feature check : on off paranoid : composite propagated ; # Define __PCOMN_DEBUG
+
+feature.compose <trace>on : <define>__PCOMN_TRACE ;
+feature.compose <trace>off ;
+
+feature.compose <check>on       : <define>__PCOMN_DEBUG=2 ;
+feature.compose <check>off ;
+feature.compose <check>paranoid : <define>__PCOMN_DEBUG=255 ;
+
+################################################################################
+# Sanitize
+################################################################################
+feature.feature sanitize : off address thread : propagated ;
+
+################################################################################
+# Tls, PIC, etc
+################################################################################
+# TLS model (see "ELF Handling For Thread-Local Storage")
+feature.feature tls-model : "default" gd ld ie se : propagated ;
+# Position-independent code
+feature.feature pic : off on : propagated ;
+
+################################################################################
+# Compilation: C++ 11, optimization
+################################################################################
+# Custom optimization mode: speed w/o most dangerous optiomizations (like strict aliasing)
+feature.extend optimization : safespeed ;
+# C++11/C++98 compilation
+feature.feature c++98 : off on : incidental ;
+
+################################################################################
+# Build verbosity
+################################################################################
+# Disable/enable extra warnings for the tool; 'extra-warnings=on' differs from
+# 'warnings=all' as it does _not_ turns on the 'pedantic' mode, only extra warnings
+feature.feature extra-warnings : off on : incidental propagated ;
+
+feature.feature verbose-build : compile link : optional incidental propagated ;
+
+################################################################################
+# Build variant tags
+################################################################################
+feature.feature variant-tag : debug release : incidental ;
+
+feature.feature demo : off on : propagated ;
+
+module gcc {
+  import toolset ;
+
+  toolset.flags gcc.compile OPTIONS <extra-warnings>on/<variant-tag>debug : -Wextra ;
+  toolset.flags gcc.compile OPTIONS <extra-warnings>on/<variant-tag>release : -Wextra -Winline -Wdisabled-optimization ;
+
+  # Turn on DWARF4 by default; turn off .debug_types section, not all tools support this yet
+  toolset.flags gcc.compile OPTIONS <debug-symbols>on : -gdwarf-4 -fno-debug-types-section -grecord-gcc-switches ;
+
+  toolset.flags gcc.compile OPTIONS <tls-model>gd : -ftls-model=global-dynamic ;
+  toolset.flags gcc.compile OPTIONS <tls-model>ld : -ftls-model=local-dynamic ;
+  toolset.flags gcc.compile OPTIONS <tls-model>ie : -ftls-model=initial-exec ;
+  toolset.flags gcc.compile OPTIONS <tls-model>se : -ftls-model=static-exec ;
+
+  toolset.flags gcc.compile OPTIONS   <sanitize>address : -fsanitize=address -fno-common -fno-omit-frame-pointer -fPIC ;
+  toolset.flags gcc.link  FINDLIBS-SA <sanitize>address : asan ;
+  toolset.flags gcc.compile OPTIONS   <sanitize>thread  : -fsanitize=thread -fno-omit-frame-pointer -fPIC ;
+  toolset.flags gcc.link  FINDLIBS-SA <sanitize>thread  : tsan asan ;
+
+  # <link>shared turns on -fPIC anyway
+  toolset.flags gcc.compile OPTIONS <pic>on/<link>static : -fPIC ;
+
+  # Override default Boost.Build notion of speed optimization
+  # Turn off strict aliasing: extermely buggy when optimization is on
+  toolset.flags gcc.compile OPTIONS <optimization>safespeed : -O2 -fno-strict-aliasing -fwrapv ;
+
+  # C++98 or C++11 (default is C++11)
+  toolset.flags gcc.compile.c++ OPTIONS <c++98>off : --std=gnu++11 ;
+  toolset.flags gcc.compile.c++ OPTIONS <c++98>on  : --std=gnu++03 ;
+
+  toolset.flags gcc.compile OPTIONS : -Werror=return-type ;
+}
+
+################################################################################
+# Slightly change standard "debug" and "release" build variants.
+################################################################################
+variant-augment debug :
+  <variant-tag>debug
+  <link>static
+  <threading>multi
+  #<sanitize>address
+
+  <address-model>$(OSBITS)
+
+  <define>$(file-offset-def) ;
+
+variant-augment release :
+  <variant-tag>release
+  <link>static
+  <threading>multi
+
+  <optimization>safespeed
+
+  <debug-symbols>on
+  <check>off
+  <trace>off
+
+  <address-model>$(OSBITS)
+
+  <define>$(file-offset-def) ;
+
+variant deploy : release ;
+
+################################################################################
+# Define target
+################################################################################
+import targets ;
+import "class" : new ;
+
+# Add arbitrary target to the current project, explicitly specifying target type.
+# E.g.:
+# define-target foobar : PY : foobar.i : <swig.language>python ;
+#
+rule define-target
+  ( target-name
+  : target-type           # Registered target type, e.g. PY, SHARED_LIB, etc
+  : sources *
+  : requirements *
+  : default-build *
+  : usage-requirements * )
+{
+  local project = [ project.current ] ;
+
+  targets.main-target-alternative
+    [ new typed-target $(target-name) : $(project) : $(target-type)
+    : [ targets.main-target-sources $(sources) : $(target-name) ]
+    : [ targets.main-target-requirements $(requirements) : $(project) ]
+    : [ targets.main-target-default-build $(default-build) : $(project) ]
+    : [ targets.main-target-usage-requirements $(usage-requirements) : $(project) ]
+    ] ;
+}
+
+local rule project-location-abspath ( proj )
+{
+  return [ path.root [ $(proj).location ] [ path.pwd ] ] ;
+}
+local rule current-project-location-abspath ( )
+{
+  return [ project-location-abspath [ project.current ] ] ;
+}
+
+################################################################################
+# Build information
+################################################################################
+rule build-host ( )
+{
+  local host = [ SHELL "uname -snrm 2>&1" : exit-status ] ;
+  if $(host[2]) != 0
+  {
+    errors.error
+      "Cannot determine build host.$(LF)"
+      "uname failed:$(LF)"
+      $(ver[1]) ;
+  }
+  local r = [ string.words $(host[1]) ] ;
+  return $(r:J=" ") ;
+}
+
+rule build-nix-time ( )
+{
+  local dt = [ SHELL "date +%s 2>&1" : exit-status ] ;
+  if $(dt[2]) != 0
+  {
+    errors.error
+      "Cannot determine build datetime.$(LF)"
+      "date failed:$(LF)"
+      $(dt[1]) ;
+  }
+  local r = [ string.words $(dt[1]) ] ;
+  return $(r:J=" ") ;
+}
+
+rule svn-version ( )
+{
+  local projpath = [ current-project-location-abspath ] ;
+  local ver = [ SHELL "( [ `svnversion -n $(projpath)` = exported ] && echo -n 'exported' || ( svnversion -c -n "$(projpath)" | cut -d : -f 2 | tr -d '$(LF)' ; ) ; ) 2>&1" : exit-status ] ;
+  if $(ver[2]) != 0
+  {
+    errors.error
+      "Cannot determine project version.$(LF)"
+      "svnversion failed:$(LF)"
+      $(ver[1]) ;
+  }
+  return $(ver[1]) ;
+}
+
+rule svn-projpath ( )
+{
+  local projpath = [ current-project-location-abspath ] ;
+  local url = [ SHELL "{ [ `svnversion -n` = exported ] || svn info "$(projpath)" | grep -xE 'URL:\\ [^/:]+:///?[^/]+/(.+)' ; } 2>&1" : exit-status ] ;
+  if $(url[2]) != 0
+  {
+    errors.error
+      "Cannot determine project path in SVN repository.$(LF)" $(url[1]) ;
+  }
+  local d = "" ;
+  if $(url[1])
+  {
+    local p = [ MATCH "URL\: [^/\:]+\:///?[^/]+((/[^/]+)+)[$(LF)]" : $(url[1]) ] ;
+    d = [ MATCH "/((trunk|tags|branches)(/.+)*)$" : $(p) ] ;
+    if ! $(d)
+    {
+      errors.error
+        "Invalid SVN repository directory structure, cannot find 'trunk', 'tags', or 'branches'.$(LF)"
+        "The repository path is '"$(p[0])"'" ;
+    }
+  }
+  return $(d[0]) ;
+}
+
+# Check if tool @toolname installed/present in path @rootpath by @tagfiles existence
+rule check-tool-presence (
+  toolname        # Human-readable tool name
+  : rootpath      # Tool directory
+  : tagfiles +    # List of characteristic tool files to check presence of
+  )
+{
+  for file in $(tagfiles)
+  {
+    local filepath = [ path.join $(rootpath) $(file) ] ;
+    if ! [ path.exists $(filepath) ]
+      { errors.user-error "$(toolname) is not installed in '$(rootpath)': file $(filepath) not found." ; }
+  }
+}
+
+################################################################################
+# Ad-hoc targets
+################################################################################
+rule adhoc-exe ( name sources * : srcsuffix ? )
+{
+  local testpath = [ current-project-location-abspath ] ;
+  srcsuffix ?= .cpp ;
+  exe $(name) : $(name)$(srcsuffix) $(sources) : <define>PCOMN_TESTDIR=$(testpath) ;
+}
+
+rule adhoc-dll ( name sources * : srcsuffix ? )
+{
+  local testpath = [ current-project-location-abspath ] ;
+  srcsuffix ?= .cpp ;
+  lib $(name) : $(name)$(srcsuffix) $(sources) : <link>shared <define>PCOMN_TESTDIR=$(testpath) ;
+}
+
+rule unittest ( target : args * : input-files * : requirements * )
+{
+  local PCOMN_TESTDIR = [ current-project-location-abspath ] ;
+  local launcher = [ string.join
+    "cdrun () ("
+        "cd `dirname $1`;"
+        "RUNTEST=./${1##*/};"
+        "shift;"
+        "export PCOMN_TESTDIR=$(PCOMN_TESTDIR);"
+        "flock -w 7200 $PCOMN_TESTDIR -c \"$RUNTEST $@\""
+    ");"
+    "cdrun" ] ;
+
+  SEMAPHORE on
+    [ run $(target:S=.cpp) : $(args) : $(input-files)
+    : <testing.launcher>$(launcher) <define>PCOMN_TESTDIR=$(PCOMN_TESTDIR) $(requirements) ]
+
+      = pcomn.unittest ;
+}
+
+# Check for --exe=EXE or --dll=DLL or --run=TEST or --compile=SOURCE command-line
+# options; if there are, create corresponding targets but only if project's directory
+# match the cwd.  Returns the list of targets or empty, if there are no adhoc tests
+# specified, co can be used in 'if' statement.
+# Note: --build is alias for --exe
+rule adhoc-targets ( )
+{
+  if [ current-project-location-abspath ] = [ path.pwd ]
+  {
+    local ARGV = [ modules.peek : ARGV ] ;
+    local mkexe = [ MATCH ^--exe=(.+)$ : $(ARGV[2-]) ] [ MATCH ^--build=(.+)$ : $(ARGV[2-]) ] ;
+    local mkdll = [ MATCH ^--dll=(.+)$ : $(ARGV[2-]) ] ;
+    local runtests = [ MATCH ^--run=(.+)$ : $(ARGV[2-]) ] ;
+    local comp = [ MATCH ^--compile=(.+)$ : $(ARGV[2-]) ] ;
+    return
+      [ sequence.transform compile : $(comp) ]
+      [ sequence.transform adhoc-dll : $(mkdll) ]
+      [ sequence.transform adhoc-exe : $(mkexe) ]
+      [ sequence.transform unittest : $(runtests) ] ;
+  }
+}
+
+################################################################################
+# Insert several rules into the global namespace
+################################################################################
+IMPORT pcommon
+    : unittest adhoc-exe adhoc-dll adhoc-targets check-tool-presence
+    :
+    : unittest adhoc-exe adhoc-dll adhoc-targets check-tool-presence ;

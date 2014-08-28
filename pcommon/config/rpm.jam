@@ -1,0 +1,161 @@
+#-*- mode: jam; jam-indent-size: 4; tab-width: 2; indent-tabs-mode: nil; -*-
+#------------------------------------------------------------------------------
+# FILE         :  rpm.jam
+# COPYRIGHT    :  Yakov Markovitch, 2012-2014. All rights reserved.
+# DESCRIPTION  :  RPM tool for Boost.Build v2
+# PROGRAMMED BY:  Yakov Markovitch
+# CREATION DATE:  26 Apr 2012
+#------------------------------------------------------------------------------
+
+# RPM target
+
+import type ;
+import "class" : new ;
+import errors : user-error ;
+import feature toolset ;
+import project targets ;
+import sequence ;
+
+################################################################################
+# Target types
+################################################################################
+
+type.register RPM : rpm ;
+type.register RPM_SPEC : spec ;
+
+################################################################################
+# Features and flags
+################################################################################
+
+feature.feature rpm.define : : free ;
+feature.feature rpm.nodeps : off on : optional incidental propagated ;
+
+feature.extend verbose-build        : rpm rpmdbg ;
+
+toolset.flags rpm.build DEFINES : <rpm.define> ;
+toolset.flags rpm.build GCCVER : <toolset-gcc:version> ;
+
+toolset.flags rpm.build OPTIONS <rpm.nodeps>on : --nodeps ;
+toolset.flags rpm.build OPTIONS <verbose-build>rpm : -v ;
+toolset.flags rpm.build OPTIONS <verbose-build>rpmdbg : -vv ;
+
+################################################################################
+# RPM generator class
+################################################################################
+class rpm-class : basic-target
+{
+    import type virtual-target ;
+
+    rule __init__ ( name : project : sources * : requirements *
+        : default-build * : usage-requirements * )
+    {
+        basic-target.__init__ $(name) : $(project) : $(sources)
+          : $(requirements) : $(default-build) : $(usage-requirements) ;
+    }
+
+    rule construct ( name : specfile-targets source-targets * : property-set )
+    {
+        local target =
+            [ new file-target $(self.name) : RPM : $(self.project)
+            : [ new action $(specfile-targets) $(source-targets) : rpm.build : $(property-set) ] ] ;
+        return [ property-set.empty ] [ virtual-target.register $(target) ] ;
+    }
+}
+
+local rule normalize-def ( property )
+{
+    # Split a (possibly) conditional property
+    local split = [ MATCH "(.+:)?(<.+)" : $(property) ] ;
+    if ! $(split) || "$(split[2]:G)" != "<rpm.define>"
+    {
+        return $(property) ;
+    }
+    else
+    {
+        local def = [ MATCH "^([A-Za-z_][A-Za-z_0-9]*)([ =](.+))?$" : $(split[2]:G=) ] ;
+        if ! $(def[1])
+            { user-error "Invalid rpm.define property format: '$(property)'" ; }
+        if ! $(def[2])
+            { return $(property)" 1" ; }
+        else
+            { return $(split[1])<rpm.define>$(def[1])" "$(def[3]) ; }
+    }
+}
+
+# Declares the 'make' main target.
+rule rpm.rpm ( target-name : specfile sources * : requirements * : usage-requirements * )
+{
+    local project = [ project.current ] ;
+
+    targets.main-target-alternative
+     [ new rpm-class $(target-name) : $(project)
+       : [ targets.main-target-sources $(specfile) $(sources) : $(target-name) ]
+       : [ targets.main-target-requirements [ sequence.transform normalize-def : $(requirements) ] : $(project) ]
+       : [ targets.main-target-default-build : $(project) ]
+       : [ targets.main-target-usage-requirements $(usage-requirements) : $(project) ]
+     ] ;
+}
+
+actions rpm.build
+{
+    # Exit if any statement returned an error
+    set -e
+{
+    GCCVER=$(GCCVER)
+    function check_gcc_version()
+    {
+        local cur=`$* -dumpversion` ;
+        [ ${cur//./} -ge ${GCCVER//./} ] ;
+    }
+    check_gcc_version gcc && CC=gcc || CC=gcc-${GCCVER}
+    check_gcc_version g++ && CXX=g++ || CXX=g++-${GCCVER}
+
+    which $CC >&/dev/null && which $CXX >&/dev/null || echo "Could not find gcc/g++ with version not less then ${GCCVER}" ;
+    echo "Define for rpmbuild \$CC=$CC and \$CXX=$CXX" ;
+
+    BUILDRPM=`readlink -f $(1:D)`/.buildrpm
+    RPMLOCFMT="`rpm --eval %_rpmfilename`"
+    RPMLOCNAME=`rpmspec --define="$(DEFINES)" --define="__cc $CC" --define="__cpp $CC -E" --define="__cxx $CXX" --define="_topdir $BUILDRPM" -q $(2[1]) --queryformat "$RPMLOCFMT\n" | head -n 1`
+    RPMNAME=`basename "$RPMLOCNAME"`
+
+    mkdir -p $BUILDRPM/{BUILD,BUILDROOT,RPMS,SOURCES,SRPMS} && cp -up $(2[2-]) $BUILDRPM/SOURCES/
+
+    function prn_args()
+    {
+        while [ -n "$1" ] ; do [[ "$1" =~ .*\  ]] && echo -n \'${1}\'\  || echo -n ${1}\  ; shift ; done ;
+        echo ;
+    }
+    function do_run()
+    {
+        prn_args "${@}" ;
+        "$@" ;
+    }
+    do_run rpmbuild $(OPTIONS) -bb --define="$(DEFINES)" --define="__cc $CC" --define="__cpp $CC -E" --define="__cxx $CXX" --define="_topdir $BUILDRPM" $(2[1]) ;
+
+    cp -p "$BUILDRPM/RPMS/$RPMLOCNAME" "$BUILDRPM/.." ;
+    [ "$RPMNAME" == "$(1:BS)" ] || ln -sf "$RPMNAME" "$(1)" ;
+
+} | tee $(1)-build.log
+
+}
+
+IMPORT $(__name__) : rpm.rpm : : rpm ;
+
+local rule __test__ ( )
+{
+    module rpm
+    {
+        import assert ;
+        assert.result "<rpm.define>hello 1" : normalize-def <rpm.define>hello ;
+        assert.result <foo>               : normalize-def <foo> ;
+        assert.result <foo>bar            : normalize-def <foo>bar ;
+
+        assert.result
+            <toolset>gcc,<variant>debug:<foo>world=bar123-xyzz.y :
+            normalize-def <toolset>gcc,<variant>debug:<foo>world=bar123-xyzz.y ;
+
+        assert.result
+            "<toolset>gcc,<variant>debug:<rpm.define>world bar123-xyzz.y" :
+            normalize-def <toolset>gcc,<variant>debug:<rpm.define>world=bar123-xyzz.y ;
+    }
+}

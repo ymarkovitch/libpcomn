@@ -1,0 +1,10 @@
+# Doxyfile 1.5.0
+# COPYRIGHT    :  Yakov Markovitch, 2007-2014. All rights reserved.
+#                 See LICENSE for information on usage/redistribution.
+#
+# DESCRIPTION  :  Common useful custom Doxygen special commands (aliases)
+#
+
+ALIASES  += "argval=@arg @c"
+ALIASES  += skip="@cond"
+ALIASES  += endskip="@endcond"

@@ -1,0 +1,55 @@
+#-*- mode: jam; jam-indent-size: 2; tab-width: 2; indent-tabs-mode: nil; -*-
+#------------------------------------------------------------------------------
+# FILE         :  bisonpp.jam
+# COPYRIGHT    :  Vladimir Prus, 2003. All rights reserved.
+#                 Yakov Markovitch, 2010-2014. All rights reserved.
+#                 See LICENSE for information on usage/redistribution.
+#
+# DESCRIPTION  :  Boost.Build v2 GNU Bison tool (for C++ parsers)
+#
+# PROGRAMMED BY:  Yakov Markovitch
+# CREATION DATE:  14 Jul 2010
+#------------------------------------------------------------------------------
+import generators ;
+import feature ;
+import type ;
+import property ;
+
+type.register YPP : ypp y++ yxx ;
+generators.register-standard bisonpp.bisonpp : YPP : CPP HPP ;
+
+feature.feature bison.option : : free ;
+feature.feature bison.debug : on off : composite propagated incidental ;
+feature.feature bison.graph : no yes : composite propagated incidental ;
+feature.feature bison.report : off state verbose lookahead itemset : composite propagated incidental ;
+
+feature.compose <bison.debug>on : <bison.option>--debug ;
+feature.compose <bison.debug>off ;
+
+feature.compose <bison.graph>no ;
+feature.compose <bison.graph>yes : <bison.option>--graph ;
+
+feature.compose <bison.report>off ;
+feature.compose <bison.report>state     : <bison.option>--report=state ;
+feature.compose <bison.report>verbose   : <bison.option>--verbose ;
+feature.compose <bison.report>lookahead : <bison.option>--report=lookahead ;
+feature.compose <bison.report>itemset   : <bison.option>--report=itemset ;
+
+rule init ( )
+{
+}
+
+rule bisonpp ( dst dst_header : src : properties * )
+{
+  # bison.prefix feature is defined in standard Boost.Build bison tool and specifies
+  # --name-prefix bison option; we use it here for compatibility with standard bison tool
+  local r = [ property.select bison.prefix : $(properties) ] ;
+  PREFIX_OPT on $(<) = --name-prefix=$(r:G=) ;
+  local opt = [ property.select bison.option : $(properties) ] ;
+  BISON_OPT on $(<) = $(opt:G=) ;
+}
+
+actions bisonpp
+{
+  bison $(PREFIX_OPT) $(BISON_OPT) --language=C++ -o $(<[1]) $(>)
+}

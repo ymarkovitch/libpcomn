@@ -1,0 +1,65 @@
+#-*- mode: jam; jam-indent-size: 4; tab-width: 4; indent-tabs-mode: nil; -*-
+#------------------------------------------------------------------------------
+# FILE         :  wt.jam
+# COPYRIGHT    :  Yakov Markovitch, 2011-2014. All rights reserved.
+#                 See LICENSE for information on usage/redistribution.
+#
+# DESCRIPTION  :  Boost.Build v2 Apache Wt webtool binary tool
+#
+# PROGRAMMED BY:  Yakov Markovitch
+# CREATION DATE:  9 Jul 2011
+#------------------------------------------------------------------------------
+import type ;
+import project ;
+import targets ;
+import sequence ;
+import "class" : new ;
+
+# Derive Wt exe from EXE
+type.register WT : wt : EXE ;
+
+rule wt ( name : sources * : requirements * : default-build * : usage-requirements * )
+{
+    local rule boost-lib ( name )
+    {
+        lib boost_$(name) : : <name>boost_$(name) <link>shared ;
+    }
+
+    sources +=
+        [ lib crypto  : : <name>crypto <link>shared ]
+        [ lib ssl     : : <name>ssl <link>shared ]
+        ;
+
+    requirements += <define>WT_NO_SLOT_MACROS ;
+
+    local project = [ project.current ] ;
+
+    targets.main-target-alternative
+        [ new typed-target $(name) : $(project) : WT
+        : [ targets.main-target-sources $(sources) : $(name) ]
+        : [ targets.main-target-requirements $(requirements) : $(project) ]
+        : [ targets.main-target-default-build $(default-build) : $(project) ]
+        ] ;
+}
+
+################################################################################
+# Adhoc targets
+################################################################################
+rule adhoc-wt ( name : srcsuffix ? )
+{
+    srcsuffix ?= .cpp ;
+    wt $(name) : $(name)$(srcsuffix) ;
+}
+
+################################################################################
+# Insert wt and adhoc-wt rules into the global scope
+################################################################################
+IMPORT wt
+    : wt adhoc-wt
+    :
+    : wt adhoc-wt ;
+
+# Empty initialization rule
+rule init ( )
+{
+}

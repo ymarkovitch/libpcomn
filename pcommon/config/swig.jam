@@ -1,0 +1,258 @@
+#-*- mode: jam; jam-indent-size: 4; tab-width: 4; indent-tabs-mode: nil; -*-
+#------------------------------------------------------------------------------
+# FILE         :  swig.jam
+# COPYRIGHT    :  Yakov Markovitch, 2009-2014. All rights reserved.
+#                 See LICENSE for information on usage/redistribution.
+#
+# DESCRIPTION  :  Boost.Build toolset for building extensions for script language from SWIG
+#                 wrappers
+#
+# PROGRAMMED BY:  Yakov Markovitch
+# CREATION DATE:  14 May 2009
+#------------------------------------------------------------------------------
+#
+# This tool defines new generator "swig", whuch translates targets of type SWIG (*.i, *.swg)
+# into CPP targets with .cxx extension (e.g. foo.i -> foo_wrap.cpp), using SWIG (www.swig.org)
+#
+
+import type ;
+import generators ;
+import feature ;
+import property ;
+import pcommon ;
+import python ;
+import utility ;
+import "class" : new ;
+import toolset ;
+import project ;
+import targets ;
+import scanner ;
+
+if [ MATCH (--debug-generators) : [ modules.peek : ARGV ] ]
+{
+    .debug = true ;
+}
+
+local rule dbgout ( message * )
+{
+    if $(.debug)
+        { ECHO [ sequence.transform utility.str : $(message) ] ; }
+}
+
+rule registered-languages ( )
+{
+    return $(languages) ;
+}
+
+################################################################################
+# Declare SWIG-realted features
+################################################################################
+feature.feature swig.language       : python perl5 : optional incidental ;
+
+feature.feature swig.defaultctor    : off on       : incidental ;
+feature.feature swig.copyctor       : off on       : incidental ;
+
+feature.feature swig.include        : : free path ; #order-sensitive ;
+feature.feature swig.includecwd     : on off : incidental ;
+
+feature.feature swig.define         : : free ; #order-sensitive ;
+
+feature.feature swig.warnings       : on all off : incidental propagated ;
+feature.feature swig.warnings-as-errors : off on     : incidental propagated ;
+
+feature.feature swig.flags          : on all off : incidental free ;
+
+feature.extend verbose-build        : swig ;
+
+#
+# Convert properties to SWIG command-line options
+#
+
+toolset.flags swig LANGINIT <swig.language>python   : -python -modern -modernargs ;
+toolset.flags swig LANGINIT <swig.language>perl5    : -perl5 ;
+
+toolset.flags swig INCLUDES <swig.include> ;
+toolset.flags swig DEFINES  <swig.define> ;
+
+toolset.flags swig OPTIONS <swig.includecwd>off     : -I- ;
+
+toolset.flags swig OPTIONS <swig.defaultctor>off    : -nodefaultctor ;
+toolset.flags swig OPTIONS <swig.copyctor>on        : -copyctor ;
+
+toolset.flags swig OPTIONS <swig.warnings>all          : -Wall ;
+toolset.flags swig OPTIONS <swig.warnings-as-errors>on : -Werror ;
+toolset.flags swig OPTIONS <verbose-build>swig         : -v ;
+toolset.flags swig OPTIONS <address-model>64           : -DSWIGWORDSIZE64 ;
+
+toolset.flags swig USER_OPTIONS <swig.flags> ;
+
+################################################################################
+# SWIG generator.
+#
+#  - changes the type used to represent 'action' in the constructed dependency graph to
+#    'swig-action'
+################################################################################
+class swig-generator : generator
+{
+    import swig : dbgout ;
+
+    rule __init__ ( id : source-types + : target-types + : requirements * )
+    {
+        generator.__init__ $(id) : $(source-types) : $(target-types) : $(requirements) ;
+    }
+
+    rule generated-targets ( sources + : property-set : project name ? )
+    {
+        #dbgout GENERATED-TARGETS "(" $(sources) ":" [ $(property-set).raw ] ":" [ $(project).full-name ] $(name) ")" ;
+
+        # Note we don't pass the $(name) to the base class at all
+        # The name of the first source completely defines the name of generated targets
+        local result = [ generator.generated-targets $(sources[1]) : $(property-set) : $(project) ] ;
+
+        # The name of generated proxy class source file must match the project name (if any)
+        # E.g., there must be "foobar.py" for "foobar" project
+        local result-name = [ $(result[1]).name ] ;
+        if $(result) && $(name) && $(result-name:B) != $(name)
+        {
+            ECHO "warning: The name of generated proxy class source '"$(result-name)"'"
+                "doesn't match the project name '"$(name)"'." ;
+            result = ;
+        }
+        return $(result) ;
+    }
+}
+
+#
+# New target types
+#
+type.register SWIG : i swg ;  # SWIG interface/library
+
+type.register PM : pm ; # PERL module
+
+# Change generated CPP type target sufiix to .cxx
+type.set-generated-target-suffix CPP : <swig.language>python : cxx ;
+
+# The rule for registering SWIG generator for various target languages
+local rule register-swig-generator ( target-language : language-type )
+{
+    languages += $(target-language) ;
+
+    generators.register [ new swig-generator
+        # Note that the the generator ID must be fully qualified.
+        swig.swig
+        :
+        # Source type
+        SWIG
+        :
+        # Target types and target name pattern (foo.i -> foo_wrap_python.cpp)
+        $(language-type) CPP(%_wrap_$(target-language))
+        :
+        # Requirements
+        <swig.language>$(target-language)
+        ] ;
+}
+
+################################################################################
+# Registering SWIG wrapper generators for various languages
+################################################################################
+register-swig-generator python : PY ; # Python
+register-swig-generator perl5  : PM ; # Perl 5 (PM stands for Perl Module)
+
+# Register dummy swig generator to handle undefined <swig.language> feature value
+# We deliberately specify it as "optional" and explicitly catch this case instead of
+# specifying default value, to provide intelligible diagnostics
+class swig-nolang-error : generator
+{
+    rule __init__ ( )
+    {
+        generator.__init__ swig.swig-nolang-error : SWIG : CPP(%__nolang_error__wrap) ;
+    }
+
+    rule generated-targets ( sources + : property-set : project name ? )
+    {
+        if ! [ $(property-set).get <swig.language> ]
+        {
+            import swig : registered-languages ; local l = [ registered-languages ] ;
+            ECHO "error: cannot generate SWIG wrapper, <swig.language> feature value is not specified" ;
+            ECHO "Please define one of the" <swig.language>$(l) "properties to generate SWIG wrapper" ;
+            EXIT ;
+        }
+    }
+}
+generators.register [ new swig-nolang-error ] ;
+
+################################################################################
+# Make python extension from a SWIG-generated wrapper
+#
+################################################################################
+rule swig-python-extension (
+    name :
+    sources + :
+    requirements * :
+    default-build * :
+    usage-requirements * )
+{
+    requirements += <use>/python//python_for_extensions ;
+
+    return
+        [ pcommon.define-target _$(name)
+
+        : SWIG_PYTHON
+        : $(sources)
+        : $(requirements)
+        : $(default-build)
+        : $(usage-requirements) ]
+
+        ;
+}
+
+# Inject swig-python-extension into the global module namespace (the empty 3d parameter
+# designates the global module)
+IMPORT swig : swig-python-extension : : swig-python-extension ;
+
+# The rule for registering extension types
+local rule register-extension-type ( target-language : file-suffixes + : target-prefix ? )
+{
+    local ext = SWIG_$(target-language:U) ;
+    target-prefix ?= "" ;
+
+    type.register $(ext) : : SHARED_LIB ;
+    type.set-generated-target-suffix $(ext) : : $(file-suffixes) ;
+    # Unset 'lib' prefix for the extension
+    type.set-generated-target-prefix $(ext) : : $(target-prefix) ;
+}
+
+register-extension-type python : so ;
+register-extension-type perl5 : so ;
+
+class swig-scanner : common-scanner
+{
+    rule pattern ( )
+    {
+        return "%include[ \t]+([a-zA-Z+-@0-9_]*)" ;
+    }
+
+    rule process ( target : matches * : binding )
+    {
+        #ECHO target=$(target) matches=$(matches) binding=$(binding) ;
+        return [ common-scanner.process $(target) : $(matches) : $(binding) ] ;
+    }
+}
+
+scanner.register swig-scanner : include ;
+type.set-scanner SWIG : swig-scanner ;
+
+################################################################################
+# Actions
+################################################################################
+actions swig
+{
+    swig -c++ $(LANGINIT) $(USER_OPTIONS) $(OPTIONS) -D$(DEFINES) -I$(INCLUDES) -outdir $(<[1]:D) -o $(<[2]) $(>)
+}
+
+################################################################################
+# Tool initialization
+################################################################################
+rule init ( )
+{
+}

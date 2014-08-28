@@ -1,0 +1,90 @@
+#-*- mode: jam; jam-indent-size: 2; tab-width: 2; indent-tabs-mode: nil; -*-
+#------------------------------------------------------------------------------
+# FILE         :  Jamroot
+# COPYRIGHT    :  Yakov Markovitch, 2008-2014. All rights reserved.
+#                 See LICENSE for information on usage/redistribution.
+#
+# DESCRIPTION  :  Boost.Build v2 script for building PCommon library.
+#
+# PROGRAMMED BY:  Yakov Markovitch
+#------------------------------------------------------------------------------
+path-constant ROOTPATH  : . ;
+
+import modules ;
+import os ;
+
+# Provide load path for 'pcommon' module
+modules.poke : BOOST_BUILD_PATH : [ modules.peek : BOOST_BUILD_PATH ] $(ROOTPATH)/config ;
+
+import pcommon ;
+
+constant      ROOTNAME  : pcommon ;
+constant      PROJROOT  : /$(ROOTNAME) ;
+constant      PROJTESTS : $(PROJROOT)//tests ;
+constant      OS        : [ os.name ] ;
+
+################################################################################
+# Project
+################################################################################
+project pcommon
+  : requirements
+
+  <include>.
+  <toolset>gcc:<cxxflags>-Woverloaded-virtual
+  <toolset>gcc:<cflags>-fvisibility=hidden
+
+  <toolset>gcc,<variant-tag>release:<cxxflags>-fno-implement-inlines
+  <toolset>gcc:<cflags>-march=core2
+  <toolset>gcc:<cflags>-msse4.1
+
+  : default-build debug <link>static <threading>multi
+
+  : source-location . [ iif [ os.on-unix ] : unix : win32 ]
+  ;
+
+# Our main target
+lib pcommon :
+  [ obj aprintf : pcomn_aprintf.c : <extern-c-nothrow>off ]
+  [ obj regex   : regex.c         : <extern-c-nothrow>off ]
+
+  pcomn_crc32.c
+  pcomn_hash.c
+  pcomn_nrthreadmutex.c
+  pcomn_version.c
+  pudate.c
+
+  pcomn_trace.cpp
+  pcomn_tracecfg.cpp
+
+  pcomn_binascii.cpp
+  pcomn_cfgparser.cpp
+  pcomn_crypthash.cpp
+  pcomn_diag.cpp
+  pcomn_exec.cpp
+  pcomn_fileutils.cpp
+  pcomn_incdlist.cpp
+  pcomn_iostream.cpp
+
+  pcomn_journal.cpp
+  pcomn_journstorage.cpp
+  pcomn_journfile.cpp
+  pcomn_journmmap.cpp
+
+  pcomn_mmap.cpp
+  pcomn_path.cpp
+  pcomn_qualname.cpp
+  pcomn_rawstream.cpp
+  pcomn_regex.cpp
+  pcomn_scheduler.cpp
+  pcomn_shutil.cpp
+  pcomn_strsubst.cpp
+  pcomn_sys.cpp
+  pcomn_textio.cpp
+  pcomn_thread.cpp
+  pcomn_threadpool.cpp
+  pcomn_uri.cpp
+
+  pcomn_ziowrap.c
+  pcomn_zstream.cpp
+
+  ;

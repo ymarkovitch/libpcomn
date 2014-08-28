@@ -1,0 +1,36 @@
+#-*- mode: jam; jam-indent-size: 2; tab-width: 2; indent-tabs-mode: nil; -*-
+#------------------------------------------------------------------------------
+# FILE         :  Jamfile.v2
+#  COPYRIGHT   :  Yakov Markovitch, 2014. All rights reserved.
+#
+# DESCRIPTION  :  Jamfile for building PCommon tests that require vendor libraries,
+#                 e.g. tests for pcommon's RE@ wrapper, STLSoft extensions, etc.
+#
+# PROGRAMMED BY:  Yakov Markovitch
+# CREATION DATE:  18 Jul 2013
+#------------------------------------------------------------------------------
+lib re2 : : <search>$(VENDORPATH)/lib ;
+
+project
+  : requirements
+  <library>$(PROJROOT)//pcommon
+  <library>$(TESTPATH)//cppunit
+  <library>$(TESTPATH)//crypto
+
+  <library>re2
+
+  <include>$(VENDORPATH)/include
+
+  : default-build debug <link>static <threading>multi
+  ;
+
+# Check for --build=EXE and/or --run=TEST and/or --compile=SOURCE command-line options;
+# if there are, build or build/run requested ad-hoc tests instead of unittests listed
+# below.
+if ! [ adhoc-targets ]
+{
+  #
+  # Unit tests
+  #
+  unittest unittest_re2ex ;
+}

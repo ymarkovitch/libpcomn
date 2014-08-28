@@ -1,0 +1,17 @@
+# Test file with UNIX eol convention
+Leben = ist wunderschoen
+
+[Bar]
+#bye = baby
+hello = world
+15 =
+
+[Quux]
+
+[Restaurant]
+to =the end
+of = the Universe 
+
+[Bar]
+2x2 = 4
+quux =foobar 

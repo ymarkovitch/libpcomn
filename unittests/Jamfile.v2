@@ -1,0 +1,34 @@
+#-*- mode: jam; jam-indent-size: 2; tab-width: 2; indent-tabs-mode: nil; -*-
+#------------------------------------------------------------------------------
+# FILE         :  Jamfile.v2
+# COPYRIGHT    :  Yakov Markovitch, 2010-2014. All rights reserved.
+#                 See LICENSE for information on usage/redistribution.
+#
+# DESCRIPTION  :  Boost.Build v2 script for building all unittests for libpcomn project
+#
+# PROGRAMMED BY:  Yakov Markovitch
+# CREATION DATE:  22 Jun 2010
+#------------------------------------------------------------------------------
+import path ;
+
+project unittests
+  : requirements
+  : default-build debug <threading>multi
+  ;
+
+local skip = pcomn_continuations|pcomn_rpc ;
+
+for local unittest in
+  pcommon/tests
+  [ MATCH $(ROOTPATH)/(.+/unittests)/.*
+  : [ path.glob $(ROOTPATH) : */*/unittests/Jamfile.v2 ]
+    [ path.glob $(ROOTPATH) : */unittests/Jamfile.v2 ] ]
+{
+  if ! [ MATCH (.+$(skip).+) : $(unittest) ]
+  {
+    echo Found $(unittest) unittest project  ;
+    build-project $(PROJROOT)//$(unittest) ;
+  }
+}
+
+ECHO ;

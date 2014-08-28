@@ -1,0 +1,27 @@
+#-*- mode: jam; jam-indent-size: 2; tab-width: 2; indent-tabs-mode: nil; -*-
+#------------------------------------------------------------------------------
+# FILE         :  Jamfile.v2
+# COPYRIGHT    :  Yakov Markovitch, 2008-2014. All rights reserved.
+#
+# DESCRIPTION  :  Jamfile for building PCommon performance tests
+#
+# PROGRAMMED BY:  Yakov Markovitch
+# CREATION DATE:  18 Nov 2008
+#------------------------------------------------------------------------------
+import modules ;
+project
+  : requirements
+  <library>$(PROJROOT)//pcommon
+
+  : default-build release <link>static <threading>multi
+  ;
+
+# The list of performance tests. In order to build them all, use -sALL=1 in bjam
+# command line.
+local ALLTESTS =
+  perftest_locks ;
+
+# Check for --build=EXE and/or --run=TEST and/or --compile=SOURCE command-line options;
+# if there are, build or build/run requested ad-hoc tests instead of tests listed below.
+if ! [ adhoc-targets ] && [ modules.peek : ALL ]
+  { sequence.transform adhoc-exe : $(ALLTESTS) ; }

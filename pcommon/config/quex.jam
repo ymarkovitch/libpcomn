@@ -1,0 +1,110 @@
+#-*- mode: jam; jam-indent-size: 2; tab-width: 2; indent-tabs-mode: nil; -*-
+#------------------------------------------------------------------------------
+# FILE         :  quex.jam
+# COPYRIGHT    :  Yakov Markovitch, 2010-2014. All rights reserved.
+#                 See LICENSE for information on usage/redistribution.
+#
+# DESCRIPTION  :  Boost.Build v2 QueX lexical analyzer generator tool
+#
+# PROGRAMMED BY:  Yakov Markovitch
+# CREATION DATE:  17 Sep 2010
+#------------------------------------------------------------------------------
+# This module supports QueX lexical analyzer generator (http://quex.sourceforge.net/)
+#
+# Provides one main target rule, 'quex.quex', generating foo.qx -> foo.{cpp,hpp}
+# Supports the following features:
+#  <quex.option>    - a free feature, passes a raw QueX option as-is (e.g. <quex.option>--no-DOS)
+#  <quex.lexer>     - a free feature, specifies lexer class name (e.g. <quex.lexer>foo::bar::mylexer)
+#  <quex.token-pfx> - a free feature, specifies QueX token prefix (e.g. <quex.token-pfx>FOO_TK_)
+#  <quex.token-id-file> - a free dependency feature, specifies a foreign token ID file
+#                         (e.g. <quex.token-pfx>mytokens.hpp). Denotes a file target.
+#------------------------------------------------------------------------------
+import generators feature type property toolset ;
+import modules errors utility project ;
+
+.include-path = ;
+
+local rule quex-dir ( )
+{
+  if ! $(.include-path)
+  {
+    local ret = [ SHELL "quex --print-quex-path 2>&1" : exit-status ] ;
+    if $(ret[2]) != 0
+    {
+      ret = [ SHELL "quex --version" : exit-status ] ;
+      if $(ret[2]) != 0
+        { ECHO "Command 'quex' not found. Quex is probably not installed" ; }
+      else
+      {
+        ECHO "This version of QueX does not support '--print-quex-path' option." ;
+        ECHO "Please check if the installed QueX is properly patched." ;
+      }
+    }
+    else
+    {
+      # Strip trailing LF
+      .include-path = [ MATCH ^(.+). : $(ret[1]) ] ;
+    }
+  }
+  return $(.include-path) ;
+}
+
+rule init ( )
+{
+  quex-dir ;
+  local p = [ project.current ] ;
+  # Insert quex.include_path into the global namespace
+  $(p).add-constant quex.include-path : $(.include-path) ;
+}
+
+################################################################################
+# Generating rule and corresponding action
+################################################################################
+type.register QUEX : qx ;
+generators.register-standard quex.quex : QUEX : CPP HPP ;
+
+feature.feature quex.option : : free ;
+
+feature.feature quex.lexer              : : free optional ;
+feature.feature quex.token-id-file      : : free dependency ;
+feature.feature quex.token-pfx          : : free optional ;
+feature.feature quex.token-class-file   : : free optional ;
+feature.feature quex.token-class        : : free optional ;
+feature.feature quex.debug              : off on : composite optional propagated ;
+feature.feature quex.buffer-fallback    : off on : composite optional incidental ;
+
+feature.compose <quex.debug>off : ;
+feature.compose <quex.debug>on : <quex.option>--debug <define>QUEX_OPTION_ASSERTS_WARNING_MESSAGE_DISABLED ;
+
+feature.compose <quex.buffer-fallback>off : <define>QUEX_SETTING_BUFFER_MIN_FALLBACK_N=0 ;
+feature.compose <quex.buffer-fallback>on : ;
+
+toolset.flags quex.quex QUEX_OPTIONS <quex.option> ;
+toolset.flags quex.quex QUEX_LEXER   <quex.lexer> ;
+toolset.flags quex.quex QUEX_TKNPFX  <quex.token-pfx> ;
+toolset.flags quex.quex QUEX_TKNFILE <quex.token-class-file> ;
+toolset.flags quex.quex QUEX_TKNCLS  <quex.token-class> ;
+
+rule quex ( dest_cpp dest_header : src : properties * )
+{
+  # Space as a optinon
+  SP on $(<) = " " ;
+  # <quex.token-file> must be a file-object instance
+  local tkn-file = [ property.select quex.token-id-file : $(properties) ] ;
+  if $(tkn-file)
+  {
+    DEPENDS $(<) : [ $(tkn-file:G=).actualize ] ;
+    QUEX_TKNIDFILE on $(<) = [ path.join [ $(tkn-file:G=).path ] [ $(tkn-file:G=).name ] ] ;
+  }
+  local tkn-class = [ property.select quex.token-class-file quex.token-class : $(properties) ] ;
+  if $(tkn-class:G) = <quex.token-class-file>
+    { errors.user-error "**** <quex.token-class> must be specified if <quex.token-class-file> is specified" ; }
+  if ! [ quex-dir ]
+    { errors.user-error "**** QueX is not properly installed" ; }
+}
+
+actions quex
+{
+  quex $(QUEX_OPTIONS) --debug-exception --language C++ -i $(>) -o $(<[1]:BS) --output-directory $(<[1]:D) --analyzer-class$(SP)$(QUEX_LEXER) \
+       --foreign-token-id-file$(SP)$(QUEX_TKNIDFILE) --token-prefix$(SP)$(QUEX_TKNPFX) --token-class$(SP)$(QUEX_TKNCLS) --token-class-file$(SP)$(QUEX_TKNFILE)
+}

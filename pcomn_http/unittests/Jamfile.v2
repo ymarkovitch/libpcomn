@@ -1,0 +1,33 @@
+#-*- mode: jam; jam-indent-size: 2; tab-width: 2; indent-tabs-mode: nil; -*-
+#------------------------------------------------------------------------------
+# FILE         :  Jamfile.v2
+# COPYRIGHT    :  Yakov Markovitch, 2008-2014. All rights reserved.
+#                 See LICENSE for information on usage/redistribution.
+#
+# DESCRIPTION  :  Jamfile for building HTTP tests
+#
+# CREATION DATE:  31 Jan 2008
+#------------------------------------------------------------------------------
+project
+  : requirements
+  <library>$(PROJSHARE)/pcomn_http
+  <library>$(PROJSHARE)/cmdline
+  <library>$(PROJROOT)//cppunit
+
+  : default-build debug <link>static <threading>multi
+  ;
+
+# Check for --build=EXE and/or --run=TEST and/or --compile=SOURCE command-line options;
+# if there are, build or build/run requested ad-hoc tests instead of unittests listed
+# below.
+if ! [ adhoc-targets ]
+{
+  #
+  # Unit tests
+  #
+  # unittest unittest_foobar ;
+}
+
+exe test_http_server01 : test_http_server01.cpp ;
+exe test_http_server02 : test_http_server02.cpp ;
+exe test_http_server03 : test_http_server03.cpp ;

@@ -1,0 +1,75 @@
+#-*- mode: jam; jam-indent-size: 4; tab-width: 4; indent-tabs-mode: nil; -*-
+#------------------------------------------------------------------------------
+# FILE         :  trafficsvr.jam
+# COPYRIGHT    :  Yakov Markovitch, 2010-2014. All rights reserved.
+#                 See LICENSE for information on usage/redistribution.
+#
+# DESCRIPTION  :  Boost.Build v2 Apache TrafficServer plugin tool
+#
+# PROGRAMMED BY:  Yakov Markovitch
+# CREATION DATE:  7 Aug 2010
+#------------------------------------------------------------------------------
+import type ;
+import project ;
+import targets ;
+import "class" : new ;
+
+# Derive TS plugin from the SHARED_LIB
+type.register TRAFFICSVR_PLUGIN : : SHARED_LIB ;
+# Disable target prefix (like "lib" on Unix) for plugins. If we build foobar, we needn't
+# libfoobar.so but foobar.so instead
+type.set-generated-target-prefix TRAFFICSVR_PLUGIN : : "" ;
+
+rule trafficsvr-plugin ( name : sources * : requirements * : default-build * : usage-requirements * )
+{
+    requirements += <suppress-import-lib>true <link>shared <threading>multi <pic>on ;
+
+    local project = [ project.current ] ;
+
+    targets.main-target-alternative
+        [ new typed-target $(name) : $(project) : TRAFFICSVR_PLUGIN
+        : [ targets.main-target-sources $(sources) : $(name) ]
+        : [ targets.main-target-requirements $(requirements) : $(project) ]
+        : [ targets.main-target-default-build $(default-build) : $(project) ]
+        ] ;
+}
+
+################################################################################
+# Adhoc targets
+################################################################################
+import path ;
+import modules ;
+import sequence ;
+
+rule adhoc-trafficsvr-plugin ( name : srcsuffix ? )
+{
+    srcsuffix ?= .cpp ;
+    trafficsvr-plugin $(name) : $(name)$(srcsuffix) ;
+}
+
+rule adhoc-trafficsvr-plugins ( )
+{
+    local rule project-location-abspath ( proj )
+    {
+        return [ path.root [ $(proj).location ] [ path.pwd ] ] ;
+    }
+    if [ project-location-abspath [ project.current ] ] = [ path.pwd ]
+    {
+        local ARGV = [ modules.peek : ARGV ] ;
+        return
+            [ sequence.transform adhoc-trafficsvr-plugin : [ MATCH ^--trafficsvr-plugin=(.+)$ : $(ARGV[2-]) ] ] ;
+    }
+}
+
+################################################################################
+# Insert trafficsvr-plugin and adhoc-trafficsvr-plugin rules into the global scope
+################################################################################
+IMPORT trafficsvr
+    : trafficsvr-plugin adhoc-trafficsvr-plugin adhoc-trafficsvr-plugins
+    :
+    : trafficsvr-plugin adhoc-trafficsvr-plugin adhoc-trafficsvr-plugins ;
+
+# Empty initialization rule
+rule init ( )
+{
+}

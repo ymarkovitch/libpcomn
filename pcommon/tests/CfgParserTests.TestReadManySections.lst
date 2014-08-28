@@ -1,0 +1,23 @@
+[Bar]
+hello = world
+
+[Quux]
+
+[Restaurant]
+to =the end
+
+[Universe]
+quux =foobar
+
+[VeryLongSection.Name]
+of = the Universe
+
+[Extremely.Long.Section.Name.Delimited.With.Dots]
+
+[Another.Extremely.Long.Section.Name.Delimited.With.Dots]
+
+[YetMore.Very.Very.Very.Long.Section.Name.Delimited.With.Dots]
+
+[And_This_Section_Name_Is_With_Underscores]
+
+[Another_Section_Name_With_Underscores]

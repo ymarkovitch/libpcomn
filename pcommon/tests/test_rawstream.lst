@@ -1,0 +1,54 @@
+Creating raw_ostream
+Writing from 0 to 2000 through pcomn::raw_stream
+OK
+tellp=12000
+Writing from 2000 to 6000 through ostream
+OK
+Writing from 6000 to 6001 through pcomn::raw_stream
+OK
+tellp=36006
+Writing from 6001 to 6002 through ostream
+OK
+Writing from 6002 to 10000 through ostream
+OK
+tellp=60000
+Creating raw_istream
+tellg=0
+Reading from 0 to 1 through std::basic_ifstream<char,std::char_traits<char> >
+OK
+Reading from 1 to 100 through pcomn::raw_basic_istream<char,std::char_traits<char> >
+OK
+tellg=1200
+Reading from 200 to 4000 through std::basic_ifstream<char,std::char_traits<char> >
+OK
+tellg=24000
+tellg=18000
+Reading from 3000 to 10000 through pcomn::raw_basic_istream<char,std::char_traits<char> >
+OK
+Reading from 10000 to 20000 through pcomn::raw_basic_istream<char,std::char_traits<char> >
+EOF reading from a pcomn::raw_istream
+
+Reading from 0 to 9999 through pcomn::raw_basic_istream<char,std::char_traits<char> >
+OK
+Exception: end-of-file condition on a raw stream object
+6 bytes read by the last operation
+eofbit set
+failbit set
+
+Reading from 0 to 9999 through pcomn::raw_basic_istream<char,std::char_traits<char> >
+OK
+Exception: end-of-file condition on a raw stream object
+6 bytes read by the last operation
+eofbit set
+failbit set
+
+Reading from 0 to 9999 through pcomn::raw_basic_istream<char,std::char_traits<char> >
+OK
+Exception: iostream object has failbit set
+0 bytes read by the last operation
+badbit set
+
+Reading from 0 to 9999 through pcomn::raw_basic_istream<char,std::char_traits<char> >
+OK
+0 bytes read by the last operation
+badbit set

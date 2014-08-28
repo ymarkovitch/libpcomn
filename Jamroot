@@ -1,0 +1,178 @@
+#-*- mode: jam; jam-indent-size: 2; tab-width: 2; indent-tabs-mode: nil; -*-
+#------------------------------------------------------------------------------
+# FILE         :  Jamroot
+# COPYRIGHT    :  Yakov Markovitch, 2008-2014. All rights reserved.
+#                 See LICENSE for information on usage/redistribution.
+#
+# DESCRIPTION  :  Boost.Build v2 script for building pcommon libraries.
+#
+# CREATION DATE:  19 Jan 2008
+#------------------------------------------------------------------------------
+import modules ;
+import regex ;
+import path ;
+import errors ;
+import string ;
+import os ;
+import notfile ;
+import feature ;
+
+################################################################################
+# Project root path
+################################################################################
+path-constant ROOTPATH   : . ;
+
+################################################################################
+# Load the module pcommon: after this point all custom global rules are
+# available (prod, expand, etc.)
+################################################################################
+# Provide load path for 'pcommon' module
+modules.poke : BOOST_BUILD_PATH : [ modules.peek : BOOST_BUILD_PATH ] $(ROOTPATH)/pcommon/config ;
+
+import pcommon ;
+import rpm ;
+import bisonpp ;
+
+################################################################################
+# Constants
+################################################################################
+constant PROJROOT  : /libpcomn ;
+constant PROJSHARE : /libpcomn// ;
+
+path-constant SHAREPATH : . ;
+
+path-constant VENDOR_LIBPATH  : vendor/lib ;
+path-constant VENDOR_INCPATH  : vendor/include ;
+
+constant BUILD_HOST   :    [ pcommon.build-host ] ;
+constant BUILD_NIX_TIME  : [ pcommon.build-nix-time ] ;
+
+constant LF : [ modules.peek : LF ] ;
+
+################################################################################
+# Build-variant-based installation location
+################################################################################
+rule variant-based-location ( property-name : prefix : postfix ? )
+{
+  local rule trace-based-location ( property-name : prefix : variant_type : condition infix ? )
+  {
+    local trace = .trace ;
+    if $(variant_type) = debug
+      { trace = "" ; }
+    infix ?= "" ;
+    return
+      <variant>$(variant_type),$(condition),<trace>off:<$(property-name)>$(prefix)/$(variant_type)$(infix)
+      <variant>$(variant_type),$(condition),<trace>on:<$(property-name)>$(prefix)/$(variant_type)$(infix)$(trace) ;
+  }
+
+  postfix = /$(postfix) ; postfix ?= "" ;
+
+  local prefix-localtions ;
+  for local value in [ feature.values variant ]
+  {
+    prefix-localtions +=
+      [ trace-based-location $(property-name) : $(prefix) : $(value) : <sanitize>off ]
+      [ trace-based-location $(property-name) : $(prefix) : $(value) : <sanitize>address .sanitize-address ]
+      [ trace-based-location $(property-name) : $(prefix) : $(value) : <sanitize>thread .sanitize-thread ] ;
+  }
+
+  return $(prefix-localtions)$(postfix) ;
+}
+
+################################################################################
+# Build-variant and sanitize-mode-based location
+################################################################################
+rule sanitize-based-location ( property-name : variant-feature : prefix : postfix ? )
+{
+  local rule sanitize-location ( variant-type )
+  {
+    return
+      <$(variant-feature)>$(variant-type),<sanitize>off:<$(property-name)>$(prefix)/$(variant-type)
+      <$(variant-feature)>$(variant-type),<sanitize>address:<$(property-name)>$(prefix)/$(variant-type).sanitize-address
+      <$(variant-feature)>$(variant-type),<sanitize>thread:<$(property-name)>$(prefix)/$(variant-type).sanitize-thread ;
+  }
+
+  postfix = /$(postfix) ; postfix ?= "" ;
+
+  local prefix-localtions ;
+  for local value in [ feature.values $(variant-feature) ]
+    { prefix-localtions += [ sanitize-location $(value) ] ; }
+
+  return $(prefix-localtions)$(postfix) ;
+}
+
+# Export variant-based-location into the global namespace
+IMPORT $(__name__)
+  : variant-based-location sanitize-based-location
+  :
+  : variant-based-location sanitize-based-location ;
+
+################################################################################
+# Vendor libraries
+################################################################################
+lib cppunit   : : <link>shared ;
+lib dl        : : <link>shared ;
+lib editline  : : <name>edit ;
+lib ncurses   : : <link>shared ;
+lib readline  : : <link>shared : : <library>ncurses ;
+lib crypto    : : <link>shared ;
+lib ssl       : : <link>shared ;
+lib re2       : : <link>static <search>$(VENDOR_LIBPATH) ;
+lib lua       : : <name>luajit-5.1 <link>shared : : <include>/usr/include/luajit-2.0 ;
+
+################################################################################
+# Project
+################################################################################
+project libpcomn
+  : requirements
+
+  # pcommon everywhere, include pcommon headers w/o prefix, like <pcomn_util.h>
+  <include>$(SHAREPATH)/pcommon
+  # Include headers of all other our libraries with corresponding prefix,
+  # like <pcomn_net/netsockets.h>
+  <include>$(SHAREPATH)
+
+  <include>$(VENDOR_INCPATH)
+
+  <threading>multi <pic>on
+
+  # GCC-specific compiler flags for all build variants
+  [ conditional <toolset>gcc :
+
+  <cflags>-march=core2 <cflags>-msse4.1
+
+  <cflags>-Wno-unused-local-typedefs
+  <cxxflags>-Woverloaded-virtual
+  <cflags>-fvisibility=hidden ]
+
+  # GCC-specific compiler flags for release builds
+  [ conditional <toolset>gcc,<variant-tag>release :
+
+  <cxxflags>-fno-implement-inlines ]
+
+  <define>BUILD_HOST="\"$(BUILD_HOST)\""
+  <define>BUILD_NIX_TIME="$(BUILD_NIX_TIME)"
+
+  : default-build debug <link>static <threading>multi
+  ;
+
+################################################################################
+# Libraries
+################################################################################
+# Adding global alias for the project that buiilds all unittests at once
+use-project unittests  : ./unittests ;
+
+# Adding global aliases for all libraries
+rule proj-lib ( name : dir ? )
+{
+  dir ?= $(name) ;
+  alias $(name) : $(dir)//$(name) : <link>static ;
+  explicit $(name) ;
+}
+
+proj-lib pcommon ;
+
+proj-lib pcomn_http ;
+proj-lib pcomn_net ;
+proj-lib pcomn_shell ;
+proj-lib pcomn_ssl ;
