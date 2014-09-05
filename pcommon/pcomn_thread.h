@@ -23,11 +23,6 @@
 
 #include <iostream>
 
-// Only multithreaded build is allowed
-#if !PCOMN_MD_MT
-#error Cannot use pcommon threads in single-threaded build
-#endif
-
 #if   defined(PCOMN_PL_UNIX)
 #include <pthread.h>
 namespace pcomn {

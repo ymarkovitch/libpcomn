@@ -207,11 +207,7 @@ class cacher {
 
       typedef closed_hashtable<entry_type *, entry_key_extract, hasher, key_equal> cache_data ;
 
-#ifdef PCOMN_MD_MT
       typedef std::recursive_mutex lock_type ;
-#else
-      typedef PVoidMutex lock_type ;
-#endif
 
    private:
       mutable lock_type _lock ;

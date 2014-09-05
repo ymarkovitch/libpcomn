@@ -178,12 +178,7 @@ class keyed_pool {
       } ;
 
       typedef closed_hashtable<key_entry *, extract_key, hasher, key_equal> pool_data ;
-
-#ifdef PCOMN_MD_MT
       typedef std::recursive_mutex lock_type ;
-#else
-      typedef PVoidMutex lock_type ;
-#endif
 
    private:
       mutable lock_type _lock ;

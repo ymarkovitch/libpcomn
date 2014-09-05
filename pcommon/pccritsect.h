@@ -12,15 +12,7 @@
 *******************************************************************************/
 #include <pcomn_platform.h>
 
-#if !defined(PCOMN_MD_MT)
-
-#  define PCOMN_CRITICAL_SECTION(name) int name
-#  define INIT_CRITICAL_SECTION(name) ((void)0)
-#  define DEL_CRITICAL_SECTION(name) ((void)0)
-#  define ENTER_CRITICAL_SECTION(name) ((void)0)
-#  define LEAVE_CRITICAL_SECTION(name) ((void)0)
-
-#elif defined(PCOMN_PL_WINDOWS)
+#if defined(PCOMN_PL_WINDOWS)
 #  include <windows.h>
 
 #  define PCOMN_CRITICAL_SECTION(name) CRITICAL_SECTION name
@@ -39,6 +31,5 @@
 #  define LEAVE_CRITICAL_SECTION(name) (pthread_mutex_unlock(&name))
 
 #endif
-
 
 #endif /* __PCCRITSECT_H */

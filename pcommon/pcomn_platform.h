@@ -34,7 +34,6 @@
                        PCOMN_MD_CONSOLE    (Console mode program; makes sense for Windows)
                        PCOMN_MD_GUI        (GUI program, as opposite to console mode. Makes sense for Windows.)
                        PCOMN_MD_DPMI32     (Borland extender 32 bit)
-                       PCOMN_MD_MT         (Multi-threaded mode)
                        PCOMN_MD_DLL        (The program module is a dynamic-loadable library)
 
                        PCOMN_MD_SUN
@@ -249,10 +248,6 @@
 #     define PCOMN_MD_DLL     1
 #  endif
 
-#  if defined(__MT__)
-#     define PCOMN_MD_MT      1
-#  endif
-
 #  ifndef __CONSOLE__
 #     undef PCOMN_MD_CONSOLE
 #     define PCOMN_MD_GUI     1
@@ -287,10 +282,6 @@
 #     define _RTLDLL       1
 #  endif
 
-#  if defined (_MT)
-#     define PCOMN_MD_MT   1
-#  endif
-
 #  ifndef __CONSOLE__
 #     undef PCOMN_MD_CONSOLE
 #     define PCOMN_MD_GUI     1
@@ -313,10 +304,6 @@
 #  define PCOMN_COMPILER_GNU  1
 #  define PCOMN_COMPILER_C99  1
 
-#  if defined(_REENTRANT)
-#     define PCOMN_MD_MT      1
-#  endif
-
 #  define __EXPORT __attribute__((visibility("default")))
 #  define __IMPORT __attribute__((visibility("default")))
 
@@ -338,10 +325,6 @@
 
 #     if defined (__DLL__)
 #        define PCOMN_MD_DLL        1
-#     endif
-
-#     if defined (_MT)
-#        define PCOMN_MD_MT         1
 #     endif
 
 #     if defined (__IMPORTLIB__)
