@@ -9,21 +9,21 @@
 # CREATION DATE:  5 Sep 2014
 #------------------------------------------------------------------------------
 if (UNIX)
-  set(PCOMN_C_OPT_BASE    -march=core2 -msse4.1 -pthread -fvisibility=hidden -Wall)
-  set(PCOMN_C_OPT_DBGINFO -gdwarf-4 -fno-debug-types-section -grecord-gcc-switches)
+  set(PCOMN_C_OPT_BASE    -march=core2 -msse4.1 -pthread -fvisibility=hidden -Wall CACHE INTERNAL "")
+  set(PCOMN_C_OPT_DBGINFO -gdwarf-4 -fno-debug-types-section -grecord-gcc-switches CACHE INTERNAL "")
 
-  set(PCOMN_CXX_OPT_CXX11 -std=c++11)
-  set(PCOMN_CXX_OPT_BASE  -Woverloaded-virtual)
+  set(PCOMN_CXX_OPT_CXX11 -std=c++11 CACHE INTERNAL "")
+  set(PCOMN_CXX_OPT_BASE  ${PCOMN_C_OPT_BASE} -Woverloaded-virtual CACHE INTERNAL "")
 else()
-  set(PCOMN_C_OPT_BASE "")
-  set(PCOMN_C_OPT_DBGINFO "")
+  set(PCOMN_C_OPT_BASE "" CACHE INTERNAL "")
+  set(PCOMN_C_OPT_DBGINFO "" CACHE INTERNAL "")
 
-  set(PCOMN_CXX_OPT_CXX11 "")
-  set(PCOMN_CXX_OPT_BASE "")
+  set(PCOMN_CXX_OPT_CXX11 "" CACHE INTERNAL "")
+  set(PCOMN_CXX_OPT_BASE "" CACHE INTERNAL "")
 endif(UNIX)
 
-set(PCOMN_C_OPT_TRACE -D__PCOMN_TRACE)
-set(PCOMN_C_OPT_CHECK -D__PCOMN_DEBUG=2)
+set(PCOMN_C_OPT_TRACE -D__PCOMN_TRACE CACHE INTERNAL "")
+set(PCOMN_C_OPT_CHECK -D__PCOMN_DEBUG=2 CACHE INTERNAL "")
 
 macro(set_diff inout_set1 in_set2)
   foreach(dummy IN LISTS ${in_set2})

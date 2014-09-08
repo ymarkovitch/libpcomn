@@ -24,29 +24,17 @@ else()
   set(PLATFORM_SOURCES win32)
 endif(UNIX)
 
-force_flags(CMAKE_CXX_FLAGS
-  ${PCOMN_C_OPT_BASE}
-  ${PCOMN_CXX_OPT_CXX11} # Use C++11 for build
-  )
-
-force_flags(CMAKE_C_FLAGS
-  ${PCOMN_C_OPT_BASE}
-  )
-
 # Custom debug flags
-force_flags(CMAKE_C_FLAGS_DEBUG
-  ${PCOMN_C_OPT_DBGINFO}
-  ${PCOMN_C_OPT_CHECK}
-  ${PCOMN_C_OPT_TRACE}
+set(PCOMN_DEBUG_FLAGS
+  ${PCOMN_C_OPT_DBGINFO} ${PCOMN_C_OPT_CHECK} ${PCOMN_C_OPT_TRACE}
   )
 
-force_flags(CMAKE_CXX_FLAGS_DEBUG
-  ${PCOMN_C_OPT_DBGINFO}
-  ${PCOMN_C_OPT_CHECK}
-  ${PCOMN_C_OPT_TRACE}
-  )
+force_flags(CMAKE_C_FLAGS ${PCOMN_C_OPT_BASE})
 
-include_directories(.)
+force_flags(CMAKE_CXX_FLAGS
+  ${PCOMN_CXX_OPT_CXX11} # Use C++11 for build
+  ${PCOMN_CXX_OPT_BASE}
+  )
 
 add_library(pcommon STATIC
 
@@ -95,3 +83,11 @@ add_library(pcommon STATIC
   ${PLATFORM_SOURCES}/pcomn_shutil.cpp
   ${PLATFORM_SOURCES}/pcomn_sys.cpp
 )
+
+target_include_directories(pcommon
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
+  )
+
+target_compile_options(pcommon
+  PUBLIC $<$<CONFIG:Debug>:${PCOMN_DEBUG_FLAGS}>
+  )
