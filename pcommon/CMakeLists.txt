@@ -85,9 +85,11 @@ add_library(pcommon STATIC
 )
 
 target_include_directories(pcommon
-  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
+  PUBLIC .
   )
 
 target_compile_options(pcommon
   PUBLIC $<$<CONFIG:Debug>:${PCOMN_DEBUG_FLAGS}>
   )
+
+add_subdirectory(unittests)
