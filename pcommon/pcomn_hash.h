@@ -164,6 +164,49 @@ inline size_t hashFNV(const void *data, size_t size, size_t init)
 }
 
 /******************************************************************************/
+/** Robert Jenkins' hash function for hashing a 32-bit integer to a 32-bit integer
+*******************************************************************************/
+inline uint32_t jenkins_hash32to32(uint32_t x)
+{
+   x = (x+0x7ed55d16) + (x<<12) ;
+   x = (x^0xc761c23c) ^ (x>>19) ;
+   x = (x+0x165667b1) + (x<<5) ;
+   x = (x+0xd3a2646c) ^ (x<<9) ;
+   x = (x+0xfd7046c5) + (x<<3) ;
+   x = (x^0xb55a4f09) ^ (x>>16) ;
+   return x ;
+}
+
+/******************************************************************************/
+/** Thomas Wang's hash function for hashing a 64-bit integer to a 64-bit integer
+*******************************************************************************/
+inline uint64_t wang_hash64to64(uint64_t x)
+{
+  x = ~x + (x << 21) ; // x = (x << 21) - x - 1
+  x = x ^ (x >> 24) ;
+  x = x + (x << 3) + (x << 8) ; // x * 265
+  x = x ^ (x >> 14) ;
+  x = x + (x << 2) + (x << 4) ; // x * 21
+  x = x ^ (x >> 28) ;
+  x = x + (x << 31) ;
+  return x ;
+}
+
+/******************************************************************************/
+/** Thomas Wang's hash function for hashing a 64-bit integer to a 32-bit integer
+*******************************************************************************/
+inline uint32_t wang_hash64to32(uint64_t x)
+{
+  x = ~x + (x << 18) ; // x = (x << 18) - x - 1
+  x = x ^ (x >> 31) ;
+  x = x + (x << 2) + (x << 4) ; // x * 21
+  x = x ^ (x >> 11) ;
+  x = x + (x << 6) ;
+  x = x ^ (x >> 22) ;
+  return x ;
+}
+
+/******************************************************************************/
 /** Hasher for data with static (compile-time) size.
 *******************************************************************************/
 template<size_t DataSize, size_t ResultSize> struct FNVFixedHasher ;
@@ -384,7 +427,7 @@ struct crypthash : T {
 *******************************************************************************/
 struct binary128_t {
       /// Check helper
-      explicit operator bool() const { return !!(_idata[0] | _idata[1]) ; }
+      explicit constexpr operator bool() const { return !!(_idata[0] | _idata[1]) ; }
 
       unsigned char *data() { return reinterpret_cast<unsigned char *>(&_cdata) ; }
       constexpr const unsigned char *data() const { return reinterpret_cast<const unsigned char *>(&_cdata) ; }
@@ -451,7 +494,7 @@ struct md5hash_pod_t : binary128_t {} ;
 struct sha1hash_pod_t {
 
       /// Check helper.
-      explicit operator bool() const
+      explicit constexpr operator bool() const
       {
          return _idata[0] || _idata[1] || _idata[2] || _idata[3] || _idata[4] ;
       }
