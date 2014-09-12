@@ -8,22 +8,16 @@
 # PROGRAMMED BY:  Yakov Markovitch
 # CREATION DATE:  5 Sep 2014
 #------------------------------------------------------------------------------
-if (UNIX)
-  set(PCOMN_C_OPT_BASE    -march=core2 -msse4.1 -pthread -fvisibility=hidden -Wall CACHE INTERNAL "")
-  set(PCOMN_C_OPT_DBGINFO -gdwarf-4 -fno-debug-types-section -grecord-gcc-switches CACHE INTERNAL "")
 
-  set(PCOMN_CXX_OPT_CXX11 -std=c++11 CACHE INTERNAL "")
-  set(PCOMN_CXX_OPT_BASE  ${PCOMN_C_OPT_BASE} -Woverloaded-virtual CACHE INTERNAL "")
-else()
-  set(PCOMN_C_OPT_BASE "" CACHE INTERNAL "")
-  set(PCOMN_C_OPT_DBGINFO "" CACHE INTERNAL "")
-
-  set(PCOMN_CXX_OPT_CXX11 "" CACHE INTERNAL "")
-  set(PCOMN_CXX_OPT_BASE "" CACHE INTERNAL "")
-endif(UNIX)
-
-set(PCOMN_C_OPT_TRACE -D__PCOMN_TRACE CACHE INTERNAL "")
-set(PCOMN_C_OPT_CHECK -D__PCOMN_DEBUG=2 CACHE INTERNAL "")
+# Force setting CACHE INTERNAL ("global") variable ${var}
+# If no value specified, delete ${var} from the cache
+macro(set_global var)
+  if (${ARGC})
+    set(${var} ${ARGN} CACHE INTERNAL "")
+  else()
+    unset(${var} CACHE)
+  endif()
+endmacro(set_global)
 
 macro(set_diff inout_set1 in_set2)
   foreach(dummy IN LISTS ${in_set2})
@@ -71,3 +65,22 @@ endmacro(force_flags)
 
 function(set_compilation_features lang buildtype)
 endfunction(set_compilation_features)
+
+set_global(PCOMN_CONFIG ${CMAKE_CURRENT_LIST_DIR})
+
+if (UNIX)
+  set_global(PCOMN_C_OPT_BASE    -march=core2 -msse4.1 -pthread -fvisibility=hidden -Wall)
+  set_global(PCOMN_C_OPT_DBGINFO -gdwarf-4 -fno-debug-types-section -grecord-gcc-switches)
+
+  set_global(PCOMN_CXX_OPT_CXX11 -std=c++11)
+  set_global(PCOMN_CXX_OPT_BASE  ${PCOMN_C_OPT_BASE} -Woverloaded-virtual)
+else()
+  set_global(PCOMN_C_OPT_BASE "")
+  set_global(PCOMN_C_OPT_DBGINFO "")
+
+  set_global(PCOMN_CXX_OPT_CXX11 "")
+  set_global(PCOMN_CXX_OPT_BASE "")
+endif(UNIX)
+
+set_global(PCOMN_C_OPT_TRACE -D__PCOMN_TRACE)
+set_global(PCOMN_C_OPT_CHECK -D__PCOMN_DEBUG=2)

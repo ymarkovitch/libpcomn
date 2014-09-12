@@ -85,7 +85,7 @@ add_library(pcommon STATIC
 )
 
 target_include_directories(pcommon
-  PUBLIC .
+  PUBLIC ${PROJECT_SOURCE_DIR}
   )
 
 target_compile_options(pcommon
