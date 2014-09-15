@@ -8,6 +8,10 @@
 # PROGRAMMED BY:  Yakov Markovitch
 # CREATION DATE:  5 Sep 2014
 #------------------------------------------------------------------------------
+if(__PCOMMON_INCLUDED)
+  return()
+endif()
+set(__PCOMMON_INCLUDED CACHE INTERNAL "")
 
 ################################################################################
 # set_global(var)
@@ -129,3 +133,109 @@ if (WIN32)
 else()
   set_global(CMD_CAT cat)
 endif(WIN32)
+
+################################################################################
+# Unittest handling
+################################################################################
+function(unittests_directory)
+
+  get_directory_property(is_unittests_directory DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} UNITTESTS_DIRECTORY)
+  if (is_unittests_directory)
+    return()
+  endif()
+
+  add_custom_target(unittests.start COMMENT
+    "\n+++++++++++++++++++++++ Building and running unittests +++++++++++++++++++++++")
+  add_custom_target(unittests DEPENDS unittests.start)
+  add_custom_command(TARGET unittests POST_BUILD COMMENT
+    "+++++++++++++++++++++++ Finished running unittests +++++++++++++++++++++++++++")
+
+  set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY UNITTESTS_DIRECTORY TRUE)
+
+endfunction(unittests_directory)
+
+macro(set_executable_path path)
+  if(IS_ABSOLUTE ${path})
+    set(EXECUTABLE_OUTPUT_PATH ${path} PARENT_SCOPE)
+  else()
+    set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/bin PARENT_SCOPE)
+  endif()
+  set(LIBRARY_OUTPUT_PATH ${EXECUTABLE_OUTPUT_PATH} PARENT_SCOPE)
+endmacro(set_executable_path)
+
+################################################################################
+# unittest(<name> [source1 ...])
+#
+# Add an executable unittest target called <name> to be built either from
+# <name>.cpp if there are no source files specified or from the source files
+# listed in the command invocation.
+################################################################################
+function(unittest name)
+
+  set_executable_path(bin)
+
+  find_package(cppunit REQUIRED)
+
+  if (" ${ARGN}" STREQUAL " ")
+    set(sources ${name}.cpp)
+  else()
+    set(sources ${ARGN})
+  endif()
+
+  if (NOT WIN32)
+    set(LAST_EXIT_STATUS "$$?")
+  else()
+    set(LAST_EXIT_STATUS "%ERRORLEVEL%")
+  endif()
+
+  # Unittest executable
+  add_executable(${name} ${sources})
+
+  # All unittests depend on pcommon and cppunit libraries
+  target_link_libraries(${name} PRIVATE pcommon cppunit)
+  apply_project_requirements(${name})
+
+  set_target_properties(${name} PROPERTIES EXCLUDE_FROM_ALL true)
+
+  add_custom_command(
+    OUTPUT  ${EXECUTABLE_OUTPUT_PATH}/${name}.run
+    WORKING_DIRECTORY ${EXECUTABLE_OUTPUT_PATH}
+    DEPENDS ${name}
+
+    COMMAND ${CMD_RM} ${name}.output ${name}.run
+    COMMAND ${CMD_ECHO} "  running: ${name}"
+
+    COMMAND
+    PCOMN_TESTDIR=${CMAKE_CURRENT_SOURCE_DIR} flock -w 7200 ${CMAKE_BINARY_DIR} $<TARGET_FILE:${name}> >${name}.output 2>&1 ||
+    (${CMD_CMAKE} -DUNITTEST_OUTPUT=${name}.output -DUNITTEST_STATUS=${LAST_EXIT_STATUS} -P ${PCOMN_CONFIG}/put_status.cmake && exit 1)
+
+    COMMAND ${CMD_CMAKE} -DUNITTEST_OUTPUT=${name}.output -DUNITTEST_STATUS=0 -P ${PCOMN_CONFIG}/put_status.cmake
+    COMMAND ${CMD_ECHO} "**passed** ${name}"
+    COMMAND ln ${name}.output ${name}.run
+    )
+
+  add_custom_target(${name}.test DEPENDS ${EXECUTABLE_OUTPUT_PATH}/${name}.run)
+  add_test(NAME ${name} WORKING_DIRECTORY ${EXECUTABLE_OUTPUT_PATH} COMMAND ${name})
+
+  add_dependencies(unittests ${name}.test)
+
+endfunction(unittest)
+
+function(set_project_link_libraries)
+  if (ARGC GREATER 0)
+    set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY PCOMN_PROJECT_LINK_LIBRARIES ${ARGN})
+  endif()
+endfunction(set_project_link_libraries)
+
+function(apply_project_requirements target1)
+  set(targets ${target1} ${ARGN})
+
+  get_property(link_requirements DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY PCOMN_PROJECT_LINK_LIBRARIES)
+
+  foreach(target IN LISTS targets)
+    target_link_libraries(${target} PRIVATE ${link_requirements})
+  endforeach()
+endfunction()
+
+unittests_directory()
+add_custom_target(check DEPENDS unittests)

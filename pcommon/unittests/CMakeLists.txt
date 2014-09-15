@@ -8,59 +8,9 @@
 #------------------------------------------------------------------------------
 cmake_minimum_required(VERSION 2.8.12)
 
-set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/bin)
-set(LIBRARY_OUTPUT_PATH ${EXECUTABLE_OUTPUT_PATH})
+project(pcommon.unittests C CXX)
 
-add_custom_target(unittests.start COMMENT
-  "\n+++++++++++++++++++++++ Building and running unittests +++++++++++++++++++++++")
-add_custom_target(unittests DEPENDS unittests.start)
-add_custom_command(TARGET unittests POST_BUILD COMMENT
-  "+++++++++++++++++++++++ Finished running unittests +++++++++++++++++++++++++++")
-
-add_custom_target(check DEPENDS unittests)
-
-################################################################################
-# unittest(<name> [source1 ...])
-#
-# Add an executable unittest target called <name> to be built either from
-# <name>.cpp if there are no source files specified or from the source files
-# listed in the command invocation.
-################################################################################
-function(unittest name)
-
-  find_package(cppunit REQUIRED)
-
-  if (" ${ARGN}" STREQUAL " ")
-    set(sources ${name}.cpp)
-  else()
-    set(sources ${ARGN})
-  endif()
-
-  # Unittest executable
-  add_executable(${name} ${sources})
-  # All unittests depend on pcommon and cppunit libraries
-  target_link_libraries(${name} PRIVATE pcommon cppunit)
-  set_target_properties(${name} PROPERTIES EXCLUDE_FROM_ALL true)
-
-  add_custom_command(
-    OUTPUT  ${EXECUTABLE_OUTPUT_PATH}/${name}.run
-    WORKING_DIRECTORY ${EXECUTABLE_OUTPUT_PATH}
-    DEPENDS ${name}
-
-    COMMAND ${CMD_RM} ${name}.output ${name}.run
-    COMMAND ${CMD_ECHON} "  running: ${name} ..."
-    COMMAND $<TARGET_FILE:${name}> >${name}.output 2>&1 || (${CMD_CMAKE} -DUNITTEST_OUTPUT=${name}.output -DUNITTEST_STATUS=${VAR_ERRORLEVEL} -P ../put_status.cmake && exit 1)
-    COMMAND ${CMD_CMAKE} -DUNITTEST_OUTPUT=${name}.output -DUNITTEST_STATUS=0 -P ../put_status.cmake
-    COMMAND ${CMD_ECHO} "**passed** ${name}"
-    COMMAND ln ${name}.output ${name}.run
-    )
-
-  add_custom_target(${name}.test DEPENDS ${EXECUTABLE_OUTPUT_PATH}/${name}.run)
-  add_test(NAME ${name} WORKING_DIRECTORY ${EXECUTABLE_OUTPUT_PATH} COMMAND ${name})
-
-  add_dependencies(unittests ${name}.test)
-
-endfunction(unittest)
+set_project_link_libraries(crypto z)
 
 # Test cfgparser first, to ensure diagnostics log configuration is functioning properly
 unittest(unittest_cfgparser)

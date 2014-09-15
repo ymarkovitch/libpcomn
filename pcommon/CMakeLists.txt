@@ -92,4 +92,4 @@ target_compile_options(pcommon
   PUBLIC $<$<CONFIG:Debug>:${PCOMN_DEBUG_FLAGS}>
   )
 
-add_subdirectory(unittests)
+add_subdirectory(unittests EXCLUDE_FROM_ALL)
