@@ -8,38 +8,101 @@
 #------------------------------------------------------------------------------
 cmake_minimum_required(VERSION 2.8.12)
 
-set(PROJLIBS
-  pcommon
-  )
+set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/bin)
+set(LIBRARY_OUTPUT_PATH ${EXECUTABLE_OUTPUT_PATH})
 
-add_executable(unittest_integer unittest_integer.cpp)
-target_link_libraries(unittest_integer PRIVATE ${PROJLIBS})
-set_target_properties(unittest_integer PROPERTIES EXCLUDE_FROM_ALL true)
+add_custom_target(unittests.start COMMENT
+  "\n+++++++++++++++++++++++ Building and running unittests +++++++++++++++++++++++")
+add_custom_target(unittests DEPENDS unittests.start)
+add_custom_command(TARGET unittests POST_BUILD COMMENT
+  "+++++++++++++++++++++++ Finished running unittests +++++++++++++++++++++++++++")
 
-set_global(COMMAND_MV   ${CMAKE_COMMAND} -E rename)
-set_global(COMMAND_RM   ${CMAKE_COMMAND} -E remove)
-set_global(COMMAND_ECHO ${CMAKE_COMMAND} -E echo)
-if (WIN32)
-  set(VAR_ERRORLEVEL "%ERRORLEVEL%")
-else()
-  set(VAR_ERRORLEVEL "$?")
-endif(WIN32)
+add_custom_target(check DEPENDS unittests)
 
-add_custom_command(
-  OUTPUT  bin/unittest_integer.run
-  COMMAND ${COMMAND_RM} unittest_integer.output
-  COMMAND $<TARGET_FILE:unittest_integer> >bin/unittest_integer.run 2>&1 || ${CMAKE_COMMAND} -P put_status.cmake unittest_integer.output ${VAR_ERRORLEVEL}
-  COMMAND ${CMAKE_COMMAND} -P put_status.cmake unittest_integer.output 0
-  COMMAND ${COMMAND_MV} unittest_integer.output unittest_integer.run
-  )
+################################################################################
+# unittest(<name> [source1 ...])
+#
+# Add an executable unittest target called <name> to be built either from
+# <name>.cpp if there are no source files specified or from the source files
+# listed in the command invocation.
+################################################################################
+function(unittest name)
 
-add_custom_target(unittest_integer.test DEPENDS bin/unittest_integer.run)
+  find_package(cppunit REQUIRED)
 
-#add_test(unittest_integer ${CMAKE_CTEST_COMMAND}
-#  --build-and-test "${CMAKE_SOURCE_DIR}" "${CMAKE_BINARY_DIR}"
-#  --build-nocmake --build-noclean
-#  --build-generator "${CMAKE_GENERATOR}"
-#  --build-target unittest_integer
-#  --build-makeprogram "${CMAKE_MAKE_PROGRAM}"
-#  --test-command ${CMAKE_CURRENT_BINARY_DIR}/unittest_integer
-#  )
+  if (" ${ARGN}" STREQUAL " ")
+    set(sources ${name}.cpp)
+  else()
+    set(sources ${ARGN})
+  endif()
+
+  # Unittest executable
+  add_executable(${name} ${sources})
+  # All unittests depend on pcommon and cppunit libraries
+  target_link_libraries(${name} PRIVATE pcommon cppunit)
+  set_target_properties(${name} PROPERTIES EXCLUDE_FROM_ALL true)
+
+  add_custom_command(
+    OUTPUT  ${EXECUTABLE_OUTPUT_PATH}/${name}.run
+    WORKING_DIRECTORY ${EXECUTABLE_OUTPUT_PATH}
+    DEPENDS ${name}
+
+    COMMAND ${CMD_RM} ${name}.output ${name}.run
+    COMMAND ${CMD_ECHON} "  running: ${name} ..."
+    COMMAND $<TARGET_FILE:${name}> >${name}.output 2>&1 || (${CMD_CMAKE} -DUNITTEST_OUTPUT=${name}.output -DUNITTEST_STATUS=${VAR_ERRORLEVEL} -P ../put_status.cmake && exit 1)
+    COMMAND ${CMD_CMAKE} -DUNITTEST_OUTPUT=${name}.output -DUNITTEST_STATUS=0 -P ../put_status.cmake
+    COMMAND ${CMD_ECHO} "**passed** ${name}"
+    COMMAND ln ${name}.output ${name}.run
+    )
+
+  add_custom_target(${name}.test DEPENDS ${EXECUTABLE_OUTPUT_PATH}/${name}.run)
+  add_test(NAME ${name} WORKING_DIRECTORY ${EXECUTABLE_OUTPUT_PATH} COMMAND ${name})
+
+  add_dependencies(unittests ${name}.test)
+
+endfunction(unittest)
+
+# Test cfgparser first, to ensure diagnostics log configuration is functioning properly
+unittest(unittest_cfgparser)
+
+# Test test the most basic functionality used throughout the library
+unittest(unittest_metafunction)
+unittest(unittest_utils)
+
+# Test the library
+#
+unittest(unittest_immutablestr)
+unittest(unittest_smartptr)
+unittest(unittest_strshims)
+unittest(unittest_strslice)
+
+unittest(unittest_cacher)
+unittest(unittest_crypthash)
+unittest(unittest_exec)
+unittest(unittest_file_lock)
+unittest(unittest_hashclosed)
+unittest(unittest_inclist)
+unittest(unittest_indicator_observer)
+unittest(unittest_integer)
+unittest(unittest_iostream)
+#unittest(unittest_keyedmutex)
+unittest(unittest_lanes)
+unittest(unittest_mmap)
+unittest(unittest_mxmutex)
+unittest(unittest_rawstream)
+unittest(unittest_regex)
+unittest(unittest_safeformat)
+unittest(unittest_simplematrix)
+unittest(unittest_strnum)
+unittest(unittest_strsubst)
+unittest(unittest_sync)
+unittest(unittest_synccomplex)
+unittest(unittest_sys)
+unittest(unittest_textio)
+unittest(unittest_timespec)
+unittest(unittest_uri)
+unittest(unittest_zstream)
+
+# pcomn::journal
+unittest(unittest_journal_files)
+unittest(unittest_journal)
