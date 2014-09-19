@@ -261,22 +261,28 @@ inline T *clone_object(const T *obj)
    return obj ? new T(*obj) : (T *)NULL ;
 }
 
+/// Delete the scalar object a pointer points to and assign nullptr to the pointer
+///
+/// This function nullifies the passed pointer @em first and @em then deletes an object
+/// the pointer pointed to before; this allows to work with cyclic pointer structures.
+///
 template<typename T>
-inline T *&clear_delete(T *&t)
+inline T *&clear_delete(T *&ptr)
 {
-   T *temp = t ;
-   t = 0 ;
+   T *temp = ptr ;
+   ptr = 0 ;
    delete temp ;
-   return t ;
+   return ptr ;
 }
 
+/// Delete an array of objects a pointer points to and assign nullptr to the pointer
 template<typename T>
-inline T *&clear_deletev(T *&t)
+inline T *&clear_deletev(T *&vec)
 {
-   T *temp = t ;
-   t = 0 ;
+   T *temp = vec ;
+   vec = 0 ;
    delete [] temp ;
-   return t ;
+   return vec ;
 }
 
 template<typename T>
@@ -464,44 +470,70 @@ inline bool xinrange(const T &value, const std::pair<R, R> &range)
 }
 
 /*******************************************************************************
- Tagged pointer hacks; work only for pointers with alignment>1
+*
+* Tagged pointer hacks; work only for pointers with alignment > 1
+*
 *******************************************************************************/
+#define static_check_taggable(T) \
+   static_assert(alignof(T) > 1, "Taggable pointer element type alignemnt must be at least 2")
+
 /// Make a pointer "tagged", set its LSBit to 1
 template<typename T>
-inline T *tag_ptr(T *ptr) { return (T *)((uintptr_t)ptr | 1) ; }
+inline constexpr T *tag_ptr(T *ptr)
+{
+   static_check_taggable(T) ;
+   return (T *)(reinterpret_cast<uintptr_t>(ptr) | 1) ;
+}
 
 /// Untag a pointer, clear its LSBit.
 template<typename T>
-inline T *untag_ptr(T *ptr) { return (T *)((uintptr_t)ptr &~ (uintptr_t)1) ; }
+inline constexpr T *untag_ptr(T *ptr)
+{
+   static_check_taggable(T) ;
+   return (T *)(reinterpret_cast<uintptr_t>(ptr) &~ (uintptr_t)1) ;
+}
 
 /// Flip the pointer's LSBit.
 template<typename T>
-inline T *fliptag_ptr(T *ptr) { return (T *)((uintptr_t)ptr ^ 1) ; }
-
-template<typename T>
-inline bool is_ptr_tagged(T *ptr) { return (uintptr_t)ptr & 1 ; }
-
-template<typename T>
-inline bool is_ptr_tagged_or_null(T *ptr)
+inline constexpr T *fliptag_ptr(T *ptr)
 {
-   return (!((uintptr_t)ptr & ~1)) | ((uintptr_t)ptr & 1) ;
+   static_check_taggable(T) ;
+   return (T *)(reinterpret_cast<uintptr_t>(ptr) ^ 1) ;
+}
+
+template<typename T>
+inline constexpr bool is_ptr_tagged(T *ptr)
+{
+   static_check_taggable(T) ;
+   return reinterpret_cast<uintptr_t>(ptr) & 1 ;
+}
+
+template<typename T>
+inline constexpr bool is_ptr_tagged_or_null(T *ptr)
+{
+   static_check_taggable(T) ;
+   return (!(reinterpret_cast<uintptr_t>(ptr) & ~1)) | (reinterpret_cast<uintptr_t>(ptr) & 1) ;
 }
 
 /// If a pointer is tagged or NULL, return NULL; otherwise, return the untagged
 /// pointer value.
 template<typename T>
-inline T *null_if_tagged_or_null(T *ptr)
+inline constexpr T *null_if_tagged_or_null(T *ptr)
 {
-   return (T *)((uintptr_t)ptr & (((uintptr_t)ptr & 1) - 1)) ;
+   static_check_taggable(T) ;
+   return (T *)(reinterpret_cast<uintptr_t>(ptr) & ((reinterpret_cast<uintptr_t>(ptr) & 1) - 1)) ;
 }
 
 /// If a pointer is untagged or NULL, return NULL; otherwise, return the untagged
 /// pointer value.
 template<typename T>
-inline T *null_if_untagged_or_null(T *ptr)
+inline constexpr T *null_if_untagged_or_null(T *ptr)
 {
-   return (T *)((uintptr_t)ptr & ((~uintptr_t() + (((uintptr_t)ptr - 1) & 1)) & ~1)) ;
+   static_check_taggable(T) ;
+   return (T *)(reinterpret_cast<uintptr_t>(ptr) & ((~uintptr_t() + ((reinterpret_cast<uintptr_t>(ptr) - 1) & 1)) & ~1)) ;
 }
+
+#undef static_check_taggable
 
 /******************************************************************************/
 /** Tagged union of two pointers with sizof(tagged_ptr_union)==sizeof(void *).
@@ -513,20 +545,20 @@ struct tagged_ptr_union_POD {
       typedef T1 *first_type ;
       typedef T2 *second_type ;
 
-      operator const void *() const { return (const void *)(as_intptr() &~ (intptr_t)1) ; }
+      constexpr operator const void *() const { return (const void *)(as_intptr() &~ (intptr_t)1) ; }
 
       template<int i>
-      typename std::conditional<i, second_type, first_type>::
+      constexpr typename std::conditional<i, second_type, first_type>::
       type get() const
       {
-         return this->get_((std::integral_constant<int, i>*)NULL) ;
+         return this->get_(std::integral_constant<int, i>()) ;
       }
 
       template<int i>
       tagged_ptr_union_POD &set(typename std::conditional<i, second_type, first_type>::type v)
       {
          NOXCHECK(!((uintptr_t)v & 1)) ;
-         this->set_(v, (std::integral_constant<int, i>*)NULL) ;
+         this->set_(v, std::integral_constant<int, i>()) ;
          return *this ;
       }
 
@@ -538,26 +570,28 @@ struct tagged_ptr_union_POD {
             second_type _second ;
       } ;
 
-      intptr_t as_intptr() const { return (intptr_t)_first ; }
-      intptr_t first_mask() const { return (((intptr_t)_second & 1) - 1) ; }
+      constexpr intptr_t as_intptr() const { return (intptr_t)_first ; }
+      constexpr intptr_t first_mask() const { return (((intptr_t)_second & 1) - 1) ; }
 
-      first_type get_(std::integral_constant<int, 0> *) const
+      constexpr first_type get_(std::integral_constant<int, 0>) const
       {
          return reinterpret_cast<first_type>(as_intptr() & first_mask()) ;
       }
-      void set_(first_type v, std::integral_constant<int, 0> *) { _first = v ; }
+      void set_(first_type v, std::integral_constant<int, 0>) { _first = v ; }
 
-      second_type get_(std::integral_constant<int, 1> *) const
+      constexpr second_type get_(std::integral_constant<int, 1>) const
       {
          return reinterpret_cast<second_type>(as_intptr() &~ (intptr_t)1 &~ first_mask()) ;
       }
-      void set_(second_type v, std::integral_constant<int, 1> *)
+      void set_(second_type v, std::integral_constant<int, 1>)
       {
          _second = reinterpret_cast<second_type>
             ((((uintptr_t)v) | (uintptr_t)1) ^ (uintptr_t)!v) ;
       }
-} ;
 
+      static_assert(alignof(first_type) > 1 && alignof(second_type) > 1,
+                    "Types pointed to by pcomn::tagged_ptr_union must have alignment at least 2") ;
+} ;
 
 /******************************************************************************/
 /** Tagged pointer union with a default constructor, which resets it to NULL
