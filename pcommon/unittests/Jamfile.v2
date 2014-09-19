@@ -66,6 +66,7 @@ if ! [ adhoc-targets ]
   unittest unittest_integer ;
   unittest unittest_iostream ;
   #unittest unittest_keyedmutex ;
+  unittest uniittest_keyedset ;
   unittest unittest_lanes ;
   unittest unittest_mmap ;
   unittest unittest_mxmutex ;
