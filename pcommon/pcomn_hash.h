@@ -423,7 +423,7 @@ struct crypthash : T {
 } ;
 
 /******************************************************************************/
-/** Any 128-bit aligned binary POD data
+/** 128-bit aligned binary big-endian POD data
 *******************************************************************************/
 struct binary128_t {
       /// Check helper

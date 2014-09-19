@@ -126,9 +126,6 @@ struct closed_hashtable_item<Value *> : closed_hashitem_base {
       static bool is_valid(value_type v) { return !!((uintptr_t)v & ~(uintptr_t)7) ; }
 } ;
 
-#define PCOMN_NOREF_RETTYPE(callexp) \
-    typename std::remove_reference<typename std::result_of<callexp >::type>::type
-
 /******************************************************************************/
 /** Closed hash table, particularly efficient for storing objects of small POD types.
 
@@ -136,8 +133,8 @@ struct closed_hashtable_item<Value *> : closed_hashitem_base {
 *******************************************************************************/
 template<typename Value,
          typename ExtractKey = pcomn::identity<Value>,
-         typename Hash = pcomn::hash_fn<PCOMN_NOREF_RETTYPE(ExtractKey(Value))>,
-         typename Pred = std::equal_to<PCOMN_NOREF_RETTYPE(ExtractKey(Value))> >
+         typename Hash = pcomn::hash_fn<typename noref_result_of<ExtractKey(Value)>::type>,
+         typename Pred = std::equal_to<typename noref_result_of<ExtractKey(Value)>::type> >
 class closed_hashtable {
       // Only TriviallyCopyable items are allowed!
       PCOMN_STATIC_CHECK(std::is_trivially_copyable<Value>::value || std::is_literal_type<Value>::value) ;
@@ -147,7 +144,7 @@ class closed_hashtable {
       typedef closed_hashtable_item<Value> bucket_type ;
 
    public:
-      typedef PCOMN_NOREF_RETTYPE(ExtractKey(Value)) key_type ;
+      typedef typename noref_result_of<ExtractKey(Value)>::type key_type ;
       typedef Value       value_type ;
       typedef Hash        hasher ;
       typedef Pred        key_equal ;

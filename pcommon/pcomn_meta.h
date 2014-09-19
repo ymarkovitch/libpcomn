@@ -160,6 +160,17 @@ struct add_parmtype {
 template <class T>
 struct add_parmtype<T &> : public add_cref<T &> {} ;
 
+/******************************************************************************/
+/** Deduce the return type of a function call expression at compile time @em and,
+ if the deduced type is a reference type, provides the member typedef type which
+ is the type referred to, otherwise deduced type itself.
+*******************************************************************************/
+template<typename> struct noref_result_of ;
+
+template<typename F, typename... ArgTypes>
+struct noref_result_of<F(ArgTypes...)> :
+         std::remove_reference<typename std::result_of<F(ArgTypes...)>::type> {} ;
+
 /*******************************************************************************
                      union max_align
 *******************************************************************************/
