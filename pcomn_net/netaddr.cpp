@@ -137,5 +137,27 @@ std::string sock_address::str() const
     return buf ;
 }
 
+/*******************************************************************************
+ subnet_address
+*******************************************************************************/
+subnet_address::subnet_address(const strslice &subnet_string, RaiseError raise_error) :
+    _pfxlen(0)
+{
+    const auto &s = strsplit(subnet_string, '/') ;
+
+    if (s.first && s.second)
+        try {
+            _pfxlen = ensure_pfxlen(strtonum<uint8_t>(make_strslice_range(s.second))) ;
+            _addr = inet_address
+                (inet_address(s.first, inet_address::ONLY_DOTDEC | (-(int)!raise_error & inet_address::NO_EXCEPTION)).ipaddr() & netmask()) ;
+            return ;
+        }
+        catch (const std::exception &)
+        { _pfxlen = 0 ; }
+
+    PCOMN_THROW_MSG_IF(raise_error, std::invalid_argument,
+                       "Invalid subnet specification: " P_STRSLICEQF, P_STRSLICEV(subnet_string)) ;
+}
+
 } // end of namespace pcomn::net
 } // end of namespace pcomn

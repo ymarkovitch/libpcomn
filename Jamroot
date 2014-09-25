@@ -30,8 +30,6 @@ path-constant ROOTPATH   : . ;
 modules.poke : BOOST_BUILD_PATH : [ modules.peek : BOOST_BUILD_PATH ] $(ROOTPATH)/pcommon/config ;
 
 import pcommon ;
-import rpm ;
-import bisonpp ;
 
 ################################################################################
 # Constants

@@ -17,6 +17,7 @@
 #include <pcomn_utils.h>
 #include <pcomn_hash.h>
 #include <pcomn_string.h>
+#include <pcomn_strnum.h>
 #include <pcomn_strslice.h>
 
 #include <string>
@@ -33,9 +34,9 @@ namespace net {
 /******************************************************************************/
 /** IP address.
 
-    @note All comparison/relational operators are defined as free function, providing for
-    symmetrical compare with all data types to/from which inet_address defines implicit
-    conversions.
+ @note All comparison/relational operators are defined as free function, providing for
+ symmetrical compare with all data types to/from which inet_address defines implicit
+ conversions.
 *******************************************************************************/
 class inet_address {
 public:
@@ -61,23 +62,9 @@ public:
     /// Create default address (0.0.0.0).
     constexpr inet_address() : _addr(0) {}
 
-    /// Create an IP address from its human-readable text representation.
-    /// @param address_string Dot-delimited IP address or interface name, like "eth0", or
-    /// host name (tried in that order).
-    /// @param flags        ORed ConstructFlags flags.
-    /// @return Resolved IP address. If cannot resolve, throws inaddr_error or constructs
-    /// an empty inet_address (i.e. ipaddr()==0), depending on NO_EXCEPTION flag.
-    inet_address(const strslice &address_string, unsigned flags = 0) :
-        _addr(from_string(address_string, flags))
-    {}
+    explicit constexpr inet_address(uint32_t host_order_inetaddr) : _addr(host_order_inetaddr) {}
 
-    explicit constexpr inet_address(uint32_t host_order_inetaddr) :
-        _addr(host_order_inetaddr)
-    {}
-
-    inet_address(const in_addr &addr) :
-        _addr(ntohl(addr.s_addr))
-    {}
+    inet_address(const in_addr &addr) : _addr(ntohl(addr.s_addr)) {}
 
     inet_address(uint8_t a, uint8_t b, uint8_t c, uint8_t d)
     {
@@ -91,6 +78,16 @@ public:
         netaddr.octets[3] = d ;
         _addr = ntohl(netaddr.addr) ;
     }
+
+    /// Create an IP address from its human-readable text representation.
+    /// @param address_string Dot-delimited IP address or interface name, like "eth0", or
+    /// host name (tried in that order).
+    /// @param flags        ORed ConstructFlags flags.
+    /// @return Resolved IP address. If cannot resolve, throws inaddr_error or constructs
+    /// an empty inet_address (i.e. ipaddr()==0), depending on NO_EXCEPTION flag.
+    inet_address(const strslice &address_string, unsigned flags = 0) :
+        _addr(from_string(address_string, flags))
+    {}
 
     explicit constexpr operator bool() { return !!_addr ; }
 
@@ -118,12 +115,7 @@ public:
     /// Get an IP address as a 32-bit unsigned number in the host byte order.
     constexpr uint32_t ipaddr() { return _addr ; }
 
-    in_addr inaddr() const
-    {
-        const in_addr result = { htonl(_addr) } ;
-        return result ;
-    }
-
+    in_addr inaddr() const { return in_addr { htonl(_addr) } ; }
     operator struct in_addr() const { return inaddr() ; }
 
     /// Get a hostname for the address.
@@ -134,6 +126,13 @@ public:
     std::string dotted_decimal() const ;
 
     std::string str() const { return dotted_decimal() ; }
+
+    template<typename OutputIterator>
+    OutputIterator to_str(OutputIterator s) const
+    {
+        char buf[64] ;
+        return std::copy_if(to_strbuf(buf), std::end(buf), s, pcomn::identity<char>()) ;
+    }
 
     friend std::ostream &operator<<(std::ostream &os, const inet_address &addr)
     {
@@ -277,6 +276,78 @@ inline bool operator<(const sock_address &lhs, const sock_address &rhs)
 
 // Note that this line defines _all_ remaining operators (!=, <=, etc.)
 PCOMN_DEFINE_RELOP_FUNCTIONS(, sock_address) ;
+
+/******************************************************************************/
+/** Subnetwork address, i.e. IPV4 address + prefix length
+*******************************************************************************/
+class subnet_address {
+public:
+    constexpr subnet_address() : _pfxlen(0) {}
+
+    subnet_address(uint32_t host_order_inetaddr, unsigned prefix_length) :
+        _pfxlen(ensure_pfxlen(prefix_length)),
+        _addr(host_order_inetaddr & netmask())
+    {}
+
+    subnet_address(const inet_address &address, unsigned masklen) :
+        subnet_address(address.ipaddr(), masklen)
+    {}
+
+    subnet_address(const in_addr &addr, unsigned masklen) :
+        subnet_address(inet_address(addr), masklen)
+    {}
+
+    subnet_address(uint8_t a, uint8_t b, uint8_t c, uint8_t d, unsigned masklen) :
+        subnet_address(inet_address(a, b, c, d), masklen)
+    {}
+
+    /// Create an IP address from its human-readable text representation.
+    /// @param address_string Dotted-decimal subnet mask, like "139.12.0.0/16"
+    subnet_address(const strslice &subnet_string, RaiseError raise_error = RAISE_ERROR) ;
+
+    explicit constexpr operator bool() { return static_cast<bool>(_addr) ; }
+
+    const inet_address &addr() const { return _addr ; }
+
+    operator inet_address() const { return _addr ; }
+
+    /// Get subnet prefix length
+    unsigned pfxlen() const { return _pfxlen ; }
+
+    /// Get subnet mask (host order)
+    uint32_t netmask() const { return ~0 << (32 - _pfxlen) ; }
+
+    std::string str() const
+    {
+        char buf[64] ;
+        return std::string(buf + 0, to_str(buf)) ;
+    }
+
+    template<typename OutputIterator>
+    OutputIterator to_str(OutputIterator s) const
+    {
+        s = addr().to_str(s) ;
+        *s = '/' ;
+        return numtoiter(pfxlen(), ++s) ;
+    }
+
+    friend std::ostream &operator<<(std::ostream &os, const subnet_address &addr)
+    {
+        char buf[64] ;
+        addr.to_str(buf + 0) ;
+        return os << buf ;
+    }
+
+private:
+    uint32_t     _pfxlen ;  /* Subnetwork prefix length */
+    inet_address _addr ;    /* IP address */
+
+    static uint32_t ensure_pfxlen(unsigned prefix_length)
+    {
+        PCOMN_ASSERT_ARG(prefix_length < 32) ;
+        return prefix_length ;
+    }
+} ;
 
 /*******************************************************************************
  Network address hashing
