@@ -52,6 +52,7 @@ unittest(unittest_sys)
 unittest(unittest_textio)
 unittest(unittest_timespec)
 unittest(unittest_uri)
+unittest(unittest_uuid)
 unittest(unittest_zstream)
 
 # pcomn::journal

@@ -74,6 +74,7 @@ add_library(pcommon STATIC
   pcomn_thread.cpp
   pcomn_threadpool.cpp
   pcomn_uri.cpp
+  pcomn_uuid.cpp
 
   pcomn_ziowrap.c
   pcomn_zstream.cpp
