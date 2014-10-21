@@ -295,8 +295,8 @@
 #elif defined (__GNUC__)
 #  define __GNUC_VER__ (__GNUC__*100+__GNUC_MINOR__*10+__GNUC_PATCHLEVEL__)
 
-#  if (__GNUC_VER__ < 410)
-#     error GNU C/C++ __GNUC__.__GNUC_MINOR__ detected. Versions of GNU C/C++ below 4.1 are not supported.
+#  if (__GNUC_VER__ < 430)
+#     error GNU C/C++ __GNUC__.__GNUC_MINOR__ detected. Versions of GNU C/C++ below 4.3 are not supported.
 #  endif
 
 #  define PCOMN_COMPILER      GNU
@@ -516,16 +516,33 @@ const size_t GiB = 1024*MiB ;
 /*******************************************************************************
  Endianness conversions
 *******************************************************************************/
+#ifdef PCOMN_CPU_LITTLE_ENDIAN
+const bool cpu_little_endian = true ;
+#else
+const bool cpu_little_endian = false ;
+#endif
+
+const bool cpu_big_endian = !cpu_little_endian ;
+
 template<size_t type_size> struct uint_type {} ;
 template<> struct uint_type<1> { typedef uint8 type ; } ;
 template<> struct uint_type<2> { typedef uint16 type ; } ;
 template<> struct uint_type<4> { typedef uint32 type ; } ;
 template<> struct uint_type<8> { typedef uint64 type ; } ;
 
-template<size_t type_size>
-struct _endiannes_changer {
+template<size_t type_size> struct _endiannes_inverter ;
+
+template<>
+struct _endiannes_inverter<1> {
       template<typename T>
-      static T &change(T &item)
+      static T &invert(T &item) { return item ; }
+} ;
+
+#if !defined(PCOMN_COMPILER_GNU) && !defined(PCOMN_COMPILER_MS)
+template<size_t type_size>
+struct _endiannes_inverter {
+      template<typename T>
+      static T &invert(T &item)
       {
          typedef typename uint_type<type_size/2>::type uint_t ;
          uint_t *d = reinterpret_cast<uint_t *>(&item) ;
@@ -534,75 +551,116 @@ struct _endiannes_changer {
          uint_t tmp1 = d[1] ;
          d[0] = tmp1 ;
          d[1] = tmp0 ;
-         _endiannes_changer<type_size/2>::change(d[0]) ;
-         _endiannes_changer<type_size/2>::change(d[1]) ;
+         _endiannes_inverter<type_size/2>::invert(d[0]) ;
+         _endiannes_inverter<type_size/2>::invert(d[1]) ;
          return item ;
       }
 } ;
+#else
+inline uint_type<2>::type builtin_swap_bytes(uint_type<2>::type v)
+{
+   return
+#ifdef PCOMN_COMPILER_GNU
+      __builtin_bswap16(v)
+#else
+      __byteswap_ushort(v)
+#endif
+      ;
+}
 
-template<>
-struct _endiannes_changer<1> {
+inline uint_type<4>::type builtin_swap_bytes(uint_type<4>::type v)
+{
+   return
+#ifdef PCOMN_COMPILER_GNU
+      __builtin_bswap32(v)
+#else
+      __byteswap_ulong(v)
+#endif
+      ;
+}
+
+inline uint_type<8>::type builtin_swap_bytes(uint_type<8>::type v)
+{
+   return
+#ifdef PCOMN_COMPILER_GNU
+      __builtin_bswap64(v)
+#else
+      __byteswap_uint64(v)
+#endif
+      ;
+}
+#endif
+
+// Both GCC and  Visual Studio compilers have byte swapping intrinsics
+template<size_t type_size>
+struct _endiannes_inverter {
       template<typename T>
-      static T &change(T &item) { return item ; }
+      static T &invert(T &item)
+      {
+         typedef typename uint_type<type_size>::type uint_t ;
+         uint_t *d = reinterpret_cast<uint_t *>(&item) ;
+         *d = builtin_swap_bytes(*d) ;
+         return item ;
+      }
 } ;
 
 // invert_endianness()  -  invert the parameter's endianness
 //
 template<typename T>
-inline T &invert_endianness(T &item)
+constexpr inline T &invert_endianness(T &item)
 {
-   return _endiannes_changer<sizeof item>::change(item) ;
+   return _endiannes_inverter<sizeof item>::invert(item) ;
 }
 
 template<typename T>
-inline T &to_little_endian(T &item)
-{
-#ifdef PCOMN_CPU_LITTLE_ENDIAN
-   return item ;
-#else
-   return _endiannes_changer<sizeof item>::change(item) ;
-#endif
-}
-
-template<typename T>
-inline T &to_big_endian(T &item)
-{
-#ifdef PCOMN_CPU_BIG_ENDIAN
-   return item ;
-#else
-   return _endiannes_changer<sizeof item>::change(item) ;
-#endif
-}
-
-template<typename T>
-inline T value_to_little_endian(T item) { return to_little_endian(item) ; }
-template<typename T>
-inline T value_to_big_endian(T item) { return to_big_endian(item) ; }
-
-template<typename T>
-inline T &from_little_endian(T &item)
+constexpr inline T &to_little_endian(T &item)
 {
 #ifdef PCOMN_CPU_LITTLE_ENDIAN
    return item ;
 #else
-   return _endiannes_changer<sizeof item>::change(item) ;
+   return _endiannes_inverter<sizeof item>::invert(item) ;
 #endif
 }
 
 template<typename T>
-inline T &from_big_endian(T &item)
+constexpr inline T &to_big_endian(T &item)
 {
 #ifdef PCOMN_CPU_BIG_ENDIAN
    return item ;
 #else
-   return _endiannes_changer<sizeof item>::change(item) ;
+   return _endiannes_inverter<sizeof item>::invert(item) ;
 #endif
 }
 
 template<typename T>
-inline T value_from_little_endian(T item) { return from_little_endian(item) ; }
+constexpr inline T value_to_little_endian(T item) { return to_little_endian(item) ; }
 template<typename T>
-inline T value_from_big_endian(T item) { return from_big_endian(item) ; }
+constexpr inline T value_to_big_endian(T item) { return to_big_endian(item) ; }
+
+template<typename T>
+constexpr inline T &from_little_endian(T &item)
+{
+#ifdef PCOMN_CPU_LITTLE_ENDIAN
+   return item ;
+#else
+   return _endiannes_inverter<sizeof item>::invert(item) ;
+#endif
+}
+
+template<typename T>
+constexpr inline T &from_big_endian(T &item)
+{
+#ifdef PCOMN_CPU_BIG_ENDIAN
+   return item ;
+#else
+   return _endiannes_inverter<sizeof item>::invert(item) ;
+#endif
+}
+
+template<typename T>
+constexpr inline T value_from_little_endian(T item) { return from_little_endian(item) ; }
+template<typename T>
+constexpr inline T value_from_big_endian(T item) { return from_big_endian(item) ; }
 
 template<class Data>
 inline size_t __byte_pos(const Data &, size_t byte_num)
@@ -631,10 +689,9 @@ inline void __put_byte(ScalarType *data, size_t byte_num, unsigned char byte)
 #endif
 
 #ifndef PCOMN_COMPILER
-#  error \
+#  error
    "Unknown or unsupported C/C++ compiler. "    \
-   "The following compilers are supported: " \
-   "GCC 4.1 and higher; MSVC++ 13.10 and higher; Borland C++ 5.9.1 and higher."
+   "The following compilers are supported: GCC 4.8.1 and higher; MSVC++ 18.10 and higher."
 #endif
 
 #if PCOMN_WORKAROUND(_MSC_VER, >= 1300)
