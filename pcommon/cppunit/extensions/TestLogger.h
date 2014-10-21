@@ -80,26 +80,13 @@
   (CPPUNIT_LOG(__CPPUNIT_CONCAT_SRC_LINE("EXPECTING: (") #actual ") == (" #expected << ")... "),         \
    CPPUNIT_LOG((CPPUNIT_ASSERT_EQUAL(expected, actual), "OK") << std::endl))
 
-template <class T>
-inline void assertNotEquals(const T &left, const T &right,
-                            const std::string &expr, CppUnit::SourceLine ln)
-{
-   if (left != right)
-      return ;
-   const std::string leftrepr(CppUnit::assertion_traits<T>::toString(left)) ;
-   const std::string rightrepr(CppUnit::assertion_traits<T>::toString(right)) ;
-   const std::string actual(leftrepr == rightrepr ?
-         ("both operands of != operator have the same string representation: '") +
-               leftrepr + "'" :
-         ("operands of != operator have following string representations, respectively: '") +
-               leftrepr + "' and '" + rightrepr + "'") ;
-   CppUnit::Asserter::fail(
-         CppUnit::Message(
-               "not equal assertion failed",
-               CppUnit::Asserter::makeExpected(expr),
-               CppUnit::Asserter::makeActual(actual)),
-         ln) ;
-}
+
+#define CPPUNIT_ASSERT_EQ(expected, actual) CppUnit::assertEq((expected), (actual), CPPUNIT_SOURCELINE(), {})
+
+#define CPPUNIT_LOG_EQ(actual, expected)                                \
+   (CPPUNIT_LOG(__CPPUNIT_CONCAT_SRC_LINE("EXPECTING: (") #actual ") == (" #expected << ")... "), \
+    CPPUNIT_LOG((CPPUNIT_ASSERT_EQ(expected, actual), "OK") << std::endl))
+
 
 #define CPPUNIT_LOG_NOT_EQUAL(left, right)                                                  \
   (CPPUNIT_LOG(__CPPUNIT_CONCAT_SRC_LINE("EXPECTING: (") #left ") != (" #right << ")... "), \
@@ -186,6 +173,54 @@ do                                                                      \
       CppUnit::Log::logFailure<true>(x) ;                               \
       _exit(1) ;                                                        \
    }
+
+namespace CppUnit {
+/// Asserts that two values are equals.
+///
+/// Equality and string representation can be defined with an appropriate
+/// CppUnit::assertion_traits class.
+/// A diagnostic is printed if actual and expected values disagree.
+///
+/// Differs from CPPUNIT_ASSERT_EQUAL in that @a expected and @a actual need @em not
+/// be of the same type, implicit convertibility from @a expected to @a actual's type
+/// is enough.
+///
+/// Requirement for @a expected and @a actual parameters:
+/// - @a expected is @em implicitly @em convertible to the type of @a actual
+/// - They are serializable into a std::strstream using operator <<.
+/// - They can be compared using operator ==.
+///
+/// The last two requirements (serialization and comparison) can be
+/// removed by specializing the CppUnit::assertion_traits.
+///
+template<typename Actual, typename Expected>
+inline void assertEq(const Expected &expected, const Actual &actual,
+                     CppUnit::SourceLine line, const std::string &msg)
+{
+   CppUnit::assertEquals<Actual>(expected, actual, line, msg) ;
+}
+
+template <class T>
+inline void assertNotEquals(const T &left, const T &right,
+                            const std::string &expr, CppUnit::SourceLine ln)
+{
+   if (left != right)
+      return ;
+   const std::string leftrepr(CppUnit::assertion_traits<T>::toString(left)) ;
+   const std::string rightrepr(CppUnit::assertion_traits<T>::toString(right)) ;
+   const std::string actual(leftrepr == rightrepr ?
+         ("both operands of != operator have the same string representation: '") +
+               leftrepr + "'" :
+         ("operands of != operator have following string representations, respectively: '") +
+               leftrepr + "' and '" + rightrepr + "'") ;
+   CppUnit::Asserter::fail(
+         CppUnit::Message(
+               "not equal assertion failed",
+               CppUnit::Asserter::makeExpected(expr),
+               CppUnit::Asserter::makeActual(actual)),
+         ln) ;
+}
+} // end of namespace CppUnit
 
 /*******************************************************************************
  CppUnit::Log
