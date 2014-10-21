@@ -302,7 +302,7 @@ inline size_t hasher(const char *mem)
 }
 
 #define PCOMN_HASH_IDENT_FN(type)               \
-inline size_t hasher(type val)                  \
+constexpr inline size_t hasher(type val)        \
 {                                               \
    return (size_t)val ;                         \
 }
@@ -439,9 +439,8 @@ struct binary128_t {
 
       friend std::ostream &operator<<(std::ostream &os, const binary128_t &v)
       {
-         char buf[33] ;
-         *v.to_strbuf(buf) = 0 ;
-         return os << buf ;
+         char buf[64] ;
+         return os << v.to_strbuf(buf) ;
       }
 
       friend bool operator==(const binary128_t &l, const binary128_t &r)
@@ -576,10 +575,6 @@ struct crypthash_state {
       bool is_init() const { return *_statebuf || _size ; }
 } ;
 
-template<typename T>
-struct hash_of_crypto : public std::unary_function<T, size_t> {
-      size_t operator()(const T &crypto_hash) const { return crypto_hash.hash() ; }
-} ;
 }
 /// @endcond
 
@@ -758,6 +753,11 @@ PCOMN_HASH_RAW_FN(longlong_t) ;
 
 #undef PCOMN_HASH_RAW_FN
 
+template<typename T>
+struct hash_fn_member : public std::unary_function<T, size_t> {
+      size_t operator()(const T &instance) const { return instance.hash() ; }
+} ;
+
 /*******************************************************************************
  Hasher functions
 *******************************************************************************/
@@ -780,11 +780,9 @@ namespace std {
 /*******************************************************************************
  std::hash specializations for cryptohashes
 *******************************************************************************/
-#define PCOMN_STD_HASH_OF_CRYPTO(typ) template<> struct hash<pcomn::typ> : public pcomn::detail::hash_of_crypto<pcomn::typ> {}
-PCOMN_STD_HASH_OF_CRYPTO(binary128_t) ;
-PCOMN_STD_HASH_OF_CRYPTO(md5hash_pod_t) ;
-PCOMN_STD_HASH_OF_CRYPTO(sha1hash_pod_t) ;
-#undef PCOMN_STD_HASH_OF_CRYPTO
+template<> struct hash<pcomn::binary128_t>    : pcomn::hash_fn_member<pcomn::binary128_t> {} ;
+template<> struct hash<pcomn::md5hash_pod_t>  : pcomn::hash_fn_member<pcomn::md5hash_pod_t> {} ;
+template<> struct hash<pcomn::sha1hash_pod_t> : pcomn::hash_fn_member<pcomn::sha1hash_pod_t> {} ;
 
 template<typename T>
 struct hash<pcomn::crypthash<T> > : public hash<T> {} ;

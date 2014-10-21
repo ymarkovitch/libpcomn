@@ -213,6 +213,7 @@ char *b2a_hex(const void *data, unsigned size, char *result)
       return result ;
 
    PCOMN_ENSURE_ARG(data) ;
+   PCOMN_ENSURE_ARG(result) ;
 
    static const char hdigits[16] =
       { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' } ;
