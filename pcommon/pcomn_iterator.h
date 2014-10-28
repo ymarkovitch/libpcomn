@@ -18,6 +18,7 @@
 #include <pcomn_meta.h>
 #include <pcommon.h>
 
+#include <utility>
 #include <iterator>
 #include <functional>
 
@@ -660,5 +661,24 @@ inline count_iterator<Counter> count_iter(const Counter &c)
 }
 
 } // end of namespace pcomn
+
+namespace std {
+/*******************************************************************************
+ Allow to use range-based for std::pair<Iterator, Iterator>
+*******************************************************************************/
+template<typename Iterator>
+inline Iterator begin(const pair<Iterator, Iterator> &range,
+                      pcomn::identity_type<typename iterator_traits<Iterator>::iterator_category> = {})
+{
+   return range.first ;
+}
+
+template<typename Iterator>
+inline Iterator end(const pair<Iterator, Iterator> &range,
+                    pcomn::identity_type<typename iterator_traits<Iterator>::iterator_category> = {})
+{
+   return range.second ;
+}
+} // end of namespace std
 
 #endif /* __PCOMN_ITERATOR_H */
