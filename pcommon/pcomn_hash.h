@@ -137,30 +137,34 @@ inline uint64_t hashFNV64(const void *data, size_t size)
    return hashFNV64(data, size, 14695981039346656037ULL) ;
 }
 
-template<size_t ResultSize> struct FNVHasher ;
+inline uint32_t hashFNV(const void *data, size_t size, std::integral_constant<size_t, 4>)
+{
+   return hashFNV32(data, size) ;
+}
 
-template<> struct FNVHasher<4> {
-      static uint32_t hash_data(const void *data, size_t size)
-      { return hashFNV32(data, size) ; }
-      static uint32_t hash_data(const void *data, size_t size, uint32_t init)
-      { return hashFNV32(data, size, init) ; }
-} ;
+inline uint32_t hashFNV(const void *data, size_t size, uint32_t init, std::integral_constant<size_t, 4>)
+{
+   return hashFNV32(data, size, init) ;
+}
 
-template<> struct FNVHasher<8> {
-      static uint64_t hash_data(const void *data, size_t size)
-      { return hashFNV64(data, size) ; }
-      static uint64_t hash_data(const void *data, size_t size, uint64_t init)
-      { return hashFNV64(data, size, init) ; }
-} ;
+inline uint64_t hashFNV(const void *data, size_t size, std::integral_constant<size_t, 8>)
+{
+   return hashFNV64(data, size) ;
+}
+
+inline uint64_t hashFNV(const void *data, size_t size, uint64_t init, std::integral_constant<size_t, 8>)
+{
+   return hashFNV64(data, size, init) ;
+}
 
 inline size_t hashFNV(const void *data, size_t size)
 {
-   return FNVHasher<sizeof(size_t)>::hash_data(data, size) ;
+   return hashFNV(data, size, std::integral_constant<size_t, sizeof(size_t)>()) ;
 }
 
 inline size_t hashFNV(const void *data, size_t size, size_t init)
 {
-   return FNVHasher<sizeof(size_t)>::hash_data(data, size, init) ;
+   return hashFNV(data, size, init, std::integral_constant<size_t, sizeof(size_t)>()) ;
 }
 
 /******************************************************************************/
@@ -206,87 +210,57 @@ inline uint32_t wang_hash64to32(uint64_t x)
   return x ;
 }
 
+inline uint32_t hash_64(uint64_t x, std::integral_constant<size_t, 4>)
+{
+   return wang_hash64to32(x) ;
+}
+
+inline uint64_t hash_64(uint64_t x, std::integral_constant<size_t, 8>)
+{
+   return wang_hash64to64(x) ;
+}
+
+inline uint32_t hash_32(uint32_t x, std::integral_constant<size_t, 4>)
+{
+   return jenkins_hash32to32(x) ;
+}
+
+inline uint64_t hash_32(uint32_t x, std::integral_constant<size_t, 8>)
+{
+   return wang_hash64to64(x) ;
+}
+
 /******************************************************************************/
-/** Hasher for data with static (compile-time) size.
+/** Hashing 32-bit integer to size_t
 *******************************************************************************/
-template<size_t DataSize, size_t ResultSize> struct FNVFixedHasher ;
-
-template<size_t DataSize>
-struct FNVFixedHasher<DataSize, 4> {
-      static uint32_t hash_data(const void *data)
-      {
-         return hashFNV32(data, DataSize) ;
-      }
-} ;
-
-template<size_t DataSize>
-struct FNVFixedHasher<DataSize, 8> {
-      static uint64_t hash_data(const void *data)
-      {
-         return hashFNV64(data, DataSize) ;
-      }
-} ;
-
-template<> struct FNVFixedHasher<2, 4> {
-      static uint32_t hash_data(const void *data, uint32_t init)
-      {
-         const uint8_t *p = static_cast<const uint8_t *>(data) ;
-         return
-            ((init ^ uint32_t(*p)) * uint32_t(16777619UL) ^ uint32_t(p[1])) * uint32_t(16777619UL) ;
-      }
-
-      static uint32_t hash_data(const void *data)
-      {
-         return hash_data(data, 2166136261UL) ;
-      }
-} ;
-
-template<> struct FNVFixedHasher<2, 8> {
-      static uint32_t hash_data(const void *data, uint64_t init)
-      {
-         const uint8_t *p = static_cast<const uint8_t *>(data) ;
-         return
-            ((init ^ uint64_t(*p)) * uint64_t(1099511628211ULL) ^ uint64_t(p[1])) * uint64_t(1099511628211ULL) ;
-      }
-
-      static uint64_t hash_data(const void *data)
-      {
-         return hash_data(data, 14695981039346656037ULL) ;
-      }
-} ;
-
-template<typename Result>
-inline Result duphash__(const void *data)
+inline size_t hash_32(uint32_t x)
 {
-   const uint8_t *p = static_cast<const uint8_t *>(data) ;
-   typedef FNVFixedHasher<2, sizeof(Result)> basic ;
-   return basic::hash_data(p + 2, basic::hash_data(p)) ;
+   return hash_32(x, std::integral_constant<size_t, sizeof(size_t)>()) ;
 }
 
-template<typename Result>
-inline Result quadhash__(const void *data)
+/******************************************************************************/
+/** Hashing 64-bit integer to size_t
+*******************************************************************************/
+inline size_t hash_64(uint64_t x)
 {
-   const uint8_t *p = static_cast<const uint8_t *>(data) ;
-   typedef FNVFixedHasher<2, sizeof(Result)> basic ;
-   return
-      basic::hash_data(p + 6, basic::hash_data(p + 4, basic::hash_data(p + 2, basic::hash_data(p)))) ;
+   return hash_64(x, std::integral_constant<size_t, sizeof(size_t)>()) ;
 }
 
-template<> struct FNVFixedHasher<4, 4> {
-      static uint32_t hash_data(const void *data) { return duphash__<uint32_t>(data) ; }
-} ;
+/*******************************************************************************
 
-template<> struct FNVFixedHasher<4, 8> {
-      static uint64_t hash_data(const void *data) { return duphash__<uint64_t>(data) ; }
-} ;
-
-template<> struct FNVFixedHasher<8, 4> {
-      static uint32_t hash_data(const void *data) { return quadhash__<uint32_t>(data) ; }
-} ;
-
-template<> struct FNVFixedHasher<8, 8> {
-      static uint64_t hash_data(const void *data) { return quadhash__<uint64_t>(data) ; }
-} ;
+*******************************************************************************/
+namespace detail {
+template<typename T>
+inline size_t hash_fundamental(T value, std::false_type)
+{
+   return hash_32((uint32_t)value) ;
+}
+template<typename T>
+inline size_t hash_fundamental(T value, std::true_type)
+{
+   return hash_64((uint64_t)value) ;
+}
+}
 
 /*******************************************************************************
  Hasher functions for fundamental types.
@@ -301,40 +275,35 @@ inline size_t hasher(const char *mem)
    return !mem ? 0 : hashFNV(mem, strlen(mem)) ;
 }
 
-#define PCOMN_HASH_IDENT_FN(type)               \
-constexpr inline size_t hasher(type val)        \
-{                                               \
-   return (size_t)val ;                         \
-}
+#define PCOMN_HASH_IDENT_FN(type) \
+   constexpr inline size_t hasher(type val) { return (size_t)val ; }
 
 PCOMN_HASH_IDENT_FN(bool) ;
 PCOMN_HASH_IDENT_FN(char) ;
 PCOMN_HASH_IDENT_FN(unsigned char) ;
 PCOMN_HASH_IDENT_FN(signed char) ;
 
-#define PCOMN_HASH_POD_FN(type)                                         \
-inline size_t hasher(type val)                                          \
-{                                                                       \
-   return pcomn::FNVFixedHasher<sizeof val, sizeof(size_t)>::hash_data(&val) ; \
-}
-
-PCOMN_HASH_POD_FN(double) ;
-PCOMN_HASH_POD_FN(long double) ;
-inline size_t hasher(float value) { return hasher((double)value) ; }
-
-PCOMN_HASH_POD_FN(long) ;
-PCOMN_HASH_POD_FN(unsigned long) ;
-PCOMN_HASH_POD_FN(ulonglong_t) ;
-PCOMN_HASH_POD_FN(longlong_t) ;
-PCOMN_HASH_POD_FN(const void *) ;
-
 #define PCOMN_HASH_INT_FN(type) \
-   inline size_t hasher(type value) { return hasher((unsigned long)value) ; }
+   inline size_t hasher(type value) { return detail::hash_fundamental(value, std::integral_constant<bool, (sizeof value > 4)>())  ; }
 
 PCOMN_HASH_INT_FN(short) ;
 PCOMN_HASH_INT_FN(unsigned short) ;
 PCOMN_HASH_INT_FN(int) ;
 PCOMN_HASH_INT_FN(unsigned) ;
+PCOMN_HASH_INT_FN(long) ;
+PCOMN_HASH_INT_FN(unsigned long) ;
+PCOMN_HASH_INT_FN(ulonglong_t) ;
+PCOMN_HASH_INT_FN(longlong_t) ;
+PCOMN_HASH_INT_FN(const void *) ;
+
+inline size_t hasher(double value)
+{
+   return hash_64(*reinterpret_cast<const uint64_t *>(&value)) ;
+}
+
+inline size_t hasher(float value) { return hasher((double)value) ; }
+
+inline size_t hasher(long double value) { return hasher((double)value) ; }
 
 template<class T1, class T2>
 size_t hasher(const std::pair<T1, T2> &) ;

@@ -94,7 +94,7 @@ struct uuid {
          std::swap(_idata[1], rhs._idata[1]) ;
       }
 
-      constexpr size_t hash() const { return _idata[0] ^ _idata[1] ; }
+      size_t hash() const { return pcomn::hasher(std::make_pair(_idata[0], _idata[1])) ; }
 
    private:
       union {

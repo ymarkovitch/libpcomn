@@ -381,7 +381,7 @@ class substitution_map {
 
    private:
       typedef closed_hashtable<replacement_function *,
-                               extract_name<const replacement_function *, strslice> > replacement_map ;
+                               extract_name<const replacement_function *> > replacement_map ;
 
       replacement_map _replacement_map ;
       std::unique_ptr<replacement_default> _replacement_def ;

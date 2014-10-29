@@ -36,8 +36,8 @@ template<typename Value, typename ExtractKey>
 struct keyval_adapter {
       typedef ExtractKey   key_extract ;
       typedef Value        value_type ;
-      typedef typename result_of<ExtractKey(Value)>::type    key_type ;
-      typedef typename std::remove_reference<key_type>::type keyval_type ;
+      typedef typename std::result_of<ExtractKey(Value)>::type key_type ;
+      typedef typename std::remove_reference<key_type>::type   keyval_type ;
 
       template<typename Compare>
       struct comparator : std::binary_function<keyval_adapter, keyval_adapter, bool> {

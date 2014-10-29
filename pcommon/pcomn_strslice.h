@@ -169,7 +169,7 @@ struct basic_strslice {
 
          typedef const typename ctype_traits<C>::uchar_type * puchr ;
 
-         return __gnu_cxx::lexicographical_compare_3way
+         return lexicographical_compare_3way
             ((puchr)begin(), (puchr)end(),
              (puchr)other.begin(), (puchr)other.end()) ;
       }

@@ -77,49 +77,27 @@ std::pair<InputIterator, OutputIterator> bound_copy_if
 /*******************************************************************************
  Member extractors
 *******************************************************************************/
-template<typename T, typename S = std::string>
-struct extract_name : public std::unary_function<T, S> {
-      S operator() (const T &t) const { return t.name() ; }
-} ;
+#define PCOMN_MEMBER_EXTRACTOR(member)                                  \
+   template<typename T, typename R = decltype(std::declval<const typename std::remove_pointer<T>::type>().member())> \
+   struct extract_##member : public std::unary_function<T, R> {         \
+      R operator() (const T &t) const { return t.member() ; }           \
+   } ;                                                                  \
+                                                                        \
+   template<typename T, typename R>                                     \
+   struct extract_##member<T *, R> : public std::unary_function<const T *, R> { \
+      R operator() (const T *t) const                                   \
+         {                                                              \
+            return !t                                                   \
+               ? default_constructed<typename std::remove_cv<typename std::remove_reference<R>::type>::type>::value \
+               : t->member() ;                                          \
+         }                                                              \
+   }
 
-template<typename T, typename S>
-struct extract_name<T *, S> : public std::unary_function<T *, S> {
-      S operator() (const T *t) const { return !t ? S() : t->name() ; }
-} ;
-
-template<typename T, typename S = std::string>
-struct extract_key : public std::unary_function<T, S> {
-      S operator() (const T &t) const { return t.key() ; }
-} ;
-
-template<typename T, typename S>
-struct extract_key<T *, S> : public std::unary_function<T *, S> {
-      S operator() (const T *t) const { return !t ? S() : t->key() ; }
-} ;
-
-template<typename T, typename N = int>
-struct extract_code : public std::unary_function<T, N> {
-      N operator() (const T &t) const { return t.code() ; }
-} ;
-
-template<typename T, typename N>
-struct extract_code<T *, N> : public std::unary_function<T *, N> {
-      N operator() (const T *t) const { return !t ? N() : t->code() ; }
-} ;
-
-template<typename T, typename S = decltype(((const T *)nullptr)->id())>
-struct extract_id : public std::unary_function<T, S> {
-      S operator() (const T &t) const { return t.id() ; }
-} ;
-
-template<typename T, typename S>
-struct extract_id<T *, S> : public std::unary_function<T *, S> {
-      S operator() (const T *t) const
-      {
-         return t ? t->id()
-            : default_constructed<typename std::remove_cv<typename std::remove_reference<S>::type>::type>::value ;
-      }
-} ;
+PCOMN_MEMBER_EXTRACTOR(name) ;
+PCOMN_MEMBER_EXTRACTOR(key) ;
+PCOMN_MEMBER_EXTRACTOR(code) ;
+PCOMN_MEMBER_EXTRACTOR(id) ;
+PCOMN_MEMBER_EXTRACTOR(hash) ;
 
 template<typename T, typename V, template<typename, typename> class X>
 struct less_by : public std::binary_function<T, T, bool> {
@@ -237,7 +215,7 @@ InputIterator find_first_not_of(InputIterator begin1, InputIterator end1,
    return begin1 ;
 }
 
-template <class InputIterator1, class InputIterator2>
+template<class InputIterator1, class InputIterator2>
 bool lexicographical_compare(InputIterator1 first1, InputIterator1 last1, InputIterator2 first2)
 {
    while(first1 != last1)
@@ -248,6 +226,25 @@ bool lexicographical_compare(InputIterator1 first1, InputIterator1 last1, InputI
       ++first2 ;
    }
    return false ;
+}
+
+template <class InputIterator1, class InputIterator2>
+int lexicographical_compare_3way(InputIterator1 first1, InputIterator1 last1,
+                                 InputIterator2 first2, InputIterator2 last2)
+{
+   for(;;)
+   {
+      if (first2 == last2)
+         return !(first1 == last1) ;
+      if (first1 == last1)
+         return -1 ;
+      if (*first1 < *first2)
+         return -1 ;
+      if (*first2 < *first1)
+         return 1 ;
+      ++first1 ;
+      ++first2 ;
+   }
 }
 
 template <class ForwardIterator, class Function>
@@ -315,33 +312,5 @@ inline void raw_fill(T (&buf)[n], const T &value)
 }
 
 } // end of namespace pcomn
-
-/*******************************************************************************
- SGI STL extensions
-*******************************************************************************/
-#ifdef PCOMN_COMPILER_GNU
-
-#include <ext/algorithm>
-
-namespace pcomn {
-
-using __gnu_cxx::copy_n ;
-
-} // end of namespace pcomn
-
-#endif // PCOMN_COMPILER_GNU
-
-#ifndef __GXX_EXPERIMENTAL_CXX0X__
-// std::swap overload for std::pair is missing in C++03 mode
-namespace std {
-template<typename T1, typename T2>
-inline void swap(pair<T1, T2> &left, pair<T1, T2> &right)
-{
-   swap(left.first, right.first) ;
-   swap(left.second, right.second) ;
-}
-} ;
-
-#endif /* __cplusplus */
 
 #endif /* __PCOMN_ALGORITHM_H */

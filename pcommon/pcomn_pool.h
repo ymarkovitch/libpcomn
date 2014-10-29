@@ -169,15 +169,7 @@ class keyed_pool {
 
       typedef incdlist<value_entry, &value_entry::_lru_node> lru_list ;
 
-      struct extract_key : std::unary_function<const key_entry *, key_type> {
-            const key_type &operator()(const key_entry *entry) const
-            {
-               NOXCHECK(entry) ;
-               return entry->key() ;
-            }
-      } ;
-
-      typedef closed_hashtable<key_entry *, extract_key, hasher, key_equal> pool_data ;
+      typedef closed_hashtable<key_entry *, extract_key<key_entry *>, hasher, key_equal> pool_data ;
       typedef std::recursive_mutex lock_type ;
 
    private:
