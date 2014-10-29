@@ -40,6 +40,7 @@ class ClosedHashTests : public CppUnit::TestFixture {
       void Test_Static_Optimization_Erase() ;
       void Test_Static_Optimization_Grow() ;
       void Test_Closed_Hash_Copy() ;
+      void Test_Closed_Hash_Move() ;
       void Test_Closed_Hash_Extract_Key() ;
 
       CPPUNIT_TEST_SUITE(ClosedHashTests) ;
@@ -54,6 +55,7 @@ class ClosedHashTests : public CppUnit::TestFixture {
       CPPUNIT_TEST(Test_Static_Optimization_Erase) ;
       CPPUNIT_TEST(Test_Static_Optimization_Grow) ;
       CPPUNIT_TEST(Test_Closed_Hash_Copy) ;
+      CPPUNIT_TEST(Test_Closed_Hash_Move) ;
       CPPUNIT_TEST(Test_Closed_Hash_Extract_Key) ;
 
       CPPUNIT_TEST_SUITE_END() ;
@@ -507,6 +509,86 @@ void ClosedHashTests::Test_Closed_Hash_Copy()
    CPPUNIT_LOG_EQUAL(*CHashStatCopy.find(Bar), Bar) ;
    CPPUNIT_LOG_EQUAL(CHashStatCopy.find(Hello), CHashStatCopy.end()) ;
    CPPUNIT_LOG_EQUAL(*CHashStatCopy.find(Baby), Baby) ;
+}
+
+void ClosedHashTests::Test_Closed_Hash_Move()
+{
+   pcomn::closed_hashtable<const char *> CHash ;
+   CPPUNIT_LOG_EQUAL(CHash.max_load_factor(), (float)0.75) ;
+   CPPUNIT_LOG_EQUAL(CHash.bucket_count(), (size_t)4) ;
+
+   CPPUNIT_LOG_ASSERT(CHash.insert(Foo).second) ;
+   CPPUNIT_LOG_ASSERT(CHash.insert(World).second) ;
+   CPPUNIT_LOG_ASSERT(CHash.insert(Bar).second) ;
+   CPPUNIT_LOG_EQUAL(CHash.size(), (size_t)3) ;
+
+   pcomn::closed_hashtable<const char *> CHashCopy(std::move(CHash)) ;
+   CPPUNIT_LOG_EQ(CHashCopy.size(), 3) ;
+   CPPUNIT_LOG_EQ(CHash.size(), 0) ;
+   CPPUNIT_LOG_EQUAL(CHash.bucket_count(), (size_t)4) ;
+   CPPUNIT_LOG_EQUAL(CHashCopy.bucket_count(), (size_t)4) ;
+   CPPUNIT_LOG(CHash << std::endl << CHashCopy << std::endl) ;
+
+   CPPUNIT_LOG_EQUAL(*CHashCopy.find(Foo), Foo) ;
+   CPPUNIT_LOG_EQUAL(*CHashCopy.find(World), World) ;
+   CPPUNIT_LOG_EQUAL(*CHashCopy.find(Bar), Bar) ;
+   CPPUNIT_LOG_EQUAL(CHashCopy.find(Hello), CHashCopy.end()) ;
+
+   CPPUNIT_LOG_EQUAL(CHash.find(Foo), CHash.end()) ;
+   CPPUNIT_LOG_EQUAL(CHash.find(World), CHash.end()) ;
+   CPPUNIT_LOG_EQUAL(CHash.find(Bar), CHash.end()) ;
+   CPPUNIT_LOG_EQUAL(CHash.find(Hello), CHash.end()) ;
+
+
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_ASSERT(CHashCopy.insert(Bye).second) ;
+   CPPUNIT_LOG_ASSERT(CHashCopy.insert(Baby).second) ;
+   CPPUNIT_LOG_EQUAL(CHashCopy.size(), (size_t)5) ;
+   CPPUNIT_LOG_EQUAL(CHashCopy.bucket_count(), (size_t)8) ;
+
+   pcomn::closed_hashtable<const char *> CHashDynCopy(std::move(CHashCopy)) ;
+   CPPUNIT_LOG_EQUAL(*CHashDynCopy.find(Foo), Foo) ;
+   CPPUNIT_LOG_EQUAL(*CHashDynCopy.find(World), World) ;
+   CPPUNIT_LOG_EQUAL(*CHashDynCopy.find(Bar), Bar) ;
+   CPPUNIT_LOG_EQUAL(CHashDynCopy.find(Hello), CHashDynCopy.end()) ;
+   CPPUNIT_LOG_EQUAL(*CHashDynCopy.find(Bye), Bye) ;
+   CPPUNIT_LOG_EQUAL(*CHashDynCopy.find(Baby), Baby) ;
+   CPPUNIT_LOG_EQUAL(CHashDynCopy.size(), (size_t)5) ;
+
+   CPPUNIT_LOG_EQ(CHashCopy.size(), 0) ;
+   CPPUNIT_LOG_EQ(CHashCopy.bucket_count(), 4) ;
+   CPPUNIT_LOG(CHashCopy << std::endl << CHashDynCopy << std::endl) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_ASSERT(CHashDynCopy.erase(Bye)) ;
+   CPPUNIT_LOG_EQ(CHashDynCopy.size(), 4) ;
+
+   pcomn::closed_hashtable<const char *> CHashAssign ;
+   CPPUNIT_LOG_EQ(CHashAssign.size(), 0) ;
+   CPPUNIT_LOG_EQ(CHashAssign.bucket_count(), 4) ;
+   CPPUNIT_LOG_ASSERT(CHashAssign.insert(Xyzzy).second) ;
+   CPPUNIT_LOG_EQ(CHashAssign.size(), 1) ;
+   CPPUNIT_LOG_EQ(CHashAssign.bucket_count(), 4) ;
+
+   CPPUNIT_LOG(CHashAssign << std::endl << CHashDynCopy << std::endl) ;
+
+   CHashAssign = std::move(CHashDynCopy) ;
+
+   CPPUNIT_LOG_EQUAL(*CHashAssign.find(Foo), Foo) ;
+   CPPUNIT_LOG_EQUAL(*CHashAssign.find(World), World) ;
+   CPPUNIT_LOG_EQUAL(*CHashAssign.find(Bar), Bar) ;
+
+   CPPUNIT_LOG_EQUAL(CHashAssign.find(Hello), CHashAssign.end()) ;
+   CPPUNIT_LOG_EQUAL(CHashAssign.find(Bye), CHashAssign.end()) ;
+
+   CPPUNIT_LOG_EQUAL(*CHashAssign.find(Baby), Baby) ;
+   CPPUNIT_LOG_EQ(CHashAssign.size(), 4) ;
+   CPPUNIT_LOG_EQ(CHashAssign.bucket_count(), 8) ;
+
+   CPPUNIT_LOG_ASSERT(CHashDynCopy.insert(Xyzzy).second) ;
+   CPPUNIT_LOG_EQ(CHashDynCopy.size(), 1) ;
+   CPPUNIT_LOG_EQ(CHashDynCopy.bucket_count(), 4) ;
 }
 
 struct KeyedHashval {

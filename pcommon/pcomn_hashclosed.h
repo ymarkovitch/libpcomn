@@ -237,6 +237,8 @@ class closed_hashtable {
          copy_buckets(other.begin_buckets(), other.end_buckets()) ;
       }
 
+      closed_hashtable(closed_hashtable &&other) : closed_hashtable(0) { swap(other) ; }
+
       closed_hashtable(size_type initsize, const hasher &hf) :
          _basic_state(hf),
          _bucket_container(initsize, _basic_state)
@@ -248,6 +250,13 @@ class closed_hashtable {
       {}
 
       ~closed_hashtable() { container().clear(_basic_state) ; }
+
+      closed_hashtable &operator=(closed_hashtable &&other)
+      {
+         if (&other != this)
+            closed_hashtable(std::move(other)).swap(*this) ;
+         return *this ;
+      }
 
       const hasher &hash_function() const { return _basic_state._hasher ; }
 
