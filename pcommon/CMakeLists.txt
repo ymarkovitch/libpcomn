@@ -14,6 +14,7 @@ cmake_minimum_required(VERSION 2.8.12)
 project(pcommon C CXX)
 # We have some custom .cmake scripts in pcommon/config
 list(APPEND CMAKE_MODULE_PATH "${pcommon_SOURCE_DIR}/config")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} CACHE PATH "")
 include(pcommon)
 
 message("***** Processing ${PROJECT_NAME} *****")

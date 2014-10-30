@@ -20,7 +20,6 @@ import pcommon ;
 
 constant      ROOTNAME  : pcommon ;
 constant      PROJROOT  : /$(ROOTNAME) ;
-constant      PROJTESTS : $(PROJROOT)//tests ;
 constant      OS        : [ os.name ] ;
 
 ################################################################################
