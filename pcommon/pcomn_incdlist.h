@@ -4,7 +4,7 @@
 /*******************************************************************************
  FILE         :   pcomn_incdlist.h
  COPYRIGHT    :   Yakov Markovitch, 1998-2014. All rights reserved.
-                  See LICENSE for information on usage/redistribution.
+                  See LICENCE for information on usage/redistribution.
 
  DESCRIPTION  :   Template for the doubly-linked inclusive list.
 
@@ -244,11 +244,7 @@ class incdlist : private PDList {
       typedef const T &             const_reference ;
       typedef ptrdiff_t             difference_type ;
 
-      class                         iterator ;
-      class                         const_iterator ;
-      friend class                  iterator ;
-      friend class                  const_iterator ;
-
+      class const_iterator ;
 
       /// An iterator by an inclusive list can be constructed from any list
       /// item (even in absense of the list object itself).
@@ -469,6 +465,117 @@ class incdlist_managed : public incdlist<T, N> {
       incdlist_managed() :
          ancestor(true)
       {}
+} ;
+
+/*******************************************************************************
+
+*******************************************************************************/
+template<typename T, T *T::*nextptr>
+class incslist {
+   public:
+      typedef incslist<T, nextptr>  list_type ;
+      typedef T                     value_type ;
+      typedef T &                   reference ;
+      typedef const T &             const_reference ;
+      typedef ptrdiff_t             difference_type ;
+
+      struct const_iterator : public std::iterator<std::forward_iterator_tag, T, difference_type> {
+
+            constexpr const_iterator() : _nextptr(null_nexptr) {}
+            const_iterator(reference r) : _nextptr(list_type::node(&r)) {}
+
+            bool operator== (const const_iterator& x) const { return *_nextptr == *x._nextptr ; }
+            bool operator!= (const const_iterator& x) const { return *_nextptr != *x._nextptr ; }
+
+            reference operator*() const { return *incdlist<T, N>::object(node) ; }
+            value_type *operator->() const { return incdlist<T, N>::object(node) ; }
+
+            const_iterator& operator++()
+            {
+               node = node->next ;
+               return *this ;
+            }
+
+            PCOMN_DEFINE_POSTCREMENT(const_iterator, --) ;
+
+         private:
+            value_type * const *_nextptr ;
+      } ;
+
+      struct iterator : public std::iterator<std::forward_iterator_tag, const T, difference_type> {
+            constexpr iterator() = default ;
+            iterator (reference r) : _baseiter(r) {}
+
+            bool operator==(const const_iterator& x) const { return node == x.node ; }
+            bool operator!= (const const_iterator& x) const { return node != x.node ; }
+
+            reference operator*() const { return const_cast<reference>(*_baseiter) ; }
+            value_type *operator->() const { return incdlist<T, N>::object(node) ; }
+
+            iterator &operator++()
+            {
+               ++_baseiter ;
+               return *this ;
+            }
+
+            PCOMN_DEFINE_POSTCREMENT(iterator, ++) ;
+      } ;
+
+      explicit incdlist(bool owns = false) :
+         ancestor(owns ? node_destructor : NULL)
+      {}
+
+      void push_front(value_type &elem) { first()->prepend(node(&elem)) ; }
+
+      void pop_front() { erase(begin()) ; }
+
+      iterator insert(const iterator &where, const value_type &element)
+      {
+         return node(&*where)->prepend(node(&element)) ;
+      }
+
+      // swap()   -  swap the contents of two lists.
+      //
+      incdlist &swap(incdlist &another)
+      {
+         ancestor::swap(another) ;
+         return *this ;
+      }
+
+      iterator begin() { return first() ; }
+      iterator end() { return last() ; }
+
+      const_iterator begin() const { return first() ; }
+      const_iterator end() const { return last() ; }
+
+      reference front() { return *begin() ; }
+      const_reference front() const { return *begin() ; }
+
+   private:
+      /// Get the pointer to the list node for the given data object.
+      static Node *node(const value_type *value)
+      {
+         return const_cast<Node *>(static_cast<const Node *>(&(value->*N))) ;
+      }
+
+      /// Get the pointer to the data object for given node.
+      static value_type *object(const Node *node)
+      {
+         // A hack that calculates "back offset" from a member to its
+         // enclosing object.
+         // To avoid GCC complaints, we don't use NULL as a "straw pointer".
+         // I suppose, 256 holds for _any_ alignment requirements.
+         NOXCHECK(node) ;
+         return
+            reinterpret_cast<value_type *>
+            (reinterpret_cast<char *>(const_cast<Node *>(node)) -
+             (reinterpret_cast<char *>(&(reinterpret_cast<value_type *>(256)->*N)) - 256)) ;
+      }
+
+      static void node_destructor(Node *n) { delete object(n) ; }
+
+      iterator last_element() { return last()->prev ; }
+      const_iterator last_element() const { return last()->prev ; }
 } ;
 
 } // end of namespace pcomn
