@@ -19,12 +19,11 @@
       ListItem() ;
       ~ListItem() ;
 
-      PCOMN_INCLIST_DECLARE(item_list) ;
    private:
       pcomn::incdlist_node _listnode ;
+   public:
+      PCOMN_INCLIST_DEFINE(item_list, pcomn::incdlist, ListItem, _listnode) ;
   } ;
-
-  PCOMN_INCLIST_DEFINE(ListItem, item_list, _listnode, pcomn::incdlist) ;
   @endcode
 *******************************************************************************/
 #include <pcommon.h>
@@ -32,11 +31,8 @@
 #include <iterator>
 #include <stddef.h>
 
-#define PCOMN_INCLIST_DECLARE(listtype) \
-   struct listtype ; friend struct listtype
-
-#define PCOMN_INCLIST_DEFINE(nodetype, listtype, nodemember, list_template)   \
-   struct nodetype::listtype : list_template< nodetype, &nodetype::nodemember> {}
+#define PCOMN_INCLIST_DEFINE(list_typename, list_template, node_type, node_member) \
+   typedef list_template< node_type, &node_type::node_member > list_typename ;
 
 namespace pcomn {
 
@@ -467,50 +463,62 @@ class incdlist_managed : public incdlist<T, N> {
       {}
 } ;
 
-/*******************************************************************************
-
+/******************************************************************************/
+/** Singly-linked inclusive list.
 *******************************************************************************/
 template<typename T, T *T::*nextptr>
 class incslist {
+      PCOMN_NONCOPYABLE(incslist) ;
+      PCOMN_NONASSIGNABLE(incslist) ;
    public:
       typedef incslist<T, nextptr>  list_type ;
       typedef T                     value_type ;
       typedef T &                   reference ;
       typedef const T &             const_reference ;
+      typedef T *                   pointer ;
+      typedef const T *             const_pointer ;
       typedef ptrdiff_t             difference_type ;
 
-      struct const_iterator : public std::iterator<std::forward_iterator_tag, T, difference_type> {
+      struct const_iterator : public std::iterator<std::forward_iterator_tag, value_type, difference_type> {
+            constexpr const_iterator() : _nextptr(&null_next) {}
 
-            constexpr const_iterator() : _nextptr(null_nexptr) {}
-            const_iterator(reference r) : _nextptr(list_type::node(&r)) {}
+            friend bool operator==(const const_iterator &x, const const_iterator &y) { return *x._nextptr == *y._nextptr ; }
+            friend bool operator!=(const const_iterator &x, const const_iterator &y) { return !(x == y) ; }
 
-            bool operator== (const const_iterator& x) const { return *_nextptr == *x._nextptr ; }
-            bool operator!= (const const_iterator& x) const { return *_nextptr != *x._nextptr ; }
+            const_reference operator*() const { return *get() ; }
+            const_pointer operator->() const { return get() ; }
 
-            reference operator*() const { return *incdlist<T, N>::object(node) ; }
-            value_type *operator->() const { return incdlist<T, N>::object(node) ; }
-
-            const_iterator& operator++()
+            const_iterator &operator++()
             {
-               node = node->next ;
+               _nextptr = &(get()->*nextptr) ;
                return *this ;
             }
 
-            PCOMN_DEFINE_POSTCREMENT(const_iterator, --) ;
+            PCOMN_DEFINE_POSTCREMENT(const_iterator, ++) ;
 
          private:
-            value_type * const *_nextptr ;
+            const pointer *_nextptr ;
+
+            explicit const_iterator(const list_type &c) : _nextptr(&c._first) {}
+
+            pointer get() const
+            {
+               NOXCHECK(*_nextptr) ;
+               return *_nextptr ;
+            }
+
+            friend list_type ;
       } ;
 
-      struct iterator : public std::iterator<std::forward_iterator_tag, const T, difference_type> {
+      struct iterator : public std::iterator<std::forward_iterator_tag, const value_type, difference_type> {
             constexpr iterator() = default ;
-            iterator (reference r) : _baseiter(r) {}
+            operator const_iterator() const { return _baseiter ; }
 
-            bool operator==(const const_iterator& x) const { return node == x.node ; }
-            bool operator!= (const const_iterator& x) const { return node != x.node ; }
+            friend bool operator==(const iterator &x, const iterator &y) { return x._baseiter == y._baseiter ; }
+            friend bool operator!=(const iterator &x, const iterator &y) { return !(x == y) ; }
 
-            reference operator*() const { return const_cast<reference>(*_baseiter) ; }
-            value_type *operator->() const { return incdlist<T, N>::object(node) ; }
+            reference operator*() const { return *_baseiter.get() ; }
+            pointer operator->() const { return _baseiter.get() ; }
 
             iterator &operator++()
             {
@@ -519,64 +527,72 @@ class incslist {
             }
 
             PCOMN_DEFINE_POSTCREMENT(iterator, ++) ;
+         private:
+            const_iterator _baseiter ;
+
+            explicit iterator(list_type &c) : _baseiter(c) {}
+            friend list_type ;
       } ;
 
-      explicit incdlist(bool owns = false) :
-         ancestor(owns ? node_destructor : NULL)
-      {}
+   public:
+      constexpr incslist() : _first(nullptr), _size(0) {}
 
-      void push_front(value_type &elem) { first()->prepend(node(&elem)) ; }
-
-      void pop_front() { erase(begin()) ; }
-
-      iterator insert(const iterator &where, const value_type &element)
+      incslist(incslist &&other) : _first(other._first), _size(other._size)
       {
-         return node(&*where)->prepend(node(&element)) ;
+         other._first = nullptr ;
+         other._size = 0 ;
       }
 
-      // swap()   -  swap the contents of two lists.
-      //
-      incdlist &swap(incdlist &another)
+      void swap(incslist &&other)
       {
-         ancestor::swap(another) ;
-         return *this ;
+         std::swap(_first, other._first) ;
+         std::swap(_size, other._size) ;
       }
 
-      iterator begin() { return first() ; }
-      iterator end() { return last() ; }
+      void push_front(value_type &elem)
+      {
+         NOXCHECK(!_first == !_size) ;
+         PCOMN_VERIFY(elem.*nextptr == nullptr) ;
 
-      const_iterator begin() const { return first() ; }
-      const_iterator end() const { return last() ; }
+         elem.*nextptr = _first ;
+         _first = &elem ;
+         ++_size ;
+      }
+
+      void pop_front()
+      {
+         NOXCHECK(_first) ;
+         NOXCHECK(_size) ;
+         pointer &next = _first->*nextptr ;
+         _first = next ;
+         next = nullptr ;
+         --_size ;
+         NOXCHECK(!_first == !_size) ;
+      }
+
+      iterator begin() { return iterator(*this) ; }
+      iterator end() { return iterator() ; }
+
+      const_iterator begin() const { return const_iterator(*this) ; }
+      const_iterator end() const { return const_iterator() ; }
+      const_iterator cbegin() const { return begin() ; }
+      const_iterator cend() const { return end() ; }
 
       reference front() { return *begin() ; }
       const_reference front() const { return *begin() ; }
 
+      size_t size() const { return _size ; }
+      bool empty() const { return !_first ; }
+
    private:
-      /// Get the pointer to the list node for the given data object.
-      static Node *node(const value_type *value)
-      {
-         return const_cast<Node *>(static_cast<const Node *>(&(value->*N))) ;
-      }
+      pointer  _first ;
+      size_t   _size ;
 
-      /// Get the pointer to the data object for given node.
-      static value_type *object(const Node *node)
-      {
-         // A hack that calculates "back offset" from a member to its
-         // enclosing object.
-         // To avoid GCC complaints, we don't use NULL as a "straw pointer".
-         // I suppose, 256 holds for _any_ alignment requirements.
-         NOXCHECK(node) ;
-         return
-            reinterpret_cast<value_type *>
-            (reinterpret_cast<char *>(const_cast<Node *>(node)) -
-             (reinterpret_cast<char *>(&(reinterpret_cast<value_type *>(256)->*N)) - 256)) ;
-      }
-
-      static void node_destructor(Node *n) { delete object(n) ; }
-
-      iterator last_element() { return last()->prev ; }
-      const_iterator last_element() const { return last()->prev ; }
+      static pointer null_next ;
 } ;
+
+template<typename T, T *T::*nextptr>
+T *incslist<T, nextptr>::null_next = nullptr ;
 
 } // end of namespace pcomn
 
