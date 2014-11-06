@@ -60,15 +60,15 @@ int main(int, char *[])
 
 //   print_mutual_traits<Quux, Foo>(std::cout) ;
    std::cout << std::endl ;
-   CPPUNIT_LOG_EXPRESSION(PCOMN_TYPENAME(Hello<pcomn::add_parmtype<int>::type>)) ;
-   CPPUNIT_LOG_EXPRESSION(PCOMN_TYPENAME(Hello<pcomn::add_parmtype<void *>::type>)) ;
-   CPPUNIT_LOG_EXPRESSION(PCOMN_TYPENAME(Hello<pcomn::add_parmtype<Foo>::type>)) ;
-   CPPUNIT_LOG_EXPRESSION(PCOMN_TYPENAME(Hello<pcomn::add_parmtype<Foo &>::type>)) ;
-   CPPUNIT_LOG_EXPRESSION(PCOMN_TYPENAME(Hello<pcomn::add_parmtype<const Foo &>::type>)) ;
-   CPPUNIT_LOG_EXPRESSION(PCOMN_TYPENAME(Hello<pcomn::add_parmtype<Foo *>::type>)) ;
-   CPPUNIT_LOG_EXPRESSION(PCOMN_TYPENAME(Hello<pcomn::add_parmtype<const Foo *>::type>)) ;
-   CPPUNIT_LOG_EXPRESSION(PCOMN_TYPENAME(Hello<pcomn::add_parmtype<Foo * const *>::type>)) ;
-   CPPUNIT_LOG_EXPRESSION(PCOMN_TYPENAME(Hello<pcomn::add_parmtype<int(*)(int, double)>::type>)) ;
+   CPPUNIT_LOG_EXPRESSION(PCOMN_TYPENAME(Hello<pcomn::parmtype_t<int> >)) ;
+   CPPUNIT_LOG_EXPRESSION(PCOMN_TYPENAME(Hello<pcomn::parmtype_t<void *> >)) ;
+   CPPUNIT_LOG_EXPRESSION(PCOMN_TYPENAME(Hello<pcomn::parmtype_t<Foo> >)) ;
+   CPPUNIT_LOG_EXPRESSION(PCOMN_TYPENAME(Hello<pcomn::parmtype_t<Foo &> >)) ;
+   CPPUNIT_LOG_EXPRESSION(PCOMN_TYPENAME(Hello<pcomn::parmtype_t<const Foo &> >)) ;
+   CPPUNIT_LOG_EXPRESSION(PCOMN_TYPENAME(Hello<pcomn::parmtype_t<Foo *> >)) ;
+   CPPUNIT_LOG_EXPRESSION(PCOMN_TYPENAME(Hello<pcomn::parmtype_t<const Foo *> >)) ;
+   CPPUNIT_LOG_EXPRESSION(PCOMN_TYPENAME(Hello<pcomn::parmtype_t<Foo * const *> >)) ;
+   CPPUNIT_LOG_EXPRESSION(PCOMN_TYPENAME(Hello<pcomn::parmtype_t<int(*)(int, double)>>)) ;
    CPPUNIT_LOG_EXPRESSION(std::is_member_function_pointer<int(*)()>::value) ;
    CPPUNIT_LOG_EXPRESSION(std::is_member_function_pointer<int(Foo::*)()>::value) ;
    CPPUNIT_LOG_EXPRESSION(std::is_member_function_pointer<int(Foo::*)(double)>::value) ;

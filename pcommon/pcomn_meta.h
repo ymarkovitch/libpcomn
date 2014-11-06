@@ -40,15 +40,14 @@
 
 namespace pcomn {
 
-template <bool v>
-struct bool_constant : public std::false_type {} ;
-template <>
-struct bool_constant<true> : public std::true_type {} ;
+template<bool v>
+using bool_constant = std::integral_constant<bool, v> ;
 
 /******************************************************************************/
 /** disable_if is a complement to std::enable_if
 *******************************************************************************/
-template<bool enabled, typename T> struct disable_if : std::enable_if<!enabled, T> {} ;
+template<bool enabled, typename T>
+using disable_if = std::enable_if<!enabled, T> ;
 
 /*******************************************************************************
  Template compile-time logic operations.
@@ -102,20 +101,6 @@ template<typename T>
 const T default_constructed<T>::value ;
 
 /*******************************************************************************
-
-*******************************************************************************/
-template<typename T> T make_type() ;
-template<typename T> T *make_tptr() ;
-
-// Both Borland 5.82 and MS 7.1 blow their cookies when encounter sizeof(T)
-// expression in template arguments. This workaround enables using sizeof
-// in template arguments at least for MS 7.1.
-template<typename T>
-struct size_of : public std::integral_constant<size_t, sizeof(T)> {} ;
-template<>
-struct size_of<void> : public std::integral_constant<size_t, 0> {} ;
-
-/*******************************************************************************
  Type testers
 *******************************************************************************/
 /// @cond
@@ -146,19 +131,17 @@ struct is_base_of_strict :
 /*******************************************************************************
  Parameter type
 *******************************************************************************/
-template <class T>
-struct add_cref { typedef const T &type ; } ;
-template <class T>
-struct add_cref<T &> { typedef T &type ; } ;
+template<typename T>
+using lvref_t = typename std::add_lvalue_reference<T>::type ;
 
-template <class T>
-struct add_parmtype {
-      typedef typename std::conditional<std::is_arithmetic<T>::value || std::is_pointer<T>::value,
-                                        T,
-                                        const T &>::type type ;
-} ;
-template <class T>
-struct add_parmtype<T &> : public add_cref<T &> {} ;
+template<typename T>
+using clvref_t = lvref_t<typename std::add_const<T>::type> ;
+
+template<typename T>
+using clvref_t = lvref_t<typename std::add_const<T>::type> ;
+
+template<typename T>
+using parmtype_t = typename std::conditional<(std::is_arithmetic<T>::value || std::is_pointer<T>::value), T, clvref_t<T> >::type ;
 
 /******************************************************************************/
 /** Deduce the return type of a function call expression at compile time @em and,

@@ -417,14 +417,12 @@ mem_data_ptr_t<R, T *> mem_data_ptr(R T::*p) { return mem_data_ptr_t<R, T *>(p) 
  rbinder2nd
 *******************************************************************************/
 template<class Op>
-class rbinder1st :
-   public std::unary_function<typename Op::second_argument_type, typename Op::result_type> {
+struct rbinder1st : std::unary_function<typename Op::second_argument_type, typename Op::result_type> {
 
-   public:
       rbinder1st(const Op &o, const typename Op::first_argument_type &a) : op(o), arg1(a) {}
 
       typename Op::result_type
-      operator() (typename pcomn::add_cref<typename Op::second_argument_type>::type arg2) const
+      operator() (clvref_t<typename Op::second_argument_type> arg2) const
       {
          return op(arg1, arg2) ;
       }
@@ -435,14 +433,12 @@ class rbinder1st :
 } ;
 
 template<class Op>
-class rbinder2nd :
-   public std::unary_function<typename Op::first_argument_type, typename Op::result_type> {
+struct rbinder2nd : std::unary_function<typename Op::first_argument_type, typename Op::result_type> {
 
-   public:
       rbinder2nd(const Op &o, const typename Op::second_argument_type &a) : op(o), arg2(a) {}
 
       typename Op::result_type
-      operator() (typename pcomn::add_cref<typename Op::first_argument_type>::type arg1) const
+      operator() (clvref_t<typename Op::first_argument_type> arg1) const
       {
          return op(arg1, arg2) ;
       }

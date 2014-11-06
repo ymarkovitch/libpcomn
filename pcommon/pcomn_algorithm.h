@@ -275,7 +275,7 @@ template <typename T>
 inline void raw_fill(T *first, T *last,
                      const typename std::enable_if<
                      std::is_scalar<T>::value
-                     && size_of<T>::value == size_of<char>::value,
+                     && sizeof(T) == sizeof(char),
                      T>::type &value)
 {
    NOXCHECK(first && last && first <= last || first == last) ;
@@ -286,7 +286,7 @@ template <typename T>
 inline void raw_fill(T *first, T *last,
                      const typename std::enable_if<
                      std::is_scalar<T>::value
-                     && size_of<T>::value == size_of<wchar_t>::value,
+                     && sizeof(T) == sizeof(wchar_t),
                      T>::type &value)
 {
    NOXCHECK(first && last && first <= last || first == last) ;
@@ -297,8 +297,8 @@ template <typename T>
 inline void raw_fill(T *first, T *last,
                      const typename std::enable_if<
                      std::is_scalar<T>::value
-                     && size_of<T>::value != size_of<char>::value
-                     && size_of<T>::value != size_of<wchar_t>::value,
+                     && sizeof(T) != sizeof(char)
+                     && sizeof(T) != sizeof(wchar_t),
                      T>::type &value)
 {
    NOXCHECK(first && last && first <= last || first == last) ;

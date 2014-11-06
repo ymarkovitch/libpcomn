@@ -370,7 +370,7 @@ static typename membuf_traits<T>::type *_is_buffer(T**) ;
 /// @endcond
 
 template<typename T> struct
-is_buffer : bool_constant<sizeof detail::_is_buffer(make_type<T**>()) == sizeof(void *)> {} ;
+is_buffer : bool_constant<sizeof detail::_is_buffer(std::declval<T**>()) == sizeof(void *)> {} ;
 
 template<typename T, typename Type> struct
 enable_if_buffer : public std::enable_if<is_buffer<T>::value, Type> {} ;
