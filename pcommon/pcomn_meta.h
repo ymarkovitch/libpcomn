@@ -215,7 +215,7 @@ struct has_type_type : detail::has_type<T> {} ;
  Note this contrived trait class is not a complete equivalent of the standard
  one: it does not consider move constructor/assignment.
 *******************************************************************************/
-#if PCOMN_WORKAROUND(__GNUC_VER__, <= 490)
+#if PCOMN_WORKAROUND(__GNUC_VER__, < 500)
 namespace std {
 template<typename T, typename U>
 struct has_trivial_copy_assign<std::pair<T, U> > :
