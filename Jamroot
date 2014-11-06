@@ -35,7 +35,7 @@ import pcommon ;
 # Constants
 ################################################################################
 constant PROJROOT  : /libpcomn ;
-constant PROJSHARE : /libpcomn// ;
+constant PROJSHARE : /libpcomn ;
 
 path-constant SHAREPATH : . ;
 

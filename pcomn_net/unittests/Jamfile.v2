@@ -10,7 +10,8 @@
 #------------------------------------------------------------------------------
 project
   : requirements
-  <library>$(PROJSHARE)/pcomn_net
+  <library>$(PROJROOT)//pcomn_net
+  <library>$(PROJROOT)//pcommon
   <library>$(PROJROOT)//cppunit
 
   : default-build debug <link>static <threading>multi
