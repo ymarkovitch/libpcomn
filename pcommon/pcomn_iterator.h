@@ -634,6 +634,25 @@ struct block_buffer {
 typedef const_buffer_iterator<block_buffer> const_block_buffer_iterator ;
 
 /*******************************************************************************
+ *
+ * is_iterator<Iterator, Category = std::input_iterator_tag>
+ *
+ * Type trait to check if the type is an iterator of at least specified category
+ *
+ *******************************************************************************/
+namespace detail {
+template<typename>
+std::false_type test_iterator_category(...) ;
+template<typename T>
+std::true_type test_iterator_category(typename std::iterator_traits<T>::iterator_category const volatile *) ;
+}
+
+/// type trait to check if the type is an iterator of at least specified category
+///
+template<typename T, typename C = std::input_iterator_tag>
+using is_iterator = decltype(detail::test_iterator_category<T>(0)) ;
+
+/*******************************************************************************
  Helper functions that construct adapted iterators on-the-fly
 *******************************************************************************/
 template<class Container, typename Iter>

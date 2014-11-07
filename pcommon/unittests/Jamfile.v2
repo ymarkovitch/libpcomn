@@ -65,6 +65,7 @@ if ! [ adhoc-targets ]
   unittest unittest_indicator_observer ;
   unittest unittest_integer ;
   unittest unittest_iostream ;
+  unittest unittest_iterator ;
   #unittest unittest_keyedmutex ;
   #unittest unittest_keyedset ;
   unittest unittest_lanes ;
