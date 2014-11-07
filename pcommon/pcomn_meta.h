@@ -178,14 +178,16 @@ const size_t max_alignment = std::alignment_of<max_align>::value ;
 /******************************************************************************/
 /** Macro to define member type metatesters
 *******************************************************************************/
-#define PCOMN_DEFINE_TYPE_MEMBER_TEST(type)                          \
-template<typename T>                                                 \
-std::false_type has_##type##_test(...) ;                             \
-template<typename T>                                                 \
-std::true_type has_##type##_test(typename T::type const volatile *) ; \
-                                                                     \
-template<typename T>                                                 \
-struct has_##type : public decltype(has_##type##_test<T>(0)) {}
+#define PCOMN_DEFINE_TYPE_MEMBER_TEST(type)                             \
+   namespace detail {                                                   \
+   template<typename T>                                                 \
+   std::false_type has_##type##_test(...) ;                             \
+   template<typename T>                                                 \
+   std::true_type has_##type##_test(typename T::type const volatile *) ; \
+   }                                                                    \
+                                                                        \
+   template<typename T>                                                 \
+   using has_##type = decltype(detail::has_##type##_test<T>(0))
 
 /*******************************************************************************
  Define member type metatests for std:: member typedefs

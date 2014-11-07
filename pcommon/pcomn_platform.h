@@ -66,8 +66,6 @@
                           PCOMN_CDECL
                           __cdecl on MS platform
                           empty in all others
-
-                       12) PCOMN_VOID_NULL
 *******************************************************************************/
 #include <pcomn_macros.h>
 
@@ -378,15 +376,6 @@
 #define unlikely(expr)  (expr)
 #endif
 #endif
-
-/******************************************************************************/
-/** NULL void pointer, regardless of C or C++
-
- The problem is that in C NULL is void *, in C++ NULL is int (at least until C++0x, wher
- @b null keyword will be introduced). So we need additional NULL pointer that is
- invariantly have pointer type.
-*******************************************************************************/
-#define PCOMN_VOID_NULL ((void *)0)
 
 #include <sys/types.h>
 

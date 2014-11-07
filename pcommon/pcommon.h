@@ -204,105 +204,62 @@ static const RaiseError RAISE_ERROR      (true) ;
 /// @endcode
 #define PCOMN_ENSURE_ARG(arg) (::pcomn::ensure_arg<std::invalid_argument>((arg), #arg, __FUNCTION__))
 
+#define PCOMN_ENSURE_ARGX(arg, exception) (::pcomn::ensure_arg<exception>((arg), #arg, __FUNCTION__))
+
 #define PCOMN_ASSERT_ARG(assertion) \
    (::pcomn::ensure_arg_assertion<std::invalid_argument>((assertion), #assertion, __FUNCTION__))
+
+#define PCOMN_ASSERT_ARGX(assertion, exception) \
+   (::pcomn::ensure_arg_assertion<exception>((assertion), #assertion, __FUNCTION__))
 
 /*******************************************************************************
  Out-of-line exception throw
 *******************************************************************************/
-template<class X>
-__noreturn __noinline void throw_exception() ;
-template<class X>
-void throw_exception() { throw X() ; }
-
-template<class X, typename A1>
-__noreturn __noinline void throw_exception(const A1 &) ;
-template<class X, typename A1>
-void throw_exception(const A1 &a1)
-{ throw X(a1) ; }
-
-template<class X, typename A1, typename A2>
-__noreturn __noinline void throw_exception(const A1 &, const A2 &) ;
-template<class X, typename A1, typename A2>
-void throw_exception(const A1 &a1, const A2 &a2)
-{ throw X(a1, a2) ; }
-
-template<class X, typename A1, typename A2, typename A3>
-__noreturn __noinline void throw_exception(const A1 &, const A2 &, const A3 &) ;
-template<class X, typename A1, typename A2, typename A3>
-void throw_exception(const A1 &a1, const A2 &a2, const A3 &a3)
-{ throw X(a1, a2, a3) ; }
+template<class X, typename... XArgs>
+__noreturn __noinline void throw_exception(XArgs&& ...) ;
+template<class X, typename... XArgs>
+void throw_exception(XArgs&& ...args) { throw X(std::forward<XArgs>(args)...) ; }
 
 template<typename Msg>
-__noreturn __noinline void throw_system_error(std::errc errcode, const Msg &msg)
+__noreturn __noinline
+void throw_system_error(std::errc errcode, const Msg &msg)
 {
    throw_exception<std::system_error>(std::make_error_code(errcode), msg) ;
 }
 
 template<typename Msg>
-__noreturn __noinline void throw_system_error(int errno_code, const Msg &msg)
+__noreturn __noinline
+void throw_system_error(int errno_code, const Msg &msg)
 {
    throw_exception<std::system_error>(errno_code, std::system_category(), msg) ;
 }
 
-template<class X>
-inline void conditional_throw(bool test)
-{ if (unlikely(test)) throw_exception<X>() ; }
+template<class X, typename... XArgs>
+inline void conditional_throw(bool test, XArgs && ...args)
+{
+   if (unlikely(test))
+      throw_exception<X>(std::forward<XArgs>(args)...) ;
+}
 
-template<class X, typename A1>
-inline void conditional_throw(bool test, const A1 &a1)
-{ if (unlikely(test)) throw_exception<X>(a1) ; }
-
-template<class X, typename A1, typename A2>
-inline void conditional_throw(bool test, const A1 &a1, const A2 &a2)
-{ if (unlikely(test)) throw_exception<X>(a1, a2) ; }
-
-template<class X, typename A1, typename A2, typename A3>
-inline void conditional_throw(bool test, const A1 &a1, const A2 &a2, const A3 &a3)
-{ if (unlikely(test)) throw_exception<X>(a1, a2, a3) ; }
-
-template<class X>
-inline void ensure(bool condition)
-{ conditional_throw<X>(!condition) ; }
-
-template<class X, typename A1>
-inline void ensure(bool condition, const A1 &a1)
-{ conditional_throw<X>(!condition, a1) ; }
-
-template<class X, typename A1, typename A2>
-inline void ensure(bool condition, const A1 &a1, const A2 &a2)
-{ conditional_throw<X>(!condition, a1, a2) ; }
-
-template<class X, typename A1, typename A2, typename A3>
-inline void ensure(bool condition, const A1 &a1, const A2 &a2, const A3 &a3)
-{ conditional_throw<X>(!condition, a1, a2, a3) ; }
+template<class X, typename V, typename... XArgs>
+inline void ensure(V &&value, XArgs && ...args)
+{
+   conditional_throw<X>(!value, std::forward<XArgs>(args)...) ;
+}
 
 /// Check whether the value is not zero.
 /// If !value is true, throw X.
-template<class X, typename V>
-inline V ensure_nonzero(V value)
+template<class X, typename V, typename... XArgs>
+inline V &&ensure_nonzero(V &&value, XArgs && ...args)
 {
-   ensure<X>(!!value) ;
-   return value ;
-}
-
-template<class X, typename V, typename A1>
-inline V ensure_nonzero(V value, const A1 &a1)
-{
-   ensure<X>(!!value, a1) ;
-   return value ;
-}
-
-template<class X, typename V, typename A1, typename A2>
-inline V ensure_nonzero(V value, const A1 &a1, const A2 &a2)
-{
-   ensure<X>(!!value, a1, a2) ;
-   return value ;
+   ensure<X>(std::forward<V>(value), std::forward<XArgs>(args)...) ;
+   return std::forward<V>(value) ;
 }
 
 namespace detail {
 template<typename X>
-__noinline __noreturn void throw_arg_null(const char *arg_name, const char *function_name)
+__noinline __noreturn
+void throw_arg_null(const char *arg_name, const char *function_name)
 {
    char message[512] ;
    const char *aname = arg_name, *quote = "'" ;
@@ -314,7 +271,8 @@ __noinline __noreturn void throw_arg_null(const char *arg_name, const char *func
 }
 
 template<typename X>
-__noinline __noreturn void throw_arg_assert(const char *assertion_text, const char *function_name)
+__noinline __noreturn
+void throw_arg_assert(const char *assertion_text, const char *function_name)
 {
    char message[512] ;
    if (unlikely(!assertion_text))
@@ -328,11 +286,11 @@ __noinline __noreturn void throw_arg_assert(const char *assertion_text, const ch
 }
 
 template<class X, typename V>
-inline V ensure_arg(V &&value, const char *arg_name, const char *function_name)
+inline V &&ensure_arg(V &&value, const char *arg_name, const char *function_name)
 {
    if (unlikely(!value))
       detail::throw_arg_null<X>(arg_name, function_name) ;
-   return value ;
+   return std::forward<V>(value) ;
 }
 
 template<class X>
@@ -344,81 +302,53 @@ inline void ensure_arg_assertion(bool assertion, const char *assertion_text, con
 
 /// Ensure that a value is between specified minimum and maximum (inclusive).
 /// @throw X(message) if value is out of range.
-template<class X, typename V, typename M>
-inline V ensure_range(V value, V minval, V maxval, const M &message)
+template<class X, typename V, typename B, typename... XArgs>
+inline V &&ensure_range(V &&value, B &&minval, B &&maxval, XArgs && ...args)
 {
-   ensure<X>(!(value < minval || maxval < value), message) ;
-   return value ;
+   ensure<X>(!(value < minval || maxval < value), std::forward<XArgs>(args)...) ;
+   return std::forward<V>(value) ;
 }
 
-template<class X, typename V>
-inline V ensure_lt(V value, V bound)
+template<class X, typename V, typename B, typename... XArgs>
+inline V &&ensure_lt(V &&value, B &&bound, XArgs && ...args)
 {
-   ensure<X>(value < bound) ;
-   return value ;
+   ensure<X>(value < bound, std::forward<XArgs>(args)...) ;
+   return std::forward<V>(value) ;
 }
 
-template<class X, typename V, typename M>
-inline V ensure_lt(V value, V bound, const M &message)
+template<class X, typename V, typename B, typename... XArgs>
+inline V &&ensure_le(V &&value, B &&bound, XArgs && ...args)
 {
-   ensure<X>(value < bound, message) ;
-   return value ;
+   ensure<X>(!(bound < value), std::forward<XArgs>(args)...) ;
+   return std::forward<V>(value) ;
 }
 
-template<class X, typename V>
-inline V ensure_le(V value, V bound)
+template<class X, typename V, typename B, typename... XArgs>
+inline V &&ensure_gt(V &&value, B &&bound, XArgs && ...args)
 {
-   ensure<X>(!(bound < value)) ;
-   return value ;
+   ensure<X>(bound < value, std::forward<XArgs>(args)...) ;
+   return std::forward<V>(value) ;
 }
 
-template<class X, typename V, typename M>
-inline V ensure_le(V value, V bound, const M &message)
+template<class X, typename V, typename B, typename... XArgs>
+inline V &&ensure_ge(V &&value, B &&bound, XArgs && ...args)
 {
-   ensure<X>(!(bound < value), message) ;
-   return value ;
+   ensure<X>(!(value < bound), std::forward<XArgs>(args)...) ;
+   return std::forward<V>(value) ;
 }
 
-template<class X, typename V>
-inline V ensure_gt(V value, V bound)
+template<class X, typename V, typename B, typename... XArgs>
+inline V &&ensure_eq(V &&value, B &&bound, XArgs && ...args)
 {
-   ensure<X>(bound < value) ;
-   return value ;
+   ensure<X>(value == bound, std::forward<XArgs>(args)...) ;
+   return std::forward<V>(value) ;
 }
 
-template<class X, typename V, typename M>
-inline V ensure_gt(V value, V bound, const M &message)
+template<class X, typename V, typename B, typename... XArgs>
+inline V &&ensure_ne(V &&value, B &&bound, XArgs && ...args)
 {
-   ensure<X>(bound < value, message) ;
-   return value ;
-}
-
-template<class X, typename V>
-inline V ensure_ge(V value, V bound)
-{
-   ensure<X>(!(value < bound)) ;
-   return value ;
-}
-
-template<class X, typename V, typename M>
-inline V ensure_ge(V value, V bound, const M &message)
-{
-   ensure<X>(!(value < bound), message) ;
-   return value ;
-}
-
-template<class X, typename V>
-inline V ensure_eq(V value, V bound)
-{
-   ensure<X>(value == bound) ;
-   return value ;
-}
-
-template<class X, typename V, typename M>
-inline V ensure_eq(V value, V bound, const M &message)
-{
-   ensure<X>(value == bound, message) ;
-   return value ;
+   ensure<X>(!(value == bound), std::forward<XArgs>(args)...) ;
+   return std::forward<V>(value) ;
 }
 
 template<typename M>
@@ -436,15 +366,6 @@ inline void ensure_precondition(bool precondition, const M &message)
 struct malloc_delete {
       void operator()(const void *ptr) const noexcept { ::free(const_cast<void *>(ptr)) ; }
 } ;
-
-/******************************************************************************/
-/** Take actual address of an object even its type has overloaded operator &.
-*******************************************************************************/
-template<typename T>
-inline T *addressof(T &value)
-{
-   return (T *)&reinterpret_cast<const volatile char &>(value) ;
-}
 
 /*******************************************************************************
  friend_cast<>
