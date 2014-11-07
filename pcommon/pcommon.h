@@ -140,23 +140,6 @@ inline const char *demangled_typename(char *buf, size_t buflen)
 *******************************************************************************/
 namespace pcomn {
 
-template<typename T> struct _unspecified_bool ;
-template<typename T> struct _ubool { typedef void (*type)(_unspecified_bool<T>) ; } ;
-
-/******************************************************************************/
-/** Simple safe bool.
- Boost approach to this is theoretically much more correct but in practice my is so
- much simpler...
-*******************************************************************************/
-#define unspecified_bool(typ) typename ::pcomn::_ubool<typ >::type
-
-template<typename T, typename P>
-inline unspecified_bool(T) as_unspecified_bool(const P &predicate, const T *tag)
-{
-   typedef unspecified_bool(T) result_type ;
-   return !predicate ? result_type() : reinterpret_cast<result_type>(tag) ;
-}
-
 /******************************************************************************/
 /** Base class for boolean tags
 *******************************************************************************/

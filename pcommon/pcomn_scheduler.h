@@ -48,7 +48,7 @@ class _PCOMNEXP Scheduler {
             taskinfo() { memset(this, 0, sizeof *this) ; }
 
             taskid_t id() const { return _id ; }
-            operator unspecified_bool(taskinfo)() const { return as_unspecified_bool(id(), this) ; }
+            explicit operator bool() const { return !!id() ; }
 
             uint64_t sched_count() const { return _sched_count ; }
             int64_t last_expired() const { return _last_expired ; }

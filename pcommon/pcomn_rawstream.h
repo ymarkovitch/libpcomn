@@ -91,12 +91,9 @@ class _PCOMNEXP raw_ios {
       bool is_open() const { return rdstate() != closebit ; }
 
       /// Check whether this ios object is in a good state.
-      /// @return Non-NULL if the object is in a good state and NULL otherwise.
-      /// Convenient for object testing like if (object) ...
-      operator unspecified_bool(raw_ios)() const
-      {
-         return reinterpret_cast<unspecified_bool(raw_ios)>((void *)(intptr_t)!fail()) ;
-      }
+      /// @return true if the object is in a good state and false otherwise.
+      ///
+      explicit operator bool() const { return !fail() ; }
 
       /// Get status flags (eofbit, badbit, etc.).
       bigflag_t rdstate() const { return _state ; }

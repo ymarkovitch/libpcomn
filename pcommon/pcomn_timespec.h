@@ -126,10 +126,7 @@ class time_point {
          return time_point(tv) ;
       }
 
-      operator unspecified_bool(time_point)() const
-      {
-         return as_unspecified_bool(_value != time_point()._value, this) ;
-      }
+      explicit operator bool() const { return _value != time_point()._value ; }
 
       time_point &operator+=(const time_interval &rhs)
       {

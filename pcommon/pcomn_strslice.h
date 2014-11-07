@@ -154,10 +154,7 @@ struct basic_strslice {
       bool is_null() const { return !((uintptr_t)begin() | (uintptr_t)end()) ; }
 
       /// Indicate that the slice is nonempty.
-      operator unspecified_bool(basic_strslice)() const
-      {
-         return (unspecified_bool(basic_strslice))(end() - begin()) ;
-      }
+      explicit operator bool() const { return begin() != end() ; }
 
       /// Compare slices lexicografically, like strcmp.
       /// @return 0 for equal, -1 for less, 1 for greater.

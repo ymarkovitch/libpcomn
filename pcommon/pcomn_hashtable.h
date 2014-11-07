@@ -260,10 +260,7 @@ class hashtable : public Locker {
             entry_type& operator*() const { return *_entry() ; }
             entry_type *operator->() const { return _entry() ; }
 
-            operator unspecified_bool(hashtable_type)() const
-            {
-               return reinterpret_cast<unspecified_bool(hashtable_type) >(_pointed()) ;
-            }
+            explicit operator bool() const { return !!_pointed() ; }
 
          protected:
             explicit bucket_iterator(bucket_list_node *node) :

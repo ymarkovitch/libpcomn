@@ -200,7 +200,7 @@ class _PCOMNEXP URLParser {
       /// Get the path part of the URL.
       ///
       /// A valid URL @em always has this part, so the URL with empty path() is
-      /// considered illegal, thus operator unspecified_bool() for such URL returns NULL.
+      /// considered illegal, thus operator bool() for such URL returns false.
       const reg_match &path() const { return _path ; }
       const reg_match &query() const { return _query ; }
       // Hostinfo part
@@ -241,7 +241,7 @@ class _PCOMNEXP URLParser {
       ///
       /// Provides "boolean conversion" for objects of URLParser class, allowing to check
       /// an URLParser object through, e.g., if (URLParser)...
-      operator unspecified_bool(URLParser)() const { return as_unspecified_bool(is_valid(), this) ; }
+      explicit operator bool() const { return is_valid() ; }
 
    private:
       // The main part
@@ -323,7 +323,7 @@ class URL {
       bool is_valid() const { return parser().is_valid() ; }
 
       /// Test URL for validity; provides "boolean conversion" to check like if(url)...
-      operator unspecified_bool(URL<S>)() const { return as_unspecified_bool(parser(), this) ; }
+      explicit operator bool() const { return !!parser() ; }
 
       /// Get the original string representation of the URL.
       const string_type &str() const { return _str ; }

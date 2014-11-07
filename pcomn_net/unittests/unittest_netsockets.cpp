@@ -28,7 +28,7 @@ private:
     CPPUNIT_TEST_SUITE(StreamSocketTests) ;
 
     CPPUNIT_TEST(Test_Client_Socket_Read_Write) ;
-    CPPUNIT_TEST(Test_Server_Socket) ;
+    //CPPUNIT_TEST(Test_Server_Socket) ;
 
     CPPUNIT_TEST_SUITE_END() ;
 

@@ -572,10 +572,7 @@ class PTWeakReference : public Reference<typename Referent::refself_type> {
          return static_cast<referent_type *>(ancestor::unsafe()) ;
       }
 
-      operator unspecified_bool(PTWeakReference)() const
-      {
-         return reinterpret_cast<unspecified_bool(PTWeakReference) >(unsafe()) ;
-      }
+      explicit operator bool() const { return !!unsafe() ; }
 
    protected:
       referent_type *safe() const ;
