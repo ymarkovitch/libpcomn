@@ -393,7 +393,7 @@ const int DWIDTH = 6 ;
  generate_sequence
 *******************************************************************************/
 template<class OStream>
-typename pcomn::disable_if<std::is_pointer<OStream>::value, OStream &>::type
+pcomn::disable_if_t<std::is_pointer<OStream>::value, OStream &>
 generate_sequence(OStream &os, int begin, int end)
 {
    const size_t bufsz = DWIDTH + 1 ;
@@ -426,7 +426,7 @@ inline void *generate_sequence(void *buf, int begin, int end)
 }
 
 template<class IStream>
-typename pcomn::disable_if<std::is_pointer<IStream>::value, void>::type
+pcomn::disable_if_t<std::is_pointer<IStream>::value, void>
 checked_read_sequence(IStream &is, int from, int to)
 {
    CPPUNIT_LOG("Reading from " << from << " to " << to << " through " << CPPUNIT_TYPENAME(IStream) << std::endl) ;
@@ -473,7 +473,7 @@ inline void checked_read_sequence(const void *buf, int from, int to)
  generate_seqn<>
 *******************************************************************************/
 template<unsigned n, class OStream>
-typename pcomn::disable_if<std::is_pointer<OStream>::value, OStream &>::type
+pcomn::disable_if_t<std::is_pointer<OStream>::value, OStream &>
 generate_seqn(OStream &os, int begin, int end)
 {
    const size_t bufsz = n + 1 ;
@@ -526,7 +526,7 @@ generate_seqn_file(const S &filename, int end = 0)
 }
 
 template<unsigned n, class IStream>
-typename pcomn::disable_if<std::is_pointer<IStream>::value, void>::type
+pcomn::disable_if_t<std::is_pointer<IStream>::value, void>
 checked_read_seqn(IStream &is, int from, int to)
 {
    CPPUNIT_LOG("Reading from " << from << " to " << to << " through " << CPPUNIT_TYPENAME(IStream) << std::endl) ;

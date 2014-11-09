@@ -201,34 +201,34 @@ template<typename S>
 struct string_traits { typedef char undefined ; } ;
 
 template<>
-struct string_traits<char *> : public cstring_traits<char> {} ;
+struct string_traits<char *> : cstring_traits<char> {} ;
 template<>
-struct string_traits<const char *> : public cstring_traits<char> {} ;
+struct string_traits<const char *> : cstring_traits<char> {} ;
 template<>
-struct string_traits<wchar_t *> : public cstring_traits<wchar_t> {} ;
+struct string_traits<wchar_t *> : cstring_traits<wchar_t> {} ;
 template<>
-struct string_traits<const wchar_t *> : public cstring_traits<wchar_t> {} ;
+struct string_traits<const wchar_t *> : cstring_traits<wchar_t> {} ;
 
 template<size_t N>
-struct string_traits<char [N]> : public cstring_traits<char> {} ;
+struct string_traits<char [N]> : cstring_traits<char> {} ;
 template<size_t N>
-struct string_traits<const char [N]> : public cstring_traits<char> {} ;
+struct string_traits<const char [N]> : cstring_traits<char> {} ;
 template<>
-struct string_traits<char[]> : public cstring_traits<char> {} ;
+struct string_traits<char[]> : cstring_traits<char> {} ;
 template<>
-struct string_traits<const char[]> : public cstring_traits<char> {} ;
+struct string_traits<const char[]> : cstring_traits<char> {} ;
 template<size_t N>
-struct string_traits<wchar_t [N]> : public cstring_traits<wchar_t> {} ;
+struct string_traits<wchar_t [N]> : cstring_traits<wchar_t> {} ;
 template<size_t N>
-struct string_traits<const wchar_t [N]> : public cstring_traits<wchar_t> {} ;
+struct string_traits<const wchar_t [N]> : cstring_traits<wchar_t> {} ;
 template<typename Char, class Traits, class A>
 struct string_traits<std::basic_string<Char, Traits, A> > :
-         public stdstring_traits<std::basic_string<Char, Traits, A>, false> {} ;
+         stdstring_traits<std::basic_string<Char, Traits, A>, false> {} ;
 
 template<typename D>
-struct string_traits<std::unique_ptr<char[], D> > : public pstring_traits<std::unique_ptr<char[], D> > {} ;
+struct string_traits<std::unique_ptr<char[], D> > : pstring_traits<std::unique_ptr<char[], D> > {} ;
 template<typename D>
-struct string_traits<std::unique_ptr<const char[], D> > : public pstring_traits<std::unique_ptr<const char[], D> > {} ;
+struct string_traits<std::unique_ptr<const char[], D> > : pstring_traits<std::unique_ptr<const char[], D> > {} ;
 
 /// @cond
 namespace detail {
@@ -265,28 +265,25 @@ template<typename S, typename C> struct
 is_string_or_char : bool_constant<is_char<C>::value || is_strchar<S, C>::value> {} ;
 
 template<typename S1, typename S2> struct
-is_compatible_strings :
-         detail::_is_compatible_str<S1, S2, is_string<S1>::value && is_string<S2>::value> {} ;
+is_compatible_strings : detail::_is_compatible_str<S1, S2, is_string<S1>::value && is_string<S2>::value> {} ;
 
 template<typename S, typename Type> struct
-enable_if_string : public std::enable_if<is_string<S>::value, Type> {} ;
+enable_if_string : std::enable_if<is_string<S>::value, Type> {} ;
 
 template<typename S, typename Type> struct
-disable_if_string : public std::enable_if<!is_string<S>::value, Type> {} ;
+disable_if_string : std::enable_if<!is_string<S>::value, Type> {} ;
 
 template<typename S, typename Char, typename Type> struct
-enable_if_strchar : public std::enable_if<is_strchar<S, Char>::value, Type> {} ;
+enable_if_strchar : std::enable_if<is_strchar<S, Char>::value, Type> {} ;
 
 template<typename S, typename Char, typename Type> struct
-disable_if_strchar : public std::enable_if<!is_strchar<S, Char>::value, Type> {} ;
+disable_if_strchar : std::enable_if<!is_strchar<S, Char>::value, Type> {} ;
 
-template<typename S, typename Other, typename Type>
-struct enable_if_other_string :
-         public std::enable_if<is_string<Other>::value && !std::is_base_of<S, Other>::value, Type>
-{} ;
+template<typename S, typename Other, typename Type> struct
+enable_if_other_string : std::enable_if<is_string<Other>::value && !std::is_base_of<S, Other>::value, Type> {} ;
 
-template<typename S1, typename S2, typename Type>
-struct enable_if_compatible_strings : public std::enable_if<is_compatible_strings<S1, S2>::value, Type> {} ;
+template<typename S1, typename S2, typename Type> struct
+enable_if_compatible_strings : std::enable_if<is_compatible_strings<S1, S2>::value, Type> {} ;
 
 /*******************************************************************************
  pcomn::str
@@ -356,7 +353,7 @@ inline typename ::pcomn::enable_if_string<S, bool>::type is_empty(const S &str)
 }
 
 template<typename T, typename U>
-inline typename std::enable_if<pcomn::is_compatible_strings<T, U>::value, bool>::type
+inline std::enable_if_t<pcomn::is_compatible_strings<T, U>::value, bool>
 is_equal(const T &lhs, const U &rhs)
 {
    typedef typename pcomn::string_traits<T>::char_type char_type ;
@@ -369,7 +366,7 @@ is_equal(const T &lhs, const U &rhs)
 }
 
 template<typename T, typename U>
-inline typename std::enable_if<pcomn::is_compatible_strings<T, U>::value, bool>::type
+inline std::enable_if_t<pcomn::is_compatible_strings<T, U>::value, bool>
 startswith(const T &lhs, const U &rhs)
 {
    const size_t rsz = len(rhs) ;
@@ -380,7 +377,7 @@ startswith(const T &lhs, const U &rhs)
 }
 
 template<typename T, typename U>
-inline typename std::enable_if<pcomn::is_compatible_strings<T, U>::value, bool>::type
+inline std::enable_if_t<pcomn::is_compatible_strings<T, U>::value, bool>
 endswith(const T &lhs, const U &rhs)
 {
    const size_t lsz = len(lhs) ;
@@ -406,21 +403,21 @@ template<> struct ws<const wchar_t> : ws<wchar_t> {} ;
 /// @endcond
 
 template<class S>
-inline typename std::enable_if<string_traits<S>::has_std_write, S &>::type
+inline std::enable_if_t<string_traits<S>::has_std_write, S &>
 lstrip_inplace(S &s, const typename string_traits<S>::char_type *chrs)
 {
    return s.erase(0, s.find_first_not_of(chrs)) ;
 }
 
 template<class S>
-inline typename std::enable_if<string_traits<S>::has_std_write, S &>::type
+inline std::enable_if_t<string_traits<S>::has_std_write, S &>
 lstrip_inplace(S &s)
 {
    return lstrip_inplace(s, detail::ws<typename string_traits<S>::char_type>::spaces()) ;
 }
 
 template<class S>
-inline typename std::enable_if<string_traits<S>::has_std_write, S &>::type
+inline std::enable_if_t<string_traits<S>::has_std_write, S &>
 rstrip_inplace(S &s, const typename string_traits<S>::char_type *chrs)
 {
    typename S::size_type last = s.find_last_not_of(chrs) ;
@@ -432,14 +429,14 @@ rstrip_inplace(S &s, const typename string_traits<S>::char_type *chrs)
 }
 
 template<class S>
-inline typename std::enable_if<string_traits<S>::has_std_write, S &>::type
+inline std::enable_if_t<string_traits<S>::has_std_write, S &>
 rstrip_inplace(S &s)
 {
    return rstrip_inplace(s, detail::ws<typename string_traits<S>::char_type>::spaces()) ;
 }
 
 template<class S>
-inline typename std::enable_if<string_traits<S>::has_std_write, S &>::type
+inline std::enable_if_t<string_traits<S>::has_std_write, S &>
 strip_inplace(S &s)
 {
    return lstrip_inplace(rstrip_inplace(s)) ;
@@ -464,14 +461,14 @@ inline S &convert_inplace_stdstr(S &s, Converter &converter,
 /// @endcond
 
 template<typename Converter, typename S>
-inline typename std::enable_if<string_traits<S>::has_std_write, S &>::type
+inline std::enable_if_t<string_traits<S>::has_std_write, S &>
 convert_inplace(S &s, Converter converter, size_t offs = 0, size_t size = std::string::npos)
 {
    return detail::convert_inplace_stdstr(s, converter, offs, size) ;
 }
 
 template<typename Converter, typename Char>
-inline typename std::enable_if<is_char<Char>::value, Char *>::type
+inline std::enable_if_t<is_char<Char>::value, Char *>
 convert_inplace(Char *s, Converter converter, size_t offs = 0, size_t size = (size_t)-1)
 {
    std::transform(s + offs, (size == (size_t)-1 ? s + len(s) : s + size), s + offs, converter) ;
@@ -479,14 +476,14 @@ convert_inplace(Char *s, Converter converter, size_t offs = 0, size_t size = (si
 }
 
 template<typename Converter, typename Char, size_t n>
-inline typename std::enable_if<is_char<Char>::value, Char *>::type
+inline std::enable_if_t<is_char<Char>::value, Char *>
 convert_inplace(Char (&s)[n], Converter converter, size_t offs = 0, size_t size = (size_t)-1)
 {
    return convert_inplace(s + 0, offs, size) ;
 }
 
 template<typename Buf, typename Converter, typename S>
-inline typename std::enable_if<string_traits<S>::has_std_read, S>::type
+inline std::enable_if_t<string_traits<S>::has_std_read, S>
 convert_copy(const S &s, Converter converter, size_t offs = 0, size_t size = std::string::npos)
 {
    Buf buf(s) ;

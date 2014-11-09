@@ -26,11 +26,11 @@
 #include <pcomn_strslice.h>
 #include <pcomn_iterator.h>
 #include <pcomn_smartptr.h>
+#include <pcomn_meta.h>
 
 #include <pbregex.h>
 
 #include <stdexcept>
-#include <type_traits>
 
 extern "C" _PCOMNEXP int pcomn_xregexec(const pcomn_regex_t *compiled_expression,
                                         const char *begin, const char *end,
@@ -329,7 +329,7 @@ std::string regexp_quote(const strslice &s)
 /// as a source)
 ///
 template<typename S>
-typename std::enable_if<std::is_same<typename std::remove_cv<S>::type, std::string>::value, std::string>::type
+std::enable_if_t<std::is_same<std::remove_cv_t<S>, std::string>::value, std::string>
 regexp_quote(const S &s)
 {
    const strslice seq (s) ;
@@ -349,7 +349,7 @@ regexp_quote(const S &s)
 *******************************************************************************/
 namespace str {
 template<class S>
-inline typename std::enable_if<string_traits<S>::has_std_read, S>::type
+inline std::enable_if_t<string_traits<S>::has_std_read, S>
 substr(const S &str, const reg_match &range)
 {
    NOXCHECK(!range || PSUBEXP_END(0U, range) <= pcomn::str::len(str)) ;

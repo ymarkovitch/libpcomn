@@ -143,7 +143,7 @@ class substitution_map {
       /// @param value        Integer or boolean value; immediately converted to a
       /// replacement string.
       template<typename V>
-      typename std::enable_if<std::is_arithmetic<V>::value, substitution_map &>::type
+      std::enable_if_t<std::is_arithmetic<V>::value, substitution_map &>
       operator()(const strslice &placeholder, const V &value)
       {
          set_substval(strslice(placeholder), value) ;
@@ -174,7 +174,7 @@ class substitution_map {
       _PCOMNEXP substitution_map &operator()(const std::function<V(const strslice&)> &valfn) ;
 
       template<typename F>
-      typename std::enable_if<std::is_bind_expression<F>::value, substitution_map &>::type
+      std::enable_if_t<std::is_bind_expression<F>::value, substitution_map &>
       operator()(const strslice &placeholder, const F &bindexpr)
       {
          typedef typename F::result_type V ;
@@ -202,8 +202,8 @@ class substitution_map {
 
       /// Make substitutions in a template specified by a string.
       template<typename InputDevice, typename OutputDevice>
-      friend typename std::enable_if<std::is_convertible<InputDevice, strslice>::value,
-                                     OutputDevice &>::type
+      friend
+      std::enable_if_t<std::is_convertible<InputDevice, strslice>::value, OutputDevice &>
       subst(const substitution_map &s, const InputDevice &template_string, OutputDevice &output)
       {
          strslice input (template_string) ;
@@ -214,9 +214,9 @@ class substitution_map {
       /// Make substitutions in a template specified by any readable iodevice (i.e. such
       /// with pcomn::io::reader<> defined).
       template<typename InputDevice, typename OutputDevice>
-      friend typename std::enable_if<!std::is_pod<InputDevice>::value &&
-                                     !std::is_convertible<InputDevice, strslice>::value,
-                                     OutputDevice &>::type
+      friend
+      std::enable_if_t<(!std::is_pod<InputDevice>::value && !std::is_convertible<InputDevice, strslice>::value),
+                       OutputDevice &>
       subst(const substitution_map &s, InputDevice &input, OutputDevice &output)
       {
          s.substitute(input, output) ;
@@ -225,9 +225,9 @@ class substitution_map {
 
       /// @overload
       template<typename InputDevice, typename OutputDevice>
-      friend typename std::enable_if<std::is_pod<InputDevice>::value &&
-                                     !std::is_convertible<InputDevice, strslice>::value,
-                                     OutputDevice &>::type
+      friend
+      std::enable_if_t<(std::is_pod<InputDevice>::value && !std::is_convertible<InputDevice, strslice>::value),
+                       OutputDevice &>
       subst(const substitution_map &s, InputDevice input, OutputDevice &output)
       {
          s.substitute(input, output) ;

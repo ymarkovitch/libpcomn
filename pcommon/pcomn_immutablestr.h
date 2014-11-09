@@ -758,10 +758,11 @@ class mutable_strbuf : public shared_string<Char, CharTraits, Storage> {
       }
 
       template<typename InputIterator>
-      typename std::enable_if<!std::is_same<InputIterator, iterator>::value &&
-                              !std::is_same<InputIterator, const_iterator>::value &&
-                              !std::numeric_limits<InputIterator>::is_integer,
-      mutable_strbuf &>::type append(InputIterator input, size_type n)
+      std::enable_if_t<(!std::is_same<InputIterator, iterator>::value &&
+                        !std::is_same<InputIterator, const_iterator>::value &&
+                        !std::numeric_limits<InputIterator>::is_integer),
+                       mutable_strbuf &>
+      append(InputIterator input, size_type n)
       {
          if (!n)
             return *this ;
@@ -780,7 +781,7 @@ class mutable_strbuf : public shared_string<Char, CharTraits, Storage> {
       }
 
       template<typename C>
-      typename std::enable_if<std::is_same<C, value_type>::value, mutable_strbuf &>::type
+      std::enable_if_t<std::is_same<C, value_type>::value, mutable_strbuf &>
       append(const C *input, size_type n)
       {
          if (n)
@@ -834,7 +835,7 @@ class mutable_strbuf : public shared_string<Char, CharTraits, Storage> {
       }
 
       template<typename S>
-      typename std::enable_if<is_string_or_char<S, char_type>::value, mutable_strbuf>::type
+      std::enable_if_t<is_string_or_char<S, char_type>::value, mutable_strbuf>
       operator+(const S &rhs)
       {
          return ref_type(mutable_strbuf(*this) += rhs) ;
@@ -1059,7 +1060,7 @@ class immutable_string : public shared_string<Char, CharTraits, Storage> {
       }
 
       template<typename R>
-      typename std::enable_if<is_string_or_char<R, char_type>::value, strbuf>::type
+      std::enable_if_t<is_string_or_char<R, char_type>::value, strbuf>
       operator+(const R &rhs) const
       {
          return typename strbuf::ref_type(strbuf(*this) += rhs) ;

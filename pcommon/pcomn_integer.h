@@ -69,19 +69,17 @@ constexpr const T int_traits<T>::signbit ;
  Overload enabler, a la enable_if<>.
  If T is an integer type, returns (as internal typedef) R as 'type'
 *******************************************************************************/
-template<typename T, typename R = T>
-struct if_integer : public std::enable_if<std::numeric_limits<T>::is_integer, R> {} ;
+template<typename T, typename R = T> struct
+if_integer : std::enable_if<std::numeric_limits<T>::is_integer, R> {} ;
 
-template<typename T, typename R = T>
-struct if_not_integer : public disable_if<std::numeric_limits<T>::is_integer, R> {} ;
+template<typename T, typename R = T> struct
+if_not_integer : disable_if<std::numeric_limits<T>::is_integer, R> {} ;
 
-template<typename T, typename R = T>
-struct if_signed_int : public std::enable_if<std::numeric_limits<T>::is_integer &&
-                                             std::numeric_limits<T>::is_signed, R> {} ;
+template<typename T, typename R = T> struct
+if_signed_int : std::enable_if<(std::numeric_limits<T>::is_integer && std::numeric_limits<T>::is_signed), R> {} ;
 
-template<typename T, typename R = T>
-struct if_unsigned_int : public std::enable_if<std::numeric_limits<T>::is_integer &&
-                                               !std::numeric_limits<T>::is_signed, R> {} ;
+template<typename T, typename R = T> struct
+if_unsigned_int : std::enable_if<(std::numeric_limits<T>::is_integer && !std::numeric_limits<T>::is_signed), R> {} ;
 
 template<typename T>
 inline constexpr typename if_signed_int<T, T>::type sign_bit(T value)

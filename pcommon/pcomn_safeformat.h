@@ -196,8 +196,7 @@ class State {
       State &FormatWithCurrentFlags(const safeformat_ulong_t) ;
 
       template<typename S>
-      typename disable_if<std::is_pointer<S>::value, State &>::type
-      PrintString(const S &s)
+      disable_if_t<std::is_pointer<S>::value, State &> PrintString(const S &s)
       {
          return PrintString(str::cstr(s), str::len(s)) ;
       }

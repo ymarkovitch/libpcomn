@@ -262,7 +262,7 @@ void adjacent_for_each(ForwardIterator begin, ForwardIterator end, Function f)
 }
 
 template <typename T>
-inline typename std::enable_if<std::is_trivially_copyable<T>::value, T *>::type
+inline std::enable_if_t<std::is_trivially_copyable<T>::value, T *>
 raw_copy(const T *first, const T *last, T *dest)
 {
    NOXCHECK(dest || first == last) ;
@@ -272,34 +272,24 @@ raw_copy(const T *first, const T *last, T *dest)
 }
 
 template <typename T>
-inline void raw_fill(T *first, T *last,
-                     const typename std::enable_if<
-                     std::is_scalar<T>::value
-                     && sizeof(T) == sizeof(char),
-                     T>::type &value)
+inline std::enable_if_t<(std::is_scalar<T>::value && sizeof(T) == sizeof(char)), void>
+raw_fill(T *first, T *last, T value)
 {
    NOXCHECK(first && last && first <= last || first == last) ;
    memset(first, value, last-first) ;
 }
 
 template <typename T>
-inline void raw_fill(T *first, T *last,
-                     const typename std::enable_if<
-                     std::is_scalar<T>::value
-                     && sizeof(T) == sizeof(wchar_t),
-                     T>::type &value)
+inline std::enable_if_t<(std::is_scalar<T>::value && sizeof(T) == sizeof(wchar_t)), void>
+raw_fill(T *first, T *last, T value)
 {
    NOXCHECK(first && last && first <= last || first == last) ;
    wmemset((wchar_t *)first, value, last-first) ;
 }
 
 template <typename T>
-inline void raw_fill(T *first, T *last,
-                     const typename std::enable_if<
-                     std::is_scalar<T>::value
-                     && sizeof(T) != sizeof(char)
-                     && sizeof(T) != sizeof(wchar_t),
-                     T>::type &value)
+inline std::enable_if_t<(std::is_scalar<T>::value && sizeof(T) != sizeof(char) && sizeof(T) != sizeof(wchar_t)), void>
+raw_fill(T *first, T *last, const T &value)
 {
    NOXCHECK(first && last && first <= last || first == last) ;
    std::fill(first, last, value) ;

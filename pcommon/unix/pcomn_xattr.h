@@ -65,7 +65,7 @@ inline bool xattr_supported(int fd)
 #undef PCOMN_CHECK_XA_SUPPORTED
 
 template<typename S1, typename S2>
-inline typename std::enable_if<is_strchar<S1, char>::value && is_strchar<S2, char>::value, ssize_t>::type
+inline std::enable_if_t<is_strchar<S1, char>::value && is_strchar<S2, char>::value, ssize_t>
 xattr_get(const S1 &path, const S2 &name, void *value, size_t size)
 {
    return ::getxattr(pcomn::str::cstr(path), pcomn::str::cstr(name), value, size) ;
@@ -120,7 +120,7 @@ inline bool has_xattr(const S1 &file, const S2 &name)
 }
 
 template<typename S1, typename S2>
-inline typename std::enable_if<is_strchar<S1, char>::value && is_strchar<S2, char>::value, bool>::type
+inline std::enable_if_t<is_strchar<S1, char>::value && is_strchar<S2, char>::value, bool>
 xattr_set(XAttrSetMode mode, const S1 &path, const S2 &name, const void *value, size_t size)
 {
    if (::setxattr(pcomn::str::cstr(path), pcomn::str::cstr(name), value, size, mode))
@@ -152,14 +152,14 @@ xattr_set(XAttrSetMode mode, int fd, const S &name, const void *value, size_t si
 }
 
 template<typename F, typename N, typename V>
-inline typename std::enable_if<is_strchar<N, char>::value && is_strchar<V, char>::value, bool>::type
+inline std::enable_if_t<(is_strchar<N, char>::value && is_strchar<V, char>::value), bool>
 xattr_set(XAttrSetMode mode, const F &file, const N &name, const V &value)
 {
    return xattr_set(mode, file, name, pcomn::str::cstr(value), pcomn::str::len(value)) ;
 }
 
 template<typename S1, typename S2>
-inline typename std::enable_if<is_strchar<S1, char>::value && is_strchar<S2, char>::value, bool>::type
+inline std::enable_if_t<(is_strchar<S1, char>::value && is_strchar<S2, char>::value), bool>
 xattr_del(const S1 &path, const S2 &name)
 {
    if (!::removexattr(pcomn::str::cstr(path), pcomn::str::cstr(name)))

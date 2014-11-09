@@ -111,6 +111,10 @@ void IteratorTests::Test_XForm_Iterator()
    CPPUNIT_LOG_EQUAL(strvector_t(const_mapped_iter(num_names, xform_iter(const_mapped_iter(numnums, numlist.begin()), atoi_cvt())),
                                  const_mapped_iter(num_names, xform_iter(const_mapped_iter(numnums, numlist.end()), atoi_cvt()))),
                      (strvector_t{"null", "zwei", "vier", "ein", "drei", "elf"})) ;
+
+   int s = 0 ;
+   for (auto i: std::make_pair(numlist.begin(), numlist.end())) s += i ;
+   CPPUNIT_LOG_EQUAL(s, 21) ;
 }
 
 struct Dummy ;

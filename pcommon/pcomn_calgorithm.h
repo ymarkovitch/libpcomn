@@ -26,7 +26,7 @@ namespace pcomn {
 /** Append contents of a container to the end of another container.
 *******************************************************************************/
 template<class Container1, class Container2>
-inline typename disable_if<has_key_type<typename std::remove_reference<Container1>::type>::value, Container1 &>::type
+inline disable_if_t<has_key_type<std::remove_reference_t<Container1> >::value, Container1 &>
 append_container(Container1 &&c1, const Container2 &c2)
 {
    c1.insert(c1.end(), c2.begin(), c2.end()) ;
@@ -35,7 +35,7 @@ append_container(Container1 &&c1, const Container2 &c2)
 
 /// Insert the contents of a container into a keyed container (like map or hash table).
 template<class KeyedContainer, class Container>
-inline typename std::enable_if<has_key_type<typename std::remove_reference<KeyedContainer>::type>::value, KeyedContainer &>::type
+inline std::enable_if_t<has_key_type<std::remove_reference_t<KeyedContainer> >::value, KeyedContainer &>
 append_container(KeyedContainer &&c1, const Container &c2)
 {
    c1.insert(c2.begin(), c2.end()) ;

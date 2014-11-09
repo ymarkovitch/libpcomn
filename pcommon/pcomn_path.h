@@ -184,7 +184,7 @@ struct dynabuf {
 
 /// @overload
 template<typename R, typename S>
-typename std::enable_if<is_compatible_strings<R, S>::value, R>::type
+std::enable_if_t<is_compatible_strings<R, S>::value, R>
 abspath(const S &path)
 {
    char buf[PATH_MAX + 1] ;
@@ -201,7 +201,7 @@ abspath(const basic_strslice<char> &path)
 
 /// @overload
 template<typename R, typename S>
-typename std::enable_if<is_compatible_strings<R, S>::value, R>::type
+std::enable_if_t<is_compatible_strings<R, S>::value, R>
 normpath(const S &path)
 {
    char buf[PATH_MAX + 1] ;
@@ -218,7 +218,7 @@ normpath(const basic_strslice<char> &path)
 
 /// @overload
 template<typename R, typename S>
-typename std::enable_if<is_compatible_strings<R, S>::value, R>::type
+std::enable_if_t<is_compatible_strings<R, S>::value, R>
 realpath(const S &path)
 {
    char buf[PATH_MAX + 1] ;
@@ -235,7 +235,7 @@ realpath(const basic_strslice<char> &path)
 
 /// @overload
 template<typename R>
-typename std::enable_if<is_strchar<R, char>::value, R>::type
+std::enable_if_t<is_strchar<R, char>::value, R>
 joinpath(const strslice &p1, const strslice &p2)
 {
    char buf[PATH_MAX + 1] ;
@@ -244,7 +244,7 @@ joinpath(const strslice &p1, const strslice &p2)
 
 /// @overload
 template<typename R>
-typename std::enable_if<is_strchar<R, char>::value, R>::type
+std::enable_if_t<is_strchar<R, char>::value, R>
 joinpath(const strslice &p1, const strslice &p2, const strslice &p3)
 {
    char buf1[PATH_MAX + 1] ;

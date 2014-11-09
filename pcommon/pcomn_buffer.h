@@ -369,14 +369,14 @@ static typename membuf_traits<T>::type *_is_buffer(T**) ;
 } // end of namespace pcomn::detail
 /// @endcond
 
-template<typename T> struct
-is_buffer : bool_constant<sizeof detail::_is_buffer(std::declval<T**>()) == sizeof(void *)> {} ;
+template<typename T> using
+is_buffer = bool_constant<sizeof detail::_is_buffer(std::declval<T**>()) == sizeof(void *)> ;
 
 template<typename T, typename Type> struct
-enable_if_buffer : public std::enable_if<is_buffer<T>::value, Type> {} ;
+enable_if_buffer : std::enable_if<is_buffer<T>::value, Type> {} ;
 
 template<typename T, typename Type> struct
-disable_if_buffer : public std::enable_if<!is_buffer<T>::value, Type> {} ;
+disable_if_buffer : std::enable_if<!is_buffer<T>::value, Type> {} ;
 
 /*******************************************************************************
                      template<typename C>

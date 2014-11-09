@@ -96,11 +96,11 @@ class Job : public Task {
       typedef typename std::result_of<Fn()>   functor_result ;
 
       template<typename T>
-      typename std::enable_if<std::is_convertible<T, int>::value, int>::type
+      std::enable_if_t<std::is_convertible<T, int>::value, int>
       call_functor(T *) { return _fn() ; }
 
       template<typename T>
-      typename disable_if<std::is_convertible<T, int>::value, int>::type
+      disable_if_t<std::is_convertible<T, int>::value, int>
       call_functor(T *) { _fn() ; return 1 ; }
 } ;
 

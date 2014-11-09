@@ -15,7 +15,7 @@
   Compile-time algorithms and functions.
 *******************************************************************************/
 #include <pcomn_integer.h>
-#include <type_traits>
+#include <pcomn_meta.h>
 
 namespace pcomn {
 
@@ -103,7 +103,7 @@ inline void *static_memset(void *mem)
 }
 
 template<int bitpattern, typename T>
-inline typename std::enable_if<std::is_pointer<T>::value, T>::type static_fill(T mem)
+inline std::enable_if_t<std::is_pointer<T>::value, T> static_fill(T mem)
 {
    static_memset<bitpattern, sizeof *mem>(mem) ;
    return mem ;

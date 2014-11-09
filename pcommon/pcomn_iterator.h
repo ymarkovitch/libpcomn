@@ -691,16 +691,14 @@ namespace std {
 /*******************************************************************************
  Allow to use range-based for std::pair<Iterator, Iterator>
 *******************************************************************************/
-template<typename Iterator>
-inline Iterator begin(const pair<Iterator, Iterator> &range,
-                      pcomn::identity_type<typename iterator_traits<Iterator>::iterator_category> = {})
+template<typename I>
+inline enable_if_t<pcomn::is_iterator<I>::value, I> begin(const pair<I, I> &range)
 {
    return range.first ;
 }
 
-template<typename Iterator>
-inline Iterator end(const pair<Iterator, Iterator> &range,
-                    pcomn::identity_type<typename iterator_traits<Iterator>::iterator_category> = {})
+template<typename I>
+inline enable_if_t<pcomn::is_iterator<I>::value, I> end(const pair<I, I> &range)
 {
    return range.second ;
 }

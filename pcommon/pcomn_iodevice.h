@@ -50,7 +50,7 @@ template<typename Device>
 struct is_writable<Device &> : is_writable<Device> {} ;
 
 template<typename Device, typename T>
-struct enable_if_writable : public std::enable_if<is_writable<Device>::value, T> {} ;
+struct enable_if_writable : std::enable_if<is_writable<Device>::value, T> {} ;
 
 /******************************************************************************/
 /** Null writer: an infinite sink
@@ -187,7 +187,7 @@ template<typename Device>
 struct is_readable<Device &> : is_readable<Device> {} ;
 
 template<typename Device, typename T>
-struct enable_if_readable : public std::enable_if<is_readable<Device>::value, T> {} ;
+struct enable_if_readable : std::enable_if<is_readable<Device>::value, T> {} ;
 
 /******************************************************************************/
 /** ISO C stdio FILE reader
@@ -315,28 +315,28 @@ inline ssize_t __write_data(T *device_ptr, writer<W>, const void *data, size_t s
 }
 
 template<typename T>
-inline typename std::enable_if<std::is_pod<T>::value, ssize_t>::type
+inline std::enable_if_t<std::is_pod<T>::value, ssize_t>
 write_data(T device, const void *data, size_t size)
 {
    return __write_data(&device, get_writer(&device), data, size) ;
 }
 
 template<typename T>
-inline typename disable_if<std::is_pod<T>::value, ssize_t>::type
+inline disable_if_t<std::is_pod<T>::value, ssize_t>
 write_data(T &device, const void *data, size_t size)
 {
    return __write_data(&device, get_writer(&device), data, size) ;
 }
 
 template<typename T>
-inline typename std::enable_if<std::is_pod<T>::value, ssize_t>::type
+inline std::enable_if_t<std::is_pod<T>::value, ssize_t>
 write_data(T device, const strslice &slice)
 {
    return __write_data(&device, get_writer(&device), slice.begin(), slice.size()) ;
 }
 
 template<typename T>
-inline typename disable_if<std::is_pod<T>::value, ssize_t>::type
+inline disable_if_t<std::is_pod<T>::value, ssize_t>
 write_data(T &device, const strslice &slice)
 {
    return __write_data(&device, get_writer(&device), slice.begin(), slice.size()) ;
@@ -352,25 +352,25 @@ inline ssize_t __read_data(T *device_ptr, reader<R>, void *data, size_t size)
 }
 
 template<typename T>
-inline typename std::enable_if<std::is_pod<T>::value, ssize_t>::type
+inline std::enable_if_t<std::is_pod<T>::value, ssize_t>
 read_data(T device, void *buf, size_t size)
 {
    return __read_data(&device, get_reader(&device), buf, size) ;
 }
 
 template<typename T>
-inline typename disable_if<std::is_pod<T>::value, ssize_t>::type
+inline disable_if_t<std::is_pod<T>::value, ssize_t>
 read_data(T &device, void *buf, size_t size)
 {
    return __read_data(&device, get_reader(&device), buf, size) ;
 }
 
 template<typename T>
-inline typename std::enable_if<std::is_pod<T>::value, int>::type
+inline std::enable_if_t<std::is_pod<T>::value, int>
 get_char(T device) { return get_reader(&device).get_char(device) ; }
 
 template<typename T>
-inline typename disable_if<std::is_pod<T>::value, int>::type
+inline disable_if_t<std::is_pod<T>::value, int>
 get_char(T &device) { return get_reader(&device).get_char(device) ; }
 
 } // end of namespace pcomn::io

@@ -43,7 +43,7 @@ struct is_atomic : bool_constant<std::is_pointer<T>::value ||
                                  sizeof(T) >= 4 && sizeof(T) <= 8> {} ;
 
 template<typename T, typename R> struct
-enable_if_atomic : public std::enable_if<is_atomic<T>::value, R> {} ;
+enable_if_atomic : std::enable_if<is_atomic<T>::value, R> {} ;
 
 /******************************************************************************/
 /** @namespace pcomn::atomic_op
@@ -58,10 +58,10 @@ template<> struct traits<4, false>   { typedef uatomic32_t type ; } ;
 template<> struct traits<8, true>    { typedef atomic64_t type ; } ;
 template<> struct traits<8, false>   { typedef uatomic64_t type ; } ;
 
-#define PCOMN_ATOMIC_RESULT(result)                                     \
-   typename std::enable_if<(sizeof(T)==4 || sizeof(T)==8) &&                 \
-                           std::alignment_of<T>::value >= std::alignment_of<typename traits<sizeof(T)>::type>::value, \
-      result>::type
+template<typename T, typename R>
+using
+atomic_result_t = std::enable_if_t<((sizeof(T)==4 || sizeof(T)==8) &&
+                                    std::alignment_of<T>::value >= std::alignment_of<typename traits<sizeof(T)>::type>::value), R> ;
 
 /// Atomic preincrement
 template<typename T>
@@ -97,7 +97,7 @@ sub(T *value, ptrdiff_t subtrahend)
 
 /// Atomic get value
 template<typename T>
-inline PCOMN_ATOMIC_RESULT(T) get(T *value)
+inline atomic_result_t<T, T> get(T *value)
 {
    typedef typename traits<sizeof(T)>::type atomic ;
 
@@ -107,7 +107,7 @@ inline PCOMN_ATOMIC_RESULT(T) get(T *value)
 
 /// Atomic set value and return previous
 template<typename T>
-inline PCOMN_ATOMIC_RESULT(T) xchg(T *value, T new_value)
+inline atomic_result_t<T, T> xchg(T *value, T new_value)
 {
    typedef typename traits<sizeof(T)>::type atomic ;
    atomic result = implementor<atomic, true>::xchg((atomic *)(void *)value,
@@ -117,7 +117,7 @@ inline PCOMN_ATOMIC_RESULT(T) xchg(T *value, T new_value)
 
 /// Atomic compare-and-swap operation
 template<typename T>
-inline PCOMN_ATOMIC_RESULT(bool) cas(T *value, T old_value, T new_value)
+inline atomic_result_t<T, bool> cas(T *value, T old_value, T new_value)
 {
    typedef typename traits<sizeof(T)>::type atomic ;
 
@@ -129,7 +129,7 @@ inline PCOMN_ATOMIC_RESULT(bool) cas(T *value, T old_value, T new_value)
 /// Atomic set bound
 /// @return true, is a value was set; false, if value was already changed
 template<typename T, typename Predicate>
-inline PCOMN_ATOMIC_RESULT(bool) set_bound(T *value, T bound, Predicate pred)
+inline atomic_result_t<T, bool> set_bound(T *value, T bound, Predicate pred)
 {
    bool result = false ;
    for(T current ; !pred((current = get(value)), bound) && !(result|=cas(value, current, bound)) ;) ;
@@ -137,7 +137,7 @@ inline PCOMN_ATOMIC_RESULT(bool) set_bound(T *value, T bound, Predicate pred)
 }
 
 template<typename T>
-inline PCOMN_ATOMIC_RESULT(T) set_flags(T *value, T flags)
+inline atomic_result_t<T, T> set_flags(T *value, T flags)
 {
    T cf ;
    while ((((cf = get(value)) & flags) != flags) && !cas(value, cf, cf | flags)) ;
@@ -145,7 +145,7 @@ inline PCOMN_ATOMIC_RESULT(T) set_flags(T *value, T flags)
 }
 
 template<typename T>
-inline PCOMN_ATOMIC_RESULT(T) clear_flags(T *value, T flags)
+inline atomic_result_t<T, T> clear_flags(T *value, T flags)
 {
    T cf ;
    while (((cf = get(value)) & flags) && !cas(value, cf, cf &~ flags)) ;

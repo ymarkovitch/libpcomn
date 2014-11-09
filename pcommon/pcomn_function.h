@@ -223,7 +223,7 @@ inline typename deref_traits<T>::type &dereference(T &v)
 }
 
 template<typename T>
-inline typename disable_if<is_dereferenceable<T>::value, T &>::type &dereference(T &v)
+inline disable_if_t<is_dereferenceable<T>::value, T &> &dereference(T &v)
 {
    return deref<T>()(v) ;
 }
@@ -491,7 +491,7 @@ std::function<R()> bind_thisptr(R (T::element_type::*memfn)() const, T thisptr)
 #define P_PLACELIST_(nargs) P_FOR(nargs, P_PLACEHOLDER_)
 #define P_BIND_THISPTR_(argc)                                           \
    template<typename R, typename C, typename T, P_TARGLIST(argc, typename)> \
-   typename std::enable_if<std::is_base_of<C, T>::value, std::function<R(P_TARGLIST(argc))> >::type \
+   std::enable_if_t<std::is_base_of<C, T>::value, std::function<R(P_TARGLIST(argc))> > \
    bind_thisptr(R (C::*memfn)(P_TARGLIST(argc)), T *thisptr)            \
    {                                                                    \
       namespace _ = std::placeholders ;                                 \
@@ -499,7 +499,7 @@ std::function<R()> bind_thisptr(R (T::element_type::*memfn)() const, T thisptr)
       return function_type(std::bind(memfn, thisptr, P_PLACELIST_(argc))) ; \
    }                                                                    \
    template<typename R, typename C, typename T, P_TARGLIST(argc, typename)> \
-   typename std::enable_if<std::is_base_of<C, T>::value, std::function<R(P_TARGLIST(argc))> >::type \
+   std::enable_if_t<std::is_base_of<C, T>::value, std::function<R(P_TARGLIST(argc))> > \
    bind_thisptr(R (C::*memfn)(P_TARGLIST(argc)) const, const T *thisptr) \
    {                                                                    \
       namespace _ = std::placeholders ;                                 \

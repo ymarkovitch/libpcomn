@@ -411,7 +411,7 @@ inline T flag_if(T flag, bool cond)
 }
 
 template<typename T, typename U>
-inline typename std::enable_if<std::is_convertible<U, T>::value, T>::type
+inline std::enable_if_t<std::is_convertible<U, T>::value, T>
 xchange(T &dest, const U &src)
 {
    T old (std::move(dest)) ;

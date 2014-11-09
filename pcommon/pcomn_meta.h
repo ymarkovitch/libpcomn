@@ -46,8 +46,12 @@ using remove_volatile_t = typename remove_volatile<T>::type ;
 
 template<typename T>
 using remove_pointer_t = typename remove_pointer<T>::type ;
+template<typename T>
+using remove_reference_t = typename remove_reference<T>::type ;
 
-template<bool B, typename  T, typename F>
+template<bool B, typename T>
+using enable_if_t = typename enable_if<B, T>::type ;
+template<bool B, typename T, typename F>
 using conditional_t = typename conditional<B, T, F>::type ;
 }
 
@@ -61,8 +65,11 @@ using bool_constant = std::integral_constant<bool, v> ;
 /******************************************************************************/
 /** disable_if is a complement to std::enable_if
 *******************************************************************************/
-template<bool enabled, typename T>
-using disable_if = std::enable_if<!enabled, T> ;
+template<bool disabled, typename T>
+using disable_if = std::enable_if<!disabled, T> ;
+
+template<bool disabled, typename T>
+using disable_if_t = typename disable_if<disabled, T>::type ;
 
 /*******************************************************************************
  Template compile-time logic operations.
