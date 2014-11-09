@@ -7,27 +7,19 @@
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Basic template metaprogramming support.
-                  The template metaprogramming support in e.g. Boost is
-                  _indisputably_ much more extensive, but PCommon library should
-                  not depend on Boost (which is besides simply huge).
-                  Besides, from now on pcommon supports only "good" (or at least
-                  "good enough") compilers with decent C++ Standard support in order
-                  to keep its (pcommon's) own code as simple and clean as possible,
-                  in contrast to Boost and other "industrial-grade" libraries that
-                  are much more portable at the cost of cryptic workarounds and
-                  bloated portability layers.
-
-                  This header require the compiler to properly support partial template
-                  specialization and SFINAE rule.
-
-                  Please note that all templates are Loki-compliant:
-                        1. If the result of template calculation is a type,
-                           its name is Foo::type.
-                        2. If the result of template calculation is a compile-time
-                           constant, its name is Foo::value.
 
  PROGRAMMED BY:   Yakov Markovitch
  CREATION DATE:   14 Nov 2006
+*******************************************************************************/
+/** @file Basic template metaprogramming support
+
+ The template metaprogramming support in e.g. Boost is _indisputably_ much more
+ extensive, but PCommon library should not depend on Boost.
+
+ Besides, pcommon @em requires C++11 support to the extent of at least Visual Studio 2013
+ compiler in order to keep its own code as simple and clean as possible, in contrast to
+ Boost and other "industrial-grade" libraries that are much more portable at the cost of
+ cryptic workarounds and bloated portability layers.
 *******************************************************************************/
 #include <pcomn_platform.h>
 #include <pcomn_macros.h>
@@ -37,6 +29,29 @@
 #include <utility>
 #include <stdlib.h>
 #include <type_traits>
+
+/*******************************************************************************
+ C++14 definitions for C++11 compiler
+*******************************************************************************/
+#if __cplusplus <= 201103
+
+namespace std {
+
+template<typename T>
+using remove_cv_t       = typename remove_cv<T>::type ;
+template<typename T>
+using remove_const_t    = typename remove_const<T>::type ;
+template<typename T>
+using remove_volatile_t = typename remove_volatile<T>::type ;
+
+template<typename T>
+using remove_pointer_t = typename remove_pointer<T>::type ;
+
+template<bool B, typename  T, typename F>
+using conditional_t = typename conditional<B, T, F>::type ;
+}
+
+#endif /* __cplusplus > 201103 */
 
 namespace pcomn {
 
@@ -55,22 +70,22 @@ using disable_if = std::enable_if<!enabled, T> ;
 #define PCOMN_CTVALUE(type, name, expr) static const type name = (expr)
 
 template<class L, class R>
-struct ct_and : bool_constant<L::value && R::value> {} ;
+using ct_and = bool_constant<L::value && R::value> ;
 template<class L, class R>
-struct ct_or : bool_constant<L::value || R::value> {} ;
+using ct_or = bool_constant<L::value || R::value> ;
 template<class L, class R>
-struct ct_xor : bool_constant<!L::value != !R::value> {} ;
+using ct_xor = bool_constant<!L::value != !R::value> ;
 template<class L>
-struct ct_not : bool_constant<!L::value> {} ;
+using ct_not = bool_constant<!L::value> ;
 // While we can express ct_nand, ct_nor and ct_nxor in terms of already
 // defined templates (using public inheritance), I prefer to define their
 // 'value' member directly (to take some burden from the compiler)
 template<class L, class R>
-struct ct_nand : bool_constant<!(L::value && R::value)> {} ;
+using ct_nand = bool_constant<!(L::value && R::value)> ;
 template<class L, class R>
-struct ct_nor : bool_constant<!(L::value || R::value)> {} ;
+using ct_nor = bool_constant<!(L::value || R::value)> ;
 template<class L, class R>
-struct ct_nxor : bool_constant<!L::value == !R::value> {} ;
+using ct_nxor = bool_constant<!L::value == !R::value> ;
 
 /*******************************************************************************
  Compile-time min/max.
@@ -227,6 +242,6 @@ template<typename T>
 struct is_trivially_copyable :
          pcomn::ct_and<std::has_trivial_copy_constructor<T>, std::has_trivial_copy_assign<T> > {} ;
 }
-#endif
+#endif // PCOMN_WORKAROUND(__GNUC_VER__, < 500)
 
 #endif /* __PCOMN_META_H */
