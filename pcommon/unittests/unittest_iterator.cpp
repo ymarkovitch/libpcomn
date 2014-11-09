@@ -119,6 +119,7 @@ void IteratorTests::Test_Iterator_Type_Traits()
 {
    PCOMN_STATIC_CHECK(!is_iterator<void>::value) ;
    PCOMN_STATIC_CHECK(!is_iterator<int>::value) ;
+   PCOMN_STATIC_CHECK(!is_iterator<void *>::value) ;
 
    PCOMN_STATIC_CHECK((is_iterator<Dummy *, std::random_access_iterator_tag>::value)) ;
    PCOMN_STATIC_CHECK(is_iterator<char *>::value) ;
@@ -129,7 +130,7 @@ void IteratorTests::Test_Iterator_Type_Traits()
    PCOMN_STATIC_CHECK(is_iterator<intlist_t::const_iterator>::value) ;
 
    PCOMN_STATIC_CHECK((is_iterator<intlist_t::const_iterator, std::forward_iterator_tag>::value)) ;
-   //PCOMN_STATIC_CHECK((!is_iterator<intlist_t::const_iterator, std::random_access_iterator_tag>::value)) ;
+   PCOMN_STATIC_CHECK((!is_iterator<intlist_t::const_iterator, std::random_access_iterator_tag>::value)) ;
 }
 
 int main(int argc, char *argv[])

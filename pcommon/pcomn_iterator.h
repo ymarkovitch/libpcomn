@@ -641,16 +641,22 @@ typedef const_buffer_iterator<block_buffer> const_block_buffer_iterator ;
  *
  *******************************************************************************/
 namespace detail {
-template<typename>
-std::false_type test_iterator_category(...) ;
-template<typename T>
-std::true_type test_iterator_category(typename std::iterator_traits<T>::iterator_category const volatile *) ;
+template<typename T, typename = std::remove_pointer_t<std::remove_cv_t<T> > >
+struct icategory : std::iterator_traits<T> {} ;
+template<typename T> struct icategory<T, void> {} ;
+
+template<typename, typename>
+std::false_type test_icategory(...) ;
+
+template<typename T, typename C>
+std::is_base_of<C, typename icategory<T>::iterator_category>
+test_icategory(typename icategory<T>::iterator_category const volatile *) ;
 }
 
 /// type trait to check if the type is an iterator of at least specified category
 ///
 template<typename T, typename C = std::input_iterator_tag>
-using is_iterator = decltype(detail::test_iterator_category<T>(0)) ;
+using is_iterator = decltype(detail::test_icategory<T, C>(0)) ;
 
 /*******************************************************************************
  Helper functions that construct adapted iterators on-the-fly
