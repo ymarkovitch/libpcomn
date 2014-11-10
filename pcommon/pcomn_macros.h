@@ -67,8 +67,8 @@
 
 #define PCOMN_THREEWAY(lhs, rhs, vlt, veq, vgt) ((lhs) < (rhs) ? (vlt) : ((lhs) == (rhs) ? (veq) : (vgt)))
 
-#define P_1ST(a1, a2) a1
-#define P_2ND(a1, a2) a2
+#define P_1ST(a1, ...) a1
+#define P_2ND(a1, a2, ...) a2
 
 /*******************************************************************************
  Arguments declaration macros
