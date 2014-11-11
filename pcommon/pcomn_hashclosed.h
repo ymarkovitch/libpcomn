@@ -388,9 +388,11 @@ class closed_hashtable {
 
       iterator begin() { return empty() ? end() : iterator(begin_buckets()) ; }
       const_iterator begin() const { return empty() ? end() : const_iterator(begin_buckets()) ; }
+      const_iterator cbegin() const { return begin() ; }
 
       iterator end() { return iterator(end_buckets()) ; }
       const_iterator end() const { return const_iterator(end_buckets()) ; }
+      const_iterator cend() const { return end() ; }
 
       friend std::ostream &operator<<(std::ostream &os, const closed_hashtable &v)
       {
