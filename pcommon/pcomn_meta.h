@@ -125,25 +125,6 @@ const T default_constructed<T>::value ;
 /*******************************************************************************
  Type testers
 *******************************************************************************/
-/// @cond
-namespace detail {
-// Not too cosher and not so cool as in Boost, but will do
-union single_counted {
-      double _i[2] ;
-      void * _p ;
-} ;
-} // end of namespace pcomn::detail
-/// @endcond
-
-template<unsigned N> class ct_counter { detail::single_counted _c[N+1] ; ct_counter() ; } ;
-
-PCOMN_STATIC_CHECK(sizeof(ct_counter<2>) == 3*sizeof(ct_counter<0>)) ;
-
-#define PCOMN_CTCOUNT(expr) (sizeof(expr)/sizeof(::pcomn::ct_counter<0>) - 1)
-
-typedef ct_counter<false> ct_false ;
-typedef ct_counter<true>  ct_true ;
-
 template<typename Base, typename Derived>
 struct is_base_of_strict :
          bool_constant<!(std::is_same<Base, Derived>::value ||
@@ -228,6 +209,12 @@ PCOMN_DEFINE_TYPE_MEMBER_TEST(pointer) ;
 namespace detail { PCOMN_DEFINE_TYPE_MEMBER_TEST(type) ; }
 template<typename T>
 struct has_type_type : detail::has_type<T> {} ;
+
+/******************************************************************************/
+/** Uniform pair (i.e. pair<T,T>)
+*******************************************************************************/
+template<typename T>
+using unipair = std::pair<T, T> ;
 
 } // end of namespace pcomn
 /// @endcond
