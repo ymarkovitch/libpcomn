@@ -53,14 +53,14 @@ const char *num_names_[] =
    "zwei",
    "drei",
    "vier",
-   "funf",
+   "fuenf",
    "sechs",
    "sieben",
    "acht",
    "neun",
    "zehn",
    "elf",
-   "zwolf"
+   "zwoelf"
 } ;
 
 const char *num_nums[] =
@@ -82,15 +82,38 @@ const char *num_nums[] =
 
 static simple_slice<const char *> num_names { num_names_ } ;
 
+const char * const *num_names_ptr = num_names_ ;
+
 void IteratorTests::Test_Mapped_Iterator()
 {
    intvector_t numvec {0, 2, 4, 1, 3, 11} ;
    intlist_t numlist (numvec.begin(), numvec.end()) ;
+   std::map<int, std::string> numstrmap ;
+
+   for (int i: numvec)
+      numstrmap[i] = num_names[i] ;
 
    CPPUNIT_LOG_EQUAL(strvector_t(const_mapped_iter(num_names, numvec.begin()), const_mapped_iter(num_names, numvec.end())),
                      (strvector_t{"null", "zwei", "vier", "ein", "drei", "elf"})) ;
+
    CPPUNIT_LOG_EQUAL(strlist_t(const_mapped_iter(num_names, numvec.begin()), const_mapped_iter(num_names, numvec.end())),
                      (strlist_t{"null", "zwei", "vier", "ein", "drei", "elf"})) ;
+
+   // Test indexed iterators over associative containers
+   /*
+   CPPUNIT_LOG_EQUAL(strvector_t(const_mapped_iter(numstrmap, numvec.begin()),
+                                 const_mapped_iter(numstrmap, numvec.end())),
+                     (strvector_t{"null", "zwei", "vier", "ein", "drei", "elf"})) ;
+   */
+
+   std::map<std::string, int> strnummap ;
+   CPPUNIT_LOG_RUN(std::copy(numvec.begin(), numvec.end(), mapped_iter(strnummap, num_names.begin()))) ;
+   CPPUNIT_LOG_EQUAL(strnummap, (std::map<std::string, int>{{"null", 0}, {"ein", 2}, {"zwei", 4}, {"drei", 1}, {"vier", 3}, {"fuenf", 11}})) ;
+
+   // Test indexed iterators over pointers
+   CPPUNIT_LOG_EQUAL(strvector_t(const_mapped_iter(num_names_ptr, numvec.begin()),
+                                 const_mapped_iter(num_names_ptr, numvec.end())),
+                     (strvector_t{"null", "zwei", "vier", "ein", "drei", "elf"})) ;
 }
 
 void IteratorTests::Test_XForm_Iterator()

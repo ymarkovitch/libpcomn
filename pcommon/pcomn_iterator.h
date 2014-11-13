@@ -304,40 +304,40 @@ class const_mapped_iterator ;
 
 /// @cond
 namespace detail {
-template<typename C, bool, bool = has_mapped_type<C>::value> struct container_reference ;
-template<typename C> struct container_reference<C, false, false> { typedef typename C::reference type ; } ;
-template<typename C> struct container_reference<C, false, true>  { typedef typename C::mapped_type &type ; } ;
-template<typename C> struct container_reference<C, true, false>  { typedef typename C::const_reference type ; } ;
-template<typename C> struct container_reference<C, true, true>   { typedef typename C::mapped_type const &type ; } ;
+template<typename C, bool = has_mapped_type<C>::value> struct container_reference ;
+
+template<typename C> struct container_reference<C * const, false> { typedef C &type ; } ;
+template<typename C> struct container_reference<C *, false> { typedef C &type ; } ;
+
+template<typename C>
+struct container_reference<C, false> :
+         std::conditional<std::is_const<C>::value, typename C::const_reference, typename C::reference> {} ;
+
+template<typename C>
+struct container_reference<C, true> :
+         std::conditional<std::is_const<C>::value, typename C::mapped_type const &, typename C::mapped_type &> {} ;
 }
 /// @endcond
 
 template<typename Container, typename Iterator,
-         typename Reference = typename detail::container_reference<Container, false>::type>
+         typename Reference = typename detail::container_reference<Container>::type>
 class mapped_iterator :
          public std::iterator<typename std::iterator_traits<Iterator>::iterator_category,
-                              typename Container::value_type,
+                              std::remove_reference_t<Reference>,
                               typename std::iterator_traits<Iterator>::difference_type,
                               void, Reference> {
 
-      friend class const_mapped_iterator<Container, Iterator, Reference> ;
-
       typedef std::iterator<typename std::iterator_traits<Iterator>::iterator_category,
-                            typename Container::value_type,
+                            std::remove_reference_t<Reference>,
                             typename std::iterator_traits<Iterator>::difference_type,
                             void, Reference> ancestor ;
    public:
-      typedef typename ancestor::value_type        value_type ;
-      typedef typename ancestor::difference_type   difference_type ;
+      using typename ancestor::value_type ;
+      using typename ancestor::reference ;
+      using typename ancestor::difference_type ;
 
-      mapped_iterator() :
-         _container(NULL)
-      {}
-
-      mapped_iterator(Container &c, const Iterator &i) :
-         _container(&c),
-         _iter(i)
-      {}
+      mapped_iterator() : _container() {}
+      mapped_iterator(Container &c, const Iterator &i) : _container(&c), _iter(i) {}
 
       mapped_iterator &operator++() { ++_iter ; return *this ; }
       mapped_iterator &operator--() { --_iter ; return *this ; }
@@ -373,91 +373,12 @@ class mapped_iterator :
 
       PCOMN_DEFINE_RELOP_FUNCTIONS(friend, mapped_iterator) ;
 
-      Reference operator*() const { return (*_container)[*_iter] ; }
+      reference operator*() const { return (*_container)[*_iter] ; }
 
    private:
       Container  *_container ;
       Iterator    _iter ;
 } ;
-
-/******************************************************************************/
-/** See mapped_iterator
-*******************************************************************************/
-template<typename Container, typename Iterator,
-         typename Reference = typename detail::container_reference<Container, true>::type>
-class const_mapped_iterator :
-         public std::iterator<typename std::iterator_traits<Iterator>::iterator_category,
-                              typename Container::value_type,
-                              typename std::iterator_traits<Iterator>::difference_type,
-                              void, Reference> {
-
-
-      typedef std::iterator<typename std::iterator_traits<Iterator>::iterator_category,
-                            typename Container::value_type,
-                            typename std::iterator_traits<Iterator>::difference_type,
-                            void, Reference> ancestor ;
-
-   public:
-      typedef typename ancestor::value_type        value_type ;
-      typedef typename ancestor::difference_type   difference_type ;
-
-      const_mapped_iterator() :
-         _container(NULL)
-      {}
-
-      const_mapped_iterator(const Container &c, const Iterator &i) :
-         _container(&c),
-         _iter(i)
-      {}
-
-      const_mapped_iterator(const mapped_iterator<Container, Iterator> &i) :
-         _container(i._container),
-         _iter(i._iter)
-      {}
-
-      const_mapped_iterator &operator++() { ++_iter ; return *this ; }
-      const_mapped_iterator &operator--() { --_iter ; return *this ; }
-
-      // Post(inc|dec)rement
-      PCOMN_DEFINE_POSTCREMENT_METHODS(const_mapped_iterator) ;
-
-      const_mapped_iterator &operator+=(difference_type diff) { _iter += diff ; return *this ; }
-      const_mapped_iterator &operator-=(difference_type diff) { _iter -= diff ; return *this ; }
-
-      const_mapped_iterator operator+(difference_type diff) const
-      {
-         return const_mapped_iterator(*this) += diff ;
-      }
-      const_mapped_iterator operator-(difference_type diff) const
-      {
-         return const_mapped_iterator(*this) -= diff ;
-      }
-
-      difference_type operator-(const const_mapped_iterator &other) const
-      {
-         return _iter - other._iter ;
-      }
-
-      friend bool operator==(const const_mapped_iterator &left,
-                             const const_mapped_iterator &right)
-      {
-         return left._iter == right._iter ;
-      }
-      friend bool operator<(const const_mapped_iterator &left,
-                            const const_mapped_iterator &right)
-      {
-         return left._iter < right._iter ;
-      }
-
-      PCOMN_DEFINE_RELOP_FUNCTIONS(friend, const_mapped_iterator) ;
-
-      Reference operator*() const { return (*_container)[*_iter] ; }
-
-   private:
-      const Container  *_container ;
-      Iterator          _iter ;
-} ;
-
 
 /******************************************************************************/
 /** Wrapper over any iterator converting dereferenced value
@@ -668,9 +589,9 @@ inline mapped_iterator<Container, Iter> mapped_iter(Container &c, const Iter &i)
 }
 
 template<class Container, typename Iter>
-inline const_mapped_iterator<Container, Iter> const_mapped_iter(const Container &c, const Iter &i)
+inline mapped_iterator<const Container, Iter> const_mapped_iter(const Container &c, const Iter &i)
 {
-   return const_mapped_iterator<Container, Iter>(c, i) ;
+   return mapped_iterator<const Container, Iter>(c, i) ;
 }
 
 template<typename Iterator, typename Converter>

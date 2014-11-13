@@ -33,11 +33,11 @@ namespace pcomn {
 *******************************************************************************/
 template<typename Value,
          typename ExtractKey = pcomn::identity<Value>,
-         typename Hash = pcomn::hash_fn<typename noref_result_of<ExtractKey(Value)>::type>,
-         typename Pred = std::equal_to<typename noref_result_of<ExtractKey(Value)>::type> >
+         typename Hash = pcomn::hash_fn<noref_result_of_t<ExtractKey(Value)> >,
+         typename Pred = std::equal_to<noref_result_of_t<ExtractKey(Value)> > >
 class cacher {
    public:
-      typedef typename noref_result_of<ExtractKey(Value)>::type key_type ;
+      typedef noref_result_of_t<ExtractKey(Value)> key_type ;
       typedef Value       value_type ;
       typedef Hash        hasher ;
       typedef Pred        key_equal ;

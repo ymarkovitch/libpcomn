@@ -41,30 +41,24 @@ class simple_slice {
 
       enum { is_const_value = std::is_const<value_type>::value } ;
 
-      simple_slice() :
-         _start(NULL),
-         _finish(NULL)
-      {}
+      constexpr simple_slice() : _start(), _finish() {}
 
       simple_slice(const simple_slice<typename std::remove_const<value_type>::type> &src) :
          _start(const_cast<T *>(src.begin())),
          _finish(const_cast<T *>(src.end()))
       {}
 
-      simple_slice(value_type *start, value_type *finish) :
-         _start(start),
-         _finish(finish)
+      constexpr simple_slice(value_type *start, value_type *finish) :
+         _start(start), _finish(finish)
       {}
 
-      simple_slice(value_type *start, size_t sz) :
-         _start(start),
-         _finish(_start + sz)
+      constexpr simple_slice(value_type *start, size_t sz) :
+         _start(start), _finish(_start + sz)
       {}
 
       template<size_t n>
-      simple_slice(value_type (&data)[n]) :
-         _start(data),
-         _finish(data + n)
+      constexpr simple_slice(value_type (&data)[n]) :
+         _start(data), _finish(data + n)
       {}
 
       simple_slice(typename std::conditional<is_const_value,
@@ -75,10 +69,10 @@ class simple_slice {
       {}
 
       /// Get the count of slice elements
-      size_t size() const { return _finish - _start ; }
+      constexpr size_t size() const { return _finish - _start ; }
 
       /// Indicate that the slice is empty
-      bool empty() const { return !size() ; }
+      constexpr bool empty() const { return !size() ; }
 
       simple_slice operator()(ptrdiff_t from, ptrdiff_t to = INT_MAX) const
       {
@@ -97,8 +91,8 @@ class simple_slice {
       iterator begin() { return _start ; }
       iterator end() { return _finish ; }
 
-      const_iterator begin() const { return _start ; }
-      const_iterator end() const { return _finish ; }
+      constexpr const_iterator begin() const { return _start ; }
+      constexpr const_iterator end() const { return _finish ; }
 
       value_type &front() { return *_start ; }
       value_type &back() { return *(_finish-1) ; }

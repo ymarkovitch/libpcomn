@@ -133,8 +133,8 @@ struct closed_hashtable_item<Value *> : closed_hashitem_base {
 *******************************************************************************/
 template<typename Value,
          typename ExtractKey = pcomn::identity<Value>,
-         typename Hash = pcomn::hash_fn<typename noref_result_of<ExtractKey(Value)>::type>,
-         typename Pred = std::equal_to<typename noref_result_of<ExtractKey(Value)>::type> >
+         typename Hash = pcomn::hash_fn<noref_result_of_t<ExtractKey(Value)> >,
+         typename Pred = std::equal_to<noref_result_of_t<ExtractKey(Value)> > >
 class closed_hashtable {
       // Only TriviallyCopyable items are allowed!
       PCOMN_STATIC_CHECK(std::is_trivially_copyable<Value>::value || std::is_literal_type<Value>::value) ;
@@ -144,7 +144,7 @@ class closed_hashtable {
       typedef closed_hashtable_item<Value> bucket_type ;
 
    public:
-      typedef typename noref_result_of<ExtractKey(Value)>::type key_type ;
+      typedef noref_result_of_t<ExtractKey(Value)> key_type ;
       typedef Value       value_type ;
       typedef Hash        hasher ;
       typedef Pred        key_equal ;
@@ -158,7 +158,7 @@ class closed_hashtable {
          public std::iterator<std::forward_iterator_tag, Value, ptrdiff_t, const Value *, const Value &>
       {
             friend class closed_hashtable<Value, ExtractKey, Hash, Pred> ;
-            typedef typename std::conditional<IsConstant, const bucket_type *, bucket_type *>::type item_pointer ;
+            typedef std::conditional_t<IsConstant, const bucket_type *, bucket_type *> item_pointer ;
 
          public:
             typedef ptrdiff_t    difference_type ;
@@ -404,8 +404,6 @@ class closed_hashtable {
 
    private:
       template<bool UseStaticBuckets, bool = true> union combined_buckets ;
-      friend union combined_buckets<true> ;
-      friend union combined_buckets<false> ;
 
       /*************************************************************************
         Common state for both dynamic and static buckets.

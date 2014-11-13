@@ -53,6 +53,10 @@ template<bool B, typename T>
 using enable_if_t = typename enable_if<B, T>::type ;
 template<bool B, typename T, typename F>
 using conditional_t = typename conditional<B, T, F>::type ;
+
+template<typename T>
+using result_of_t = typename result_of<T>::type ;
+
 }
 
 #endif /* __cplusplus > 201103 */
@@ -155,7 +159,10 @@ template<typename> struct noref_result_of ;
 
 template<typename F, typename... ArgTypes>
 struct noref_result_of<F(ArgTypes...)> :
-         std::remove_reference<typename std::result_of<F(ArgTypes...)>::type> {} ;
+         std::remove_reference<std::result_of_t<F(ArgTypes...)> > {} ;
+
+template<typename T>
+using noref_result_of_t = typename noref_result_of<T>::type ;
 
 /*******************************************************************************
                      union max_align
