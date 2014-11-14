@@ -239,13 +239,13 @@ class closed_hashtable {
 
       closed_hashtable(closed_hashtable &&other) : closed_hashtable(0) { swap(other) ; }
 
-      closed_hashtable(size_type initsize, const hasher &hf) :
-         _basic_state(hf),
+      closed_hashtable(size_type initsize, const hasher &hf, const key_equal &eq = {}) :
+         _basic_state(hf, eq),
          _bucket_container(initsize, _basic_state)
       {}
 
-      closed_hashtable(size_type initsize, const hasher &hf, const key_equal &eq) :
-         _basic_state(hf, eq),
+      closed_hashtable(size_type initsize, const key_extract &kx, const key_equal &eq = {}) :
+         _basic_state(kx, eq),
          _bucket_container(initsize, _basic_state)
       {}
 
@@ -419,24 +419,20 @@ class closed_hashtable {
             float             _max_load_factor ;
 
             basic_state() :
-               _hasher(),
-               _key_eq(),
-               _key_get(),
+               _hasher(), _key_eq(), _key_get(),
                _embed_count(),
                _max_load_factor(PCOMN_CLOSED_HASH_LOAD_FACTOR)
             {}
 
-            explicit basic_state(const hasher &hf) :
-               _hasher(hf),
-               _key_eq(),
-               _key_get(),
+            explicit basic_state(const hasher &hf, const key_equal &eq = {}) :
+               _hasher(hf), _key_eq(eq), _key_get(),
+               _embed_count(),
                _max_load_factor(PCOMN_CLOSED_HASH_LOAD_FACTOR)
             {}
 
-            basic_state(const hasher &hf, const key_equal &eq) :
-               _hasher(hf),
-               _key_eq(eq),
-               _key_get(),
+            explicit basic_state(const key_extract &kx, const key_equal &eq = {}) :
+               _hasher(), _key_eq(eq), _key_get(kx),
+               _embed_count(),
                _max_load_factor(PCOMN_CLOSED_HASH_LOAD_FACTOR)
             {}
 
