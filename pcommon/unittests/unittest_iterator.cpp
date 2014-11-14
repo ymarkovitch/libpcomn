@@ -114,6 +114,18 @@ void IteratorTests::Test_Mapped_Iterator()
    CPPUNIT_LOG_EQUAL(strvector_t(const_mapped_iter(num_names_ptr, numvec.begin()),
                                  const_mapped_iter(num_names_ptr, numvec.end())),
                      (strvector_t{"null", "zwei", "vier", "ein", "drei", "elf"})) ;
+
+   CPPUNIT_LOG_EQUAL(strvector_t(mapped_iterator<const char * const *, intvector_t::const_iterator>(num_names_ptr, numvec.begin()),
+                                 mapped_iterator<const char * const *, intvector_t::const_iterator>(num_names_ptr, numvec.end())),
+                     (strvector_t{"null", "zwei", "vier", "ein", "drei", "elf"})) ;
+
+   PCOMN_STATIC_CHECK((std::is_same<
+                       decltype(const_mapped_iter(num_names_ptr, numvec.cbegin())),
+                       mapped_iterator<const char * const * const, intvector_t::const_iterator>
+                       >::value)) ;
+
+   decltype(const_mapped_iter(num_names_ptr, numvec.cbegin())) itest ;
+   itest = const_mapped_iter(num_names_ptr, numvec.cbegin()) ;
 }
 
 void IteratorTests::Test_XForm_Iterator()

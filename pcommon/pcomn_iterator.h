@@ -304,18 +304,34 @@ class const_mapped_iterator ;
 
 /// @cond
 namespace detail {
-template<typename C, bool = has_mapped_type<C>::value> struct container_reference ;
+template<typename C,
+         int = ((int)std::is_pointer<C>::value + 2*(int)has_mapped_type<C>::value)>
+struct container_reference ;
 
-template<typename C> struct container_reference<C * const, false> { typedef C &type ; } ;
-template<typename C> struct container_reference<C *, false> { typedef C &type ; } ;
+template<typename C> struct container_reference<C, (-1)> {
+      typedef C &arg_type ;
+      typedef C *member_type ;
+      static member_type member_from_arg(arg_type c) { return &c ; }
+      static arg_type arg_from_member(member_type m) { return *m ; }
+} ;
 
-template<typename C>
-struct container_reference<C, false> :
-         std::conditional<std::is_const<C>::value, typename C::const_reference, typename C::reference> {} ;
+// Pointer
+template<typename C> struct container_reference<C, 1> :
+         std::remove_pointer<C>
+{
+      typedef std::remove_cv_t<C>      arg_type ;
+      typedef arg_type                 member_type ;
+      static member_type member_from_arg(arg_type c) { return c ; }
+      static arg_type arg_from_member(member_type m) { return m ; }
+} ;
 
-template<typename C>
-struct container_reference<C, true> :
-         std::conditional<std::is_const<C>::value, typename C::mapped_type const &, typename C::mapped_type &> {} ;
+// Vector-like
+template<typename C> struct container_reference<C, 0> : container_reference<C, (-1)>,
+   std::conditional<std::is_const<C>::value, typename C::const_reference, typename C::reference> {} ;
+
+// Map-like
+template<typename C> struct container_reference<C, 2> : container_reference<C, (-1)>,
+   std::conditional<std::is_const<C>::value, typename C::mapped_type const &, typename C::mapped_type &> {} ;
 }
 /// @endcond
 
@@ -331,13 +347,19 @@ class mapped_iterator :
                             std::remove_reference_t<Reference>,
                             typename std::iterator_traits<Iterator>::difference_type,
                             void, Reference> ancestor ;
+
+      typedef detail::container_reference<Container> container_reference ;
+
    public:
       using typename ancestor::value_type ;
       using typename ancestor::reference ;
       using typename ancestor::difference_type ;
 
-      mapped_iterator() : _container() {}
-      mapped_iterator(Container &c, const Iterator &i) : _container(&c), _iter(i) {}
+      mapped_iterator() : _container(), _iter() {}
+      mapped_iterator(typename container_reference::arg_type c, const Iterator &i) :
+         _container(container_reference::member_from_arg(c)), _iter(i) {}
+
+      reference operator*() const { return container_reference::arg_from_member(_container)[*_iter] ; }
 
       mapped_iterator &operator++() { ++_iter ; return *this ; }
       mapped_iterator &operator--() { --_iter ; return *this ; }
@@ -373,11 +395,9 @@ class mapped_iterator :
 
       PCOMN_DEFINE_RELOP_FUNCTIONS(friend, mapped_iterator) ;
 
-      reference operator*() const { return (*_container)[*_iter] ; }
-
    private:
-      Container  *_container ;
-      Iterator    _iter ;
+      typename container_reference::member_type _container ;
+      Iterator _iter ;
 } ;
 
 /******************************************************************************/
