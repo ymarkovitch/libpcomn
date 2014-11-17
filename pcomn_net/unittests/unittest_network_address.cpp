@@ -30,12 +30,14 @@ private:
     void Test_IP_Address() ;
     void Test_Sock_Address() ;
     void Test_Iface_Address() ;
+    void Test_Subnet_Address() ;
 
     CPPUNIT_TEST_SUITE(InetAddressTests) ;
 
     CPPUNIT_TEST(Test_IP_Address) ;
     CPPUNIT_TEST(Test_Sock_Address) ;
     CPPUNIT_TEST(Test_Iface_Address) ;
+    CPPUNIT_TEST(Test_Subnet_Address) ;
 
     CPPUNIT_TEST_SUITE_END() ;
 } ;
@@ -173,6 +175,27 @@ void InetAddressTests::Test_Iface_Address()
     CPPUNIT_LOG_ASSERT(ssock.handle() >= 0) ;
     CPPUNIT_LOG_ASSERT(net::iface_addr("NoSuch").ipaddr() == 0) ;
     CPPUNIT_LOG_EXCEPTION(net::inet_address("NoSuch", net::inet_address::FROM_IFACE), net::inaddr_error) ;
+}
+
+void InetAddressTests::Test_Subnet_Address()
+{
+    using namespace net ;
+
+    CPPUNIT_LOG_EQUAL(subnet_address(), subnet_address()) ;
+    CPPUNIT_LOG_IS_TRUE(subnet_address() == subnet_address()) ;
+    CPPUNIT_LOG_IS_FALSE(subnet_address() != subnet_address()) ;
+
+    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 68, 32).str(), "65.66.67.68/32") ;
+    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 68, 24).str(), "65.66.67.68/24") ;
+    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 68, 24).str(), "65.66.67.68/24") ;
+    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 68, 24).subnet().str(), "65.66.67.0/24") ;
+    CPPUNIT_LOG_ASSERT(subnet_address(65, 66, 67, 0, 24) < subnet_address(65, 66, 68, 0, 24)) ;
+    CPPUNIT_LOG_ASSERT(subnet_address(65, 66, 67, 0, 24) < subnet_address(65, 66, 67, 0, 25)) ;
+
+    CPPUNIT_LOG_EQUAL(subnet_address(65, 66, 67, 68, 24).addr(), inet_address(65, 66, 67, 68)) ;
+    CPPUNIT_LOG_EQUAL(subnet_address(65, 66, 67, 68, 24).subnet().addr(), inet_address(65, 66, 67, 0)) ;
+    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 68, 24).pfxlen(), 24) ;
+    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 68, 24).netmask(), 0xffffff00) ;
 }
 
 int main(int argc, char *argv[])

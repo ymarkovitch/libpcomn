@@ -131,7 +131,7 @@ public:
     OutputIterator to_str(OutputIterator s) const
     {
         char buf[64] ;
-        return std::copy_if(to_strbuf(buf), std::end(buf), s, pcomn::identity<char>()) ;
+        return std::copy(buf + 0, buf + strlen(to_strbuf(buf)), s) ;
     }
 
     friend std::ostream &operator<<(std::ostream &os, const inet_address &addr)
@@ -169,13 +169,13 @@ inline inet_address iface_addr(const strslice &iface_name)
 /*******************************************************************************
  inet_address comparison operators
 *******************************************************************************/
-inline bool operator==(const inet_address &lhs, const inet_address &rhs)
+inline bool operator==(const inet_address &x, const inet_address &y)
 {
-    return lhs.ipaddr() == rhs.ipaddr() ;
+    return x.ipaddr() == y.ipaddr() ;
 }
-inline bool operator<(const inet_address &lhs, const inet_address &rhs)
+inline bool operator<(const inet_address &x, const inet_address &y)
 {
-    return lhs.ipaddr() < rhs.ipaddr() ;
+    return x.ipaddr() < y.ipaddr() ;
 }
 
 // Note that this line defines _all_ remaining operators (!=, <=, etc.)
@@ -223,7 +223,12 @@ public:
 
     uint16_t port() const { return ntohs(_sockaddr.sin_port) ; }
 
-    bool is_null() const { return !addr().ipaddr() && !port() ; }
+    /// "Raw" value: IP address and port represented as a single 64-bit integer
+    uint64_t raw() const { return (((uint64_t)addr().ipaddr() << 32) | port()) ; }
+
+    bool is_null() const { return !raw() ; }
+
+    explicit operator bool() const { return !is_null() ; }
 
     std::string str() const ;
 
@@ -262,16 +267,16 @@ private:
 /*******************************************************************************
  sock_address comparison operators
 *******************************************************************************/
-inline bool operator==(const sock_address &lhs, const sock_address &rhs)
+inline bool operator==(const sock_address &x, const sock_address &y)
 {
-    return lhs.port() == rhs.port() && lhs.addr() == rhs.addr() ;
+    return x.port() == y.port() && x.addr() == y.addr() ;
 }
 
-inline bool operator<(const sock_address &lhs, const sock_address &rhs)
+inline bool operator<(const sock_address &x, const sock_address &y)
 {
     return
-        (((uint64_t)lhs.addr().ipaddr() << 16) | lhs.port()) <
-        (((uint64_t)rhs.addr().ipaddr() << 16) | rhs.port()) ;
+        (((uint64_t)x.addr().ipaddr() << 16) | x.port()) <
+        (((uint64_t)y.addr().ipaddr() << 16) | y.port()) ;
 }
 
 // Note that this line defines _all_ remaining operators (!=, <=, etc.)
@@ -286,36 +291,41 @@ public:
 
     subnet_address(uint32_t host_order_inetaddr, unsigned prefix_length) :
         _pfxlen(ensure_pfxlen(prefix_length)),
-        _addr(host_order_inetaddr & netmask())
+        _addr(host_order_inetaddr)
     {}
 
-    subnet_address(const inet_address &address, unsigned masklen) :
-        subnet_address(address.ipaddr(), masklen)
+    subnet_address(const inet_address &address, unsigned prefix_length) :
+        subnet_address(address.ipaddr(), prefix_length)
     {}
 
-    subnet_address(const in_addr &addr, unsigned masklen) :
-        subnet_address(inet_address(addr), masklen)
+    subnet_address(const in_addr &addr, unsigned prefix_length) :
+        subnet_address(inet_address(addr), prefix_length)
     {}
 
-    subnet_address(uint8_t a, uint8_t b, uint8_t c, uint8_t d, unsigned masklen) :
-        subnet_address(inet_address(a, b, c, d), masklen)
+    subnet_address(uint8_t a, uint8_t b, uint8_t c, uint8_t d, unsigned prefix_length) :
+        subnet_address(inet_address(a, b, c, d), prefix_length)
     {}
 
     /// Create an IP address from its human-readable text representation.
     /// @param address_string Dotted-decimal subnet mask, like "139.12.0.0/16"
     subnet_address(const strslice &subnet_string, RaiseError raise_error = RAISE_ERROR) ;
 
-    explicit constexpr operator bool() { return static_cast<bool>(_addr) ; }
+    explicit operator bool() const { return !!raw() ; }
 
     const inet_address &addr() const { return _addr ; }
 
     operator inet_address() const { return _addr ; }
 
+    subnet_address subnet() const { return subnet_address(addr().ipaddr() & netmask(), pfxlen()) ; }
+
     /// Get subnet prefix length
-    unsigned pfxlen() const { return _pfxlen ; }
+    constexpr unsigned pfxlen() const { return _pfxlen ; }
 
     /// Get subnet mask (host order)
-    uint32_t netmask() const { return ~0 << (32 - _pfxlen) ; }
+    constexpr uint32_t netmask() const { return ~0 << (32 - _pfxlen) ; }
+
+    /// "Raw" value: IP address and network mask represented as a single 64-bit integer
+    uint64_t raw() const { return (((uint64_t)addr().ipaddr() << 32) | pfxlen()) ; }
 
     std::string str() const
     {
@@ -334,8 +344,7 @@ public:
     friend std::ostream &operator<<(std::ostream &os, const subnet_address &addr)
     {
         char buf[64] ;
-        addr.to_str(buf + 0) ;
-        return os << buf ;
+        return os << strslice(buf + 0, addr.to_str(buf)) ;
     }
 
 private:
@@ -344,10 +353,25 @@ private:
 
     static uint32_t ensure_pfxlen(unsigned prefix_length)
     {
-        PCOMN_ASSERT_ARG(prefix_length < 32) ;
+        PCOMN_ASSERT_ARG(prefix_length <= 32) ;
         return prefix_length ;
     }
 } ;
+
+/*******************************************************************************
+ subnet_address comparison operators
+*******************************************************************************/
+inline bool operator==(const subnet_address &x, const subnet_address &y)
+{
+    return x.raw() == y.raw() ;
+}
+
+inline bool operator<(const subnet_address &x, const subnet_address &y)
+{
+    return x.raw() < y.raw() ;
+}
+
+PCOMN_DEFINE_RELOP_FUNCTIONS(, subnet_address) ;
 
 /*******************************************************************************
  Network address hashing
