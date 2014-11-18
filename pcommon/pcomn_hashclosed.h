@@ -386,6 +386,11 @@ class closed_hashtable {
          return (size_type)!!find_bucket(key) ;
       }
 
+      size_type value_count(const value_type &value) const
+      {
+         return count(key_get()(value)) ;
+      }
+
       iterator begin() { return empty() ? end() : iterator(begin_buckets()) ; }
       const_iterator begin() const { return empty() ? end() : const_iterator(begin_buckets()) ; }
       const_iterator cbegin() const { return begin() ; }

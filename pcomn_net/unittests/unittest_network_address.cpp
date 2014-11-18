@@ -196,6 +196,31 @@ void InetAddressTests::Test_Subnet_Address()
     CPPUNIT_LOG_EQUAL(subnet_address(65, 66, 67, 68, 24).subnet().addr(), inet_address(65, 66, 67, 0)) ;
     CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 68, 24).pfxlen(), 24) ;
     CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 68, 24).netmask(), 0xffffff00) ;
+
+    CPPUNIT_LOG(std::endl) ;
+    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 68, 24).pfxlen(), 24) ;
+    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 68, 0).pfxlen(), 0) ;
+    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 68, 1).pfxlen(), 1) ;
+    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 68, 31).pfxlen(), 31) ;
+    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 68, 32).pfxlen(), 32) ;
+    CPPUNIT_LOG_EXCEPTION(subnet_address(65, 66, 67, 68, 33), std::invalid_argument) ;
+
+    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 68, 24).netmask(), 0xffffff00) ;
+    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 68, 16).netmask(), 0xffff0000) ;
+    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 68, 1).netmask(), 0x80000000) ;
+    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 68, 31).netmask(), 0xfffffffe) ;
+    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 68, 32).netmask(), 0xffffffff) ;
+    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 68, 0).netmask(), 0) ;
+
+    CPPUNIT_LOG(std::endl) ;
+    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 68, 24).addr_range(),
+                   std::make_pair(inet_address(65, 66, 67, 0), inet_address(65, 66, 67, 255))) ;
+    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 3, 31).addr_range(),
+                   std::make_pair(inet_address(65, 66, 67, 2), inet_address(65, 66, 67, 3))) ;
+    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 3, 32).addr_range(),
+                   std::make_pair(inet_address(65, 66, 67, 3), inet_address(65, 66, 67, 3))) ;
+    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 3, 0).addr_range(),
+                   std::make_pair(inet_address(0, 0, 0, 0), inet_address(255, 255, 255, 255))) ;
 }
 
 int main(int argc, char *argv[])

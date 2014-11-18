@@ -118,6 +118,10 @@ public:
     in_addr inaddr() const { return in_addr { htonl(_addr) } ; }
     operator struct in_addr() const { return inaddr() ; }
 
+    constexpr inet_address next() { return inet_address(ipaddr() + 1) ; }
+    constexpr inet_address prev() { return inet_address(ipaddr() - 1) ; }
+    static constexpr inet_address last() { return inet_address((uint32_t)~0) ; }
+
     /// Get a hostname for the address.
     /// @throw nothing
     std::string hostname() const;
@@ -322,7 +326,20 @@ public:
     constexpr unsigned pfxlen() const { return _pfxlen ; }
 
     /// Get subnet mask (host order)
-    constexpr uint32_t netmask() const { return ~0 << (32 - _pfxlen) ; }
+    constexpr uint32_t netmask() const { return ~0UL << (32 - _pfxlen) ; }
+
+    /// Get the closed address interval for this subnetwork
+    ///
+    /// The resulting interval is @em closed, hence includes both its endpoints.
+    /// This is so because it is impossible to specify "past-the-end" for a range
+    /// ending with 255.255.255.255
+    ///
+    unipair<inet_address> addr_range() const
+    {
+        const uint32_t first = addr().ipaddr() & netmask() ;
+        const uint32_t last = first + (0x100000000ULL >> pfxlen()) - 1 ;
+        return {inet_address(first), inet_address(last)} ;
+    }
 
     /// "Raw" value: IP address and network mask represented as a single 64-bit integer
     uint64_t raw() const { return (((uint64_t)addr().ipaddr() << 32) | pfxlen()) ; }
