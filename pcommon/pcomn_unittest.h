@@ -919,16 +919,25 @@ struct stringify_item {
       mutable unsigned  _count ;
 } ;
 
+struct assertion_traits_eq {
+      template<typename T>
+      bool operator()(const T &x, const T &y) const { return assertion_traits<T>::equal(x, y) ; }
+} ;
+
 template<typename Seq>
 struct assertion_traits_sequence {
 
-      static bool equal(const Seq &lhs, const Seq &rhs)
-      {
-         return lhs == rhs ;
-      }
-
-      static std::string toString(const Seq &value) ;
+      static bool equal(const Seq &, const Seq &) ;
+      static std::string toString(const Seq &) ;
 } ;
+
+template<typename Seq>
+bool assertion_traits_sequence<Seq>::equal(const Seq &lhs, const Seq &rhs)
+{
+   return
+      lhs.size() == rhs.size() &&
+      std::equal(lhs.begin(), lhs.end(), rhs.begin(), assertion_traits_eq()) ;
+}
 
 template<typename Seq>
 std::string assertion_traits_sequence<Seq>::toString(const Seq &value)
@@ -997,7 +1006,9 @@ struct assertion_traits<std::pair<T1, T2> > {
 
       static bool equal(const type &lhs, const type &rhs)
       {
-         return lhs == rhs ;
+         return
+            assertion_traits<T1>::equal(lhs.first, rhs.first) &&
+            assertion_traits<T2>::equal(lhs.second, rhs.second) ;
       }
 
       static std::string toString(const type &value) ;
