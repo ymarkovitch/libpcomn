@@ -50,7 +50,7 @@ class keyed_pool {
          _size(0),
          _size_limit(szlimit),
          _emptykey_count(0),
-         _data(-1, hf, keq)
+         _data({}, hf, keq)
       {}
 
       ~keyed_pool() { clear() ; }

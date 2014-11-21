@@ -34,6 +34,7 @@
 #include <algorithm>
 #include <iterator>
 #include <iostream>
+#include <limits>
 
 #include <string.h>
 #include <math.h>
@@ -226,12 +227,12 @@ class closed_hashtable {
       typedef basic_iterator<false> iterator ;
       typedef basic_iterator<true>  const_iterator ;
 
-      explicit closed_hashtable(size_type initsize = 0) :
-         _bucket_container(initsize, _basic_state)
-      {}
+      explicit closed_hashtable(size_type initsize = 0) ;
+
+      explicit closed_hashtable(const std::pair<size_type, float> &size_n_load) ;
 
       closed_hashtable(const closed_hashtable &other) :
-         _basic_state(other.hash_function(), other.key_eq()),
+         _basic_state{other.hash_function(), other.key_eq(), {}, other.max_load_factor()},
          _bucket_container(other.size(), _basic_state)
       {
          copy_buckets(other.begin_buckets(), other.end_buckets()) ;
@@ -239,14 +240,16 @@ class closed_hashtable {
 
       closed_hashtable(closed_hashtable &&other) : closed_hashtable(0) { swap(other) ; }
 
-      closed_hashtable(size_type initsize, const hasher &hf, const key_equal &eq = {}) :
-         _basic_state(hf, eq),
-         _bucket_container(initsize, _basic_state)
+      closed_hashtable(const std::pair<size_type, float> &size_n_load,
+                       const hasher &hf, const key_equal &keq = {}, const key_extract &kex = {}) :
+         _basic_state{hf, keq, kex, size_n_load.second},
+         _bucket_container(size_n_load.first, _basic_state)
       {}
 
-      closed_hashtable(size_type initsize, const key_extract &kx, const key_equal &eq = {}) :
-         _basic_state(kx, eq),
-         _bucket_container(initsize, _basic_state)
+      closed_hashtable(const std::pair<size_type, float> &size_n_load,
+                       const key_extract &kx, const key_equal &eq = {}) :
+         _basic_state{{}, eq, kx, size_n_load.second},
+         _bucket_container(size_n_load.first, _basic_state)
       {}
 
       ~closed_hashtable() { container().clear(_basic_state) ; }
@@ -272,15 +275,9 @@ class closed_hashtable {
          _bucket_container.swap(other._bucket_container) ;
       }
 
-      void erase(iterator it)
-      {
-         erase_bucket(it._current) ;
-      }
+      void erase(iterator it) { erase_bucket(it._current) ; }
 
-      size_type erase(const key_type &key)
-      {
-         return erase_item(key, NULL) ;
-      }
+      size_type erase(const key_type &key) { return erase_item(key, NULL) ; }
 
       size_type erase(const key_type &key, value_type &erased_value)
       {
@@ -417,28 +414,22 @@ class closed_hashtable {
             // Interface. Keep these members together: in most cases, those classes are empty
             // and object have size of 1 byte and don't require alignment, thus keeping them
             // together we optimizing both on size and locality.
-            hasher            _hasher ;
-            key_equal         _key_eq ;
-            key_extract       _key_get ;
-            uint8_t           _embed_count ; /* Nonzero value indicates "small table optimization" */
-            float             _max_load_factor ;
+            hasher            _hasher  {} ;
+            key_equal         _key_eq  {} ;
+            key_extract       _key_get {} ;
+            uint8_t           _embed_count = 0 ; /* Nonzero value indicates "small table optimization" */
+            float             _max_load_factor = PCOMN_CLOSED_HASH_LOAD_FACTOR ;
 
-            basic_state() :
-               _hasher(), _key_eq(), _key_get(),
-               _embed_count(),
-               _max_load_factor(PCOMN_CLOSED_HASH_LOAD_FACTOR)
-            {}
+            basic_state() = default ;
 
-            explicit basic_state(const hasher &hf, const key_equal &eq = {}) :
-               _hasher(hf), _key_eq(eq), _key_get(),
-               _embed_count(),
-               _max_load_factor(PCOMN_CLOSED_HASH_LOAD_FACTOR)
-            {}
+            basic_state(const hasher &h, const key_equal &keq = {}, const key_extract &kex = {}) :
+               _hasher(_hasher), _key_eq(keq), _key_get(kex) {}
 
-            explicit basic_state(const key_extract &kx, const key_equal &eq = {}) :
-               _hasher(), _key_eq(eq), _key_get(kx),
-               _embed_count(),
-               _max_load_factor(PCOMN_CLOSED_HASH_LOAD_FACTOR)
+            basic_state(const hasher &h, const key_equal &keq, const key_extract &kex, float max_load) :
+               _hasher(_hasher), _key_eq(keq), _key_get(kex),
+               // Set max load factor bounds to float values exactly representable in
+               // binary
+               _max_load_factor(max_load <= 0 ? PCOMN_CLOSED_HASH_LOAD_FACTOR : midval<float>(0.125, 0.875, max_load))
             {}
 
             bool is_static_buckets() const { return !!_embed_count ; }
@@ -546,6 +537,8 @@ class closed_hashtable {
 
             combined_buckets(size_type initsize, basic_state &st)
             {
+               initsize = midval<ssize_t>(0, std::numeric_limits<ssize_t>::max(), initsize) ;
+
                st._embed_count = 0 ;
                _dyn.init(initsize, st._max_load_factor) ;
             }
@@ -590,6 +583,7 @@ class closed_hashtable {
 
             combined_buckets(size_type initsize, basic_state &st)
             {
+               initsize = midval<ssize_t>(0, std::numeric_limits<ssize_t>::max(), initsize) ;
                st._embed_count = initsize <= _stat._bucket_count ;
                if (!st.is_static_buckets())
                   _dyn.init(initsize, st._max_load_factor) ;
@@ -813,9 +807,23 @@ class closed_hashtable {
       void copy_buckets(const bucket_type *begin, const bucket_type *end) ;
 } ;
 
-template<typename Value, typename ExtractKey, typename Hash, typename Pred>
-void closed_hashtable<Value, ExtractKey, Hash, Pred>::copy_buckets(const bucket_type *begin,
-                                                                   const bucket_type *end)
+/*******************************************************************************
+ closed_hashtable
+*******************************************************************************/
+template<typename V, typename X, typename H, typename P>
+closed_hashtable<V, X, H, P>::closed_hashtable(size_type initsize) :
+   _bucket_container(initsize, _basic_state)
+{}
+
+template<typename V, typename X, typename H, typename P>
+closed_hashtable<V, X, H, P>::closed_hashtable(const std::pair<size_type, float> &size_n_load) :
+   _basic_state{{}, {}, {}, size_n_load.second},
+   _bucket_container(size_n_load.first, _basic_state)
+{}
+
+template<typename V, typename X, typename H, typename P>
+void closed_hashtable<V, X, H, P>::copy_buckets(const bucket_type *begin,
+                                                const bucket_type *end)
 {
    for ( ; begin != end ; ++begin)
       if (begin->state() == bucket_type::Valid)
@@ -824,8 +832,8 @@ void closed_hashtable<Value, ExtractKey, Hash, Pred>::copy_buckets(const bucket_
          NOXCHECK(begin->is_available()) ;
 }
 
-template<typename Value, typename ExtractKey, typename Hash, typename Pred>
-void closed_hashtable<Value, ExtractKey, Hash, Pred>::expand(size_type reserve_count)
+template<typename V, typename X, typename H, typename P>
+void closed_hashtable<V, X, H, P>::expand(size_type reserve_count)
 {
    NOXCHECK(reserve_count <= std::numeric_limits<size_type>::max()/2) ;
    NOXCHECK(!_basic_state.is_static_buckets() || _basic_state.static_size()) ;
