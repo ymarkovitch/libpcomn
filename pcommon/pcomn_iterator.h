@@ -186,31 +186,9 @@ struct output_count_iterator :
       Counter _count ;
 } ;
 
-/*******************************************************************************
- append_iterator
-*******************************************************************************/
-template<typename Container, bool has_key = has_key_type<Container>::value>
-struct append_iterator_base {
-      Container &container() { return *_container ; }
-   protected:
-      explicit append_iterator_base(Container &c) : _container(&c) {}
-      void put(typename Container::const_reference value) { _container->push_back(value) ; }
-   private:
-      Container *_container ;
-} ;
-
-template<typename Container>
-struct append_iterator_base<Container, true> {
-      Container &container() { return *_container ; }
-   protected:
-      explicit append_iterator_base(Container &c) : _container(&c) {}
-      void put(typename Container::const_reference value) { _container->insert(value) ; }
-   private:
-      Container *_container ;
-} ;
-
 /******************************************************************************/
-/** Output iterator that turns assignment into appending to any container.
+/** Append iterator is an output iterator that turns assignment into appending
+ to any container.
 
  Output iterator, constructed from a container. Assigning a value to such
  iterator appends it to the container, much like std::back_insert_iterator do;
@@ -220,25 +198,32 @@ struct append_iterator_base<Container, true> {
  Use the appender() function to create append_iterator.
 *******************************************************************************/
 template<typename Container>
-class append_iterator :
-         public std::iterator<std::output_iterator_tag, void, void, void, void>,
-         public append_iterator_base<Container> {
+struct append_iterator : std::iterator<std::output_iterator_tag, void, void, void, void> {
 
-      typedef append_iterator_base<Container> ancestor ;
-   public:
       /// A nested typedef for the type of whatever container you used.
       typedef Container container_type ;
 
-      append_iterator(container_type &c) : ancestor(c) {}
+      append_iterator(container_type &c) : _container(&c) {}
 
-      append_iterator &operator=(typename container_type::const_reference value)
+      template<typename T>
+      append_iterator &operator=(T &&value)
       {
-         ancestor::put(value) ;
+         put(has_key_type<container_type>(), std::forward<T>(value)) ;
          return *this ;
       }
       append_iterator &operator*() { return *this ; }
       append_iterator &operator++() { return *this ; }
       append_iterator &operator++(int) { return *this ; }
+
+      container_type &container() { return *_container ; }
+
+   private:
+      container_type *_container ;
+
+      template<typename T>
+      void put(std::true_type, T &&value) { container().insert(std::forward<T>(value)) ; }
+      template<typename T>
+      void put(std::false_type, T &&value) { container().push_back(std::forward<T>(value)) ; }
 } ;
 
 /// Create append_iterator instance for a container.
