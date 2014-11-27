@@ -20,6 +20,7 @@
 #include <pcomn_except.h>
 #include <pcomn_string.h>
 #include <pcomn_strslice.h>
+#include <pcomn_cstrptr.h>
 #include <pcomn_path.h>
 #include <pcomn_function.h>
 
@@ -924,26 +925,26 @@ struct assertion_traits_eq {
       bool operator()(const T &x, const T &y) const { return assertion_traits<T>::equal(x, y) ; }
 } ;
 
-template<typename Seq>
+template<typename Seq, char delim = ' '>
 struct assertion_traits_sequence {
 
       static bool equal(const Seq &, const Seq &) ;
       static std::string toString(const Seq &) ;
 } ;
 
-template<typename Seq>
-bool assertion_traits_sequence<Seq>::equal(const Seq &lhs, const Seq &rhs)
+template<typename Seq, char delim>
+bool assertion_traits_sequence<Seq, delim>::equal(const Seq &lhs, const Seq &rhs)
 {
    return
       lhs.size() == rhs.size() &&
       std::equal(lhs.begin(), lhs.end(), rhs.begin(), assertion_traits_eq()) ;
 }
 
-template<typename Seq>
-std::string assertion_traits_sequence<Seq>::toString(const Seq &value)
+template<typename Seq, char delim>
+std::string assertion_traits_sequence<Seq, delim>::toString(const Seq &value)
 {
    std::string result (1, '(') ;
-   std::for_each(value.begin(), value.end(), stringify_item(result, ' ')) ;
+   std::for_each(value.begin(), value.end(), stringify_item(result, delim)) ;
    return result.append(1, ')') ;
 }
 
@@ -1037,26 +1038,35 @@ struct assertion_traits<std::tuple<PCOMN_TUPLE_PARAMS> > {
       }
 } ;
 
-template<typename C>
-struct assertion_traits<pcomn::basic_strslice<C> >
-{
-      typedef pcomn::basic_strslice<C> type ;
-
-      static bool equal(const type &lhs, const type &rhs)
-      {
-         return lhs == rhs ;
-      }
-
-      static std::string toString(const type &value) ;
+template<typename S>
+struct assertion_traits_str {
+      static bool equal(const S &lhs, const S &rhs) { return lhs == rhs ; }
+      static std::string toString(const S &value) ;
 } ;
 
-template<typename C>
-std::string assertion_traits<pcomn::basic_strslice<C> >::toString(const type &value)
+template<typename S>
+std::string assertion_traits_str<S>::toString(const S &value)
 {
-   std::stringstream s ;
-   s << pcomn::quote(value) ;
-   return s.str() ;
+   std::string result ;
+   result.reserve(pcomn::str::len(value) + 2) ;
+   result += '"' ;
+   for (const auto c: value)
+   {
+      if (c == '\\' || c == '"')
+         result += '\\' ;
+      result += c ;
+   }
+   return std::move(result += '"') ;
 }
+
+template<typename C>
+struct assertion_traits<pcomn::basic_strslice<C> > : assertion_traits_str<pcomn::basic_strslice<C> > {} ;
+
+template<typename C>
+struct assertion_traits<pcomn::basic_cstrptr<C> > : assertion_traits_str<pcomn::basic_cstrptr<C> > {} ;
+
+template<typename C>
+struct assertion_traits<std::basic_string<C> > : assertion_traits_str<std::basic_string<C> > {} ;
 
 } // end of namespace CppUnit
 
