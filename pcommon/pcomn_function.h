@@ -377,16 +377,6 @@ struct is_empty : public std::unary_function<const T, bool> {
       }
 } ;
 
-struct apply_fn {
-      template<typename F>
-      typename std::result_of<F()>::type
-      operator() (const F &fn) const { return fn() ; }
-
-      template<typename F, typename P1>
-      typename std::result_of<F(P1)>::type
-      operator() (const F &fn, const P1 &p1) const { return fn(p1) ; }
-} ;
-
 /*******************************************************************************
  mem_data, mem_data_ref
 *******************************************************************************/

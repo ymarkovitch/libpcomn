@@ -187,7 +187,7 @@ class cacher {
       // Declare the inclusive list of entry_type nodes
       typedef incdlist<entry_type, &entry_type::_node> lru_list ;
 
-      typedef typename std::result_of<key_extract(value_type)>::type key_result ;
+      typedef std::result_of_t<key_extract(value_type)> key_result ;
 
       struct entry_key_extract : std::unary_function<const entry_type *, key_result> {
             entry_key_extract() {}

@@ -388,7 +388,7 @@ class mapped_iterator :
 /******************************************************************************/
 /** Wrapper over any iterator converting dereferenced value
 *******************************************************************************/
-template<typename Iterator, typename Converter, typename Value = typename Converter::result_type>
+template<typename Iterator, typename Converter, typename Value = std::result_of_t<Converter(decltype(*std::declval<Iterator>()))> >
 class xform_iterator :
          public std::iterator<typename std::iterator_traits<Iterator>::iterator_category,
                               Value,
