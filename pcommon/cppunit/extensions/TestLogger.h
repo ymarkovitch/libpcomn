@@ -48,7 +48,7 @@
 
 #define CPPUNIT_LOG_LINE(output) ((CPPUNIT_LOGSTREAM << output << std::endl))
 
-#define CPPUNIT_LOG_EXPRESSION(output) (CPPUNIT_LOGSTREAM << __LINE__ << (": "#output"=") << (output) << std::endl)
+#define CPPUNIT_LOG_EXPRESSION(output) (CPPUNIT_LOGSTREAM << __LINE__ << (": "#output"=") << CppUnit::assertion_traits<decltype((output))>::toString((output)) << std::endl)
 
 #define CPPUNIT_SETLOG(log) (CppUnit::Log::Logger<true>::setLogStream((log)))
 
