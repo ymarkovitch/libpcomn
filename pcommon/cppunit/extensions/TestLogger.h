@@ -14,10 +14,17 @@
 #include <cppunit/Portability.h>
 #include <cppunit/TestCaller.h>
 #include <cppunit/extensions/HelperMacros.h>
+#include <cppunit/TestAssert.h>
 #include <fstream>
 
 #include <exception>
 #include <iostream>
+
+#undef CPPUNIT_ASSERT_EQUAL
+/// Redefinition of CPPUNIT_ASSERT_EQUAL, uses CppUnit::X::assertEquals
+///
+#define CPPUNIT_ASSERT_EQUAL(expected, actual)                          \
+   (CppUnit::X::assertEquals((expected), (actual), CPPUNIT_SOURCELINE(), {}))
 
 #ifdef __GNUC__
 #include <cxxabi.h>
@@ -80,8 +87,8 @@
   (CPPUNIT_LOG(__CPPUNIT_CONCAT_SRC_LINE("EXPECTING: (") #actual ") == (" #expected << ")... "),         \
    CPPUNIT_LOG((CPPUNIT_ASSERT_EQUAL(expected, actual), "OK") << std::endl))
 
-
-#define CPPUNIT_ASSERT_EQ(expected, actual) CppUnit::assertEq((expected), (actual), CPPUNIT_SOURCELINE(), {})
+#define CPPUNIT_ASSERT_EQ(expected, actual) \
+   (CppUnit::X::assertEq((expected), (actual), CPPUNIT_SOURCELINE(), {}))
 
 #define CPPUNIT_LOG_EQ(actual, expected)                                \
    (CPPUNIT_LOG(__CPPUNIT_CONCAT_SRC_LINE("EXPECTING: (") #actual ") == (" #expected << ")... "), \
@@ -175,6 +182,22 @@ do                                                                      \
    }
 
 namespace CppUnit {
+namespace X {
+template<typename T>
+void assertEquals(const T &expected,
+                  const T &actual,
+                  SourceLine sourceLine,
+                  const std::string &message)
+{
+  if (assertion_traits<T>::equal(expected,actual))
+     return ;
+
+  Asserter::failNotEqual(std::string(1, '\n').append(assertion_traits<T>::toString(expected)),
+                         std::string(1, '\n').append(assertion_traits<T>::toString(actual)),
+                         sourceLine,
+                         message) ;
+}
+
 /// Asserts that two values are equals.
 ///
 /// Equality and string representation can be defined with an appropriate
@@ -197,7 +220,7 @@ template<typename Actual, typename Expected>
 inline void assertEq(const Expected &expected, const Actual &actual,
                      CppUnit::SourceLine line, const std::string &msg)
 {
-   CppUnit::assertEquals<Actual>(expected, actual, line, msg) ;
+   X::assertEquals<Actual>(expected, actual, line, msg) ;
 }
 
 template <class T>
@@ -220,6 +243,7 @@ inline void assertNotEquals(const T &left, const T &right,
                CppUnit::Asserter::makeActual(actual)),
          ln) ;
 }
+} // end of namespace CppUnit::X
 } // end of namespace CppUnit
 
 /*******************************************************************************
