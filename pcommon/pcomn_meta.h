@@ -106,11 +106,11 @@ struct ct_min : public std::integral_constant<T, (x < y ? x : y)> {} ;
 template<typename T, T x, T y>
 struct ct_max : public std::integral_constant<T, (y < x ? x : y)> {} ;
 
-/*******************************************************************************
-                     template<typename T> struct identity_type
- Creates unique type from another type.
- This allows to completely separate otherwise compatible types
- (e.g. pointer to derived and pointer to base, etc.)
+/******************************************************************************/
+/** Creates unique type from another type.
+
+ This allows to completely separate otherwise compatible types (e.g. pointer to derived
+ and pointer to base, etc.)
 *******************************************************************************/
 template<typename T> struct identity_type { typedef T type ; } ;
 

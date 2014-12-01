@@ -388,30 +388,23 @@ class mapped_iterator :
 /******************************************************************************/
 /** Wrapper over any iterator converting dereferenced value
 *******************************************************************************/
-template<typename Iterator, typename Converter, typename Value = std::result_of_t<Converter(decltype(*std::declval<Iterator>()))> >
+template<typename Iterator, typename Converter>
 class xform_iterator :
          public std::iterator<typename std::iterator_traits<Iterator>::iterator_category,
-                              Value,
+                              std::result_of_t<Converter(decltype(*std::declval<Iterator>()))>,
                               typename std::iterator_traits<Iterator>::difference_type,
                               void, void> {
 
       typedef std::iterator<typename std::iterator_traits<Iterator>::iterator_category,
-                            Value,
+                            std::result_of_t<Converter(decltype(*std::declval<Iterator>()))>,
                             typename std::iterator_traits<Iterator>::difference_type,
                             void, void> ancestor ;
    public:
       typedef typename ancestor::value_type value_type ;
       typedef typename ancestor::difference_type difference_type ;
 
-      xform_iterator() :
-         _iter(),
-         _converter()
-      {}
-
-      xform_iterator(const Iterator &i, const Converter &c = Converter()) :
-         _iter(i),
-         _converter(c)
-      {}
+      xform_iterator() : _iter(), _converter() {}
+      xform_iterator(const Iterator &i, const Converter &c = Converter()) : _iter(i), _converter(c) {}
 
       xform_iterator &operator++() { ++_iter ; return *this ; }
       xform_iterator &operator--() { --_iter ; return *this ; }
@@ -435,6 +428,8 @@ class xform_iterator :
          return _iter - other._iter ;
       }
 
+      value_type operator*() const { return _converter(*_iter) ; }
+
       friend bool operator==(const xform_iterator &left, const xform_iterator &right)
       {
          return left._iter == right._iter ;
@@ -446,11 +441,69 @@ class xform_iterator :
 
       PCOMN_DEFINE_RELOP_FUNCTIONS(friend, xform_iterator) ;
 
-      value_type operator*() const { return _converter(*_iter) ; }
-
    private:
       Iterator  _iter ;
       Converter _converter ;
+} ;
+
+/******************************************************************************/
+/** Wrapper over any iterator converting dereferenced value
+*******************************************************************************/
+template<typename Iterator, typename Type>
+class xform_iterator<Iterator, identity_type<Type> > :
+         public std::iterator<typename std::iterator_traits<Iterator>::iterator_category,
+                              Type,
+                              typename std::iterator_traits<Iterator>::difference_type,
+                              void, void> {
+
+      typedef std::iterator<typename std::iterator_traits<Iterator>::iterator_category,
+                            Type,
+                            typename std::iterator_traits<Iterator>::difference_type,
+                            void, void> ancestor ;
+   public:
+      typedef typename ancestor::value_type value_type ;
+      typedef typename ancestor::difference_type difference_type ;
+
+      xform_iterator() : _iter() {}
+      xform_iterator(const Iterator &i) : _iter(i) {}
+
+      xform_iterator &operator++() { ++_iter ; return *this ; }
+      xform_iterator &operator--() { --_iter ; return *this ; }
+
+      // Post(inc|dec)rement
+      PCOMN_DEFINE_POSTCREMENT_METHODS(xform_iterator) ;
+
+      xform_iterator &operator+=(difference_type diff) { _iter += diff ; return *this ; }
+      xform_iterator &operator-=(difference_type diff) { _iter -= diff ; return *this ; }
+
+      xform_iterator operator+(difference_type diff) const
+      {
+         return xform_iterator(*this) += diff ;
+      }
+      xform_iterator operator-(difference_type diff) const
+      {
+         return xform_iterator(*this) -= diff ;
+      }
+      difference_type operator-(const xform_iterator &other) const
+      {
+         return _iter - other._iter ;
+      }
+
+      value_type operator*() const { return value_type(*_iter) ; }
+
+      friend bool operator==(const xform_iterator &left, const xform_iterator &right)
+      {
+         return left._iter == right._iter ;
+      }
+      friend bool operator<(const xform_iterator &left, const xform_iterator &right)
+      {
+         return left._iter < right._iter ;
+      }
+
+      PCOMN_DEFINE_RELOP_FUNCTIONS(friend, xform_iterator) ;
+
+   private:
+      Iterator _iter ;
 } ;
 
 /******************************************************************************/
@@ -587,22 +640,32 @@ using is_iterator = decltype(detail::test_icategory<T, C>(0)) ;
 /*******************************************************************************
  Helper functions that construct adapted iterators on-the-fly
 *******************************************************************************/
-template<class Container, typename Iter>
-inline mapped_iterator<Container, Iter> mapped_iter(Container &c, const Iter &i)
+template<typename Container, typename Iter>
+inline mapped_iterator<Container, Iter>
+mapped_iter(Container &c, const Iter &i)
 {
    return mapped_iterator<Container, Iter>(c, i) ;
 }
 
-template<class Container, typename Iter>
-inline mapped_iterator<const Container, Iter> const_mapped_iter(const Container &c, const Iter &i)
+template<typename Container, typename Iter>
+inline mapped_iterator<const Container, Iter>
+const_mapped_iter(const Container &c, const Iter &i)
 {
    return mapped_iterator<const Container, Iter>(c, i) ;
 }
 
-template<typename Iterator, typename Converter>
-inline xform_iterator<Iterator, Converter> xform_iter(const Iterator &i, const Converter &c)
+template<typename Converter, typename Iterator>
+inline xform_iterator<Iterator, Converter>
+xform_iter(const Iterator &i, const Converter &c)
 {
    return xform_iterator<Iterator, Converter>(i, c) ;
+}
+
+template<typename Type, typename Iterator>
+inline xform_iterator<Iterator, identity_type<Type> >
+xform_iter(const Iterator &i)
+{
+   return xform_iterator<Iterator, identity_type<Type> >(i) ;
 }
 
 template<typename Counter>

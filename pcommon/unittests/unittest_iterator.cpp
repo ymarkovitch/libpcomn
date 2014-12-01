@@ -150,6 +150,14 @@ void IteratorTests::Test_XForm_Iterator()
    int s = 0 ;
    for (auto i: std::make_pair(numlist.begin(), numlist.end())) s += i ;
    CPPUNIT_LOG_EQUAL(s, 21) ;
+
+   struct istring : public std::string {
+         istring() {}
+         explicit istring(int n) { *static_cast<std::string *>(this) = std::to_string(n) ; }
+   } ;
+
+   CPPUNIT_LOG_EQUAL(strvector_t(xform_iter<istring>(numvec.begin()), xform_iter<istring>(numvec.end())),
+                     (strvector_t{"0", "2", "4", "1", "3", "11"})) ;
 }
 
 struct Dummy ;
