@@ -1,0 +1,111 @@
+.\"========== TO PRINT, USE: {n,t}roff -man file ==========
+.if n .po 1
+.if n .ll 78
+.ds NM \f4CmdLine\fP
+.so macros.man
+.\"===================================
+.TH cmdargs 3\*(C+
+.\"===================================
+.SH NAME
+cmdargs \- predefined command argument types for \*(NM(3\*(C+)
+.\"===================================
+.SH SYNOPSIS
+.nf
+.ft 4
+#include <cmdargs.h>
+
+class  CmdArgDummy : public CmdArg ;
+class  CmdArgUsage : public CmdArg ;
+
+class  CmdArgIntCompiler : public CmdArg ;
+class  CmdArgInt     : public CmdArgIntCompiler ;
+class  CmdArgIntList : public CmdArgIntCompiler ;
+
+class  CmdArgFloatCompiler : public CmdArg ;
+class  CmdArgFloat     : public CmdArgFloatCompiler ;
+class  CmdArgFloatList : public CmdArgFloatCompiler ;
+
+class  CmdArgCharCompiler : public CmdArg ;
+class  CmdArgChar : public CmdArgCharCompiler ;
+
+class  CmdArgStrCompiler : public CmdArg ;
+class  CmdArgStr     : public CmdArgStrCompiler ;
+class  CmdArgStrList : public CmdArgStrCompiler ;
+
+class  CmdArgBoolCompiler : public CmdArg ;
+class  CmdArgBool : public CmdArgBoolCompiler ;
+class  CmdArgClear  : public CmdArgBool ;
+class  CmdArgToggle : public CmdArgBool ;
+
+class  CmdArgBoolRef   : public CmdArg ;
+class  CmdArgClearRef  : public CmdArg ;
+class  CmdArgToggleRef : public CmdArg ;
+
+.ft R
+.fi
+.\"===================================
+.SH DESCRIPTION
+.PP
+\f4cmdargs\fP(3\*(C+) is the portion of the \*(NM(3\*(C+) library
+that contains the predefined argument types to use in conjunction
+with one or more \*(NM objects.
+The include file \f4<cmdargs.h>\fP defines classes derived from class
+\f4CmdArg\fP (which is defined in \f4<cmdline.h>\fP) for the most
+commonly used types of command-line arguments.  Most command-line
+arguments are either boolean-flags, a number, a character, or a string
+(or a list of numbers or strings).  In each of these cases, the call
+operator (\f4operator()\fP) of the argument just compiles the value
+given into some internal value and waits for the programmer to query
+the value at some later time.
+
+These types of arguments are referred to as "\fIArgCompilers\fP".
+For each of the most common argument types, a corresponding abstract
+ArgCompiler class is declared.  All that this class does is to add a member
+function named "\f4compile\fP" to the class.  The \f4compile()\fP function
+looks exactly like the call operator but it takes an additional
+parameter: a reference to the value to be modified by compiling
+the argument value.  In all other respects, the \f4compile()\fP member
+function behaves exactly like the call operator.  In fact, most
+of the call operator member functions simply call the ArgCompiler's
+\f4compile()\fP member function with the appropriate value and return
+whatever the compile function returned.
+
+Once all of these ArgCompilers are declared, it is a simple matter
+to declare a class that holds a single item, or a list of items,
+by deriving it from the corresponding ArgCompiler type.
+
+For derived classes of these ArgCompilers that hold a single item,
+The derived class implements some operators (such as \f4operator=\fP
+and an appropriate cast operator) to treat the argument as if it
+were simply an item (instead of an argument that contains an item).
+The output operator (\f4ostream & operator<<\fP) is also defined.
+
+For derived classes of ArgCompilers that hold a list of items,
+the subscript operator (\f4operator[]\fP) is defined in order to
+treat the argument as if it were simply an array of items and not
+an argument that contains a list of items.
+
+.IP "\fBNote:\fP" 3
+It is important to remember that each subclass of \f4CmdArg\fP \s-1MUST\s+1
+be able to handle \f4NULL\fP as the first argument to the call-operator
+(and it should \s-1NOT\s+1 be considered an error).  This is because
+\f4NULL\fP will be passed if the argument takes no value, or if it takes
+an optional value that was \s-1NOT\s+1 provided on the command-line.
+Whenever an argument is correctly specified on the command-line, its call
+operator is always invoked (regardless of whether or not there
+is a corresponding value from the command-line).
+
+.\"===================================
+.so example.man
+.\"===================================
+.so classes.man
+.\"===================================
+.so files.man
+.\"===================================
+.SH SEE ALSO
+\f4CmdLine\fP(3\*(C+), \f4cmdparse\fP(1)
+.br
+\f4<cmdline.h>\fP, \f4<cmdargs.h>\fP
+.\"===================================
+.SH AUTHOR
+Brad Appleton, <\f4bradapp@enteract.com\fP>.

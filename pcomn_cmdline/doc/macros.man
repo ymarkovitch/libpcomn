@@ -1,0 +1,28 @@
+.\"=========================================
+.\" This file contains some user defined (n|t)roff macros for general use
+.\"=========================================
+.de XS
+. RS
+. nf
+. ft 4
+..
+.de XE
+. ft R
+. fi
+. RE
+..
+.ds -- \-\|\-
+.ds C+ C\s-2\v'-1.5p'\(pl\(pl\v'+1.5p'\s+2
+.ds .. .\^.\^.
+.\"-------------------------------------------
+.\" The following "strings" should correspond to where the CmdLine files
+.\" have been installed.  "b" is where executable files are installed.
+.\" "i" is where the include files where installed and "l" is where the
+.\" object-library is installed. You should change the definition of
+.\" these macros if they are not installed in the places indicated below.
+.\"-------------------------------------------
+.ds b /usr/local/bin
+.ds i /usr/local/include
+.ds l /usr/local/lib
+.ds p \*l/perl
+.ds t \*l/tcl

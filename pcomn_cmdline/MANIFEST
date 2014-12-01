@@ -1,0 +1,64 @@
+File Name            Archive    Description
+------------------------------------------------------------------------------
+Config.mk                1      Make flags for the product
+MANIFEST                 1      This shipping list
+Makefile                 1      Makefile for the product
+Overview                 1      A brief overview of the product
+README                   1      Read this file first
+Suggestions              1      List of Suggestions for CmdLine/cmdparse
+TO-DO                    1      Things still to do for CmdLine/cmdparse
+doc                      -      Documentation directory
+doc/Makefile             1      Makefile for the documentation
+doc/bugs.man             1      documents known bugs
+doc/caveats.man          1      documents known peculiarities
+doc/classes.man          1      documents the basics of the most common classes
+doc/cmdargs.man3         2      documents <cmdargs.h>
+doc/cmdline.man3         2      documents <cmdline.h>
+doc/cmdparse.man1        2      documents cmdparse(1)
+doc/environ.man          2      documents the use of environment variables
+doc/example.man          2      documents example use of CmdLine(3C++)
+doc/files.man            2      documents files used by CmdLine(3C++)
+doc/macros.man           2      some common (n|t)roff macros
+doc/parsing.man          2      documents parsing behavior
+src                      -      Source code directory
+src/Makefile             2      Makefile for the source directories
+src/cmd                  -      cmdparse program subdirectory
+src/cmd/Makefile         2      Makefile for the program
+src/cmd/argtypes.c       2      implementation of shell-script arguments
+src/cmd/argtypes.h       2      definition of shell-script arguments
+src/cmd/cmdparse.c       3      the guts of the cmdparse program
+src/cmd/cmdparse.h       3      the specification of the cmdparse program
+src/cmd/cmdparse.pl      3      cmdparse for Perl programmers
+src/cmd/cmdparse.tcl     3      cmdparse for Tcl programmers
+src/cmd/fsm.c            3      finite-state-machine for parsing arg-syntax
+src/cmd/fsm.h            3      finite-state-machine specification
+src/cmd/main.c           3      main program for cmdparse(1)
+src/cmd/quoted.c         3      implementation of quoted-strings
+src/cmd/quoted.h         3      definition of a quoted-string class
+src/cmd/shell_arg.c      3      implementation of an abstract shell-script arg
+src/cmd/shell_arg.h      3      definition of an abstract shell-script argument
+src/cmd/shells.c         4      implementation of command-interpreters
+src/cmd/shells.h         4      definitions of various command-interpreters
+src/cmd/syntax.c         4      implementation of an argument-syntax object
+src/cmd/syntax.h         4      definition of an argument-syntax object
+src/lib                  -      CmdLine library directory
+src/lib/Makefile         4      Makefile for the library
+src/lib/argiter.c        4      command line argument iterator implementation
+src/lib/arglist.h        4      command argument list type definitions
+src/lib/cmdarg.c         5      implementation of base class CmdArg
+src/lib/cmdargs.c        5      implementation of the various argument types
+src/lib/cmdargs.h        5      include file for the various argument types
+src/lib/cmdline.c        6      constructors/destructors for CmdLine objects
+src/lib/cmdline.h        6      include file for the library
+src/lib/cmdtest.c        6      test program for the library
+src/lib/dump.c           6      dumping/debugging member functions
+src/lib/exits.h          6      definition of exit codes used for exit(3C)
+src/lib/fifolist.c       6      implementation of a generic FIFO linked list
+src/lib/fifolist.h       7      definition of a generic FIFO linked list
+src/lib/parse.c          7      public parsing functions for CmdLine
+src/lib/patchlevel.c     7      functions to return version information
+src/lib/private.c        7      private/protected functions for a CmdLine
+src/lib/states.h         7      state enumeration definitions
+src/lib/strindent.c      7      function to print a hanging indented paragraph
+src/lib/unix.c           8      Unix specific parts of a CmdLine
+src/lib/usage.c          8      usage-message specific parts of a CmdLine

@@ -1,0 +1,389 @@
+.SH CLASS DEFINITIONS
+.ds CI \f4CmdLineArgIter\fP
+.ds CA \f4CmdArg\fP
+.ds CL \f4CmdLine\fP
+.de Ss
+.br
+\fB\s-1\&\\$1:\s+1\fR
+.br
+..
+.de UL
+.if n \\$1
+.if n .br
+..
+.de CS
+.  ft 4
+.  nf
+..
+.de CE
+.  fi
+.  ft R
+..
+.PP
+For the most "up to date" explanation of each class (and of its members),
+please refer to the relevant include files (which are thoroughly commented)
+mentioned in the \s-1\fBFILES\fP\s+1 section. The most common facilities
+of the most commonly used classes are described in the following subsections.
+.\"-----------------------------------------------
+.SS "\s+1Class \*(CI\s-1"
+.RS
+Class \*(CI is an abstract base class for iterating over string
+arguments from the command-line (or from some other input source).
+It has two member functions (both of which are pure virtual):
+
+.IP "\f4const char * operator()(void);\fP"
+This member function returns the current string argument and then
+advances to the next string argument. If no arguments are left then
+\f4NULL\fP is returned.
+
+.IP "\f4int  is_temporary(void)  const;\fP"
+This member function is used to indicate the "type" of storage that is
+used for the values returned by \f4operator()\fP. Some iterators will
+have \f4operator()\fP return values that will stay around at least as
+long as the iterator itself; if this is the case, then this member
+function will return 0. Other iterators may reuse the same storage
+on successive calls to \f4operator()\fP; if this is the case, this
+this member function will return a non-zero value.
+
+.PP
+There are three predefined subclasses of \*(CI: \f4CmdArgvIter\fP,
+\f4CmdStrtokIter\fP, and \f4CmdIstreamIter\fP.
+
+.CS
+class CmdArgvIter : public CmdLineArgIter {
+public:
+   CmdArgvIter(const char * const argv[]);
+
+   CmdArgvIter(int argc, const char * const argv[]);
+
+      // Restart using a different string array.
+   void  reset(const char * const argv[]);
+   void  reset(int argc, const char * const argv[]);
+
+   const char * operator()(void);
+
+   int  is_temporary(void)  const;
+} ;
+.CE
+
+This class iterates over string arguments that originate from a NULL
+terminated vector of strings (such as \f4argv\fP), and may be  constructed
+with just an array, or with an array and an item count.
+
+.CS
+class  CmdStrTokIter : public CmdLineArgIter {
+public:
+   CmdStrTokIter(const char * tokens, const char * delimiters =NULL);
+
+      // Reset using a new token-string and delimiter set.
+   void  reset(const char * tokens, const char * delimiters =NULL);
+
+      // Get the current delimiter set
+   const char *  delimiters(void)  const;
+
+      // Change the current delimiter set
+   void  delimiters(const char * new_delimiters);
+
+   const char * operator()(void);
+
+   int  is_temporary(void)  const;
+} ;
+.CE
+
+This class iterates over string arguments that come from a single string
+that contains multiple tokens which are delimited by one or more characters
+from the given delimiter set. The \f4strtok(3C)\fP library function is 
+used to extract tokens from the string. If a delimiter set of \f4NULL\fP
+is given then whitespace will be assumed.
+
+.CS
+class  CmdIstreamIter : public CmdLineArgIter {
+public:
+   CmdIstreamIter(istream & input);
+
+   const char * operator()(void);
+
+   int  is_temporary(void)  const;
+} ;
+.CE
+
+This class iterates over string arguments that come from an input stream.
+Each line of the input stream is considered to be a set of white-space
+separated tokens. If the the first non-white character on a line is `#'
+(`!' for VMS systems) then the line is considered a comment and is ignored.
+If a line is more than 1022 characters in length then we treat it as if
+it were several lines of length 1022 or less.
+
+.RE
+.\"-----------------------------------------------
+.SS "\s+1Class \*(CA\s-1"
+.RS
+A \*(CA is an abstract command-line argument.
+At this level (being the base class), all a command argument
+contains is the "interface" (on the command-line) of the
+argument, and some information (after the command-line has
+been parsed) that says "how" the argument appeared (if it
+was specified).
+
+The interface of a \*(CA consists of the following:
+
+.RS
+.IP "\(bu" 3
+a character name
+.IP "\(bu" 3
+a keyword name
+.IP "\(bu" 3
+a value name (if the argument takes a value)
+.IP "\(bu" 3
+an argument description
+.IP "\(bu" 3
+a set of flags describing the syntax of the argument.
+.IP "\(bu" 3
+a set of flags to record how (and if) the argument
+appeared on the command-line.
+.RE
+
+When constructing a \*(CA, the most common syntax-flags can be
+inferred from the syntax used in the argument description,
+and the argument value name.  If the first non-white character
+of the argument description is a semicolon (`;'), then the argument
+is considered to be "secret" and is NOT printed in usage messages.
+When specifying a value name, one may enclose the value name in between
+square brackets (`[' and `]') to indicate the value is optional. Also,
+one may follow the actual value name with an ellipsis ("\0.\^.\^.")
+to indicate that the value corresponds to a LIST of values.
+
+Other more esoteric syntax flags may be specified explicitly by using
+one or more of the bitmasks of type \f4CmdArg::CmdArgSyntax\fP as
+the last argument to the constructor; if these syntax-flags are NOT supplied,
+then reasonable defaults will be used.
+
+The different types of constructors for a \*(CA are as follows:
+
+.CS
+   // Create an option that takes a value.
+   //
+   // The default flags are to assume that the argument is
+   // optional and that the value is required.
+   //
+   // Examples:
+   //    //  [\-c number]  or  [\*(--count number]
+   //    CmdArg('c', "count", "number",
+   //              "specify the # of copies to use);
+   //
+   //    //  [\-d [level]]  or  [\*(--debug [level]]
+   //    CmdArg('d', "debug", "[level]",
+   //              "turn on debugging and optionally"
+   //              "specify the debug level");
+   //
+   //    //  [\-l items ...]  or  [\*(--list items ...]
+   //    CmdArg('l', "list", "items ...",
+   //              "specify a list of items.");
+   //
+CmdArg(char         optchar,
+       const char * keyword,
+       const char * value,
+       const char * description,
+       unsigned     syntax_flags =CmdArg::isOPTVALREQ);
+
+   // Create an option that takes no value.
+   //
+   // The default syntax-flags are to assume that the
+   // argument is optional.
+   //
+   // Example:
+   //    //  -m  or  \*(--mode
+   //    CmdArg('m', "mode", "turn on this mode");
+   //
+CmdArg(char         optchar,
+       const char * keyword,
+       const char * description,
+       unsigned     syntax_flags =CmdArg::isOPT);
+
+   // Create a positional argument.
+   //
+   // The default flags are to assume that the argument is
+   // positional and that the argument value is required.
+   //
+   // Examples:
+   //    CmdArg("file", "file to read");
+   //
+   //    CmdArg("[file]", "optional file to read");
+   //
+   //    CmdArg("file ...", "list of files to read");
+   //
+   //    CmdArg("[file ...]", "optional list of files to read");
+   //
+CmdArg(const char * value,
+       const char * description,
+       unsigned     syntax_flags =CmdArg::isPOSVALREQ);
+.CE
+
+After a command-argument has been declared, you may wish to ask several
+questions regarding how (and if) it was specified. For example: was the
+argument given? If it was given, was a value supplied?  These questions
+(and others) may answered using the \f4flags()\fP member function:
+
+.CS
+     unsigned  CmdArg::flags(void)  const;
+.CE
+
+This member function returns a set of bitmasks of type
+\f4CmdArg::CmdArgFlags\fP which are defined in \f4<cmdline.h>\fP.
+The most common flags are \f4CmdArg::GIVEN\fP (which is set if the
+argument was given) and \f4CmdArg::VALGIVEN\fP (which is set if a
+value was supplied for the argument).
+
+There are other member functions to return each of the attributes that
+a \*(CA was constructed with.  These member functions (and others) are
+discussed in \f4<cmdline.h>\fP.
+
+Classes that are derived from \*(CA will not have all three of the above 
+destructors. Some derived classes (such as \f4CmdArgBool\fP) only
+correspond to non-positional arguments that take no value. Other derived
+classes (such as \f4CmdArgInt\fP and \f4CmdArgStr\fP) always permit
+a value to be given.
+Some predefined subclasses of \*(CA which represent the most commonly used
+types of command-line arguments may be found in \f4<cmdargs.h>\fP.
+
+.RE
+.\"-----------------------------------------------
+.SS "\s+1Class \*(CL\s-1"
+.RS
+Class \*(CL is the class that represents a command-line object.
+A command-line object is a parsing machine (with machine states),
+whose parsing behavior may be configured at run-time by specifying
+various flags of type \f4CmdLine::CmdFlags\fP.
+A command-line object also contains a command-name and a list of
+\*(CA objects that correspond to the various arguments that are
+allowed to occur on the command-line.
+
+.Ss "Constructing a \*(CL Object"
+.UL "------------------------------"
+It is not necessary to supply a command-name at construction
+time, but one SHOULD be specified before parsing a command-line
+or printing a usage message.
+
+Similarly, \*(CAs are not required at construction time and may
+even be added on the fly. All desired arguments should be added
+before any parsing happens and before printing usage.
+
+The order in which \*(CAs are added to a \*(CL is important
+because for positional parameters, this specifies the order in
+which they are expected to appear on the command-line.
+
+The constructors for a \*(CL are as follows (those constructors that
+take a variable number of parameters must have \f4NULL\fP specified
+as the final parameter):
+
+.CS
+        // construct a command (and optionally specify a name)
+     CmdLine(const char * name =NULL);
+
+        // construct a command with a name, and arguments
+     CmdLine(const char * name, CmdArg * ...);
+
+        // construct a command command with arguments, but no name
+     CmdLine(CmdArg * cmdarg, CmdArg * ...);
+.CE
+
+The command name may be set (or queried) after construction by using
+the \f4name()\fP member function.
+
+Command arguments may be added after construction by using the \f4append()\fP
+member function.
+
+.Ss "Other Common \*(CL Member Functions"
+.UL "--------------------------------------"
+The most common requests to make of a \*(CL object is to ask it to parse
+its arguments, to query it's status, to print the command usage, and to
+print an error message.  These may be accomplished with the following
+member functions:
+
+.CS
+   // Print usage to the given outstream or to
+   // the default error outstream.
+   //
+ostream &  usage(ostream & os)  const;
+ostream &  usage(void)  const;
+
+   // Print the command-name, followed by ": " and return the
+   // outstream for the user to supply the remainder of the
+   // error message.
+   //
+   // Example:
+   //   cmd.error() << "can't use \-x with \-y." << endl ;
+   //
+ostream &  error(void)  const;
+
+   // Obtain the current status of the command. The status will be
+   // zero if everything is okay; otherwise it will correspond
+   // to a combination of CmdLine::CmdStatus bitmasks telling us
+   // precisely what went wrong.
+   //
+unsigned  status(void)  const;
+
+   // Parse arguments from the given string argument iterator.
+   // The return value will be the resultant CmdLine status
+   // (which may also be obtained using status()).
+   //
+unsigned  parse(CmdLineArgIter & arg_iter);
+.CE
+
+
+.Ss "Modifying Parsing Behavior"
+.UL "-----------------------------"
+If you wish to modify parsing behavior to something other than the default,
+there are four more member functions that you will need to know how to use.
+Each of these member functions deals with bitmasks of the type
+\f4CmdLine::CmdFlags\fP.
+
+.CS
+   // Flags that define parsing behavior
+   //   The default flags (for Unix) are OPTS_FIRST.
+enum CmdFlags {
+   ANY_CASE_OPTS = 0x001, // Ignore character-case for short-options
+.sp 2p
+   PROMPT_USER   = 0x002, // Prompt the user for missing required args
+.sp 2p
+   NO_ABORT      = 0x004, // Don't exit upon syntax error
+.sp 2p
+   OPTS_FIRST    = 0x008, // No options after positional parameters
+.sp 2p
+   OPTS_ONLY     = 0x010, // Don't accept long-options
+.sp 2p
+   KWDS_ONLY     = 0x020, // Don't accept short-options
+.sp 2p
+   TEMP          = 0x040, // Assume all arg-strings are temporary
+.sp 2p
+   QUIET         = 0x080, // Don't print syntax error messages
+.sp 2p
+   NO_GUESSING   = 0x100, // Don't guess if cant match an option. 
+                             // Unless this flag is given, then
+                             // when we see an unmatched option,
+                             // we will try to see if it matches
+                             // a keyword (and vice-versa).
+.sp 2p
+   ALLOW_PLUS    = 0x200, // Allow "+" (as well as "--") as a prefix
+                                // indicating long-options.
+} ;
+
+   // Get the current set of command-flags
+unsigned  flags(void)  const;
+
+   // Specify a new set of command-flags
+void  flags(unsigned newflags);
+
+   // Set only the given command-flags, leave the others alone
+void  set(unsigned flags);
+
+   // Clear only the given command-flags, leave the others alone
+void  clear(unsigned flags =~0);
+.CE
+
+These are the basic member functions of a \*(CL object. The are others as well
+but these should provide most of the desired functionality. For more detailed
+information, please see \f4<cmdline.h>\fP.
+
+.RE
+.\"-----------------------------------------------

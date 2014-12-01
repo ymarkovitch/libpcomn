@@ -1,0 +1,21 @@
+.SH ENVIRONMENT
+The following two environment variables (if defined) are used
+by \*(NM:
+
+.IP "$PROMPT_USER"
+If this variable exists and is non-empty, then the user will be
+interactively prompted for any missing required arguments.
+
+.IP "$USAGE_LEVEL"
+This variable controls the verboseness of usage messages that are printed.
+If This variable is empty or is undefined, then verbose messages are printed.
+If this variable exists and is non-empty, it may be set to one of the
+following values:
+.RS
+.IP 0
+No usage message is printed.
+.IP 1
+A terse usage message is printed
+.IP 2
+A verbose usage message is printed.
+.RE

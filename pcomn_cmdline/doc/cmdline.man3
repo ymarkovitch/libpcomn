@@ -1,0 +1,114 @@
+.\"========== TO PRINT, USE: {n,t}roff -man file ==========
+.if n .po 1
+.if n .ll 78
+.ds NM \f4CmdLine\fP
+.so macros.man
+.\"===================================
+.TH CmdLine 3\*(C+
+.\"===================================
+.SH NAME
+CmdLine \- A \*(C+ class library for parsing command-line arguments
+.\"===================================
+.SH SYNOPSIS
+.ft 4
+.nf
+#include <cmdline.h>
+
+class  CmdArg ;  // An abstract command-argument
+
+class  CmdLineArgIter ;  // abstract iterator for command-line-arguments
+class  CmdArgvIter    : public CmdLineArgIter ;
+class  CmdStrTokIter  : public CmdLineArgIter ;
+class  CmdIstreamIter : public CmdLineArgIter ;
+
+class  CmdLine ;  // A command-line object
+class  CmdLineCmdArgIter ;  // iterator for a CmdLine's CmdArgs
+
+.fi
+.ft R
+.\"===================================
+.SH DESCRIPTION
+.PP
+\*(NM is a set of classes to parse command-line arguments.  Unlike
+\f4getopt(3C)\fP and its variants, \*(NM does more than just split up the
+command-line into some canonical form.  \*(NM will actually parse
+the command-line, assigning the appropriate command-line values to
+the corresponding variables, and will verify the command-line syntax
+(and print a usage message if necessary) all in one member function
+call.  Furthermore, many features of \*(NM's parsing behavior are
+configurable at run-time.  These features include the following:
+
+.RS
+.IP "\(bu" 3
+Prompting the user for missing arguments.
+.IP "\(bu" 3
+Allowing keywords (\fB\-count\fP=4) and/or options (\fB\-c\fP4).
+.IP "\(bu" 3
+Ignoring bad syntax instead of terminating.
+.IP "\(bu" 3
+Ignoring upper/lower case on the command-line.
+.IP "\(bu" 3
+Suppressing the printing of syntax error messages.
+.IP "\(bu" 3
+Controlling the verboseness of usage messages.
+.IP "\(bu" 3
+Controlling whether or not options may be processed
+after positional parameters have been seen.
+.RE
+
+.PP
+\*(NM also allows for options that take an optional argument, options
+that take a (possibly optional) list of one or more arguments, options
+whose argument must reside in the same token as the option itself, and
+options whose argument must reside in a separate token from the option
+itself.
+
+.PP
+\*(NM consists of a set of \*(C+ classes to parse arguments from an
+input source called a \f4CmdLineArgIter\fP (which is a base class for
+iterating over arguments from an arbitrary input source).  Argument
+iterators are defined for an \f4argv[]\fP array (with or without a
+corresponding \f4argc\fP), for a string of tokens that are separated
+by a given set of delimiters, and for an input-stream.  Users can easily
+extend \*(NM to parse arguments from other input sources simply by creating
+their own argument iterator classes derived from the \f4CmdLineArgIter\fP
+class defined in \f4<cmdline.h>\fP.
+
+Command-line arguments are themselves objects that contain a specific
+command-line interface, and a function that performs the desired actions
+when its corresponding argument is seen on the command line.  Predefined
+command-line argument types (derived from the abstract class \f4CmdArg\fP
+in \f4<cmdline.h>\fP) exist for boolean, integer, floating-point, character,
+and string arguments, and for lists of integers, floats, and strings.  These
+predefined subclasses of \f4CmdArg\fP may be found in \f4<cmdargs.h>\fP.
+Users can also create their own command-argument types on the fly by defining
+and implementing an appropriate subclass of the \f4CmdArg\fP class.
+
+.IP "\fBNote:\fP" 3
+The \*(NM library does not check for any freestore allocation errors.
+It is assumed that any desired freestore allocation checking will be
+performed by the user by including the file \f4<new.h>\fP and using
+the \f4set_new_handler\fP function to set up a freestore exception
+handler.
+.\"===================================
+.so example.man
+.\"===================================
+.so parsing.man
+.\"===================================
+.so environ.man
+.\"===================================
+.so classes.man
+.\"===================================
+.so files.man
+.\"===================================
+.SH SEE ALSO
+\f4cmdargs\fP(3\*(C+), \f4cmdparse\fP(1)
+.br
+\f4<cmdline.h>\fP, \f4<cmdargs.h>\fP
+.\"===================================
+.so caveats.man
+.\"===================================
+.so bugs.man
+.\"===================================
+.SH AUTHOR
+Brad Appleton, <\f4bradapp@enteract.com\fP>.

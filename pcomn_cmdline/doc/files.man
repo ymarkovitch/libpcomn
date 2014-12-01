@@ -1,0 +1,19 @@
+.SH FILES
+.PP
+.IP \f4\*i/cmdline.h\fP
+\*(C+ include file which contains the definition of a command-argument class,
+a command-line class, and argument-iterator classes.
+
+.IP \f4\*i/cmdargs.h\fP
+\*(C+ include file which contains the definitions of some predefined
+command-argument subclasses.
+
+.IP \f4\*l/libcmdline.a\fP
+The object library for \*(NM(3\*(C+).
+
+.PP
+When compiling your source (on Unix systems), you may need to use
+the \fB\-I\f4\*i\fR option. When linking your objects,
+you may need to use the \fB\-L\f4\*l\fR option in conjunction
+with the \fB\-l\f4cmdline\fR option.
+

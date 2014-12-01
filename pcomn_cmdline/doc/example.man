@@ -1,0 +1,72 @@
+.SH EXAMPLE
+.PP
+Using the \*(NM library is relatively easy \- you need to construct your
+arguments, your command-line, and your argument iterator.  Then all that is
+left to do is call the \f4parse\fP member function of your \*(NM object.
+The following is a simple example:
+
+.XS
+#include <stdlib.h>
+#include <iostream.h>
+#include <cmdargs.h>
+
+int  main(int argc, char * argv[])
+{
+      // Declare arguments
+   CmdArgInt  count('c', "count", "number",
+                       "number of copies to print.");
+.sp 4p
+   CmdArgBool xflag('x', "xmode",
+                       "turn on 'x'-mode.");
+.sp 4p
+   CmdArgChar fdsep('s', "separator", "char",
+                       "field-separator to use.");
+.sp 4p
+   CmdArgStr  input("input-file",
+                       "input file to read.");
+.sp 4p
+   CmdArgStrList  output("[output-file \*(..]",
+                            "where to print output.");
+
+      // Declare the command and the argument-iterator
+   CmdLine  cmd(*argv,
+                   &count, &xflag, &fdsep,
+                   &input, &output, NULL);
+.sp 4p
+   CmdArgvIter  arg_iter(--argc, ++argv);
+
+      // Initialize arguments to appropriate default values.
+   count = 1;
+   xflag = 0;
+   fdsep = ',';
+
+      // Parse arguments
+   cmd.parse(arg_iter);
+
+      // Print arguments
+   cout << "count=" << count << endl ;
+   cout << "xflag=" << (xflag ? "ON" : "OFF") << endl ;
+   cout << "fdsep='" << (char) fdsep << "'" << endl ;
+   cout << "input=\\"" << input << "\\"" << endl ;
+   
+   for (int i = 0 ; i < output.count() ; i++) {
+      cout << "output[" << i << "]=" << output[i] << endl ;
+   }
+
+   return  0;
+}
+.XE
+
+The Unix command-line syntax for the above program would be as follows:
+
+.XS
+progname [\-c number] [\-x] [\-s char] input-file [output-file \*(..]
+.XE
+
+The Unix command-line syntax using long-options (keywords) for the above
+program would be as follows:
+
+.XS
+progname [\*(--count number] [\*(--xmode] [\*(--separator char]
+         input-file [output-file \*(..]
+.XE

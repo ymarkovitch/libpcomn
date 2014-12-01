@@ -1,0 +1,23 @@
+List of suggestions and ideas for CmdLine/cmdparse:
+-------------------------------------------------------------------------------
+
+- What about letting the user define an "ArgCatcher" handler of sorts to
+  "handle" bad/unknown arguments (we have to tell them the bad argument
+  and the reason it was bad - in addition to the usual stuff). What would
+  this function return?
+
+- Perhaps each CmdArg<Type> that is a not abstract should have 2 versions
+  of each constructor: one that takes an initial value and one that doesnt.
+
+- Perhaps a CmdLine should have facilities to get/set the long & short
+  option prefixes (and the end-options string too).
+
+- Maybe I need a more abstract class that is a parent of CmdLine. Perhaps
+  some of the stuff in CmdLine could be transferred to this class. I would
+  need to make some private stuff protected though - do I really want that?
+
+- What about a CmdArgAlias class that mereley adds another interface on top
+  of an existing CmdArg? Only problem is, would you want them to share
+  flags (not syntax flags but the specification flags)??? Dont know how
+  I would do this if you did!
+

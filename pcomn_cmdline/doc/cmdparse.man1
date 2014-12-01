@@ -1,0 +1,719 @@
+.\"========== TO PRINT, USE: {n,t}roff -man file ==========
+.if n .po 1
+.if n .ll 78
+.nh
+.ds NM \f4cmdparse\fP
+.ds | \f4|\fP
+.so macros.man
+.\"===================================
+.TH cmdparse 1
+.\"===================================
+.SH NAME
+cmdparse \- parse command-line arguments for shell-scripts
+.\"===================================
+.SH SYNOPSIS
+.na
+.TP 12
+\fBcmdparse\fP
+[\fB\-anywhere\fP]
+[\fB\-ignore-case\fP]
+[\fB\-noabort\fP]
+[\fB\-noguessing\fP]
+[\fB\-prompt\fP]
+[\fB\-plus\fP]
+.if t .br
+[\fB\-options-only\fP]
+[\fB\-keywords-only\fP]
+[\fB\-quiet\fP]
+[\fB\-arrays\fP]
+[\fB\-usage\fP]
+[\fB\-version\fP]
+.if t .br
+[\fB\-true\fP\ \fIstring\fP]
+[\fB\-false\fP\ \fIstring\fP]
+[\fB\-suffix\fP\ \fIstring\fP]
+.if n .br
+[\fB\-shell\fP\ \fIshellname\fP]
+.if t .br
+[\fB\-file\fP\ \fIfilename\fP]
+[\fB\-env\fP\ \fIvarname\fP]
+[\fB\-decls\fP\ \fIstring\fP]
+.if t .br
+\*(--\ \ 
+\fIprogram-name\fP\ \ 
+\fIarguments\fP\ .\^.\^.
+.ad
+.\"===================================
+.SH DESCRIPTION
+\*(NM will parse the user's command-line arguments using the
+\f4CmdLine\fP(3\*(C+) library (taking into account any user-specified
+preferences) and will print on standard output, a host of variable
+settings using the syntax of the specified shell.  The user must then
+"evaluate" the output of \*(NM in order to set the corresponding
+variables for his (or her) shell-script.
+
+If none of \fB\-file\fP, \fB\-env\fP, or \fB\-decls\fP is given then
+the argument declarations will be read from standard input (unless
+standard input is associated with a terminal, in which case an error
+will result).
+
+If more than one of \fB\-file\fP, \fB\-env\fP, or \fB\-decls\fP is given
+then argument declarations are read from all the places specified but
+in the following order:
+
+.RS
+First, argument declarations are read from the string supplied with the
+\fB\-decls\fP option.
+
+Second, any argument declarations contained in the environment variable
+specified by the \fB\-env\fP option are appended to the current set of
+argument declarations.
+
+Lastly, any argument declarations contained in the file specified
+by the \fB\-file\fP option are appended to the current set of
+argument declarations.
+.RE
+
+The order in which the set of argument declarations are processed is important
+because any positional parameters that were specified are expected to occur
+in the same order as the order in which the corresponding argument declarations
+were processed.
+
+Depending upon which shell you are using, you may want to evaluate the output
+of \*(NM directly (as in "\f4eval $cmdparse_output\fP") or you may wish to
+first redirect output to a file and then evaluate it (as in "\f4.\ cmdparse_output\fP").  Some shells may not preserve all the special
+characters (such as a newline) correctly when the former approach is used.
+Other shells may not permit you to change the value of "local" variables
+in "sourced" files when the latter approach is used.  You will have to
+decide which approach to use based upon your needs, and the shell you are
+using.
+
+.\"===================================
+.SH EXAMPLE
+.nf
+.ft 4
+#!/bin/sh
+#
+# Here is a Bourne Shell script named "cmdname".
+#
+# The short-option syntax is:
+#     cmdname [\-c number] [\-x] [\-s char]
+#             input-file [output-file \*(..]
+#
+# The long-option syntax is:
+#     cmdname [\*(--count number] [\*(--xmode] [\*(--separator char]
+#             input-file [output-file \*(..]
+#             
+NAME="`basename $0`"
+
+## Declare the arguments.
+ARGS='
+   ArgInt   count  "[c|count number]"    "number of copies to print."
+   ArgBool  xflag  "[x|xmode]"           "turn on x-mode."
+   ArgChar  fdsep  "[s|separator char]"  "field-separator to use."
+   ArgStr   input  "input-file"          "input file to read."
+   ArgStr   output "[output-file \*(..]"   "where to print output."
+\&'
+
+## Parse the arguments
+if  cmdparse \-shell=sh \-decls="$ARGS" \*(-- $NAME "$@" > tmp$$
+then
+   ## Success \- evaluate the result.
+   \&.  tmp$$
+   rm \-f tmp$$
+else
+   ## Either usage was printed or we found a syntax error.
+   EXITVAL=$?
+   rm \-f tmp$$
+   exit $EXITVAL
+fi
+
+## Print the arguments
+echo "xflag=" $xflag
+echo "count=" $count
+echo "fdsep=" $fdsep
+echo "input=" $input
+if [ "$output" ] ; then
+   echo "output=" $output
+fi
+.ft R
+.fi
+.\"===================================
+.SH OPTIONS
+Only a unique prefix of each option-name needs to be given (and the
+options are matched case-insensitive).
+The possible options are as follows:
+
+.TP
+\fB\-anywhere\fP
+Allow options (and keywords) to follow positional parameters.
+Unless this option is specified, anything that follows a positional
+parameter that resembles an option (begins with a `\-') will be
+treated as yet another positional parameter.
+.TP
+\fB\-ignore-case\fP
+Ignore character case on single-character options.
+.TP
+\fB\-noabort\fP
+Don't exit if improper command-line syntax was used. Just ignore the
+errors and continue parsing.
+.TP
+\fB\-noguessing\fP
+By default, if an unknown single-character option appears on the command-line,
+\*(NM will "guess" by seeing if the option corresponds to a keyword.
+Similarly, if an unknown keyword (long-option) is encountered, \*(NM
+will see if it matches a single-character option.  Specifying this option
+disables this behavior.
+.TP
+\fB\-prompt\fP
+Prompt the user interactively for any missing required arguments.
+.TP
+\fB\-plus\fP
+Allow the prefix ``+'' to be used to indicate a long-option.
+(this may also be specified by saying \fB\-+\fP).
+.TP
+\fB\-options-only\fP
+Don't match keywords (long-options).  Look only for single-character options.
+.TP
+\fB\-keywords-only\fP
+Don't match options.  Look only for keywords (long-options). Using this
+option also allows the single-character option prefix (`\-') to be used
+for long-options.
+.TP
+\fB\-quiet\fP
+Don't print command-line syntax error messages.
+.TP
+\fB\-arrays\fP
+Use alternative syntax for arrays. See the appropriate subsection of
+the section \s-1\fBSHELLS\fP\s+1 to see how (and if) this option will affect
+the output of \*(NM.
+.TP
+\fB\-usage\fP
+Print command-line usage and exit.  Don't parse anything!
+.TP
+\fB\-version\fP
+Print version information and exit.  Don't parse anything!
+.TP
+\fB\-true\fP\ \fIstring\fP
+The string to use for boolean arguments that are turned \fIon\fP.
+The default string is \f4"TRUE"\fP (unless the \fIperl\fP or \fItcl\fP shells
+are used, in which case the default is \f4"1"\fP).
+.TP
+\fB\-false\fP\ \fIstring\fP
+The string to use for boolean arguments that are turned \fIoff\fP.
+The default string is \f4""\fP (unless the \fIperl\fP or \fItcl\fP shells
+are used, in which case the default is \f4"0"\fP).
+.TP
+\fB\-suffix\fP\ \fIstring\fP
+When no value is supplied for an option that takes an optional value,
+the variable \fInamesuffix\fP, is set to \s-1TRUE\s+1 (where \fIname\fP
+is the name of the corresponding variable and \fIsuffix\fP is the string
+argument given to this option).  If this option is not specified then
+the suffix "\f4_FLAG\fP" will be used.
+.TP
+\fB\-shell\fP\ \fIshellname\fP
+Set program arguments using the syntax of the given shell
+(default=\fIsh\fP).
+.TP
+\fB\-file\fP\ \fIfilename\fP
+The file from which program argument declarations are read.
+If \fIfilename\fP is ``\-'' then standard input is read.
+.TP
+\fB\-env\fP\ \fIvarname\fP
+The name of the environment variable containing the program argument
+declarations.
+.TP
+\fB\-decls\fP\ \fIstring\fP
+The string that contains the program argument declarations.
+.TP
+\*(--
+Indicates the end of options/keywords.
+.TP
+\fIprogram-name\fP
+The name of the program whose arguments are to be parsed.
+If desired, the \fIprogram-name\fP may be specified as a keyword
+(instead of positionally) using the syntax \fB\-name\fP=\fIprogram-name\fR.
+.TP
+\fIarguments\fP\ .\^.\^.
+The program-arguments to be parsed
+
+.\"===================================
+.SH EXIT STATUS
+\*(NM will exit with one of the following status codes:
+
+.IP 0
+Arguments were successfully parsed. No syntax errors were found and the
+shell-script variable settings have been printed on standard output.
+
+.IP 1
+Either usage or version information was explicitly requested. The desired
+information was printed on standard diagnostic output. No arguments were
+parsed.
+
+.IP 2
+Some type of command-line syntax error occurred. Any syntax error messages
+have been printed on standard diagnostic output.
+
+.IP 3
+An invalid or unknown shell (command-interpreter) was specified on the
+command-line to \*(NM.  See the section entitled \s-1\fBSHELLS\fP\s+1
+for a list of the known shells.
+
+.IP 4
+A syntax error of some type occurred in one or more command-line argument
+declarations.  Any syntax error messages
+have been printed on standard diagnostic output.
+.\"===================================
+.so parsing.man
+.\"===================================
+.SH ARGUMENT DECLARATIONS
+The syntax for a single argument for \*(NM looks like the following:
+
+.RS
+<\fIarg-type\fP>  <\fIarg-name\fP>  <\fIsyntax\fP>  <\fIdescription\fP>
+.RE
+
+Where <\fIarg-type\fP> is one of the following (case-insensitive):
+
+.RS
+.IP \f4ArgInt\fP  15
+An integer value (or list of values).
+.IP \f4ArgFloat\fP  15
+A floating-point value (or list of values).
+.IP \f4ArgChar\fP  15
+A character value (or list of values).
+.IP \f4ArgStr\fP  15
+A string value (or list of values).
+.IP \f4ArgBool\fP  15
+A boolean flag that is initially \s-1FALSE\s+1 and is turned \fIon\fP
+whenever it is matched.
+.IP \f4ArgClear\fP  15
+A boolean flag that is initially \s-1TRUE\s+1 and is turned \fIoff\fP
+whenever it is matched.
+.IP \f4ArgToggle\fP  15
+A boolean flag that is initially \s-1FALSE\s+1 and is \fItoggled\fP
+whenever it is matched.
+.IP \f4ArgUsage\fP  15
+Print usage and exit.
+.IP \f4ArgDummy\fP  15
+A dummy argument.
+.RE
+
+If desired, the leading "\f4Arg\fP" portion of the type-name may be omitted.
+
+The field <\fIarg-name\fP> is simply the name of the variable in your script
+that you wish to contain the resultant value from the command-line.
+Any default value must be assigned to the variable \fIbefore\fP invoking
+\*(NM.
+
+The fields <\fIsyntax\fP> and <\fIdescription\fP> \s-1MUST\s+1 be enclosed
+in either single or double quotes! If you want the character you are using
+to quote the field to also appear within the field, then precede the quote
+character (inside the quotes) with a backslash (`\\').
+
+The <\fIdescription\fP> is simply a textual description of the
+argument.  If the first non-white character of the argument
+description is a semicolon (`;'), then the argument is considered
+to be "secret" and is NOT printed in usage messages.
+
+The <\fIsyntax\fP> is a little trickier, there are three basic
+forms of syntax:
+
+.RS
+.TP
+\f4"c|keyword"\fP
+An option that may be matched by \fB\-c\fP or by \fB\*(--keyword\fP
+and takes no value.
+.TP
+\f4"c|keyword\ \ value"\fP
+An option that may be matched by \fB\-c\fP or by \fB\*(--keyword\fP
+and requires a value.
+.TP
+\f4"value"\fP
+A positional parameter.
+.RE
+
+Note that the option-character \s-1MUST\s+1 precede the keyword-name and that
+there must be \s-1NO\s+1 spaces surrounding the `\*|' in
+``\f4c|keyword\fP'' (unless either the option-character or the keyword-name
+is intended to be empty).  If you wish a keyword to have no corresponding
+short-option (or vice versa) than put a blank in the option-character
+(or keyword) portion of the syntax declaration.
+
+Any optional parts of the argument should appear inside square-brackets
+(`[' and `]') and a list of values is denoted by an ellipsis (`` .\^.\^.'').
+Most options will be inside of square brackets to reflect the fact that
+they are "optional".
+
+Some example <\fIsyntax\fP> strings follow:
+
+.RS
+.TP
+\f4"c|keyword"\fP
+A required option.
+.TP
+\f4"[c|keyword]"\fP
+An option with no value.
+.TP
+\f4"[c|keyword\ \ value]"\fP
+An option that takes a value.
+.TP
+\f4"[c|keyword\ \ [value]]"\fP
+An option that takes an optional value.
+.TP
+\f4"[c|keyword\ \ value\ .\^.\^.]"\fP
+An option that takes \fIone or more\fP values.
+.TP
+\f4"[c|keyword\ \ [value \*(..]]"\fP
+An option that takes \fIzero or more\fP values.
+.TP
+\f4"value"\fP
+A required positional parameter.
+.TP
+\f4"[value]"\fP
+An optional positional-parameter.
+.TP
+\f4"[\ \ |keyword]"\fP
+An option that may be matched by keyword but has no corresponding
+single character option.
+.TP
+\f4"[c|\ \ value]"\fP
+An option that takes a value but has no corresponding keyword name. 
+.TP
+\f4"[c|keyword]\ \ value"\fP
+A required argument that may be matched either positionally or by keyword.
+.RE
+
+.SS SYNTAX FLAGS
+.RS
+Normally, the value to an option may be supplied either in the same
+command-line token (as in "\fB\-c\fIvalue\fR"), or in a separate token
+(as in "\fB\-c\ \ \fIvalue\fR").
+If desired, the <\fIsyntax\fP> field may optionally be followed by a colon
+(`:') and one of "\s-1\f4SEPARATE\fP\s+1" or "\s-1\f4STICKY\fP\s+1".
+The former specifies that the argument value may only occur in a separate
+command-line token, the latter specifies that the argument value may only
+occur in the same command-line token.
+.RE
+.\"===================================
+.SH SHELLS
+At present, \*(NM knows about the following shells:
+.RS
+.IP \fIsh\fP  6
+The Bourne Shell. This shell is the standard Unix shell
+(designed and written by Stephen R. Bourne).
+.IP \fIcsh\fP  6
+The C Shell. Bill Joy's answer to \fIsh\fP using C-like syntax.
+.IP \fIksh\fP  6
+The Korn shell. David G. Korn's shell combining all the "best" features
+of \fIsh\fP and \fIcsh\fP in a "clean" fashion.
+.IP \fIbash\fP  6
+The Bourne Again Shell.  The Free Software Foundation's answer to \fIksh\fP.
+.IP \fIzsh\fP  6
+The Z Shell.  Paul Falstad's creation combining all the "best" features
+of \fIksh\fP and \fIcsh\fP plus some stuff of his own.
+.IP \fIrc\fP  6
+The Plan 9 Unix shell designed by Tom Duff.  A public domain implementation
+(with some enhancements) has been released by Byron Rakitzis.
+.IP \fIperl\fP  6
+Larry Wall's practical extraction and report-generation language. \fIPerl\fP is 
+not a "shell" in the same sense as the others but it is a (powerful) language
+in which Unix scripts may be written.
+.IP \fItcl\fP 6
+John K. Ousterhout's Tool Command Language.  Karl Lehenbauer and friends have
+developed a \fItcl\fP shell based on Ousterhout's command language.
+.RE
+
+In addition, \fIash\fP is considered by \*(NM to be equivalent to
+\fIsh\fP; and \fItcsh\fP and \fIitcsh\fP are considered to be equivalent to
+\fIcsh\fP.
+
+For each supported shell, \*(NM will output a combination of
+shell-variable and/or shell-array settings that correspond to the
+arguments that were supplied on the command-line.  In addition, if
+an argument that takes an optional value was given on the command-line
+but \s-1NO\s+1 value was supplied, then the shell-variable named
+\fIname\f4_FLAG\fR is assigned the value \s-1TRUE\s+1 (where \fIname\fP
+was the name specified in the <\fIarg-name\fP> field of the corresponding
+argument declaration). If desired, a suffix other than \f4_FLAG\fP may be
+used by specifying the \fB\-suffix\fP option.
+
+Any desired initial values for variables from the argument declaration
+string should be assigned \s-1BEFORE\s+1 invoking \*(NM.
+\*(NM will \s-1NOT\s+1 output variable settings for any arguments
+that were \s-1NOT\s+1 supplied on the command-line. The only exception to
+this is when a positional argument that corresponds to the positional
+parameters of the shell-script is \s-1NOT\s+1 supplied on the command-line;
+In this particular case, the positional parameters of the shell-script are
+unset (set to an empty list).
+
+The exact syntax used to set variables and arrays for the corresponding
+shells is the subject of the next several subsections.
+
+.\"-----------------------------------
+.SS BOURNE SHELL
+.RS
+For the Bourne shell, shell variables are assigned using the following syntax:
+
+.RS
+.ft 4
+name='value';
+.ft R
+.RE
+
+Shell arrays are assigned using the following syntax:
+
+.XS
+name='value1 value2 \*(..';
+.XE
+
+If the \fB\-arrays\fP option was specified then the following syntax is
+used to set arrays:
+
+.XS
+name_count=3;
+name1='value1';
+name2='value2';
+name3='value3';
+.XE
+
+If the <\fIarg-name\fP> field of an argument is one of "\-", "\*(--",
+"*", or "@" then the argument corresponds to the positional parameters
+of the shell-script and the following syntax is used to set its value(s):
+
+.XS
+set \*(-- 'value1' 'value2' \*(.. ;
+.XE
+
+.RE
+.\"-----------------------------------
+.SS KORN SHELL
+.RS
+For the Korn shell, shell variables are assigned using the following syntax:
+
+.RS
+.ft 4
+name='value';
+.ft R
+.RE
+
+Shell arrays are assigned using the following syntax:
+
+.XS
+set \-A name 'value1' 'value2' \*(.. ;
+.XE
+
+If the \fB\-arrays\fP option was specified then the following syntax is
+used to set arrays:
+
+.XS
+set +A name 'value1' 'value2' \*(.. ;
+.XE
+
+If the <\fIarg-name\fP> field of an argument is one of "\-", "\*(--",
+"*", or "@" then the argument corresponds to the positional parameters
+of the shell-script and the following syntax is used to set its value(s):
+
+.XS
+set \*(-- 'value1' 'value2' \*(.. ;
+.XE
+
+.RE
+.\"-----------------------------------
+.SS C SHELL
+.RS
+For the C shell, shell variables are assigned using the following syntax:
+
+.RS
+.ft 4
+set name='value';
+.ft R
+.RE
+
+Shell arrays are assigned using the following syntax:
+
+.XS
+set name=('value1' 'value2' \*(..) ;
+.XE
+
+If the <\fIarg-name\fP> field of an argument is "\f4argv\fP"
+then the argument corresponds to the positional parameters
+of the script and may be unset.
+
+.RE
+.\"-----------------------------------
+.SS BOURNE AGAIN SHELL
+.RS
+At present, the Bourne Again shell is treated exactly the same as the
+Bourne Shell.
+.RE
+.\"-----------------------------------
+.SS Z SHELL
+.RS
+For the Z shell, shell variables are assigned using the following syntax:
+
+.RS
+.ft 4
+name='value';
+.ft R
+.RE
+
+Shell arrays are assigned using the following syntax:
+
+.XS
+name=('value1' 'value2' \*(..) ;
+.XE
+
+If the <\fIarg-name\fP> field of an argument is one of "\-", "\*(--",
+"*", "@", or "\f4argv\fP" then the argument corresponds to the positional
+parameters of the shell-script and the following syntax is used to set its
+value(s):
+
+.XS
+argv=('value1' 'value2' \*(..) ;
+.XE
+.RE
+.\"-----------------------------------
+.SS PLAN 9 SHELL
+.RS
+For \fIrc\fP (the Plan 9 Shell), shell variables are assigned using the
+following syntax:
+
+.RS
+.ft 4
+name='value';
+.ft R
+.RE
+
+Shell arrays are assigned using the following syntax:
+
+.XS
+name=('value1' 'value2' \*(..) ;
+.XE
+
+If the <\fIarg-name\fP> field of an argument is "\f4*\fP"
+then the argument corresponds to the positional parameters
+of the script and may be unset.
+
+.RE
+.\"-----------------------------------
+.SS PERL
+.RS
+For Perl, variables are assigned using the following syntax:
+
+.RS
+.ft 4
+$name = 'value';
+.ft R
+.RE
+
+arrays are assigned using the following syntax:
+
+.XS
+@name = ('value1', 'value2', \*(..) ;
+.XE
+
+If the <\fIarg-name\fP> field of an argument is "\f4ARGV\fP"
+then the argument corresponds to the positional parameters
+of the script and may be unset.
+
+A \fIperl\fP interface to \*(NM should have been installed in your
+standard perl library when \*(NM was installed.  It may be used
+by saying:
+
+.XS
+require "cmdparse.pl" ;
+.XE
+
+somewhere in your perl-script. This will give you access to a perl function
+named "\*(NM" which may be used as follows:
+
+.XS
+eval &cmdparse("\-decls=$ARGDECLS", $0, @ARGV);
+.XE
+
+Where \f4$ARGDECLS\fP is a variable containing a string of command-line
+argument declarations for \*(NM(1). The arguments to the perl function
+should be a vector of arguments to pass to \*(NM(1) on the command-line.
+The file \f4cmdparse.pl\fP in your \fIperl\fP library directory contains
+the implementation and documentation for the \fIperl\fP interface to \*(NM.
+
+If a syntax error occurred on the command-line and \fB\-noabort\fP was
+not specified then the \*(NM function will terminate the execution of the
+\fIperl\fP script and will \s-1NOT\s+1 return to the caller.
+
+.RE
+.\"-----------------------------------
+.SS TCL
+.RS
+For Tcl, variables are assigned using the following syntax:
+
+.RS
+.ft 4
+set name "value";
+.ft R
+.RE
+
+arrays are assigned using the following syntax:
+
+.XS
+set name [ list "value1" "value2" \*(.. ];
+.XE
+
+If the <\fIarg-name\fP> field of an argument is "\f4argv\fP" or
+"\f4args\fP" then the argument corresponds to the positional
+parameters of the script and may be unset.
+
+A \fItcl\fP interface to \*(NM should have been installed in your
+standard \fItcl\fP library when \*(NM was installed.  It may be used
+by saying:
+
+.XS
+load "cmdparse.tcl" ;
+.XE
+
+somewhere in your \fItcl\fP script. This will give you access to a \fItcl\fP
+procedure named "\*(NM" which may be used as follows:
+
+.XS
+eval [ cmdparse \-decls=$argDecls $scriptName $argv ];
+.XE
+
+Where \f4$argDecls\fP is a variable containing a string of command-line
+argument declarations for \*(NM(1).
+
+The arguments to the \fItcl\fP \*(NM procedure are exactly the same as for
+\*(NM(1).
+The file \f4cmdparse.tcl\fP in your \fItcl\fP library directory contains
+the implementation and documentation for the \fItcl\fP interface to \*(NM.
+
+If a syntax error occurred on the command-line and \fB\-noabort\fP
+was not specified then the \*(NM procedure will terminate the execution of the
+\fItcl\fP script and will \s-1NOT\s+1 return to the caller.
+
+
+.IP "\fBNote:\fP" 3
+The \fItcl\fP \*(NM procedure will only work with \fItcl\fP scripts that use
+a version of the \fItcl\fP shell that contains the \f4execl\fP command!
+
+.RE
+.\"===================================
+.so environ.man
+.\"===================================
+.SH FILES
+.IP \f4\*b/cmdparse\fP
+The executable file for \*(NM(1).
+.IP \f4\*p/cmdparse.pl\fP
+The \fIperl\fP interface (including documentation) to \*(NM(1).
+.IP \f4\*t/cmdparse.tcl\fP
+The \fItcl\fP interface (including documentation) to \*(NM(1).
+.\"===================================
+.SH SEE ALSO
+\f4CmdLine\fP(3\*(C+), \f4cmdargs\fP(3\*(C+)
+.\"===================================
+.so caveats.man
+.\"===================================
+.so bugs.man
+.\"===================================
+.SH AUTHOR
+Brad Appleton, <\f4bradapp@enteract.com\fP>.

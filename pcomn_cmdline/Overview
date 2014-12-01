@@ -1,0 +1,259 @@
+ 
+
+                    An overview of CmdLine and cmdparse
+                    ===================================
+
+                 by Brad Appleton <bradapp@enteract.com>
+
+
+
+ Introduction
+ ------------
+ CmdLine is a C++ Library for parsing command-line arguments. It is 
+ approximately 2750 C++ source statements.
+
+ Cmdparse is a command-line interface to CmdLine for Unix shell-scripts.
+ It is approximately 1500 C++ source statements.
+
+
+ CmdLine(3C++)
+ -------------
+ CmdLine is a set of classes to parse command-line arguments.  Unlike
+ getopt() and its variants, CmdLine does more than just split up the
+ command-line into some canonical form.  CmdLine will actually parse
+ the command-line, assigning the appropriate command-line values to
+ the corresponding objects, and will verify the command-line syntax
+ (and print a usage message if necessary) all in one member function
+ call.  Furthermore, many features of CmdLine's parsing behavior are
+ configurable at run-time.  These features include the following:
+
+     o  Prompting the user for missing arguments.
+     o  Allowing keywords (-count=4) and/or options (-c4).
+     o  Ignoring bad syntax instead of terminating.
+     o  Ignoring upper/lower case on the command-line.
+     o  Suppressing the printing of syntax error messages.
+     o  Controlling the verboseness of usage messages.
+     o  Controlling whether or not options may be processed
+          after positional parameters have been seen.
+
+ CmdLine also allows for options that take an optional argument, options
+ that take a (possibly optional) list of one or more arguments, sticky
+ options (options whose argument must reside in the same token as the
+ option itself), and options whose argument must reside in a separate
+ token from the option itself.
+
+ CmdLine consists of a set of C++ classes to parse arguments from an
+ input source called a CmdLineArgIter (which is a base class for iterating
+ over arguments from an arbitrary input source).  Argument iterators are
+ defined for an argv[] array (with or without a corresponding argc), for
+ a string of tokens that are separated by a given set of delimiters, and
+ for an input-stream.  Users can easily extend CmdLine to parse arguments
+ from other input sources simply by creating their own argument iterator
+ classes derived from the CmdLineArgIter class defined in <cmdline.h>.
+
+ Command-line arguments are themselves objects that contain a specific
+ command-line interface, and a function that performs the desired actions
+ when its corresponding argument is seen on the command line.  Predefined
+ command-line argument types (derived from the abstract class CmdArg in
+ <cmdline.h>) exist for boolean, integer, floating-point, character, and
+ string arguments, and for lists of integers, floats, and strings.  These
+ predefined subclasses of CmdArg may be found in <cmdargs.h>.  Users can
+ also create their own command-argument types on the fly by defining and
+ implementing an appropriate subclass of the CmdArg class.
+
+ Using CmdLine is relatively easy - you need to construct your arguments,
+ your command-line, and your argument iterator.  Then all that is left to
+ do is call the "parse" member function of your CmdLine object.  The
+ following is a simple example:
+
+    #include <stdlib.h>
+    #include <iostream.h>
+    #include <cmdargs.h>
+
+    int  main(int argc, char * argv[])
+    {
+          // Declare arguments
+       CmdArgInt  count('c', "count", "number", "number of copies to print.");
+       CmdArgBool xflag('x', "xmode", "turn on 'x'-mode.");
+       CmdArgChar fdsep('s', "separator", "char", "field-separator to use.");
+       CmdArgStr  input("input-file",  "input file to read.");
+       CmdArgStrList  output("[output-file ...]",  "where to print output.");
+
+          // Declare command object and its argument-iterator
+       CmdLine  cmd(*argv, &count, &xflag, &fdsep, &input, &output, NULL);
+       CmdArgvIter  arg_iter(--argc, ++argv);
+
+          // Initialize arguments to appropriate default values.
+       count = 1;
+       xflag = 0;
+       fdsep = ',';
+
+          // Parse arguments
+       cmd.parse(arg_iter);
+
+          // Print arguments
+       cout << "count=" << count << endl ;
+       cout << "xflag=" << (xflag ? "ON" : "OFF") << endl ;
+       cout << "fdsep='" << (char) fdsep << "'" << endl ;
+       cout << "input=\"" << input << "\"" << endl ;
+       
+       for (int i = 0 ; i < output.count() ; i++) {
+          cout << "output[" << i << "]=" << output[i] << endl ;
+       }
+
+       return  0;
+    }
+
+
+ The Unix command-line syntax for the above program would be as follows:
+
+    Usage: progname [-c number] [-x] [-s char] input-file [output-file ...]
+
+    Options/Arguments:
+            -c number        number of copies to print.
+            -x               turn on 'x'-mode.
+            -s char          field-separator to use.
+            input-file       input file to read.
+            output-file ...  where to print output.
+
+
+ The Unix command-line syntax using long-options (keywords) for the above
+ program would be as follows:
+
+    Usage: progname [--count number] [--xmode] [--separator char]
+                    input-file [output-file ...]
+
+    Options/Arguments:
+            --count number    number of copies to print.
+            --xmode           turn on 'x'-mode.
+            --separator char  field-separator to use.
+            input-file        input file to read.
+            output-file ...   where to print output.
+
+ If desired, one can set a configuration flag at run-time to allow "+"
+ to also be recognized (in addition to "--") as a long-option prefix.
+
+ By default, CmdLine allows both options and long-options to appear on the
+ command-line. You can instruct CmdLine to disallow one or the other however.
+ As an "extra", when options are disallowed, the "-" prefix is assumed to
+ denote a long-option instead of an option (hence either "-" or "--" denotes
+ a keyword in this case).  Using this feature, CmdLine can be used to supply
+ the type of long-option syntax that is now becoming quite popular in the
+ Unix world. Using this "new" syntax, the command-line syntax for the above
+ command would be the following:
+
+    Usage: progname [-count number] [-xmode] [-separator char]
+                    input-file [output-file ...]
+
+    Options/Arguments:
+            -count number    number of copies to print.
+            -xmode           turn on 'x'-mode.
+            -separator char  field-separator to use.
+            input-file       input file to read.
+            output-file ...  where to print output.
+
+
+ It should be mentioned that, when long-options are used, only a unique
+ prefix of the keyword needs to be given (and character-case is ignored).
+ Hence, in the above example, "-x", "-X", and "-xm" will match "-xmode".
+
+
+ cmdparse(1)
+ -----------
+ Using "cmdparse" is even easier than using CmdLine. You declare your
+ arguments in a string and then you invoke cmdparse with the command
+ line of your shell-script and cmdparse will output a script of variable
+ settings for you to evaluate.  The following is an example (using the
+ same arguments as in our sample program):
+
+    #!/bin/sh
+    NAME="`/bin/basename $0`"
+
+    ARGS='
+       ArgInt   count  "[c|count number]"    "number of copies to print."
+       ArgBool  xflag  "[x|xmode]"           "turn on x-mode."
+       ArgChar  fdsep  "[s|separator char]"  "field-separator to use."
+       ArgStr   input  "input-file"          "input file to read."
+       ArgStr   output "[output-file ...]"   "where to print output."
+    '
+
+    if  cmdparse -shell=sh -decls="$ARGS" -- $NAME "$@" > tmp$$
+    then
+       . tmp$$
+       /bin/rm -f tmp$$
+    else
+       EXITVAL=$?
+       /bin/rm -f tmp$$
+       exit $EXITVAL
+    fi
+
+    echo "xflag=" $xflag
+    echo "count=" $count
+    echo "fdsep=" $fdsep
+    echo "input=" $input
+    if [ "$output" ] ; then
+       echo "output=" $output
+    fi
+
+
+ Note that you declare the syntax of an argument differently for cmdparse
+ than for CmdLine. The syntax for a single argument for cmdparse looks like
+ the following:
+
+    <arg-type>  <arg-name>  <syntax>  <description>
+
+ Where <arg-type> is one of the following:
+
+    ArgInt     --  an integer value (or list of values)
+    ArgFloat   --  a floating-point value (or list of values)
+    ArgChar    --  a character value (or list of values)
+    ArgStr     --  a string value (or list of values)
+    ArgBool    --  a boolean flag that is turned ON
+    ArgClear   --  a boolean flag that is turned OFF
+    ArgToggle  --  a boolean flag that is toggled
+    ArgUsage   --  print usage and exit
+    ArgDummy   --  a dummy argument
+
+ If desired, the leading "Arg" portion may be omitted from the type-name.
+
+ <arg-name> is simply the name of the variable in your script that you wish
+ to contain the resultant value from the command-line.  Any default value
+ must be assigned to the variable before invoking cmdparse.
+
+ <syntax> and <description> *MUST* be enclosed in either single or double
+ quotes! <description> is simply that, the description of the argument.
+ 
+ <syntax> is a little trickier, there are three basic forms of syntax:
+
+   1)  "c|keyword"        -- an option that takes no value
+   2)  "c|keyword value"  -- an option that takes a value
+   3)  "value"            -- a positional parameter
+
+ Note that the option-character MUST precede the keyword-name and that
+ there must be NO spaces surrounding the '|' in "c|keyword"!
+
+ Any "optional" parts of the argument should appear inside square-brackets
+ ('[' and ']') and a list of values is denoted by an ellipsis (" ...").
+ Most options will be inside of square brackets to reflect the fact that
+ they are "optional".
+
+ Some example <syntax> strings follow:
+
+    "c|keyword"                -- a required option
+    "[c|keyword]"              -- an option with no value
+    "[c|keyword value]"        -- an option that takes a value
+    "[c|keyword [value]]"      -- an option that takes an optional value
+    "[c|keyword value ...]"    -- an option that takes 1 or more values
+    "[c|keyword [value ...]]"  -- an option that takes 0 or more values
+    "value"                    -- a required positional parameter
+    "[value]"                  -- an optional positional-parameter
+    "[c|keyword] value"        -- a required argument that may be matched
+                                  either positionally or by keyword!
+
+
+ Further Information
+ -------------------
+ This is just a brief overview of what the CmdLine package can do. Please
+ read the documentation for a more thorough explanation of this products'
+ capabilities and limitations!
+

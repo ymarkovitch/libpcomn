@@ -1,0 +1,97 @@
+.SH PARSING
+Although, much of the parsing behavior of \*(NM can be configured at run-time
+there are some \fIcommon rules\fP that are used when parsing command-line
+arguments.  Many of these so called \fIrules\fP are just a formalization
+of things that have become an informal standard over the years.
+
+.SS "LONG AND SHORT OPTIONS"
+.RS
+By default, \*(NM will allow both single-character options \fIand\fP
+keywords (long-options) to be matched on the command-line.
+Under Unix, a single character option is prefixed by the string ``\-''.
+and a long-option is prefixed by the string ``\*(--''.
+(If desired, the string ``+'' may also be used as a long-option prefix
+by explicitly specifying the corresponding flag).  If a token
+on the command-line exactly matches the string ``\*(--'', then all
+further matching of options (both long and short) are disabled and
+any remaining arguments are considered to be positional parameters
+(even if they look like options).
+
+If short-option processing is disabled, then the prefix ``\-'' may be used
+to indicate a long-option (the ``\*(--'' prefix will still be accepted).
+.RE
+
+.SS "OPTION MATCHING"
+.RS
+By default, short-option matching is case-sensitive (but case-insensitive
+matching may be used if desired). Long-options are always matched 
+case-insensitive and only a unique prefix of the long-option name needs
+to be given in order for it to be matched successfully.
+.RE
+
+.SS "SPECIFYING VALUES TO OPTIONS"
+.RS
+By default, \*(NM will allow the value for an option to be in the
+same command-line token as the option itself, or in a separate
+command-line token.  For short-options, specifying the value in
+the same token simply means immediately following the option
+character with the intended value as in "\fB\-c\fIvalue\fR".
+For long-options, specifying the value in the same token requires
+that the value be separated from the keyword name by an equal-sign
+(`=') or by a colon (`:') as in ``\fB\*(--keyword\fP=\fIvalue\fP''
+or ``\fB\*(--keyword\fP:\fIvalue\fP''.
+
+When specifying values to short-options in the same token as the option
+itself, the "portion" of the value that is consumed depends upon
+the option type. For options that represent a character value, only
+the character immediately following the option-character is consumed
+and the remaining characters in the token may match other options.
+For options that represent a numeric value, only the portion of the
+token that "looks" like a number will be consumed and the remaining
+characters in the token may match other options. For options that
+represent a string value, all remaining characters in the token
+are consumed. What this means is that if I have an integer option
+\fB\-i\fP, a character option \fB\-c\fP and a string option \fB\-s\fP,
+then they may all be specified on the command-line using the single token
+``\fB\-i\fI100\fBc\fIc\fBs\fIstring\fR''.
+
+It should be noted that integer valued options may be specified on the
+command-line in decimal, hexadecimal, or octal notation.
+Hexadecimal notation is assumed if the first two characters of the
+integer are ``\f40x\fP'' or ``\f40X\fP'';
+octal notation is assumed if the first digit of the integer is `0';
+decimal notation is assumed for all other cases.
+.RE
+
+.SS "VALUES FOR BOOLEAN OPTIONS"
+.RS
+\*(NM allows boolean options to take optional values. If a boolean option
+appears by itself without a value then the default action (which is
+usually to turn itself \fIon\fP) is used.  One may also explicitly specify
+the boolean value to use by supplying a value \fIin the same token as the
+option\fP.
+
+For short options, a single character is used as the boolean value.
+Other short-option characters may immediately follow the boolean
+value (in the same token as the boolean option) because only one
+character is consumed for the boolean value. 
+The following strings may be used to indicate a value to a boolean option
+(those strings that contain more than 1 character may only be used in
+conjunction with long-options):
+.RS
+.TP
+"\f40\fP", "\f4\-\fP", "\f4OFF\fP", "\f4NO\fP", "\f4FALSE\fP"
+Each of these indicates that the option should be turned \fIoff\fP.
+
+.TP
+"\f41\fP", "\f4+\fP", "\f4ON\fP", "\f4YES\fP", "\f4TRUE\fP"
+Each of these indicates that the option should be turned \fIon\fP.
+
+.TP
+"\f4^\fP", "\f4~\fP", "\f4!\fP"
+Each of these indicates that the option should be \fItoggled\fP.
+In the case of a long-option, any of the above characters may also be followed
+by the keyword-name of the option (as in ``\fB\*(--mode\f4=!mode\fR'').
+.RE
+
+.RE

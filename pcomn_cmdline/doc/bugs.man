@@ -1,0 +1,16 @@
+.SH BUGS
+When a non-multivalued argument appears more than once on the command-line
+then only the last value supplied is used. A problem occurs however in the
+following scenario: suppose `\fB\-s\fP' is an option that takes an optional
+string argument (and suppose `\fB\-x\fP' is some boolean flag). Now, if the
+following command-line is issued:
+
+.XS
+command  \-s string  \-x  \-s
+.XE
+
+then, even though it may appear as if the value used will properly correspond
+to the second instance of the `\fB\-s\fP' option, the value associated with
+the option will be ``\fIstring\fP'' (because the first instance overwrote
+the default and the second instance left the value untouched).
+

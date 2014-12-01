@@ -1,0 +1,244 @@
+
+ WHAT IS THIS?
+ =============
+ This is CmdLine, a C++ library for parsing command arguments and assigning
+ the corresponding values to program variables. Also included is cmdparse,
+ a program to provide an interface to CmdLine for shell-scripts. See the 
+ file named "Overview" for a more thorough introduction!
+
+
+ AUTHOR
+ ======
+ Brad Appleton, Software Tools Developer
+   mailto:bradapp@enteract.com
+   http://www.enteract.com/~bradapp
+
+
+ COPY/REUSE POLICY
+ =================
+ Permission is hereby granted to freely copy and redistribute this
+ software, provided that the author is clearly credited in all copies
+ and derivations. Neither the names of the authors nor that of their
+ employers may be used to endorse or promote products derived from this
+ software without specific written permission.
+
+
+ DISCLAIMER
+ ==========
+ This software is provided ``As Is'' and without any express or implied
+ warranties.  Neither the authors nor any of their employers (including
+ any of their subsidiaries and subdivisions) are responsible for maintaining
+ or supporting this software or for any consequences resulting from the
+ use of this software, no matter how awful, even if they arise from flaws
+ in the software.
+
+
+ CONTENTS
+ ========
+ See the file "MANIFEST" in the distribution for a complete list and
+ description of all the files included in this release.
+
+
+ REQUIREMENTS
+ ============
+ This software should compile on most Unix platforms with a C++ compiler
+ with little or no difficulty.
+
+ You will need to tweak the Makefiles a tad in order to make them work
+ for your C++ compiler.
+
+ CmdLine makes extensive use of the "new" operator but makes no attempt
+ to see if allocation failed!  CmdLine assumes that any such desired
+ error-checking will be taken care of by the programmer by #including
+ the header file <new.h> and using the set_new_handler() function.
+
+ COMPILATION OPTIONS
+ ===================
+ The following names may be `#define'd when building CmdLine.
+
+ unix            Needed for unix systems
+ vms             Needed for vms systems
+ msdos           Needed for MS-DOS systems.
+ os2             Needed for OS/2 Systems.
+
+ unix_style      (This is the default) Use this to have CmdLine parse
+                 command-lines using traditional Unix command-line syntax.
+
+ vms_style       (Not yet supported) Use this to have CmdLine parse
+                 command-lines using traditional VAX/VMS DCL syntax.
+
+ ibm_style       (Not yet supported) Use this to have CmdLine parse
+                 command-lines using traditional IBM-PC (MS-DOS) syntax.
+
+ DEBUG_CMDLINE   Enables use of the "dump" member functions in the CmdLine
+                 library.
+
+ TEMPLATES       #define this if your C++ compiler supports templates.
+
+ GNU_READLINE    Use this if you want CmdLine to use the readline library
+                 (from the FSF) when prompting the user for arguments.
+                 You will probably also need to link with this library.
+
+
+ PORTING
+ =======
+ You may need to tweak the makefiles a bit in order to get CmdLine to build
+ properly.  First look at "Config.mk" and change the make-variables to what-
+ ever is appropriate for your operating system and compilation environment.
+ If you are on an operating system other than Unix, you will also need to
+ change all of the "include" statements in the Makefiles to use the proper
+ pathname syntax.  If you change the definitions of $(LIBDIR) and $(INCDIR)
+ in Config.mk then you should also modify the file doc/macros.man to indicate
+ the new locations for where these files are installed.
+
+ You should be aware of the following when porting CmdLine to other platforms.
+
+ 1) CmdLine assumes that at least one of __STDC__ or __ANSI_CPP__ will be
+    #defined if your C++ compiler uses an ANSI-C preprocessor.
+
+ 2) CmdLine uses <stdarg.h> (not <varargs.h>) to handle functions that may
+    take a variable number of arguments.
+ 
+ 3) Not all systems have the strtod() function used in src/lib/cmdargs.c,
+    If your system DOES have strtod but it is NOT in <stdlib.h> then you
+    will need to add a prototype for it in src/lib/cmdargs.c.  It is possible
+    (but less likely) that you may have similar problems with strtol().
+
+ 4) CmdLine uses the AT&T C++ iostream library.  Beyond that, all the
+    #include files it uses are assumed to have the contents specified by
+    the ANSI-C standard and are assumed to have #ifdef __cplusplus statements
+    for when they are being included by C++ files.  CmdLine assumes the
+    existence of the following system header files:
+
+         <stdarg.h>
+         <stdlib.h>
+         <string.h>
+         <ctype.h>
+         <iostream.h>
+         <fstream.h>
+         <strstream.h>
+         <malloc.h>    <--- only used on Unix systems
+
+
+ BUGS
+ ====
+ Please send all bug reports to Brad Appleton at
+     <bradapp@enteract.com>.
+ Dont forget to mention which version of CmdLine you have and which
+ operating system and C++ compiler you are using.
+
+
+ ACKNOWLEDGEMENTS
+ ================
+ CmdLine is a C++ re-design of ParseArgs.  The author of this software would
+ like to thank Eric Allman and Peter da Silva for their great ideas.
+
+
+ FURTHER INFORMATION
+ ===================
+ For an introduction -- look at the file "Overview" in the distribution!
+
+ The documentation is in Unix manpage format (troff with the -man macros)
+ and may be found in the "doc" directory. The man-pages only cover the most
+ commonly used features. If you want to become an advanced user or gain a
+ more thorough understanding of the package you should read the header files
+ <cmdline.h> and <cmdargs.h>. Ample comments are provided particularly for
+ this purpose. There is also a test-program provided which tests most of
+ the features of the package.
+
+
+ HISTORY
+ =======
+ Look at the file src/lib/patchlevel.c to see what version of CmdLine you
+ have.  Any changes made to the CmdLine product should be documented here:
+
+
+ 07/21/92	Brad Appleton		<bradapp@enteract.com>
+ -----------------------------------------------------------------------------
+ First release.
+
+
+ 11/13/92	Brad Appleton		<bradapp@enteract.com>
+ -----------------------------------------------------------------------------
+ Made some fixes to get the package to compile with g++ and Borland C++.
+
+
+ 02/24/93	Brad Appleton		<bradapp@enteract.com>
+ -----------------------------------------------------------------------------
+ Made some more fixes to get the package to compile with g++.
+
+
+ 03/03/93	Brad Appleton		<bradapp@enteract.com>
+ -----------------------------------------------------------------------------
+ Added a few new features:
+
+ - A description string may now be attached to a CmdLine object and it will
+   be printed (with the heading "Description:") as the last part of verbose
+   usage messages if the description-string is non-NULL and non-empty.
+
+ - Added a "sequence" to a CmdArg that indicates the relative order in
+   which the arguments appeared on the command line. Also added a member
+   to CmdLine that returns the number of valid arguments found (the sequence
+   of an argument will be zero if it was not given, otherwise it will be in
+   the range 1 .. #valid-args-parsed).
+
+ - Added a facility for programmers to setup their own parse-termination
+   handler so they can do something besides exit if they so desire.
+
+ - Added the ability to allow (at run-time) the use of "+" as the long-option
+   prefix (this could be done only at compile-time until now).
+   
+ 08/19/93	Brad Appleton		<bradapp@enteract.com>
+ -----------------------------------------------------------------------------
+ - Fixed a problem that some machines/compilers had with the contructor
+   ignoring the first CmdArg.
+
+ 10/08/93	Brad Appleton		<bradapp@enteract.com>
+ -----------------------------------------------------------------------------
+ CmdLine is now part of the test-suite for the FSF's g++. The following are
+ the changes they made to CmdLine for g++ 2.5:
+
+ - The preprocessor defines __GNUG__, so the user doesn't need to
+   define __gplusplus
+
+ - src/lib/cmdline.h, src/lib/states.h: the enums work properly now
+
+ - src/lib/fifolist.c: NULL wasn't defined on my system, so I put it
+   in if it's not already been defined
+
+ These changes were e-mailed to me by Brendan Kehoe <brendan@lisa.cygnus.com>
+ Unfortunately, Brendan also tells me that he cant get CmdLine to compile
+ under g++ with -DTEMPLATES #defined because it involves some non-trivial
+ fixes to the compiler. 
+
+ 10/26/93	Brad Appleton		<bradapp@enteract.com>
+ -----------------------------------------------------------------------------
+ - documented "secret" arguments in cmdparse(1)
+
+ - fixed the following bug:
+     CmdLine did not properly handle an "interrupted" positional-list.
+     For example, If I have a program whose syntax is:
+
+	     prog [-x] arg ...
+
+     And I have OPTS_FIRST disabled so that options may occur after
+     positional parameters, then the following should be equivalent:
+
+	     prog -x arg1 arg2
+             prog arg1 -x arg2
+
+     CmdLine was not correctly recognizing that "arg2" was part of
+     the the previously specified positional list. This has been
+     fixed!
+
+ 02/10/94	Brad Appleton		<bradapp@enteract.com>
+ -----------------------------------------------------------------------------
+ - fixed a slight bug in keyword matching which only reared its ugly head
+   in unusual situations. The problem was an uninitialized variable.
+
+ - removed the PRINT/NOPRINT enum constants to CmdLine::error() use the
+   existing constant CmdLine::QUIET instead.
+
+ - beefed up some of the comments in the public header files and updated
+   the man page with some of the interface changes.
+

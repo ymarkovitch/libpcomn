@@ -10,7 +10,7 @@
 *******************************************************************************/
 #include <pcomn_http/http_basic_server.h>
 
-#include <cmdline/cmdext.h>
+#include <pcomn_cmdline/cmdext.h>
 
 #include <pcomn_syncobj.h>
 #include <pcomn_trace.h>

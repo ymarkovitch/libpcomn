@@ -1,0 +1,32 @@
+.SH CAVEATS
+When an argument takes a required value and the value is in a separate
+token from the argument (as in "\fB\-c\ \ \fIvalue\fR") then the next
+token on the command-line is assumed to be the value for that argument
+(even if the token \fIlooks\fP like an option because its starts with
+a `\-' character).
+
+If however, an argument takes an \fIoptional\fP value and the value is
+in a separate token from the argument, the next token on the command-line
+is assumed to be the value for that argument \fIonly if the next token
+does \s-1NOT\s+1 look like an option\fP.  In order to specify a value
+that looks like an option to an argument that takes an optional value,
+it is recommended that the value occur in the same token as the argument
+itself (as in "\fB\-c\fI\-value\fR").
+
+The above also applies to non-positional lists.  A non-positional list
+is automatically terminated by another option, or by the token ``\*(--''.
+It is a "feature" of \*(NM that the following are equivalent (assuming
+that \fB\-l\fP takes a list of one or more values):
+
+.XS
+cmdname \-l value1 value2 
+cmdname \-lvalue1 \-lvalue2
+.XE
+
+Hence, to supply values that look like options to non-positional list
+arguments, it is recommended that the following syntax be used:
+
+.XS
+cmdname \-l\-value1 \-l\-value2
+.XE
+

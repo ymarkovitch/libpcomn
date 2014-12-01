@@ -13,7 +13,7 @@
 /** @file
  The most common command-line arguments for daemons and utilities
 *******************************************************************************/
-#include <cmdline/cmdext.h>
+#include <pcomn_cmdline/cmdext.h>
 #include <pcomn_platform.h>
 #include <algorithm>
 #include <stdio.h>
