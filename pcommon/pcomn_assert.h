@@ -207,7 +207,7 @@ __noinline __noreturn void pcomn_fail(const char *fmt, const char *msg, const ch
 #endif
 
 #ifdef __cplusplus
-#define PCOMN_STATIC_CHECK(expr) static_assert((expr), #expr)
+#define PCOMN_STATIC_CHECK(...) static_assert((__VA_ARGS__), #__VA_ARGS__)
 #endif // __cplusplus
 
 #endif // __PCOMN_ASSERT_H

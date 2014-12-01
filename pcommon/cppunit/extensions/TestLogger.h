@@ -97,8 +97,8 @@
 
 #define CPPUNIT_LOG_NOT_EQUAL(left, right)                                                  \
   (CPPUNIT_LOG(__CPPUNIT_CONCAT_SRC_LINE("EXPECTING: (") #left ") != (" #right << ")... "), \
-   CPPUNIT_LOG((assertNotEquals(left, right, "(" #left ") != (" #right ")",                 \
-                           CPPUNIT_SOURCELINE()), "OK") << std::endl))
+   CPPUNIT_LOG((CppUnit::X::assertNotEquals(left, right, "(" #left ") != (" #right ")", \
+                                            CPPUNIT_SOURCELINE()), "OK") << std::endl))
 
 
 #define CPPUNIT_LOG_RUN(expression)                   \

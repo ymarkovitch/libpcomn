@@ -119,10 +119,10 @@ void IteratorTests::Test_Mapped_Iterator()
                                  mapped_iterator<const char * const *, intvector_t::const_iterator>(num_names_ptr, numvec.end())),
                      (strvector_t{"null", "zwei", "vier", "ein", "drei", "elf"})) ;
 
-   PCOMN_STATIC_CHECK((std::is_same<
-                       decltype(const_mapped_iter(num_names_ptr, numvec.cbegin())),
-                       mapped_iterator<const char * const * const, intvector_t::const_iterator>
-                       >::value)) ;
+   PCOMN_STATIC_CHECK(std::is_same<
+                      decltype(const_mapped_iter(num_names_ptr, numvec.cbegin())),
+                      mapped_iterator<const char * const * const, intvector_t::const_iterator>
+                      >::value) ;
 
    decltype(const_mapped_iter(num_names_ptr, numvec.cbegin())) itest ;
    itest = const_mapped_iter(num_names_ptr, numvec.cbegin()) ;
@@ -168,7 +168,7 @@ void IteratorTests::Test_Iterator_Type_Traits()
    PCOMN_STATIC_CHECK(!is_iterator<int>::value) ;
    PCOMN_STATIC_CHECK(!is_iterator<void *>::value) ;
 
-   PCOMN_STATIC_CHECK((is_iterator<Dummy *, std::random_access_iterator_tag>::value)) ;
+   PCOMN_STATIC_CHECK(is_iterator<Dummy *, std::random_access_iterator_tag>::value) ;
    PCOMN_STATIC_CHECK(is_iterator<char *>::value) ;
    PCOMN_STATIC_CHECK(is_iterator<const char *>::value) ;
    PCOMN_STATIC_CHECK(is_iterator<strlist_t::iterator>::value) ;
@@ -176,8 +176,8 @@ void IteratorTests::Test_Iterator_Type_Traits()
    PCOMN_STATIC_CHECK(is_iterator<intlist_t::iterator>::value) ;
    PCOMN_STATIC_CHECK(is_iterator<intlist_t::const_iterator>::value) ;
 
-   PCOMN_STATIC_CHECK((is_iterator<intlist_t::const_iterator, std::forward_iterator_tag>::value)) ;
-   PCOMN_STATIC_CHECK((!is_iterator<intlist_t::const_iterator, std::random_access_iterator_tag>::value)) ;
+   PCOMN_STATIC_CHECK(is_iterator<intlist_t::const_iterator, std::forward_iterator_tag>::value) ;
+   PCOMN_STATIC_CHECK(!is_iterator<intlist_t::const_iterator, std::random_access_iterator_tag>::value) ;
 }
 
 int main(int argc, char *argv[])
