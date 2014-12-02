@@ -562,7 +562,7 @@ struct tagged_ptr_union_POD {
          return *this ;
       }
 
-      void reset() { _first = NULL ; }
+      constexpr void reset() { _first = NULL ; }
 
    private:
       union {
@@ -601,8 +601,8 @@ struct tagged_ptr_union : tagged_ptr_union_POD<T1, T2> {
    private:
       typedef tagged_ptr_union_POD<T1, T2> ancestor ;
    public:
-      tagged_ptr_union() { this->reset() ; }
-      tagged_ptr_union(const ancestor &src) : ancestor(src) {}
+      constexpr tagged_ptr_union() { this->reset() ; }
+      constexpr tagged_ptr_union(const ancestor &src) : ancestor(src) {}
 } ;
 
 /*******************************************************************************

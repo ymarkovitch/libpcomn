@@ -164,6 +164,9 @@ struct noref_result_of<F(ArgTypes...)> :
 template<typename T>
 using noref_result_of_t = typename noref_result_of<T>::type ;
 
+template<typename T>
+using valtype_t = std::remove_cv_t<std::remove_reference_t<T> > ;
+
 /*******************************************************************************
                      union max_align
 *******************************************************************************/
