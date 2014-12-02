@@ -626,8 +626,12 @@ public:
       // Use this member function to specify the desired output stream
       // for error messages.
       //
-   void
-   error(std::ostream & os) { cmd_err = &os; }
+   CmdLine &
+   error(std::ostream & os)
+   {
+      cmd_err = &os;
+      return *this;
+   }
 
    //
    // Get & set the command-parsing-flags
@@ -638,8 +642,12 @@ public:
    flags() const  { return  cmd_flags; }
 
       // Specify a new set of command-flags
-   void
-   flags(unsigned newflags)  { cmd_flags = newflags; }
+   CmdLine &
+   flags(unsigned newflags)
+   {
+      cmd_flags = newflags;
+      return *this;
+   }
 
       // Set only the given command-flags
    void
@@ -725,8 +733,12 @@ public:
       // a function that has no return value and takes a single
       // integer parameter.
       //
-   void
-   quit_handler(quit_func_t  quit_func) { cmd_quit_handler = quit_func ; }
+   CmdLine &
+   quit_handler(quit_func_t quit_func)
+   {
+      cmd_quit_handler = quit_func ;
+      return *this;
+   }
 
       // Get the current quit-handler (returns NULL if there isnt one)
       //

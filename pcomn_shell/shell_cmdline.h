@@ -17,6 +17,7 @@
 
 #include <pcomn_strslice.h>
 #include <pcomn_smartptr.h>
+#include <pcomn_meta.h>
 
 #include <functional>
 #include <string>
@@ -25,16 +26,14 @@
 
 /// Declare command implementor member function in a class derived from
 /// pcomn::sh::CommandSuite
-#define PCOMN_DECL_SHCMD(name) int name(CmdLine &, CmdLineArgIter &)
+#define PCOMN_DECL_SHCMD(name) int shcmd_##name(CmdLine &, CmdLineArgIter &)
 
-#ifdef PCOMN_COMPILER_GNU
 /// Append a command implemented as a member function.
-///
-/// The class must define member typedef 'self' referring to itself.
-#define PCOMN_ADD_SHCMD(name, desc, ...) append(#name, &self::name, *this, (desc) , ##__VA_ARGS__)
-#else
-#define PCOMN_ADD_SHCMD(name, desc, ...) append(#name, &self::name, *this, (desc), __VA_ARGS__)
-#endif
+#define PCOMN_ADD_SHCMD(name, desc, ...) (this->append(#name, &pcomn::valtype_t<decltype(*this)>::shcmd_##name, *this, (desc) , ##__VA_ARGS__))
+
+#define PCOMN_REG_SHCMD(name, desc, ...)                                \
+    PCOMN_DECL_SHCMD(name) ;                                            \
+    pcomn::sh::CommandSuite::register_command _reg__##name {  PCOMN_ADD_SHCMD(name, (desc), ##__VA_ARGS__) }
 
 namespace pcomn {
 namespace sh {
@@ -217,6 +216,8 @@ public:
 
 protected:
     int help(CmdLine &, CmdLineArgIter &) ;
+
+    struct register_command { register_command(CommandSuite &) {} } ;
 
 private:
     typedef std::map<std::string, command_ptr> cmd_map ;
