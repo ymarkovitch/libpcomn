@@ -562,7 +562,7 @@ struct tagged_ptr_union_POD {
          return *this ;
       }
 
-      constexpr void reset() { _first = NULL ; }
+      void reset() { _first = NULL ; }
 
    private:
       union {
