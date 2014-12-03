@@ -135,9 +135,11 @@ struct basic_strslice {
       }
 
       template<class S>
-      S string() const { return {begin(), end()} ; }
+      S string() const { return S(begin(), end()) ; }
 
       std::basic_string<C> stdstring() const { return {begin(), end()} ; }
+
+      explicit operator std::basic_string<C>() const { return {begin(), end()} ; }
 
       size_t size() const { return end() - begin() ; }
 

@@ -601,7 +601,7 @@ struct tagged_ptr_union : tagged_ptr_union_POD<T1, T2> {
    private:
       typedef tagged_ptr_union_POD<T1, T2> ancestor ;
    public:
-      constexpr tagged_ptr_union() { this->reset() ; }
+      tagged_ptr_union() { this->reset() ; }
       constexpr tagged_ptr_union(const ancestor &src) : ancestor(src) {}
 } ;
 

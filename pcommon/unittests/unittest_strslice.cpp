@@ -54,8 +54,14 @@ void StrSliceTests::Test_Strslice_Construct()
    CPPUNIT_LOG_IS_FALSE(strslice("")) ;
    CPPUNIT_LOG_IS_FALSE(strslice("").is_null()) ;
 
-   CPPUNIT_LOG_IS_TRUE((std::has_trivial_copy_assign<strslice>::value)) ;
-   CPPUNIT_LOG_IS_TRUE((std::is_trivially_copyable<strslice>::value)) ;
+   PCOMN_STATIC_CHECK(std::has_trivial_copy_assign<strslice>::value) ;
+   PCOMN_STATIC_CHECK(std::is_trivially_copyable<strslice>::value) ;
+
+   // Check explicit operator std::string
+   CPPUNIT_LOG_EQUAL(std::string(strslice("Hello, world!")), std::string("Hello, world!")) ;
+   // Implicit conversion is not allowed
+   PCOMN_STATIC_CHECK(!std::is_convertible<strslice, std::string>::value) ;
+   PCOMN_STATIC_CHECK(!std::is_convertible<strslice, const char *>::value) ;
 }
 
 void StrSliceTests::Test_Strslice_Compare()
