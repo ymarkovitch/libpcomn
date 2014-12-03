@@ -1041,17 +1041,26 @@ struct assertion_traits<std::tuple<PCOMN_TUPLE_PARAMS> > {
 template<typename S>
 struct assertion_traits_str {
       static bool equal(const S &lhs, const S &rhs) { return lhs == rhs ; }
-      static std::string toString(const S &value) ;
+      static std::string toString(const S &value)
+      {
+         return quote(pcomn::str::cstr(value), pcomn::str::len(value)) ;
+      }
+
+   protected:
+      template<typename C>
+      static std::string quote(const C *begin, size_t sz) ;
 } ;
 
 template<typename S>
-std::string assertion_traits_str<S>::toString(const S &value)
+template<typename C>
+std::string assertion_traits_str<S>::quote(const C *begin, size_t sz)
 {
    std::string result ;
-   result.reserve(pcomn::str::len(value) + 2) ;
+   result.reserve(sz + 2) ;
    result += '"' ;
-   for (const auto c: value)
+   for (const C *end = begin + sz ; begin != end ; ++begin)
    {
+      const C c = *begin ;
       if (c == '\\' || c == '"')
          result += '\\' ;
       result += c ;
@@ -1060,13 +1069,18 @@ std::string assertion_traits_str<S>::toString(const S &value)
 }
 
 template<typename C>
-struct assertion_traits<pcomn::basic_strslice<C> > : assertion_traits_str<pcomn::basic_strslice<C> > {} ;
+struct assertion_traits<std::basic_string<C> > : assertion_traits_str<std::basic_string<C> > {} ;
 
 template<typename C>
 struct assertion_traits<pcomn::basic_cstrptr<C> > : assertion_traits_str<pcomn::basic_cstrptr<C> > {} ;
 
 template<typename C>
-struct assertion_traits<std::basic_string<C> > : assertion_traits_str<std::basic_string<C> > {} ;
+struct assertion_traits<pcomn::basic_strslice<C> > : assertion_traits_str<pcomn::basic_strslice<C> > {
+      static std::string toString(const pcomn::basic_strslice<C> &value)
+      {
+         return assertion_traits_str<pcomn::basic_strslice<C> >::quote(value.begin(), value.size()) ;
+      }
+} ;
 
 } // end of namespace CppUnit
 
