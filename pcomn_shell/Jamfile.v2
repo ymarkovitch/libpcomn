@@ -10,15 +10,13 @@
 #------------------------------------------------------------------------------
 project
   : requirements
-  <library>$(PROJSHARE)/pcommon
-  <library>$(PROJSHARE)/cmdline
-
-  <threading>multi
+  <library>$(PROJROOT)//pcommon
+  <library>$(PROJROOT)//pcomn_cmdline
+  <link>static
 
   : usage-requirements
-  <library>$(PROJSHARE)/pcommon
-  <library>$(PROJSHARE)/cmdline
-  <library>$(PROJROOT)//readline
+  <library>$(PROJROOT)//pcommon
+  <library>$(PROJROOT)//pcomn_cmdline
 ;
 
 lib pcomn_shell :
