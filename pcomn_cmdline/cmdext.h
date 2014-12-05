@@ -133,6 +133,13 @@
 *******************************************************************************/
 namespace cmdl {
 
+/******************************************************************************/
+/** Generic argyment type traits
+
+ @em Must have 'basetype' dependent type/typedef
+*******************************************************************************/
+template<typename T> struct argtype_traits ;
+
 /*******************************************************************************
  Argument baseclass templates
  Traits classes
@@ -242,10 +249,30 @@ protected:
    virtual bool compile(const char *&arg, CmdLine &) = 0 ;
 } ;
 
-/******************************************************************************/
-/** Generic argtype traits
+/*******************************************************************************
+
 *******************************************************************************/
-template<typename T> struct argtype_traits { typedef scalar_argument<T> basetype ; } ;
+template<typename T, typename B = CmdArg>
+struct argtype_handler : scalar_argument<T, B> {
+private:
+   typedef scalar_argument<T, B> ancestor ;
+public:
+   using typename ancestor::type ;
+protected:
+   bool validate(type &v, CmdLine &c) override { return ancestor::validate(v, c) ; }
+   /// Intentionally unimplemented
+   bool compile(const char *&arg, CmdLine &) override ;
+
+   /// Delegating constructor
+   template<typename... Args>
+   argtype_handler(Args &&...args) : ancestor(std::forward<Args>(args)...) {}
+} ;
+
+/*******************************************************************************
+
+*******************************************************************************/
+template<typename T, typename B = CmdArg>
+struct argtype_traits_instance { typedef argtype_handler<T, B> basetype ; } ;
 
 /******************************************************************************/
 /** "Subargument" parser
