@@ -60,6 +60,16 @@ void InetAddressTests::Test_IP_Address()
     CPPUNIT_LOG_EXCEPTION(net::inet_address(""), std::invalid_argument) ;
 
     CPPUNIT_LOG_EQUAL(net::inet_address("", net::inet_address::ALLOW_EMPTY).ipaddr(), (uint32_t)0) ;
+    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address(""), net::invalid_str_repr, "mpty") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address("  65.66.67.68  ", net::inet_address::ONLY_DOTDEC).ipaddr(), net::invalid_str_repr, "decimal") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address("a5.66.67.68", net::inet_address::ONLY_DOTDEC).ipaddr(), net::invalid_str_repr, "decimal") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address("abc", net::inet_address::ONLY_DOTDEC).ipaddr(), net::invalid_str_repr, "decimal") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address("65..66.67", net::inet_address::ONLY_DOTDEC).ipaddr(), net::invalid_str_repr, "decimal") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address("1.1.1.555", net::inet_address::ONLY_DOTDEC), net::invalid_str_repr, "decimal") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address("1.1.555", net::inet_address::ONLY_DOTDEC), net::invalid_str_repr, "decimal") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address("1.555", net::inet_address::ONLY_DOTDEC), net::invalid_str_repr, "decimal") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address("555", net::inet_address::ONLY_DOTDEC), net::invalid_str_repr, "decimal") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address("-0.1.2.3", net::inet_address::ONLY_DOTDEC), net::invalid_str_repr, "decimal") ;
     CPPUNIT_LOG(std::endl) ;
 
     CPPUNIT_LOG_EQUAL(net::inet_address(65, 66, 67, 68).str(), std::string("65.66.67.68")) ;

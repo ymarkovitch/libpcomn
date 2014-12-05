@@ -294,7 +294,7 @@ public:
     constexpr subnet_address() : _pfxlen(0) {}
 
     subnet_address(uint32_t host_order_inetaddr, unsigned prefix_length) :
-        _pfxlen(ensure_pfxlen(prefix_length)),
+        _pfxlen(ensure_pfxlen<std::invalid_argument>(prefix_length)),
         _addr(host_order_inetaddr)
     {}
 
@@ -368,9 +368,10 @@ private:
     uint32_t     _pfxlen ;  /* Subnetwork prefix length */
     inet_address _addr ;    /* IP address */
 
+    template<typename X>
     static uint32_t ensure_pfxlen(unsigned prefix_length)
     {
-        PCOMN_ASSERT_ARG(prefix_length <= 32) ;
+        ensure<X>(prefix_length <= 32, "Subnetwork address prefix length exceeds 32") ;
         return prefix_length ;
     }
 } ;
