@@ -88,7 +88,7 @@ std::pair<InputIterator, OutputIterator> bound_copy_if
       R operator() (const T *t) const                                   \
          {                                                              \
             return !t                                                   \
-               ? default_constructed<typename std::remove_cv<typename std::remove_reference<R>::type>::type>::value \
+               ? pcomn::default_constructed<typename std::remove_cv<typename std::remove_reference<R>::type>::type>::value \
                : t->member() ;                                          \
          }                                                              \
    }

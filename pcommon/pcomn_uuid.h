@@ -177,6 +177,9 @@ struct MAC {
 
 PCOMN_DEFINE_RELOP_FUNCTIONS(, MAC) ;
 
+template<> struct hash_fn<uuid> : hash_fn_member<uuid> {} ;
+template<> struct hash_fn<MAC> : hash_fn_member<MAC> {} ;
+
 /*******************************************************************************
  Debug output
 *******************************************************************************/
@@ -198,11 +201,11 @@ namespace std {
 /******************************************************************************/
 /** std::hash specialization for pcomn::uuid
 *******************************************************************************/
-template<> struct hash<pcomn::uuid> : public pcomn::hash_fn_member<pcomn::uuid> {} ;
+template<> struct hash<pcomn::uuid> : pcomn::hash_fn<pcomn::uuid> {} ;
 /******************************************************************************/
 /** std::hash specialization for pcomn::MAC
 *******************************************************************************/
-template<> struct hash<pcomn::MAC> : public pcomn::hash_fn_member<pcomn::MAC> {} ;
+template<> struct hash<pcomn::MAC> : pcomn::hash_fn<pcomn::MAC> {} ;
 }
 
 #endif /* __PCOMN_UUID_H */

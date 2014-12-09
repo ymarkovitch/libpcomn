@@ -539,15 +539,15 @@ inline O r_copy_if_impl(R r, O o, P pred, const notional_range_tag &)
 }
 
 template<typename R, typename O, typename P>
-inline O r_copy_if_impl(R r, O o, P pred, const iterable_range_tag &)
+inline O r_copy_if_impl(R &&r, O o, P pred, const iterable_range_tag &)
 {
-   return std::copy_if(r.begin(), r.end(), o) ;
+   return std::copy_if(begin(std::forward<R>(r)), end(std::forward<R>(r)), o) ;
 }
 
 template<typename R, typename O, typename P>
-inline O r_copy_if(R r, O o, P pred)
+inline O r_copy_if(R &&r, O o, P pred)
 {
-   return r_copy_if_impl(r, o, pred, r);
+   return r_copy_if_impl(std::forward<R>(r), o, pred, r);
 }
 
 /*******************************************************************************
@@ -590,15 +590,16 @@ inline size_t r_count_impl(R r, const T &val, const notional_range_tag &)
 }
 
 template<typename R, typename T>
-inline size_t r_count_impl(R r, const T &val, const iterable_range_tag &)
+inline size_t r_count_impl(R &&r, const T &val, const iterable_range_tag &)
 {
-    return std::count(r.begin(), r.end(), val) ;
+   using namespace std ;
+   return std::count(begin(std::forward<R>(r)), end(std::forward<R>(r)), val) ;
 }
 
-template<typename R,  typename T>
-inline size_t r_count(R r, const T &val)
+template<typename R, typename T>
+inline size_t r_count(R &&r, const T &val)
 {
-    return r_count_impl(r, val, r) ;
+   return r_count_impl(std::forward<R>(r), val, r) ;
 }
 
 /*******************************************************************************
@@ -615,22 +616,23 @@ inline size_t r_count_if_impl(R r, P pred, const notional_range_tag &)
 }
 
 template<typename R, typename P>
-inline size_t r_count_if_impl(R r, P pred, const iterable_range_tag &)
+inline size_t r_count_if_impl(R &&r, P pred, const iterable_range_tag &)
 {
-    return std::count_if(r.begin(), r.end(), pred) ;
+   using namespace std ;
+   return std::count_if(begin(std::forward<R>(r)), end(std::forward<R>(r)), pred) ;
 }
 
 template<typename R, typename P>
-inline size_t r_count_if(R r, P pred)
+inline size_t r_count_if(R &&r, P pred)
 {
-    return r_count_if_impl(r, pred, r) ;
+    return r_count_if_impl(std::forward<R>(r), pred, r) ;
 }
 
 /*******************************************************************************
  r_distance
 *******************************************************************************/
 template<typename R>
-inline ptrdiff_t r_distance_impl(R &r, const notional_range_tag &)
+inline ptrdiff_t r_distance_impl(R r, const notional_range_tag &)
 {
    ptrdiff_t d = 0 ;
    while (r) ++r, ++d ;
@@ -638,15 +640,16 @@ inline ptrdiff_t r_distance_impl(R &r, const notional_range_tag &)
 }
 
 template<typename R>
-inline ptrdiff_t r_distance_impl(R &r, const iterable_range_tag &)
+inline ptrdiff_t r_distance_impl(R &&r, const iterable_range_tag &)
 {
-   return std::distance(r.begin(), r.end()) ;
+   using namespace std ;
+   return std::distance(begin(std::forward<R>(r)), end(std::forward<R>(r))) ;
 }
 
 template <typename R>
-inline ptrdiff_t r_distance(R r)
+inline ptrdiff_t r_distance(R &&r)
 {
-   return r_distance_impl(r, r) ;
+   return r_distance_impl(std::forward<R>(r), r) ;
 }
 /*******************************************************************************
  r_transform
@@ -660,15 +663,16 @@ inline O r_transform_impl(R &r, O &out, UnaryFunction &fn, const notional_range_
 }
 
 template<typename R, typename O, typename UnaryFunction>
-inline O r_transform_impl(R &r, O &out, UnaryFunction &fn, const iterable_range_tag &)
+inline O r_transform_impl(R &&r, O &out, UnaryFunction &fn, const iterable_range_tag &)
 {
-   return std::transform(r.begin(), r.end(), out, fn) ;
+   using namespace std ;
+   return std::transform(begin(std::forward<R>(r)), end(std::forward<R>(r)), out, fn) ;
 }
 
 template<typename R, typename O, typename UnaryFunction>
-inline O r_transform(R r, O out, UnaryFunction fn)
+inline O r_transform(R &&r, O out, UnaryFunction fn)
 {
-   return r_transform_impl(r, out, fn, r) ;
+   return r_transform_impl(std::forward<R>(r), out, fn, r) ;
 }
 
 } // end of namespace pcomn

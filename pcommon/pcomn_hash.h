@@ -674,10 +674,13 @@ inline sha1hash_t sha1hash_file(FILE *file, size_t *size = NULL)
 
  Uses pcomn::hasher() function for hashing values.
 *******************************************************************************/
-template<class T>
-struct hash_fn : public std::unary_function<T, size_t> {
+template<typename T>
+struct hash_fn : std::unary_function<T, size_t> {
       size_t operator() (const T &val) const { return hasher(val) ; }
 } ;
+
+template<typename T>
+struct hash_fn<const T> : hash_fn<T> {} ;
 
 /******************************************************************************/
 /** Hashing functor, which uses pcomn::hash_fn<> for hashing non-integral values, and
