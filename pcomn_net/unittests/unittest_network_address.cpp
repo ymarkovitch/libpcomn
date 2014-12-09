@@ -231,6 +231,11 @@ void InetAddressTests::Test_Subnet_Address()
                    std::make_pair(inet_address(65, 66, 67, 3), inet_address(65, 66, 67, 3))) ;
     CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 3, 0).addr_range(),
                    std::make_pair(inet_address(0, 0, 0, 0), inet_address(255, 255, 255, 255))) ;
+
+    CPPUNIT_LOG(std::endl) ;
+    CPPUNIT_LOG_EQUAL(subnet_address("10.0.61.5/24"), subnet_address(10, 0, 61, 5, 24)) ;
+    CPPUNIT_LOG_EQUAL(subnet_address("10.0.61.5/24").addr(), inet_address(10, 0, 61, 5)) ;
+    CPPUNIT_LOG_EQ(subnet_address("10.0.61.5/24").pfxlen(), 24) ;
 }
 
 int main(int argc, char *argv[])

@@ -151,8 +151,7 @@ subnet_address::subnet_address(const strslice &subnet_string, RaiseError raise_e
     if (s.first && s.second)
         try {
             _pfxlen = ensure_pfxlen<invalid_str_repr>(strtonum<uint8_t>(make_strslice_range(s.second))) ;
-            _addr = inet_address
-                (inet_address(s.first, inet_address::ONLY_DOTDEC | (-(int)!raise_error & inet_address::NO_EXCEPTION)).ipaddr() & netmask()) ;
+            _addr = inet_address(s.first, inet_address::ONLY_DOTDEC | (-(int)!raise_error & inet_address::NO_EXCEPTION)) ;
             return ;
         }
         catch (const std::exception &)
