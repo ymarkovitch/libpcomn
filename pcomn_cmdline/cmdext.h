@@ -128,6 +128,9 @@
          _##__LINE__.error() << output << std::endl ; \
    } while(false)
 
+#define CMDL_ARGTYPE_TRAITS_INSTANCE(type)                              \
+   namespace cmdl { template<> struct argtype_traits<type > : argtype_traits_instance<type > {} ; }
+
 /*******************************************************************************
  namespace cmdl
 *******************************************************************************/

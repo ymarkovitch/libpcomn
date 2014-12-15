@@ -20,6 +20,7 @@
 
 #include <utility>
 #include <iterator>
+#include <tuple>
 #include <functional>
 
 namespace pcomn {
@@ -403,17 +404,17 @@ class xform_iterator :
       typedef typename ancestor::value_type value_type ;
       typedef typename ancestor::difference_type difference_type ;
 
-      xform_iterator() : _iter(), _converter() {}
-      xform_iterator(const Iterator &i, const Converter &c = Converter()) : _iter(i), _converter(c) {}
+      xform_iterator() = default ;
+      xform_iterator(const Iterator &i, const Converter &c = Converter()) : _data(i, c) {}
 
-      xform_iterator &operator++() { ++_iter ; return *this ; }
-      xform_iterator &operator--() { --_iter ; return *this ; }
+      xform_iterator &operator++() { ++iter() ; return *this ; }
+      xform_iterator &operator--() { --iter() ; return *this ; }
 
       // Post(inc|dec)rement
       PCOMN_DEFINE_POSTCREMENT_METHODS(xform_iterator) ;
 
-      xform_iterator &operator+=(difference_type diff) { _iter += diff ; return *this ; }
-      xform_iterator &operator-=(difference_type diff) { _iter -= diff ; return *this ; }
+      xform_iterator &operator+=(difference_type diff) { iter() += diff ; return *this ; }
+      xform_iterator &operator-=(difference_type diff) { iter() -= diff ; return *this ; }
 
       xform_iterator operator+(difference_type diff) const
       {
@@ -425,25 +426,30 @@ class xform_iterator :
       }
       difference_type operator-(const xform_iterator &other) const
       {
-         return _iter - other._iter ;
+         return iter() - other.iter() ;
       }
 
-      value_type operator*() const { return _converter(*_iter) ; }
+      value_type operator*() const { return converter()(*iter()) ; }
 
       friend bool operator==(const xform_iterator &left, const xform_iterator &right)
       {
-         return left._iter == right._iter ;
+         return left.iter() == right.iter() ;
       }
       friend bool operator<(const xform_iterator &left, const xform_iterator &right)
       {
-         return left._iter < right._iter ;
+         return left.iter() < right.iter() ;
       }
 
       PCOMN_DEFINE_RELOP_FUNCTIONS(friend, xform_iterator) ;
 
    private:
-      Iterator  _iter ;
-      Converter _converter ;
+      std::tuple<Iterator, Converter> _data ; /* Gain advantage of (possible) empty base
+                                               * class optimization for stateless
+                                               * Converter */
+
+      Iterator &iter() { return std::get<0>(_data) ; }
+      const Iterator &iter() const { return std::get<0>(_data) ; }
+      const Converter &converter() const { return std::get<1>(_data) ; }
 } ;
 
 /******************************************************************************/
