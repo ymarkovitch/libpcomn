@@ -80,14 +80,14 @@ class _PCOMNEXP qualified_name {
          _flags(0)
       {}
 
-      qualified_name (const std::string &nm, size_t offs = 0, bigflag_t mode = 0) :
+      qualified_name (const std::string &nm, size_t offs = 0, unsigned mode = 0) :
          _namendx (0),
          _flags(0)
       {
          mangle (nm, offs, mode) ;
       }
 
-      qualified_name (const char *nm, size_t offs = 0, bigflag_t mode = 0) :
+      qualified_name (const char *nm, size_t offs = 0, unsigned mode = 0) :
          _namendx (0),
          _flags(0)
       {
@@ -112,65 +112,41 @@ class _PCOMNEXP qualified_name {
       // name()   -  get the name w/o qualifier
       // e.g. for "hello::my::world" returns "world"; for "hello::" returns ""; for illegal name returns ""
       //
-      std::string name() const
-      {
-         return _name.substr(_namendx) ;
-      }
+      std::string name() const { return _name.substr(_namendx) ; }
 
       // fullname()  -  get the full qualified name as a string
       //
-      std::string fullname(bool mangle) const
-      {
-         return mangle ? mangled() : fullname() ;
-      }
+      std::string fullname(bool mangle) const { return mangle ? mangled() : fullname() ; }
 
       // fullname()  -  get the full demangled qualified name as a string
       //
-      std::string fullname() const
-      {
-         return demangle() ;
-      }
+      std::string fullname() const { return demangle() ; }
 
-      const std::string &mangled() const
-      {
-         return _name ;
-      }
+      const std::string &mangled() const { return _name ; }
 
       // flags()  -  get the name flags (see enum Flags)
       //
-      bigflag_t flags() const
-      {
-         return _flags ;
-      }
+      unsigned flags() const { return _flags ; }
 
       // operator!()  -  is the name correct?
       // Returns true for empty/illegal qualified names.
       //
-      bool operator!() const
-      {
-         return !_namendx ;
-      }
+      explicit operator bool() const { return !!_namendx ; }
 
       // qualified()  -  is the name qualified?
       //
-      bool qualified() const
+      bool qualified() const { return (flags() & Qualified) != 0 ; }
+
+      bool rooted() const { return (flags() & Rooted) != 0 ; }
+
+      friend bool operator<(const qualified_name &qn1, const qualified_name &qn2)
       {
-         return (flags() & Qualified) != 0 ;
+         return qn1._name < qn2._name ;
       }
 
-      bool rooted() const
+      friend bool operator==(const qualified_name &qn1, const qualified_name &qn2)
       {
-         return (flags() & Rooted) != 0 ;
-      }
-
-      bool operator< (const qualified_name &qn2) const
-      {
-         return _name < qn2._name ;
-      }
-
-      bool operator== (const qualified_name &qn2) const
-      {
-         return qn2._name == _name ;
+         return qn1._name == qn2._name ;
       }
 
       // length() -  get the length of string (printable) representation of the qualified name
@@ -194,13 +170,12 @@ class _PCOMNEXP qualified_name {
       qualified_name &append (const qualified_name &, bool full = true) ;
 
    protected:
-
       int mangled_length(int begin, int end) const
       {
          return std::accumulate(_ndxes.c_str() + begin, _ndxes.c_str() + end, 0) ;
       }
 
-      bigflag_t flags (bigflag_t f, bool onOff = true)
+      unsigned flags(unsigned f, bool onOff = true)
       {
         return pcomn::set_flags(_flags, f, onOff) ;
       }
@@ -210,10 +185,10 @@ class _PCOMNEXP qualified_name {
       std::string   _ndxes ;     /* The name components lengths array.
                                   * Every char in this string contains length of the corresponding component.
                                   */
-      size_t         _namendx ; /* The index of name beginning (i.e. position the last component of name begins at) */
-      bigflag_t      _flags ;   /* The name flags (see Flags) */
+      unsigned      _namendx ; /* The index of name beginning (i.e. position the last component of name begins at) */
+      unsigned      _flags ;   /* The name flags (see Flags) */
 
-      void mangle(const std::string &, size_t offs, bigflag_t mode = 0) ;
+      void mangle(const std::string &, size_t offs, unsigned mode = 0) ;
       void check_mangled(const char *beg) ;
       size_t check_part(const char *beg, int len) ;
 } ;

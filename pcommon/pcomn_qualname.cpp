@@ -85,7 +85,7 @@ void qualified_name::check_mangled (const char *beg)
 }
 
 
-void qualified_name::mangle(const std::string &nm, size_t offs, bigflag_t mode)
+void qualified_name::mangle(const std::string &nm, size_t offs, unsigned mode)
 {
    _flags = 0 ;
 
@@ -127,7 +127,7 @@ void qualified_name::mangle(const std::string &nm, size_t offs, bigflag_t mode)
          {
             if (was_delim)
                if (mode & TrailingDelim)
-                  pcomn::set_flags_on(mode, (bigflag_t)Qualifier) ;
+                  pcomn::set_flags_on(mode, (unsigned)Qualifier) ;
                else
                   _name = std::string() ;
          }
@@ -190,7 +190,7 @@ qualified_name &qualified_name::append (const qualified_name &qn, bool full)
       else
       {
          _ndxes[level()] = qn._ndxes[qn.level()] ;
-         pcomn::set_flags(_flags, qn.flags(), (bigflag_t)HasNameLevel) ;
+         pcomn::set_flags(_flags, qn.flags(), (unsigned)HasNameLevel) ;
       }
    }
    return *this ;
