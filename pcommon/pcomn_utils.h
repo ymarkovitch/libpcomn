@@ -541,9 +541,11 @@ inline constexpr T *null_if_untagged_or_null(T *ptr)
  The alignment of the memory pointed to by any of union members MUST be at least 2
 *******************************************************************************/
 template<typename T1, typename T2>
-struct tagged_ptr_union_POD {
+struct tagged_ptr_union {
       typedef T1 *first_type ;
       typedef T2 *second_type ;
+
+      constexpr tagged_ptr_union() : _data{0} {}
 
       constexpr operator const void *() const { return (const void *)(as_intptr() &~ (intptr_t)1) ; }
 
@@ -555,29 +557,45 @@ struct tagged_ptr_union_POD {
       }
 
       template<int i>
-      tagged_ptr_union_POD &set(typename std::conditional<i, second_type, first_type>::type v)
+      tagged_ptr_union &set(typename std::conditional<i, second_type, first_type>::type v)
       {
          NOXCHECK(!((uintptr_t)v & 1)) ;
          this->set_(v, std::integral_constant<int, i>()) ;
          return *this ;
       }
 
-      void reset() { _first = NULL ; }
+      void reset() { _data.first = NULL ; }
+
+      tagged_ptr_union &operator=(const tagged_ptr_union &) = default ;
+
+      std::enable_if_t<!std::is_same<valtype_t<T1>, valtype_t<T2> >::value, tagged_ptr_union &>
+      operator=(first_type p)
+      {
+         this->template set<0>(p) ;
+         return *this ;
+      }
+
+      std::enable_if_t<!std::is_same<valtype_t<T1>, valtype_t<T2> >::value, tagged_ptr_union &>
+      operator=(second_type p)
+      {
+         this->template set<1>(p) ;
+         return *this ;
+      }
 
    private:
       union {
-            first_type  _first ;
-            second_type _second ;
-      } ;
+            first_type  first ;
+            second_type second ;
+      } _data ;
 
-      constexpr intptr_t as_intptr() const { return (intptr_t)_first ; }
-      constexpr intptr_t first_mask() const { return (((intptr_t)_second & 1) - 1) ; }
+      constexpr intptr_t as_intptr() const { return (intptr_t)_data.first ; }
+      constexpr intptr_t first_mask() const { return (((intptr_t)_data.second & 1) - 1) ; }
 
       constexpr first_type get_(std::integral_constant<int, 0>) const
       {
          return reinterpret_cast<first_type>(as_intptr() & first_mask()) ;
       }
-      void set_(first_type v, std::integral_constant<int, 0>) { _first = v ; }
+      void set_(first_type v, std::integral_constant<int, 0>) { _data.first = v ; }
 
       constexpr second_type get_(std::integral_constant<int, 1>) const
       {
@@ -585,24 +603,12 @@ struct tagged_ptr_union_POD {
       }
       void set_(second_type v, std::integral_constant<int, 1>)
       {
-         _second = reinterpret_cast<second_type>
+         _data.second = reinterpret_cast<second_type>
             ((((uintptr_t)v) | (uintptr_t)1) ^ (uintptr_t)!v) ;
       }
 
       static_assert(alignof(first_type) > 1 && alignof(second_type) > 1,
                     "Types pointed to by pcomn::tagged_ptr_union must have alignment at least 2") ;
-} ;
-
-/******************************************************************************/
-/** Tagged pointer union with a default constructor, which resets it to NULL
-*******************************************************************************/
-template<typename T1, typename T2>
-struct tagged_ptr_union : tagged_ptr_union_POD<T1, T2> {
-   private:
-      typedef tagged_ptr_union_POD<T1, T2> ancestor ;
-   public:
-      tagged_ptr_union() { this->reset() ; }
-      constexpr tagged_ptr_union(const ancestor &src) : ancestor(src) {}
 } ;
 
 /*******************************************************************************
