@@ -35,6 +35,8 @@
 #define NOXFAIL(msg) \
    ((void)(pcomn_fail("Failure: %s, file %s, line %d\n", (char *)(msg), __FILE__, __LINE__)))
 
+#define PCOMN_FAIL(msg) NOXFAIL(msg)
+
 #define PCOMN_ENSURE(p, s) (likely(!!(p)) ? (void)0 : NOXFAIL(s))
 
 #define PCOMN_VERIFY(p)                                                 \
