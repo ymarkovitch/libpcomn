@@ -132,7 +132,7 @@ project libpcomn
 
   <include>$(VENDOR_INCPATH)
 
-  <threading>multi <pic>on
+  <threading>multi
 
   # GCC-specific compiler flags for all build variants
   [ conditional <toolset>gcc :

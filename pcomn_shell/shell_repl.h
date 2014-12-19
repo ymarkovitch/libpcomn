@@ -128,12 +128,12 @@ public:
     bool exec_command(const char *line) throw() ;
 
     /// Get the prompt
-    const std::string &prompt() const { return _prompt ; }
+    virtual const std::string &prompt() const { return _prompt ; }
 
     /// Set the prompt
     /// @note This method can be called from a command handler, allowing to change the
     /// prompt dynamically.
-    void set_prompt(const std::string &p) { _prompt = p ; }
+    virtual void set_prompt(const std::string &p) { _prompt = p ; }
 
     CommandSuite &commands() { return _commands ; }
 
