@@ -103,8 +103,8 @@ void UUIDFixture::Test_UUID()
 
    CPPUNIT_LOG(std::endl) ;
    // Invalid formats
-   CPPUNIT_LOG_IS_FALSE(uuid("f47ac10b-58cc-4372-a567-0e02b2c3d47")) ;
-   CPPUNIT_LOG_EXCEPTION(uuid("f47ac10b-58cc-4372-a567-0e02b2c3d47", RAISE_ERROR), std::invalid_argument) ;
+   CPPUNIT_LOG_IS_FALSE(uuid("f47ac10b-58cc-4372-a567-0e02b2c3d47", DONT_RAISE_ERROR)) ;
+   CPPUNIT_LOG_EXCEPTION(uuid("f47ac10b-58cc-4372-a567-0e02b2c3d47"), std::invalid_argument) ;
    CPPUNIT_LOG_IS_FALSE(uuid(nullptr)) ;
    CPPUNIT_LOG_IS_FALSE(uuid(nullptr, RAISE_ERROR)) ;
    CPPUNIT_LOG_IS_FALSE(uuid("", RAISE_ERROR)) ;
@@ -112,11 +112,11 @@ void UUIDFixture::Test_UUID()
    CPPUNIT_LOG_IS_FALSE(uuid(std::string(), RAISE_ERROR)) ;
 
    CPPUNIT_LOG(std::endl) ;
-   CPPUNIT_LOG_EXCEPTION(uuid("f47ac10b-58cc-4372-a567-0e02b2c3d479 ", RAISE_ERROR), std::invalid_argument) ;
-   CPPUNIT_LOG_EXCEPTION(uuid(" f47ac10b-58cc-4372-a567-0e02b2c3d479", RAISE_ERROR), std::invalid_argument) ;
-   CPPUNIT_LOG_EXCEPTION(uuid("f47ac10b 58cc-4372-a567-0e02b2c3d479", RAISE_ERROR), std::invalid_argument) ;
-   CPPUNIT_LOG_EXCEPTION(uuid("f47ac10b-58cc 4372-a567-0e02b2c3d479", RAISE_ERROR), std::invalid_argument) ;
-   CPPUNIT_LOG_EXCEPTION(uuid("f47ac10b-58cc-4372 a567-0e02b2c3d479", RAISE_ERROR), std::invalid_argument) ;
+   CPPUNIT_LOG_EXCEPTION(uuid("f47ac10b-58cc-4372-a567-0e02b2c3d479 "), std::invalid_argument) ;
+   CPPUNIT_LOG_EXCEPTION(uuid(" f47ac10b-58cc-4372-a567-0e02b2c3d479"), std::invalid_argument) ;
+   CPPUNIT_LOG_EXCEPTION(uuid("f47ac10b 58cc-4372-a567-0e02b2c3d479"), std::invalid_argument) ;
+   CPPUNIT_LOG_EXCEPTION(uuid("f47ac10b-58cc 4372-a567-0e02b2c3d479"), std::invalid_argument) ;
+   CPPUNIT_LOG_EXCEPTION(uuid("f47ac10b-58cc-4372 a567-0e02b2c3d479"), std::invalid_argument) ;
    CPPUNIT_LOG_EXCEPTION(uuid("f47ac10b-58cc-4372-a56750e02b2c3d479", RAISE_ERROR), std::invalid_argument) ;
    CPPUNIT_LOG_EXCEPTION(uuid("f47ac10b-58cc-4372-a56750e02b2c3d4790", RAISE_ERROR), std::invalid_argument) ;
 
@@ -197,12 +197,12 @@ void MACFixture::Test_MAC()
    const MAC null_mac ("00:00:00:00:00:00", RAISE_ERROR) ;
    CPPUNIT_LOG_EQUAL(null_mac, MAC()) ;
    // MAC constructor with invalid argument string must create NULL MAC
-   CPPUNIT_LOG_EQUAL(null_mac, MAC("E0:CB:4E:8C:4F:5")) ;
+   CPPUNIT_LOG_EQUAL(null_mac, MAC("E0:CB:4E:8C:4F:5", DONT_RAISE_ERROR)) ;
 
    CPPUNIT_LOG(std::endl) ;
    // Invalid formats
-   CPPUNIT_LOG_IS_FALSE(MAC("E0:CB:4E:8C:4F:5")) ;
-   CPPUNIT_LOG_EXCEPTION(MAC("E0:CB:4E:8C:4F:5", RAISE_ERROR), std::invalid_argument) ;
+   CPPUNIT_LOG_IS_FALSE(MAC("E0:CB:4E:8C:4F:5", DONT_RAISE_ERROR)) ;
+   CPPUNIT_LOG_EXCEPTION(MAC("E0:CB:4E:8C:4F:5"), std::invalid_argument) ;
    CPPUNIT_LOG_IS_FALSE(MAC(nullptr)) ;
    CPPUNIT_LOG_IS_FALSE(MAC(nullptr, RAISE_ERROR)) ;
    CPPUNIT_LOG_IS_FALSE(MAC("", RAISE_ERROR)) ;
@@ -210,10 +210,10 @@ void MACFixture::Test_MAC()
    CPPUNIT_LOG_IS_FALSE(MAC(std::string(), RAISE_ERROR)) ;
 
    CPPUNIT_LOG(std::endl) ;
-   CPPUNIT_LOG_EXCEPTION(MAC("E0:CB:4E:8C:FF:5C ", RAISE_ERROR), std::invalid_argument) ;
-   CPPUNIT_LOG_EXCEPTION(MAC(" E0:CB:4E:8C:FF:5C", RAISE_ERROR), std::invalid_argument) ;
-   CPPUNIT_LOG_EXCEPTION(MAC("G0:CB:4E:8C:FF:5C", RAISE_ERROR), std::invalid_argument) ;
-   CPPUNIT_LOG_EXCEPTION(MAC("E00CB:4E:8C:FF:5C", RAISE_ERROR), std::invalid_argument) ;
+   CPPUNIT_LOG_EXCEPTION(MAC("E0:CB:4E:8C:FF:5C "), std::invalid_argument) ;
+   CPPUNIT_LOG_EXCEPTION(MAC(" E0:CB:4E:8C:FF:5C"), std::invalid_argument) ;
+   CPPUNIT_LOG_EXCEPTION(MAC("G0:CB:4E:8C:FF:5C"), std::invalid_argument) ;
+   CPPUNIT_LOG_EXCEPTION(MAC("E00CB:4E:8C:FF:5C"), std::invalid_argument) ;
    CPPUNIT_LOG_EXCEPTION(MAC("E0:CB 4E:8C:FF:5C", RAISE_ERROR), std::invalid_argument) ;
    CPPUNIT_LOG_EXCEPTION(MAC("E0:CB:4E:8C:FF05C", RAISE_ERROR), std::invalid_argument) ;
    CPPUNIT_LOG_EXCEPTION(MAC("E0:CB:4E:8CFFFF5C", RAISE_ERROR), std::invalid_argument) ;

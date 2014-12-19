@@ -36,12 +36,12 @@ struct uuid {
       /// @param str Canonical form of UUID string representation, like
       /// e.g. "123e4567-e89b-12d3-a456-426655440000", or an empty string or nullptr,
       ///
-      uuid(const char *str, RaiseError raise_error = DONT_RAISE_ERROR) :
+      uuid(const char *str, RaiseError raise_error = RAISE_ERROR) :
          uuid(str ? strslice(str) : strslice(), raise_error)
       {}
 
       _PCOMNEXP
-      uuid(const strslice &str, RaiseError raise_error = DONT_RAISE_ERROR) ;
+      uuid(const strslice &str, RaiseError raise_error = RAISE_ERROR) ;
 
       explicit constexpr operator bool() const { return !!(_idata[0] | _idata[1]) ; }
 
@@ -126,12 +126,12 @@ struct MAC {
       constexpr MAC(uint8_t o1, uint8_t o2, uint8_t o3, uint8_t o4, uint8_t o5, uint8_t o6) :
       _data{o1, o2, o3, o4, o5, o6} {}
 
-      MAC(const char *str, RaiseError raise_error = DONT_RAISE_ERROR) :
+      MAC(const char *str, RaiseError raise_error = RAISE_ERROR) :
          MAC(str ? strslice(str) : strslice(), raise_error)
       {}
 
       _PCOMNEXP
-      MAC(const strslice &str, RaiseError raise_error = DONT_RAISE_ERROR) ;
+      MAC(const strslice &str, RaiseError raise_error = RAISE_ERROR) ;
 
       explicit constexpr operator bool() const { return !!_idata ; }
 
