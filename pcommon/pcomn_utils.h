@@ -540,24 +540,43 @@ inline constexpr T *null_if_untagged_or_null(T *ptr)
 
  The alignment of the memory pointed to by any of union members MUST be at least 2
 *******************************************************************************/
-template<typename T1, typename T2>
+template<typename T1, typename T2, typename... T>
 struct tagged_ptr_union {
-      typedef T1 *first_type ;
-      typedef T2 *second_type ;
+   private:
+      typedef std::tuple<T1 *, T2 *, T *...> tag_tuple ;
+
+      // The _minimum_ alignment of all pointed to types.
+      // Determines maximum number of distinct items in the union, e.g. tagged_ptr_union
+      // cannot discriminate between more than element_alignment items
+      static constexpr size_t element_alignment = ct_min<size_t, alignof(T1), alignof(T2), alignof(T)...>::value ;
+
+      // The second static_assert would be enough, but we use this extra check to get
+      // more detailed error messages
+      static_assert(element_alignment > 1,
+                    "Types pointed to by pcomn::tagged_ptr_union must have alignment at least 2") ;
+      static_assert(std::tuple_size<tag_tuple>::value <= element_alignment,
+                    "Too many items in tagged_ptr_union: the number of distinct items cannot be greater "
+                    "than the minimum element alignment") ;
+
+   public:
+      template<size_t I>
+      using element_type = typename std::tuple_element<I, tag_tuple>::type ;
+
+      typedef element_type<0> first_type ;
+      typedef element_type<1> second_type ;
 
       constexpr tagged_ptr_union() : _data{0} {}
 
       constexpr operator const void *() const { return (const void *)(as_intptr() &~ (intptr_t)1) ; }
 
-      template<int i>
-      constexpr typename std::conditional<i, second_type, first_type>::
-      type get() const
+      template<size_t i>
+      constexpr element_type<i> get() const
       {
          return this->get_(std::integral_constant<int, i>()) ;
       }
 
-      template<int i>
-      tagged_ptr_union &set(typename std::conditional<i, second_type, first_type>::type v)
+      template<size_t i>
+      tagged_ptr_union &set(element_type<i> v)
       {
          NOXCHECK(!((uintptr_t)v & 1)) ;
          this->set_(v, std::integral_constant<int, i>()) ;
@@ -606,9 +625,6 @@ struct tagged_ptr_union {
          _data.second = reinterpret_cast<second_type>
             ((((uintptr_t)v) | (uintptr_t)1) ^ (uintptr_t)!v) ;
       }
-
-      static_assert(alignof(first_type) > 1 && alignof(second_type) > 1,
-                    "Types pointed to by pcomn::tagged_ptr_union must have alignment at least 2") ;
 } ;
 
 /*******************************************************************************

@@ -450,49 +450,6 @@ class nzbitpos_iterator : public std::iterator<std::forward_iterator_tag, int> {
 } ;
 
 /*******************************************************************************
- Bitwise functors
-*******************************************************************************/
-/// Calculate a | b.
-template<class T>
-struct bor : std::binary_function<T, T, T>
-{
-   T operator() (const T &t1, const T &t2) const
-   {
-      return t1 | t2 ;
-   }
-} ;
-
-/// Calculate a & b.
-template<class T>
-struct band : std::binary_function<T, T, T>
-{
-   T operator() (const T &t1, const T &t2) const
-   {
-      return t1 & t2 ;
-   }
-} ;
-
-/// Calculate a ^ b.
-template<class T>
-struct bxor : std::binary_function<T, T, T>
-{
-   T operator() (const T &t1, const T &t2) const
-   {
-      return t1 ^ t2 ;
-   }
-} ;
-
-/// Calculate ~a.
-template<class T>
-struct bnot : std::unary_function<T, T>
-{
-   T operator() (const T &t) const
-   {
-      return ~t ;
-   }
-} ;
-
-/*******************************************************************************
  Compile-time calculations
 *******************************************************************************/
 /// Get the rightmost nonzero bit at compile-time.
@@ -503,67 +460,71 @@ struct ct_getrnzb : public std::integral_constant<unsigned, x & -x> {} ;
 template<unsigned x>
 struct ct_clrrnzb  : public std::integral_constant<unsigned, x & (x - 1)> {} ;
 
+namespace detail {
+template<unsigned bit, unsigned v> struct ibc ;
+
+template<unsigned v> struct ibc<1, v> : public std::integral_constant
+<unsigned, (0x55555555U & v) + (0x55555555U & (v >> 1U))> {} ;
+
+template<unsigned v> struct ibc<2, v> : public std::integral_constant
+<unsigned, (0x33333333U & ibc<1, v>::value) + (0x33333333U & (ibc<1, v>::value >> 2U))> {} ;
+
+template<unsigned v> struct ibc<4, v> : public std::integral_constant
+<unsigned, (ibc<2, v>::value + (ibc<2, v>::value >> 4U)) & 0x0f0f0f0fU> {} ;
+
+template<unsigned v> struct ibc<8, v> : public std::integral_constant
+<unsigned, (ibc<4, v>::value + (ibc<4, v>::value >> 8U))> {} ;
+}
+
 /// Count nonzero bits in unsigned N at compile-time (the same as bitop::bitcount(),
 /// but at compile-time).
-template<unsigned i>
-struct ct_bitcount {
-   private:
-      template<unsigned bit, class = void> struct _ibc {} ;
-
-      template<class T> struct _ibc<1, T> : public std::integral_constant
-      <unsigned, (0x55555555U & i) + (0x55555555U & (i >> 1U))> {} ;
-
-      template<class T> struct _ibc<2, T> : public std::integral_constant
-      <unsigned, (0x33333333U & _ibc<1>::value) + (0x33333333U & (_ibc<1>::value >> 2U))> {} ;
-
-      template<class T> struct _ibc<4, T> : public std::integral_constant
-      <unsigned, (_ibc<2>::value + (_ibc<2>::value >> 4U)) & 0x0f0f0f0fU> {} ;
-
-      template<class T> struct _ibc<8, T> : public std::integral_constant
-      <unsigned, (_ibc<4>::value + (_ibc<4>::value >> 8U))> {} ;
-
-   public:
-      static const unsigned value =
-         (_ibc<8>::value + (_ibc<8>::value >> 16U)) & 0x0000003fU ;
-} ;
-
-template<unsigned i>
-const unsigned ct_bitcount<i>::value ;
+template<unsigned x>
+struct ct_bitcount : std::integral_constant
+<unsigned, (detail::ibc<8, x>::value + (detail::ibc<8, x>::value >> 16U)) & 0x0000003fU> {} ;
 
 /// Get a position of the rightmost nonzero bit at compile-time.
 template<unsigned x>
-struct ct_rnzbpos { static const int value = (int)ct_bitcount<~(-(x & -x))>::value - 1 ; } ;
+struct ct_rnzbpos : std::integral_constant<int, (int)ct_bitcount<~(-(x & -x))>::value - 1> {} ;
 
-template<unsigned x>
-const int ct_rnzbpos<x>::value ;
+template<typename U, U i>
+struct ct_lnzbpos_value ;
+
+template<uint8_t i>
+struct ct_lnzbpos_value<uint8_t, i> :
+         std::integral_constant
+<int,
+ (i > 127 ? 7 :
+  i > 63  ? 6 :
+  i > 31  ? 5 :
+  i > 15  ? 4 :
+  i > 7   ? 3 :
+  i > 3   ? 2 :
+  i > 1)> {} ;
+
+template<uint16_t i>
+struct ct_lnzbpos_value<uint16_t, i> : std::integral_constant
+<int, ct_lnzbpos_value<uint8_t, (i >= 0x100U ? (i >> 8U) : i)>::value + (i >= 0x100U ? 8 : 0)>
+{} ;
+
+template<uint32_t i>
+struct ct_lnzbpos_value<uint32_t, i> : std::integral_constant
+<int, ct_lnzbpos_value<uint16_t, (i >= 0x10000U ? (i >> 16U) : i)>::value + (i >= 0x10000U ? 16 : 0)>
+{} ;
 
 /// Get a position of the leftmost nonzero bit at compile-time.
-template<uint32_t i>
-class ct_lnzbpos {
-#define PW_(shift) (((i << (shift)) & MB) ? (POW - (shift))
-#define PWEND_ -1))))))))))))))))))))))))))))))))
+template<uint64_t i>
+struct ct_lnzbpos  : std::integral_constant
+<int, ct_lnzbpos_value<uint32_t, (i >= 0x100000000ULL ? (i >> 32ULL) : i)>::value + (i >= 0x100000000ULL ? 32 : 0)>
+{} ;
 
-      enum { MB = ((uint32_t)~(uint32_t)0 >> 1) + 1, POW = 31 } ;
-   public:
-      static const int value =
-         (PW_(0) : PW_(1) : PW_(2) : PW_(3) : PW_(4) : PW_(5) : PW_(6) : PW_(7) :
-          PW_(8) : PW_(9) : PW_(10) : PW_(11) : PW_(12) : PW_(13) : PW_(14) : PW_(15) :
-          PW_(16) : PW_(17) : PW_(18) : PW_(19) : PW_(20) : PW_(21) : PW_(22) : PW_(23) :
-          PW_(24) : PW_(25) : PW_(26) : PW_(27) : PW_(28) : PW_(29) : PW_(30) : PW_(31) :
-          PWEND_) ;
+template<> struct ct_lnzbpos<0>  : std::integral_constant<int, -1> {} ;
 
-#undef PW_
-#undef PWEND_
-} ;
+template<uint64_t i>
+struct ct_log2ceil : std::integral_constant
+<int, ct_lnzbpos<i>::value + (ct_getrnzb<i>::value != i) > {} ;
 
-template<uint32_t i>
-const int ct_lnzbpos<i>::value ;
-
-template<uint32_t i>
-struct ct_log2ceil { static const int value = ct_lnzbpos<i>::value + (ct_getrnzb<i>::value != i) ; } ;
-
-template<uint32_t i>
-const int ct_log2ceil<i>::value ;
+template<uint64_t i>
+using ct_log2floor = ct_lnzbpos<i> ;
 
 } // pcomn::bitop
 

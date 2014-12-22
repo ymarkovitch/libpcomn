@@ -21,13 +21,16 @@
 *******************************************************************************/
 class UtilityTests : public CppUnit::TestFixture {
 
-      void Test_TaggedPtr() ;
+      void Test_CompileTime_Utils() ;
+      void Test_PtrTag() ;
+      void Test_TaggedPtrUnion() ;
       void Test_TypeTraits() ;
       void Test_TupleUtils() ;
 
       CPPUNIT_TEST_SUITE(UtilityTests) ;
 
-      CPPUNIT_TEST(Test_TaggedPtr) ;
+      CPPUNIT_TEST(Test_PtrTag) ;
+      CPPUNIT_TEST(Test_TaggedPtrUnion) ;
       CPPUNIT_TEST(Test_TypeTraits) ;
       CPPUNIT_TEST(Test_TupleUtils) ;
 
@@ -39,7 +42,20 @@ using namespace pcomn ;
 /*******************************************************************************
  UtilityTests
 *******************************************************************************/
-void UtilityTests::Test_TaggedPtr()
+void UtilityTests::Test_CompileTime_Utils()
+{
+   PCOMN_STATIC_CHECK(ct_min<int, 0>::value == 0) ;
+   PCOMN_STATIC_CHECK(ct_min<int, 1, -1>::value == -1) ;
+   PCOMN_STATIC_CHECK(ct_min<int, 200, 100, 300>::value == 100) ;
+   PCOMN_STATIC_CHECK(ct_min<int, 200, 300, 5>::value == 5) ;
+
+   PCOMN_STATIC_CHECK(ct_max<unsigned, 1>::value == 1) ;
+   PCOMN_STATIC_CHECK(ct_max<unsigned, 1, 5>::value == 5) ;
+   PCOMN_STATIC_CHECK(ct_max<unsigned, 200, 300, 100>::value == 300) ;
+   PCOMN_STATIC_CHECK(ct_max<int, 200, 100, 0, 300>::value == 300) ;
+}
+
+void UtilityTests::Test_PtrTag()
 {
    int dummy ;
    int *ptr = &dummy ;
@@ -66,6 +82,19 @@ void UtilityTests::Test_TaggedPtr()
    CPPUNIT_LOG_IS_TRUE(is_ptr_tagged_or_null(tag_ptr(ptr))) ;
    CPPUNIT_LOG_IS_TRUE(is_ptr_tagged_or_null((int *)NULL)) ;
    CPPUNIT_LOG_IS_FALSE(is_ptr_tagged_or_null(ptr)) ;
+}
+
+void UtilityTests::Test_TaggedPtrUnion()
+{
+   typedef tagged_ptr_union<double, int> tagged_ptr_di ;
+   tagged_ptr_di di ;
+   CPPUNIT_IS_FALSE(di) ;
+
+   PCOMN_STATIC_CHECK(std::is_same<tagged_ptr_di::first_type, double *>::value) ;
+   PCOMN_STATIC_CHECK(std::is_same<tagged_ptr_di::second_type, int *>::value) ;
+
+   PCOMN_STATIC_CHECK(std::is_same<tagged_ptr_di::element_type<0>, double *>::value) ;
+   PCOMN_STATIC_CHECK(std::is_same<tagged_ptr_di::element_type<1>, int *>::value) ;
 }
 
 void UtilityTests::Test_TypeTraits()

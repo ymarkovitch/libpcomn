@@ -208,49 +208,72 @@ void IntegerTests::Test_OneOf()
 
 void IntegerTests::Test_Log2()
 {
-   CPPUNIT_LOG("\n**** Testing compile-time log2 ****\n" << std::endl) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::ct_lnzbpos<0x80000000>::value, 31) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::ct_lnzbpos<0x40000000>::value, 30) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::ct_lnzbpos<0x1>::value, 0) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::ct_lnzbpos<0>::value, -1) ;
+   using namespace pcomn ;
 
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::ct_log2ceil<0x80000000>::value, 31) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::ct_log2ceil<0x40000000>::value, 30) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::ct_log2ceil<0x40000001>::value, 31) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::ct_log2ceil<0x80000001>::value, 32) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::ct_log2ceil<0>::value, -1) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::ct_log2ceil<1>::value, 0) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::ct_log2ceil<2>::value, 1) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::ct_log2ceil<3>::value, 2) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::ct_log2ceil<4>::value, 2) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::ct_log2ceil<10>::value, 4) ;
+   CPPUNIT_LOG("\n**** Testing compile-time log2 ****\n" << std::endl) ;
+   CPPUNIT_LOG_EQUAL(bitop::ct_lnzbpos<0x80>::value, 7) ;
+   CPPUNIT_LOG_EQUAL(bitop::ct_lnzbpos<0xff>::value, 7) ;
+   CPPUNIT_LOG_EQUAL(bitop::ct_lnzbpos<0x40>::value, 6) ;
+
+   CPPUNIT_LOG_EQUAL(bitop::ct_lnzbpos<0x800>::value, 11) ;
+   CPPUNIT_LOG_EQUAL(bitop::ct_lnzbpos<0xfff>::value, 11) ;
+   CPPUNIT_LOG_EQUAL(bitop::ct_lnzbpos<0x400>::value, 10) ;
+
+   CPPUNIT_LOG_EQUAL(bitop::ct_lnzbpos<0x8000>::value, 15) ;
+   CPPUNIT_LOG_EQUAL(bitop::ct_lnzbpos<0x4000>::value, 14) ;
+
+   CPPUNIT_LOG_EQUAL(bitop::ct_lnzbpos<0x80000000>::value, 31) ;
+   CPPUNIT_LOG_EQUAL(bitop::ct_lnzbpos<0x40000000>::value, 30) ;
+   CPPUNIT_LOG_EQUAL(bitop::ct_lnzbpos<0x1>::value, 0) ;
+   CPPUNIT_LOG_EQUAL(bitop::ct_lnzbpos<0>::value, -1) ;
+
+   CPPUNIT_LOG_EQUAL(bitop::ct_log2ceil<0x80000000>::value, 31) ;
+   CPPUNIT_LOG_EQUAL(bitop::ct_log2floor<0x80000000>::value, 31) ;
+
+   CPPUNIT_LOG_EQUAL(bitop::ct_log2ceil<0x40000000>::value, 30) ;
+   CPPUNIT_LOG_EQUAL(bitop::ct_log2floor<0x40000000>::value, 30) ;
+
+   CPPUNIT_LOG_EQUAL(bitop::ct_log2ceil<0x40000001>::value, 31) ;
+   CPPUNIT_LOG_EQUAL(bitop::ct_log2floor<0x40000001>::value, 30)
+      ;
+   CPPUNIT_LOG_EQUAL(bitop::ct_log2ceil<0x80000001>::value, 32) ;
+   CPPUNIT_LOG_EQUAL(bitop::ct_log2floor<0x80000001>::value, 31) ;
+
+   CPPUNIT_LOG_EQUAL(bitop::ct_log2ceil<0>::value, -1) ;
+   CPPUNIT_LOG_EQUAL(bitop::ct_log2floor<0>::value, -1) ;
+
+   CPPUNIT_LOG_EQUAL(bitop::ct_log2ceil<1>::value, 0) ;
+   CPPUNIT_LOG_EQUAL(bitop::ct_log2ceil<2>::value, 1) ;
+   CPPUNIT_LOG_EQUAL(bitop::ct_log2ceil<3>::value, 2) ;
+   CPPUNIT_LOG_EQUAL(bitop::ct_log2ceil<4>::value, 2) ;
+   CPPUNIT_LOG_EQUAL(bitop::ct_log2ceil<10>::value, 4) ;
 
    CPPUNIT_LOG("\n**** Testing run-time log2 ****\n" << std::endl) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::log2floor(0), -1) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::log2ceil(0), -1) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::log2floor(1), 0) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::log2ceil(1), 0) ;
+   CPPUNIT_LOG_EQUAL(bitop::log2floor(0), -1) ;
+   CPPUNIT_LOG_EQUAL(bitop::log2ceil(0), -1) ;
+   CPPUNIT_LOG_EQUAL(bitop::log2floor(1), 0) ;
+   CPPUNIT_LOG_EQUAL(bitop::log2ceil(1), 0) ;
 
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::log2floor(0x80000000), 31) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::log2ceil(0x80000000), 31) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::log2floor(0x40000000), 30) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::log2ceil(0x40000000), 30) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::log2floor(0x40000001), 30) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::log2ceil(0x40000001), 31) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::log2floor(0x80000001), 31) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::log2ceil(0x80000001), 32) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::log2ceil(0), -1) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::log2ceil(1), 0) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::log2ceil(2), 1) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::log2ceil(3), 2) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::log2ceil(4), 2) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::log2ceil(10), 4) ;
+   CPPUNIT_LOG_EQUAL(bitop::log2floor(0x80000000), 31) ;
+   CPPUNIT_LOG_EQUAL(bitop::log2ceil(0x80000000), 31) ;
+   CPPUNIT_LOG_EQUAL(bitop::log2floor(0x40000000), 30) ;
+   CPPUNIT_LOG_EQUAL(bitop::log2ceil(0x40000000), 30) ;
+   CPPUNIT_LOG_EQUAL(bitop::log2floor(0x40000001), 30) ;
+   CPPUNIT_LOG_EQUAL(bitop::log2ceil(0x40000001), 31) ;
+   CPPUNIT_LOG_EQUAL(bitop::log2floor(0x80000001), 31) ;
+   CPPUNIT_LOG_EQUAL(bitop::log2ceil(0x80000001), 32) ;
+   CPPUNIT_LOG_EQUAL(bitop::log2ceil(0), -1) ;
+   CPPUNIT_LOG_EQUAL(bitop::log2ceil(1), 0) ;
+   CPPUNIT_LOG_EQUAL(bitop::log2ceil(2), 1) ;
+   CPPUNIT_LOG_EQUAL(bitop::log2ceil(3), 2) ;
+   CPPUNIT_LOG_EQUAL(bitop::log2ceil(4), 2) ;
+   CPPUNIT_LOG_EQUAL(bitop::log2ceil(10), 4) ;
 
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::log2ceil((uint8_t)10), 4) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::log2floor((int16_t)-1), 15) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::log2ceil((int16_t)-1), 16) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::log2floor(0x800000001LLU), 35) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::log2ceil(0x800000001LLU), 36) ;
+   CPPUNIT_LOG_EQUAL(bitop::log2ceil((uint8_t)10), 4) ;
+   CPPUNIT_LOG_EQUAL(bitop::log2floor((int16_t)-1), 15) ;
+   CPPUNIT_LOG_EQUAL(bitop::log2ceil((int16_t)-1), 16) ;
+   CPPUNIT_LOG_EQUAL(bitop::log2floor(0x800000001LLU), 35) ;
+   CPPUNIT_LOG_EQUAL(bitop::log2ceil(0x800000001LLU), 36) ;
 }
 
 int main(int argc, char *argv[])

@@ -101,10 +101,18 @@ using ct_nxor = bool_constant<!L::value == !R::value> ;
 /*******************************************************************************
  Compile-time min/max.
 *******************************************************************************/
-template<typename T, T x, T y>
-struct ct_min : public std::integral_constant<T, (x < y ? x : y)> {} ;
-template<typename T, T x, T y>
-struct ct_max : public std::integral_constant<T, (y < x ? x : y)> {} ;
+template<typename T, T...> struct ct_min ;
+template<typename T, T...> struct ct_max ;
+
+template<typename T, T x> struct ct_min<T, x> :
+         std::integral_constant<T, x> {} ;
+template<typename T, T x, T...y> struct ct_min<T, x, y...> :
+         std::integral_constant<T, (x < ct_min<T, y...>::value ? x : ct_min<T, y...>::value)> {} ;
+
+template<typename T, T x> struct ct_max<T, x> :
+         std::integral_constant<T, x> {} ;
+template<typename T, T x, T...y> struct ct_max<T, x, y...> :
+         std::integral_constant<T, (ct_max<T, y...>::value < x  ? x : ct_max<T, y...>::value)> {} ;
 
 /******************************************************************************/
 /** Creates unique type from another type.
