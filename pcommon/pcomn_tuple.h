@@ -18,14 +18,17 @@
 #include <utility>
 #include <functional>
 
-// GNU C++ 4.3 and higher uses variadic templates for tuples definition
-#if PCOMN_WORKAROUND(__GNUC_VER__, >= 430)
-#define PCOMN_TUPLE_ARGS  typename... __Ts
-#define PCOMN_TUPLE_PARAMS __Ts...
-#else
-#define PCOMN_TUPLE_ARGS   P_TARGLIST(10, typename)
-#define PCOMN_TUPLE_PARAMS P_TARGLIST(10)
-#endif
+/*******************************************************************************
+ C++14 definitions for C++11 compiler
+*******************************************************************************/
+#if __cplusplus <= 201103
+
+namespace std {
+template<std::size_t I, class Tuple>
+using tuple_element_t = typename tuple_element<I, Tuple>::type ;
+}
+
+#endif /* __cplusplus > 201103 */
 
 namespace pcomn {
 
@@ -107,34 +110,20 @@ struct decay_argtype<T[n]> { typedef T *type ; } ;
 template<typename T>
 struct decay_argtype<const std::reference_wrapper<T> > { typedef T &type ; } ;
 
+template<typename T>
+using decay_argtype_t = typename decay_argtype<T>::type ;
+
 /*******************************************************************************
  const_tie
 *******************************************************************************/
 inline std::tuple<> const_tie() { return std::tuple<>() ; }
 
-/// @internal
-#define DEFINE_CONST_TIE(count)                             \
-   template<P_TARGLIST(count, typename)>                    \
-   inline std::tuple<P_TPARMLIST(count, _P_DECAY_ARG_TYPE)> \
-   const_tie(P_REF_ARGLIST(count, const))                   \
-   { return std::tie(P_PARMLIST(count, pcomn::decay)) ; }
-
-/// @internal
-#define _P_DECAY_ARG_TYPE(P) typename pcomn::decay_argtype<const P >::type
-
-DEFINE_CONST_TIE(1) ;
-DEFINE_CONST_TIE(2) ;
-DEFINE_CONST_TIE(3) ;
-DEFINE_CONST_TIE(4) ;
-DEFINE_CONST_TIE(5) ;
-DEFINE_CONST_TIE(6) ;
-DEFINE_CONST_TIE(7) ;
-DEFINE_CONST_TIE(8) ;
-DEFINE_CONST_TIE(9) ;
-DEFINE_CONST_TIE(10) ;
-
-#undef _P_DECAY_ARG_TYPE
-#undef DEFINE_CONST_TIE
+template<typename... A>
+inline std::tuple<decay_argtype_t<const A> ...>
+const_tie(A&& ...args)
+{
+   return std::tie(pcomn::decay(std::forward<A>(args))...) ;
+}
 
 } // end of namespace pcomn
 

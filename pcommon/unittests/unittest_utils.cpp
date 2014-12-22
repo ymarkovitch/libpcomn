@@ -11,22 +11,25 @@
 *******************************************************************************/
 #include <pcomn_utils.h>
 #include <pcomn_meta.h>
+#include <pcomn_tuple.h>
 #include <pcomn_unittest.h>
 
 #include <utility>
 
 /*******************************************************************************
- Pointer hacks tests
+ Utility tests: pointer hacks, tuples, etc
 *******************************************************************************/
-class PtrHacksTests : public CppUnit::TestFixture {
+class UtilityTests : public CppUnit::TestFixture {
 
       void Test_TaggedPtr() ;
       void Test_TypeTraits() ;
+      void Test_TupleUtils() ;
 
-      CPPUNIT_TEST_SUITE(PtrHacksTests) ;
+      CPPUNIT_TEST_SUITE(UtilityTests) ;
 
       CPPUNIT_TEST(Test_TaggedPtr) ;
       CPPUNIT_TEST(Test_TypeTraits) ;
+      CPPUNIT_TEST(Test_TupleUtils) ;
 
       CPPUNIT_TEST_SUITE_END() ;
 } ;
@@ -34,9 +37,9 @@ class PtrHacksTests : public CppUnit::TestFixture {
 using namespace pcomn ;
 
 /*******************************************************************************
- PtrHacksTests
+ UtilityTests
 *******************************************************************************/
-void PtrHacksTests::Test_TaggedPtr()
+void UtilityTests::Test_TaggedPtr()
 {
    int dummy ;
    int *ptr = &dummy ;
@@ -65,17 +68,26 @@ void PtrHacksTests::Test_TaggedPtr()
    CPPUNIT_LOG_IS_FALSE(is_ptr_tagged_or_null(ptr)) ;
 }
 
-void PtrHacksTests::Test_TypeTraits()
+void UtilityTests::Test_TypeTraits()
 {
    CPPUNIT_LOG_IS_TRUE((std::is_trivially_copyable<std::pair<int, char *> >::value)) ;
    CPPUNIT_LOG_IS_TRUE((std::has_trivial_copy_assign<std::pair<int, char *> >::value)) ;
    CPPUNIT_LOG_IS_FALSE((std::is_trivially_copyable<std::pair<int, std::string> >::value)) ;
 }
 
+void UtilityTests::Test_TupleUtils()
+{
+   const std::tuple<> empty_tuple ;
+   const std::tuple<std::string, int, const char *> t3 {"Hello", 3, "world"} ;
+
+   CPPUNIT_LOG_EQUAL(CPPUNIT_STRING(empty_tuple), std::string("()")) ;
+   CPPUNIT_LOG_EQUAL(CPPUNIT_STRING(t3), std::string(R"(("Hello" 3 world))")) ;
+}
+
 int main(int argc, char *argv[])
 {
    pcomn::unit::TestRunner runner ;
-   runner.addTest(PtrHacksTests::suite()) ;
+   runner.addTest(UtilityTests::suite()) ;
 
    return
       pcomn::unit::run_tests(runner, argc, argv,

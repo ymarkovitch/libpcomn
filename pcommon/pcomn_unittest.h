@@ -1021,9 +1021,9 @@ std::string assertion_traits<std::pair<T1, T2> >::toString(const type &value)
    return std::string(1, '{') + CppUnit::to_string(value.first) + ',' + CppUnit::to_string(value.second) + '}' ;
 }
 
-template<PCOMN_TUPLE_ARGS>
-struct assertion_traits<std::tuple<PCOMN_TUPLE_PARAMS> > {
-      typedef std::tuple<PCOMN_TUPLE_PARAMS> type ;
+template<typename... A>
+struct assertion_traits<std::tuple<A...> > {
+      typedef std::tuple<A...> type ;
 
       static bool equal(const type &lhs, const type &rhs)
       {

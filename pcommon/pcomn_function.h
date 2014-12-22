@@ -19,29 +19,15 @@
 #include <functional>
 #include <functional>
 
-#if defined(PCOMN_COMPILER_GNU)
-
-#include <ext/functional>
-
-namespace pcomn {
-
-using __gnu_cxx::identity ;
-using __gnu_cxx::select1st ;
-using __gnu_cxx::select2nd ;
-
-} // end of namespace pcomn
-
-#else
-
 namespace pcomn {
 
 template<class T>
-struct identity : public unary_function<T, T> {
+struct identity : std::unary_function<T, T> {
    const T &operator () (const T &t) const { return t ; }
 } ;
 
 template<class Pair>
-struct select1st : public unary_function<Pair, typename Pair::first_type> {
+struct select1st : std::unary_function<Pair, typename Pair::first_type> {
   const typename Pair::first_type &operator()(const Pair& x) const
   {
     return x.first ;
@@ -49,18 +35,12 @@ struct select1st : public unary_function<Pair, typename Pair::first_type> {
 } ;
 
 template<class Pair>
-struct select2nd : public unary_function<Pair, typename Pair::second_type> {
+struct select2nd : std::unary_function<Pair, typename Pair::second_type> {
   const typename Pair::second_type &operator()(const Pair& x) const
   {
     return x.second;
   }
 } ;
-
-} // end of namespace pcomn
-
-#endif // PCOMN_COMPILER_GNU
-
-namespace pcomn {
 
 /// Get integer value of flags() method of the class.
 template<class T>
@@ -457,58 +437,52 @@ inline rbinder2nd<Op> rbind2nd(const Op &op, const Arg &arg)
 template<typename R, typename T>
 std::function<R()> bind_thisptr(R (T::*memfn)(), T *thisptr)
 {
-   return std::function<R()>(std::bind(memfn, thisptr)) ;
+   return {std::bind(memfn, thisptr)} ;
 }
 template<typename R, typename T>
 std::function<R()> bind_thisptr(R (T::*memfn)() const, const T *thisptr)
 {
-   return std::function<R()>(std::bind(memfn, thisptr)) ;
+   return {std::bind(memfn, thisptr)} ;
 }
 
 template<typename R, typename T>
 std::function<R()> bind_thisptr(R (T::element_type::*memfn)(), T thisptr)
 {
-   return std::function<R()>(std::bind(memfn, thisptr)) ;
+   return {std::bind(memfn, thisptr)} ;
 }
 
 template<typename R, typename T>
 std::function<R()> bind_thisptr(R (T::element_type::*memfn)() const, T thisptr)
 {
-   return std::function<R()>(std::bind(memfn, thisptr)) ;
+   return {std::bind(memfn, thisptr)} ;
 }
 
-#define P_PLACEHOLDER_(num, dummy)  _::_##num
+#define P_PLACEHOLDER_(num, dummy)  std::placeholders::_##num
 #define P_PLACELIST_(nargs) P_FOR(nargs, P_PLACEHOLDER_)
 #define P_BIND_THISPTR_(argc)                                           \
    template<typename R, typename C, typename T, P_TARGLIST(argc, typename)> \
    std::enable_if_t<std::is_base_of<C, T>::value, std::function<R(P_TARGLIST(argc))> > \
    bind_thisptr(R (C::*memfn)(P_TARGLIST(argc)), T *thisptr)            \
    {                                                                    \
-      namespace _ = std::placeholders ;                                 \
-      typedef std::function<R(P_TARGLIST(argc))> function_type ;        \
-      return function_type(std::bind(memfn, thisptr, P_PLACELIST_(argc))) ; \
+      return {std::bind(memfn, thisptr, P_PLACELIST_(argc))} ;          \
    }                                                                    \
    template<typename R, typename C, typename T, P_TARGLIST(argc, typename)> \
    std::enable_if_t<std::is_base_of<C, T>::value, std::function<R(P_TARGLIST(argc))> > \
    bind_thisptr(R (C::*memfn)(P_TARGLIST(argc)) const, const T *thisptr) \
    {                                                                    \
-      namespace _ = std::placeholders ;                                 \
-      typedef std::function<R(P_TARGLIST(argc))> function_type ;        \
-      return function_type(std::bind(memfn, thisptr, P_PLACELIST_(argc))) ; \
+      return {std::bind(memfn, thisptr, P_PLACELIST_(argc))} ;          \
    }                                                                    \
    template<typename R, typename T, P_TARGLIST(argc, typename)>         \
    std::function<R(P_TARGLIST(argc))>                                   \
    bind_thisptr(R (T::element_type::*memfn)(P_TARGLIST(argc)), T thisptr) \
    {                                                                    \
-      namespace _ = std::placeholders ;                                 \
-      return std::function<R(P_TARGLIST(argc))>(std::bind(memfn, thisptr, P_PLACELIST_(argc))) ; \
+      return {std::bind(memfn, thisptr, P_PLACELIST_(argc))} ;          \
    }                                                                    \
    template<typename R, typename T, P_TARGLIST(argc, typename)>         \
    std::function<R(P_TARGLIST(argc))>                                   \
    bind_thisptr(R (T::element_type::*memfn)(P_TARGLIST(argc)) const, T thisptr) \
    {                                                                    \
-      namespace _ = std::placeholders ;                                 \
-      return std::function<R(P_TARGLIST(argc))>(std::bind(memfn, thisptr, P_PLACELIST_(argc))) ; \
+      return {std::bind(memfn, thisptr, P_PLACELIST_(argc))} ;          \
    }
 
 P_BIND_THISPTR_(1) ;
@@ -535,7 +509,7 @@ std::function<R()> make_function(R (*fn)())
    std::function<R(P_TARGLIST(argc))>                 \
    make_function(R (*fn)(P_TARGLIST(argc)))           \
    {                                                  \
-      return std::function<R(P_TARGLIST(argc))>(fn) ; \
+        return {fn} ;                                 \
    }
 
 P_MAKE_FUNCTION_(1) ;
