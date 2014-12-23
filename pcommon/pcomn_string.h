@@ -285,6 +285,24 @@ enable_if_other_string : std::enable_if<is_string<Other>::value && !std::is_base
 template<typename S1, typename S2, typename Type> struct
 enable_if_compatible_strings : std::enable_if<is_compatible_strings<S1, S2>::value, Type> {} ;
 
+template<typename S, typename T>
+using enable_if_string_t = typename enable_if_string<S, T>::type ;
+
+template<typename S, typename T>
+using disable_if_string_t = typename disable_if_string<S, T>::type ;
+
+template<typename S, typename C, typename T>
+using enable_if_strchar_t = typename enable_if_strchar<S, C, T>::type ;
+
+template<typename S, typename C, typename T>
+using disable_if_strchar_t = typename disable_if_strchar<S, C, T>::type ;
+
+template<typename S, typename O, typename T>
+using enable_if_other_string_t = typename enable_if_other_string<S, O, T>::type ;
+
+template<typename S1, typename S2, typename T>
+using enable_if_compatible_strings_t = typename enable_if_compatible_strings<S1, S2, T>::type ;
+
 /*******************************************************************************
  pcomn::str
 *******************************************************************************/
@@ -818,10 +836,6 @@ operator<<(std::basic_ostream<char, StreamTraits> &os,
 
 namespace pcomn { using std::hasher ; } // end of namespace pcomn
 
-#if PCOMN_WORKAROUND(_MSC_VER, >= 1400)
-#define PCOMN_ENABLE_CTR_IF_STRCHAR(S, C) typename pcomn::enable_if_strchar<S, C, double>::type = double()
-#else
-#define PCOMN_ENABLE_CTR_IF_STRCHAR(S, C) typename pcomn::enable_if_strchar<S, C, pcomn::Instantiate>::type = pcomn::Instance
-#endif
+#define PCOMN_ENABLE_CTR_IF_STRCHAR(S, C) pcomn::enable_if_strchar_t<S, C, pcomn::Instantiate> = {}
 
 #endif /* __PCOMN_STRING_H */

@@ -95,6 +95,90 @@ void UtilityTests::Test_TaggedPtrUnion()
 
    PCOMN_STATIC_CHECK(std::is_same<tagged_ptr_di::element_type<0>, double *>::value) ;
    PCOMN_STATIC_CHECK(std::is_same<tagged_ptr_di::element_type<1>, int *>::value) ;
+
+   PCOMN_STATIC_CHECK(is_ptr_exact_assignable<double, double>::value) ;
+   PCOMN_STATIC_CHECK(is_ptr_exact_assignable<const double, double>::value) ;
+   PCOMN_STATIC_CHECK(is_ptr_exact_assignable<const double, const double>::value) ;
+   PCOMN_STATIC_CHECK(!is_ptr_exact_assignable<double, const double>::value) ;
+
+   struct A { void *a ; } ;
+   struct B : A {} ;
+   PCOMN_STATIC_CHECK(is_ptr_exact_assignable<A, A>::value) ;
+   PCOMN_STATIC_CHECK(is_ptr_exact_assignable<B, B>::value) ;
+   PCOMN_STATIC_CHECK(!is_ptr_exact_assignable<B, A>::value) ;
+
+   CPPUNIT_LOG_EQ((detail::count_exact_copyable<true, double, double>::value), 1) ;
+   CPPUNIT_LOG_EQ((detail::count_exact_copyable<false, double, double>::value), 1) ;
+   CPPUNIT_LOG_EQ((detail::count_exact_copyable<true, double>::value), 0) ;
+   CPPUNIT_LOG_EQ((detail::count_exact_copyable<false, double>::value), 0) ;
+   CPPUNIT_LOG_EQ((detail::count_exact_copyable<true, double, int>::value), 0) ;
+   CPPUNIT_LOG_EQ((detail::count_exact_copyable<false, double, int>::value), 0) ;
+   CPPUNIT_LOG_EQ((detail::count_exact_copyable<true, double, int, double>::value), 1) ;
+   CPPUNIT_LOG_EQ((detail::count_exact_copyable<false, double, int, double>::value), 1) ;
+   CPPUNIT_LOG_EQ((detail::count_exact_copyable<true, double, int, double, void, double>::value), 2) ;
+   CPPUNIT_LOG_EQ((detail::count_exact_copyable<false, double, int, double, void, double>::value), 2) ;
+
+   CPPUNIT_LOG_EQ((detail::find_exact_copyable<true, double, double>::value), 0) ;
+   CPPUNIT_LOG_EQ((detail::find_exact_copyable<false, double, double>::value), 0) ;
+   CPPUNIT_LOG_EQ((detail::find_exact_copyable<true, double>::value), -1) ;
+   CPPUNIT_LOG_EQ((detail::find_exact_copyable<false, double>::value), -1) ;
+   CPPUNIT_LOG_EQ((detail::find_exact_copyable<true, double, int>::value), -1) ;
+   CPPUNIT_LOG_EQ((detail::find_exact_copyable<false, double, int>::value), -1) ;
+   CPPUNIT_LOG_EQ((detail::find_exact_copyable<true, double, int, double>::value), 1) ;
+   CPPUNIT_LOG_EQ((detail::find_exact_copyable<true, double, int, double, void, double>::value), 1) ;
+   CPPUNIT_LOG_EQ((detail::find_exact_copyable<false, double, int, double, void, double>::value), 1) ;
+
+   CPPUNIT_LOG_EQ((detail::find_exact_copyable<true, const double, bool, int, double, void>::value), -1) ;
+   CPPUNIT_LOG_EQ((detail::find_exact_copyable<false, const double, bool, int, double, void>::value), 2) ;
+   CPPUNIT_LOG_EQ((detail::find_exact_copyable<false, const double, bool, int, const double, void>::value), 2) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   typedef tagged_ptr_union<double, int, A> tagged_ptr_dia ;
+   A a1 { nullptr } ;
+   int i1 = 7 ;
+   double d1 = 0.25 ;
+
+   tagged_ptr_dia pa1 {&a1} ;
+   tagged_ptr_dia pi1 {&i1} ;
+   tagged_ptr_dia pd1 {&d1} ;
+
+   CPPUNIT_LOG_ASSERT(tagged_ptr_dia(nullptr) == (void *)nullptr) ;
+   CPPUNIT_LOG_EQ(tagged_ptr_dia(nullptr).type_ndx(), 0) ;
+   CPPUNIT_LOG_EQ(tagged_ptr_dia(&d1).type_ndx(), 0) ;
+   CPPUNIT_LOG_EQ(tagged_ptr_dia(&i1).type_ndx(), 1) ;
+   CPPUNIT_LOG_EQ(tagged_ptr_dia(&a1).type_ndx(), 2) ;
+
+   CPPUNIT_LOG_IS_NULL(pa1.get<0>()) ;
+   CPPUNIT_LOG_IS_NULL(pa1.get<1>()) ;
+   CPPUNIT_LOG_EQUAL(pa1.get<2>(), &a1) ;
+
+   CPPUNIT_LOG_IS_NULL(pa1.get<int>()) ;
+   CPPUNIT_LOG_IS_NULL(pa1.get<double>()) ;
+   CPPUNIT_LOG_EQUAL(pa1.get<A>(), &a1) ;
+
+   CPPUNIT_LOG_IS_NULL(pi1.get<0>()) ;
+   CPPUNIT_LOG_IS_NULL(pi1.get<2>()) ;
+   CPPUNIT_LOG_EQUAL(pi1.get<1>(), &i1) ;
+
+   CPPUNIT_LOG_IS_NULL(pi1.get<double>()) ;
+   CPPUNIT_LOG_IS_NULL(pi1.get<A>()) ;
+   CPPUNIT_LOG_EQUAL(pi1.get<int>(), &i1) ;
+   CPPUNIT_LOG_EQ(pi1.get<const int>(), &i1) ;
+
+   CPPUNIT_LOG_IS_NULL(pd1.get<1>()) ;
+   CPPUNIT_LOG_IS_NULL(pd1.get<2>()) ;
+   CPPUNIT_LOG_EQUAL(pd1.get<0>(), &d1) ;
+
+   CPPUNIT_LOG_EQ((const void *)&d1, pd1) ;
+   CPPUNIT_LOG_EQ((const void *)&a1, pa1) ;
+   CPPUNIT_LOG_EQ((const void *)&i1, pi1) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_ASSERT(pd1 = &a1) ;
+   CPPUNIT_LOG_IS_NULL(pd1.get<0>()) ;
+   CPPUNIT_LOG_IS_NULL(pd1.get<1>()) ;
+   CPPUNIT_LOG_EQUAL(pd1.get<2>(), &a1) ;
 }
 
 void UtilityTests::Test_TypeTraits()

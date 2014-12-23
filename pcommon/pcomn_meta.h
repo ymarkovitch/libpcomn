@@ -66,6 +66,9 @@ namespace pcomn {
 template<bool v>
 using bool_constant = std::integral_constant<bool, v> ;
 
+template<int v>
+using int_constant = std::integral_constant<int, v> ;
+
 /******************************************************************************/
 /** disable_if is a complement to std::enable_if
 *******************************************************************************/

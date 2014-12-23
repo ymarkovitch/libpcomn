@@ -155,7 +155,7 @@ struct bool_value {
 /** A single-value enum for use as a tag for instantiation of static template
  data and code.
 *******************************************************************************/
-enum Instantiate { Instance = 1 } ;
+enum Instantiate { Instance } ;
 
 /******************************************************************************/
 /** A tag type to specify whether to raise exception on error for functions

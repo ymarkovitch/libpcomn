@@ -17,6 +17,7 @@
 #include <pcomn_assert.h>
 #include <pcomn_omanip.h>
 #include <pcomn_meta.h>
+#include <pcomn_integer.h>
 
 #include <iostream>
 #include <utility>
@@ -535,6 +536,44 @@ inline constexpr T *null_if_untagged_or_null(T *ptr)
 
 #undef static_check_taggable
 
+/// Check if T* is assignable to U*, providing that valtypes of T and U are the same
+/// (i.e. assigning to base class or void pointer is _not_ allowed)
+template<typename T, typename U>
+using is_ptr_exact_assignable = ct_and<std::is_assignable<T *&, U *>, std::is_same<valtype_t<T>, valtype_t<U> > > ;
+
+namespace detail {
+
+template<bool dir, typename T, typename U> struct is_pcopy ;
+template<typename T, typename U> struct is_pcopy<true, T, U> : is_ptr_exact_assignable<T, U> {} ;
+template<typename T, typename U> struct is_pcopy<false, T, U> : is_ptr_exact_assignable<U, T> {} ;
+
+template<bool dir, typename U, typename... Types>
+struct count_exact_copyable ;
+template<bool dir, typename U>
+struct count_exact_copyable<dir, U> : int_constant<0> {} ;
+template<bool dir, typename U, typename Head, typename... Tail>
+struct count_exact_copyable<dir, U, Head, Tail...> :
+         int_constant<((int)!!is_pcopy<dir, Head, U>::value +
+                                      count_exact_copyable<dir, U, Tail...>::value)> {} ;
+
+template<int ndx, bool, bool dir, typename U, typename Head, typename... Tail> struct fea ;
+
+template<int ndx, bool dir, typename U, typename Head, typename... Tail>
+struct fea<ndx, false, dir, U, Head, Tail...> :
+         fea<ndx + 1, is_pcopy<dir, Head, U>::value, dir, U, Tail...> {} ;
+
+template<int ndx, bool dir, typename Head, typename U>
+struct fea<ndx, false, dir, U, Head> :
+         int_constant<is_pcopy<dir, Head, U>::value ? ndx : -1> {} ;
+template<int ndx, bool dir, typename U, typename Head, typename... Tail>
+struct fea<ndx, true, dir, U, Head, Tail...> : int_constant<ndx - 1> {} ;
+
+template<bool dir, typename U, typename... Types>
+struct find_exact_copyable : fea<0, false, dir, U, Types...> {} ;
+template<bool dir, typename U>
+struct find_exact_copyable<dir, U> : int_constant<-1> {} ;
+} ;
+
 /******************************************************************************/
 /** Tagged union of two pointers with sizof(tagged_ptr_union)==sizeof(void *).
 
@@ -545,10 +584,18 @@ struct tagged_ptr_union {
    private:
       typedef std::tuple<T1 *, T2 *, T *...> tag_tuple ;
 
+      template<bool dir, typename U>
+      using is_exact_copyable = bool_constant<detail::count_exact_copyable<dir, U, T1, T2, T...>::value> ;
+      template<typename U>
+      using putndx = detail::find_exact_copyable<true, U, T1, T2, T...> ;
+      template<typename U>
+      using getndx = detail::find_exact_copyable<false, U, T1, T2, T...> ;
+
       // The _minimum_ alignment of all pointed to types.
       // Determines maximum number of distinct items in the union, e.g. tagged_ptr_union
       // cannot discriminate between more than element_alignment items
       static constexpr size_t element_alignment = ct_min<size_t, alignof(T1), alignof(T2), alignof(T)...>::value ;
+      static constexpr intptr_t ptr_mask = -(1 << bitop::ct_log2ceil<element_alignment>::value) ;
 
       // The second static_assert would be enough, but we use this extra check to get
       // more detailed error messages
@@ -565,65 +612,83 @@ struct tagged_ptr_union {
       typedef element_type<0> first_type ;
       typedef element_type<1> second_type ;
 
+      /// Default constructor creates NULL pointer
       constexpr tagged_ptr_union() : _data{0} {}
 
-      constexpr operator const void *() const { return (const void *)(as_intptr() &~ (intptr_t)1) ; }
+      constexpr tagged_ptr_union(nullptr_t) : _data{0} {}
 
-      template<size_t i>
-      constexpr element_type<i> get() const
+      template<typename U>
+      constexpr tagged_ptr_union(U *v, std::enable_if_t<is_exact_copyable<true, U>::value, Instantiate> = {})
+         : _data{(uintptr_t)v | getndx<U>::value}
+      {}
+
+      /// Void pointer conversion: if @em any of union members is set, returns it value
+      /// as a void pointer
+      constexpr operator const void *() const { return (const void *)(as_intptr() & ptr_mask) ; }
+
+      template<size_t ndx>
+      constexpr element_type<ndx> get() const
       {
-         return this->get_(std::integral_constant<int, i>()) ;
+         return this->get_(int_constant<ndx>()) ;
       }
 
-      template<size_t i>
-      tagged_ptr_union &set(element_type<i> v)
+      template<typename U>
+      constexpr element_type<getndx<U>::value> get() const
       {
-         NOXCHECK(!((uintptr_t)v & 1)) ;
-         this->set_(v, std::integral_constant<int, i>()) ;
+         return this->get_(int_constant<getndx<U>::value>()) ;
+      }
+
+      template<size_t ndx>
+      tagged_ptr_union &set(element_type<ndx> v)
+      {
+         this->set_(v, int_constant<ndx>()) ;
          return *this ;
       }
-
-      void reset() { _data.first = NULL ; }
 
       tagged_ptr_union &operator=(const tagged_ptr_union &) = default ;
 
-      std::enable_if_t<!std::is_same<valtype_t<T1>, valtype_t<T2> >::value, tagged_ptr_union &>
-      operator=(first_type p)
+      tagged_ptr_union &operator=(nullptr_t)
       {
-         this->template set<0>(p) ;
+         _data.first = nullptr ;
          return *this ;
       }
 
-      std::enable_if_t<!std::is_same<valtype_t<T1>, valtype_t<T2> >::value, tagged_ptr_union &>
-      operator=(second_type p)
+      template<typename U>
+      std::enable_if_t<is_exact_copyable<true, U>::value, tagged_ptr_union &>
+      operator=(U *v)
       {
-         this->template set<1>(p) ;
+         this->set_(v, putndx<U>()) ;
          return *this ;
       }
+
+      /// Get the index of the type of the pointer currently held by the union
+      constexpr unsigned type_ndx() const { return tag() ; }
 
    private:
       union {
+            uintptr_t   other ;
             first_type  first ;
-            second_type second ;
       } _data ;
 
-      constexpr intptr_t as_intptr() const { return (intptr_t)_data.first ; }
-      constexpr intptr_t first_mask() const { return (((intptr_t)_data.second & 1) - 1) ; }
+      constexpr intptr_t as_intptr() const { return _data.other ; }
+      constexpr intptr_t tag() const { return as_intptr() &~ ptr_mask ; }
 
-      constexpr first_type get_(std::integral_constant<int, 0>) const
+      constexpr uintptr_t mask(intptr_t ndx) const
       {
-         return reinterpret_cast<first_type>(as_intptr() & first_mask()) ;
+         return (as_intptr() & ptr_mask) &~ -(tag() ^ ndx) ;
       }
-      void set_(first_type v, std::integral_constant<int, 0>) { _data.first = v ; }
 
-      constexpr second_type get_(std::integral_constant<int, 1>) const
+      template<int ndx>
+      constexpr element_type<ndx> get_(int_constant<ndx>) const
       {
-         return reinterpret_cast<second_type>(as_intptr() &~ (intptr_t)1 &~ first_mask()) ;
+         return reinterpret_cast<element_type<ndx> >(mask(ndx)) ;
       }
-      void set_(second_type v, std::integral_constant<int, 1>)
+      template<int ndx, typename U>
+      void set_(U *v, int_constant<ndx>)
       {
-         _data.second = reinterpret_cast<second_type>
-            ((((uintptr_t)v) | (uintptr_t)1) ^ (uintptr_t)!v) ;
+         NOXCHECK(!((intptr_t)v &~ ptr_mask)) ;
+
+         _data.other = (uintptr_t)v | ndx ;
       }
 } ;
 

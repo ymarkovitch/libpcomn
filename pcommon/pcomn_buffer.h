@@ -499,10 +499,6 @@ inline std::ostream &operator<<(std::ostream &os, const pcomn::iovec_t &v)
    return os << pcomn::buf::cmemvec(v) ;
 }
 
-#if PCOMN_WORKAROUND(_MSC_VER, >= 1400)
-#define PCOMN_ENABLE_CTR_IF_BUFFER(T) typename pcomn::enable_if_buffer<T, double>::type = double()
-#else
-#define PCOMN_ENABLE_CTR_IF_BUFFER(T) typename pcomn::enable_if_buffer<T, pcomn::Instantiate>::type = pcomn::Instance
-#endif
+#define PCOMN_ENABLE_CTR_IF_BUFFER(T) typename pcomn::enable_if_buffer<T, pcomn::Instantiate>::type = {}
 
 #endif /* __PCOMN_BUFFER_H */

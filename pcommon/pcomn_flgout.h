@@ -106,7 +106,7 @@ typedef oflags flgout ;
 /******************************************************************************/
 /** Names of enum values.
 *******************************************************************************/
-template<typename Enum, Instantiate = Instance> struct enum_names ;
+template<typename Enum, Instantiate = {}> struct enum_names ;
 
 template<typename Enum>
 inline const char *enum_name(Enum value)

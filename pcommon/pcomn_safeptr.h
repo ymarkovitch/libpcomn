@@ -30,7 +30,7 @@ struct ptr_shim {
 
       template<typename P>
       constexpr ptr_shim(const P &p,
-                         typename std::enable_if<std::is_convertible<decltype(&*p), T *>::value, Instantiate>::type = Instance) :
+                         typename std::enable_if<std::is_convertible<decltype(&*p), T *>::value, Instantiate>::type = {}) :
          _ptr(&*p) {}
 
       constexpr T *get() { return _ptr ; }

@@ -131,6 +131,15 @@ inline T *static_copy(T *dest, const T *src)
    return dest ;
 }
 
+template<template<typename> class F, typename... Types>
+struct count_types_if ;
+
+template<template<typename> class F>
+struct count_types_if<F> : std::integral_constant<int, 0> {} ;
+
+template<template<typename> class F, typename Head, typename... Tail>
+struct count_types_if<F, Head, Tail...> : std::integral_constant<int, ((int)!!F<Head>::value + count_types_if<F, Tail...>::value)> {} ;
+
 } // end of namespace pcomn
 
 #endif /* __PCOMN_METAFUNCTIONAL_H */
