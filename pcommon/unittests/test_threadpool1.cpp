@@ -14,6 +14,7 @@
 #include <pcomn_threadpool.h>
 #include <pcomn_hash.h>
 #include <pcomn_unistd.h>
+#include <pcomn_unittest.h>
 
 #include <iostream>
 #include <vector>
@@ -32,7 +33,7 @@ class CRCTask : public Task {
       virtual ~CRCTask()
       {
          TRACEP("Destructing task " << this << " for " << _file) ;
-         StreamLock(std::cout).stream() << "Destructing task " << this << " for " << _file << std::endl ;
+         unit::StreamLock(std::cout) << "Destructing task " << this << " for " << _file << std::endl ;
       }
 
    protected:
@@ -41,7 +42,7 @@ class CRCTask : public Task {
          int f = open(_file.c_str(), O_RDONLY) ;
          if (f <= 0)
          {
-            StreamLock(std::cout).stream() << this << ": cannot open file '" << _file << '\'' << std::endl ;
+            unit::StreamLock(std::cout) << this << ": cannot open file '" << _file << '\'' << std::endl ;
             return 0 ;
          }
          TRACEP("The task " << this << " is processing " << _file) ;
@@ -49,7 +50,7 @@ class CRCTask : public Task {
          int sz ;
          uint32_t crc = 0 ;
          while((sz = read(f, buf, sizeof buf)) > 0)
-            crc = calc_crc32(crc, (const byte_t *)buf, sz) ;
+            crc = pcomn::calc_crc32(crc, buf, sz) ;
          close(f) ;
          snprintf(buf, sizeof buf, "%s:%8.8X\n", _file.c_str(), crc) ;
          write(STDOUT_FILENO, buf, strlen(buf)) ;
@@ -70,12 +71,12 @@ class WatchingThread : public BasicThread {
    protected:
       int run()
       {
-         StreamLock(std::cerr).stream() << "Please hit <AnyKey><ENTER> to exit." << std::endl ;
+         unit::StreamLock(std::cerr) << "Please hit <AnyKey><ENTER> to exit." << std::endl ;
          char c ;
          std::cin >> c ;
-         StreamLock(std::cout).stream() << "Stopping pool " << (c == '0' ? "immediately" : "gracefully") << "..." << std::endl ;
+         unit::StreamLock(std::cout) << "Stopping pool " << (c == '0' ? "immediately" : "gracefully") << "..." << std::endl ;
          _pool.stop(c == '0' ? 0 : -1) ;
-         StreamLock(std::cout).stream() << "Stopped." << std::endl ;
+         unit::StreamLock(std::cout) << "Stopped." << std::endl ;
          return 1 ;
       }
 
@@ -122,32 +123,32 @@ int main(int argc, char *argv[])
              << "Thread pool capacity:" << capacity << std::endl
              << files.size() <<  " files to calculate CRC32." << std::endl ;
 
-   PTSafePtr<WatchingThread> watchdog ;
-   PTSafePtr<ThreadPool> pool ;
+   std::unique_ptr<WatchingThread> watchdog ;
+   std::unique_ptr<ThreadPool> pool ;
    try
    {
-      pool = new ThreadPool(capacity) ;
-      StreamLock(std::cout).stream() << "The pool has been created." << std::endl ;
-      StreamLock(std::cout).stream() << "Starting pool..." << std::endl ;
+      pool.reset(new ThreadPool(capacity)) ;
+      unit::StreamLock(std::cout) << "The pool has been created." << std::endl ;
+      unit::StreamLock(std::cout) << "Starting pool..." << std::endl ;
 
       // Start the pool
       pool->start(initsize, 0, BasicThread::PtyBelowNormal) ;
 
-      StreamLock(std::cout).stream() << "Pool has started" << std::endl ;
-      watchdog = new WatchingThread(*pool) ;
+      unit::StreamLock(std::cout) << "Pool has started" << std::endl ;
+      watchdog.reset(new WatchingThread(*pool)) ;
       watchdog->start() ;
       sleep(2) ;
 
       for (std::vector<std::string>::const_iterator iter (files.begin()), end (files.end()) ; iter != end ; ++iter)
       {
-         StreamLock(std::cout).stream() << "Sending task for " << *iter << " to the thread pool." << std::endl ;
+         unit::StreamLock(std::cout) << "Sending task for " << *iter << " to the thread pool." << std::endl ;
          pool->push(TaskPtr(new CRCTask(*iter))) ;
       }
-      StreamLock(std::cout).stream() << "All tasks has been sent." << std::endl ;
+      unit::StreamLock(std::cout) << "All tasks has been sent." << std::endl ;
    }
    catch(const std::exception &x)
    {
-      StreamLock(std::cout).stream() << "Exception: " << x.what() << std::endl ;
+      unit::StreamLock(std::cout) << "Exception: " << x.what() << std::endl ;
       watchdog && watchdog->join() ;
       return 1 ;
    }

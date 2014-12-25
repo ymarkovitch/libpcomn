@@ -35,12 +35,6 @@ DECLARE_STATE(ST_WRITABLE) ;
                      class JournalFilesTests
 *******************************************************************************/
 class JournalFilesTests : public JournalFixture {
-   public:
-      JournalFilesTests() :
-         JournalFixture("test_files")
-      {}
-
-   private:
       void Test_JournalFile_Create() ;
 
       CPPUNIT_TEST_SUITE(JournalFilesTests) ;

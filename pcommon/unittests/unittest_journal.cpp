@@ -27,12 +27,7 @@ typedef std::unique_ptr<JournallableStringMap> map_safeptr ;
                      class JournalTests
 *******************************************************************************/
 class JournalTests : public JournalFixture {
-   public:
-      JournalTests() :
-         JournalFixture("test_files")
-      {}
 
-   private:
       void Test_Journal_Create() ;
       void Test_Journal_Create_Write() ;
       void Test_Journal_Create_RW() ;

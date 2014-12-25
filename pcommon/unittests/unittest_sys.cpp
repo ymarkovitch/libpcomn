@@ -246,7 +246,8 @@ void FilesystemTests::Test_Filesystem_RealPath()
 /*******************************************************************************
                      class SysDirTests
 *******************************************************************************/
-class SysDirTests : public pcomn::unit::TestFixture<> {
+extern const char SYSDIR_FIXTURE[] = "sysdir" ;
+class SysDirTests : public pcomn::unit::TestFixture<SYSDIR_FIXTURE> {
 
       void Test_Opendir() ;
 
@@ -255,8 +256,6 @@ class SysDirTests : public pcomn::unit::TestFixture<> {
       CPPUNIT_TEST(Test_Opendir) ;
 
       CPPUNIT_TEST_SUITE_END() ;
-   public:
-      SysDirTests() : pcomn::unit::TestFixture<>("SysDirTests") {}
 } ;
 
 void SysDirTests::Test_Opendir()

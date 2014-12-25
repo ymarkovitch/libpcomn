@@ -498,29 +498,11 @@ P_BIND_THISPTR_(8) ;
 #undef P_PLACELIST_
 #undef P_BIND_THISPTR_
 
-template<typename R>
-std::function<R()> make_function(R (*fn)())
+template<typename R, typename... Args>
+std::function<R(Args...)> make_function(R (*fn)(Args...))
 {
-   return std::function<R()>(fn) ;
+   return {fn} ;
 }
-
-#define P_MAKE_FUNCTION_(argc)                        \
-   template<typename R, P_TARGLIST(argc, typename)>   \
-   std::function<R(P_TARGLIST(argc))>                 \
-   make_function(R (*fn)(P_TARGLIST(argc)))           \
-   {                                                  \
-        return {fn} ;                                 \
-   }
-
-P_MAKE_FUNCTION_(1) ;
-P_MAKE_FUNCTION_(2) ;
-P_MAKE_FUNCTION_(3) ;
-P_MAKE_FUNCTION_(4) ;
-P_MAKE_FUNCTION_(5) ;
-P_MAKE_FUNCTION_(6) ;
-P_MAKE_FUNCTION_(7) ;
-P_MAKE_FUNCTION_(8) ;
-#undef P_MAKE_FUNCTION_
 
 } // end of namespace pcomn
 

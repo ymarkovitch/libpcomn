@@ -23,6 +23,7 @@
 #include <pcomn_cstrptr.h>
 #include <pcomn_path.h>
 #include <pcomn_function.h>
+#include <pcomn_safeptr.h>
 
 #include <cppunit/ui/text/TestRunner.h>
 #include <cppunit/TestResult.h>
@@ -33,13 +34,11 @@
 #include <cppunit/extensions/TestLogger.h>
 
 #include <fstream>
-#include <sstream>
 #include <string>
 #include <vector>
 #include <list>
 #include <map>
 #include <set>
-#include <typeinfo>
 #include <tuple>
 #include <stdexcept>
 #include <mutex>
@@ -56,121 +55,242 @@
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
 
-#define PCOMN_LOG_RESULT(expression)                                    \
-{                                                                       \
-    std::ostringstream str ;                                            \
-    str << (__CPPUNIT_CONCAT_SRC_LINE("'") #expression "'=")            \
-        << ::CppUnit::to_string((expression)) << "\n" << std::ends ;    \
-    std::cout << str.str() << std::flush ;                              \
-}
+#define CPPUNIT_PROGDIR (::pcomn::unit::TestEnvironment::progdir())
+#define CPPUNIT_TESTDIR (::pcomn::unit::TestEnvironment::testdir())
 
-static std::string CPPUNIT_PROGDIR = "." ;
-static std::string CPPUNIT_TESTDIR ;
-
-template<typename S>
-__noinline typename pcomn::enable_if_strchar<S, char, std::string>::type
-CPPUNIT_AT_PROGDIR(const S &path)
-{
-   const size_t clen = pcomn::str::len(path) ;
-   if (!clen || clen == 1 && *pcomn::str::cstr(path) == '.')
-      return CPPUNIT_PROGDIR ;
-   const char * const cpath = pcomn::str::cstr(path) ;
-   if (*cpath == PCOMN_PATH_NATIVE_DELIM)
-      return std::string(cpath, clen) ;
-
-   return (CPPUNIT_PROGDIR + "/").append(cpath, clen) ;
-}
-
-inline std::string CPPUNIT_AT_TESTDIR(const pcomn::strslice &path)
-{
-   if (CPPUNIT_TESTDIR.empty())
-   {
-      const char *testdir = getenv("PCOMN_TESTDIR") ;
-      #ifndef PCOMN_TESTDIR
-      pcomn::ensure_nonzero<std::logic_error>
-         (testdir, "PCOMN_TESTDIR environment variable value is not specified, cannot use CPPUNIT_TESTDIR") ;
-      #else
-      testdir = P_STRINGIFY_I(PCOMN_TESTDIR) ;
-      #endif
-
-      CPPUNIT_TESTDIR = testdir ;
-   }
-
-   if (!path)
-      return CPPUNIT_TESTDIR ;
-   if (path.front() == PCOMN_PATH_NATIVE_DELIM)
-      return path.stdstring() ;
-
-   return pcomn::path::joinpath<std::string>(CPPUNIT_TESTDIR, path) ;
-}
-
-namespace CppUnit {
-
-template<typename ExceptionType>
-struct ExpectedExceptionCodeTraits {
-      static void expectedException(long code, const long *actual_code) ;
-      static void expectedException(const pcomn::strslice &expected_substr,
-                                    const pcomn::strslice &actual_msg) ;
-} ;
-
-template<typename ExceptionType>
-void ExpectedExceptionCodeTraits<ExceptionType>::expectedException(long expected_code,
-                                                                   const long *actual_code)
-{
-   std::string message ("Expected exception of type ") ;
-   char codebuf[32] ;
-   sprintf(codebuf, "%ld", expected_code) ;
-   message
-      .append(PCOMN_TYPENAME(ExceptionType))
-      .append(", errcode=")
-      .append(codebuf)
-      .append(", but got ") ;
-   if (!actual_code)
-      message += "none" ;
-   else
-   {
-      sprintf(codebuf, "%ld", *actual_code) ;
-      message
-         .append("errcode=")
-         .append(codebuf) ;
-   }
-   throw CppUnit::Exception(CppUnit::Message(message)) ;
-}
-
-template<typename ExceptionType>
-void ExpectedExceptionCodeTraits<ExceptionType>::expectedException(const pcomn::strslice &expected_substr,
-                                                                   const pcomn::strslice &actual_msg)
-{
-   if (std::search(actual_msg.begin(), actual_msg.end(), expected_substr.begin(), expected_substr.end()) != actual_msg.end())
-      return ;
-
-   std::string message ("Expected exception ") ;
-   message
-      .append(PCOMN_TYPENAME(ExceptionType))
-      .append(" with message containing '").append(expected_substr.begin(), expected_substr.end()).append("'")
-      .append(", but got the message '").append(actual_msg.begin(), actual_msg.end()).append("'") ;
-   throw CppUnit::Exception(CppUnit::Message(message)) ;
-}
-
-template<typename T>
-inline std::string to_string(const T &value)
-{
-   return assertion_traits<T>::toString(value) ;
-}
-
-} // end of namespace CppUnit
+#define CPPUNIT_AT_PROGDIR(p1, ...) (::pcomn::unit::TestEnvironment::at_progdir((p1 ##__VA_ARGS__)))
+#define CPPUNIT_AT_TESTDIR(p1, ...) (::pcomn::unit::TestEnvironment::at_testdir((p1 ##__VA_ARGS__)))
 
 namespace pcomn {
 namespace unit {
 
 /*******************************************************************************
+
+*******************************************************************************/
+template<nullptr_t = nullptr>
+struct test_environment {
+
+      friend std::string resolve_test_path(const CppUnit::Test &, const std::string &, bool) ;
+      friend int prepare_test_environment(int argc, char ** const argv, const char *diag_profile, const char *title) ;
+
+      static const std::string &progdir() { return _progdir ; }
+      static const std::string &testdir() { return _testdir ; }
+
+      static std::string at_progdir(const strslice &path)
+      {
+         return join_path(progdir(), path) ;
+      }
+      static std::string at_testdir(const strslice &path) ;
+
+   private:
+      static std::string _progdir ;
+      static std::string _testdir ;
+
+   private:
+      static std::string resolve_test_path(const CppUnit::Test &tests, const std::string &name, bool top) ;
+      static int prepare_test_environment(int argc, char ** const argv, const char *diag_profile, const char *title) ;
+      static std::string join_path(const std::string &dir, const strslice &path) ;
+} ;
+
+/*******************************************************************************
+ test_environment
+*******************************************************************************/
+template<nullptr_t n>
+std::string test_environment<n>::_progdir {"."} ;
+template<nullptr_t n>
+std::string test_environment<n>::_testdir ;
+
+template<nullptr_t n>
+std::string test_environment<n>::join_path(const std::string &dir, const strslice &path)
+{
+   if (!path || path.size() == 1 && path.front() == '.')
+      return dir ;
+   if (path.front() == PCOMN_PATH_NATIVE_DELIM)
+      return std::string(path) ;
+   return (dir + "/").append(path.begin(), path.end()) ;
+}
+
+template<nullptr_t n>
+std::string test_environment<n>::at_testdir(const strslice &path)
+{
+   if (_testdir.empty())
+   {
+      const char *dir = getenv("PCOMN_TESTDIR") ;
+      #ifndef PCOMN_TESTDIR
+      ensure_nonzero<std::logic_error>
+         (dir, "PCOMN_TESTDIR environment variable value is not specified, cannot use CPPUNIT_TESTDIR") ;
+      #else
+      dir = P_STRINGIFY_I(PCOMN_TESTDIR) ;
+      #endif
+
+      _testdir = dir ;
+   }
+   return join_path(testdir(), path) ;
+}
+
+template<nullptr_t n>
+std::string test_environment<n>::resolve_test_path(const CppUnit::Test &tests, const std::string &name, bool top)
+{
+   using namespace CppUnit ;
+   if (!top)
+   {
+      if (tests.getChildTestCount())
+         for (int i = tests.getChildTestCount() ; i-- ;)
+         {
+            const std::string &child_path = resolve_test_path(*tests.getChildTestAt(i), name, false) ;
+            if (!child_path.empty())
+               return ("/" + tests.getName()).append(child_path) ;
+         }
+      else if (pcomn::str::endswith(tests.getName(), name))
+         return "/" + tests.getName() ;
+
+      return std::string() ;
+   }
+
+   TestPath path ;
+   std::string pathstr ;
+
+   if (tests.findTestPath(name, path))
+      pathstr = path.toString() ;
+   else if (stringchr(name, ':') == -1)
+      pathstr = resolve_test_path(tests, "::" + name, false) ;
+
+   return pathstr ;
+}
+
+template<nullptr_t n>
+int test_environment<n>::prepare_test_environment(int argc, char ** const argv, const char *diag_profile, const char *title)
+{
+   if (diag_profile && *diag_profile)
+      DIAG_INITTRACE(diag_profile) ;
+
+   // Disable syslog output by LOGPX... macros for tests to avoid cluttering syslog
+   diag_setmode(diag::DisableSyslog, true) ;
+
+   _progdir = argv && *argv && strrchr(*argv, PCOMN_PATH_NATIVE_DELIM)
+      ? std::string(*argv, strrchr(*argv, PCOMN_PATH_NATIVE_DELIM))
+      : std::string(".") ;
+
+   if (const char * const testdir = getenv("PCOMN_TESTDIR"))
+      _testdir = testdir ;
+
+   CPPUNIT_SETLOG(&std::cout) ;
+   if (title && *title)
+      CPPUNIT_LOG(title << std::endl) ;
+   char namebuf[4096] = "" ;
+   CPPUNIT_LOG("Current working directory is '" << (getcwd(namebuf, sizeof namebuf - 1), namebuf) << '\'') ;
+   return 0 ;
+}
+
+/*******************************************************************************
+
+*******************************************************************************/
+typedef test_environment<> TestEnvironment ;
+
+inline std::string resolve_test_path(const CppUnit::Test &tests, const std::string &name, bool top = true)
+{
+   return TestEnvironment::resolve_test_path(tests, name, top) ;
+}
+inline int prepare_test_environment(int argc, char ** const argv, const char *diag_profile, const char *title)
+{
+   return TestEnvironment::prepare_test_environment(argc, argv, diag_profile, title) ;
+}
+
+
+/*******************************************************************************
+                     struct ostream_lock
+*******************************************************************************/
+template<typename Tag>
+struct ostream_lock {
+      ostream_lock(std::ostream &os) ;
+      ostream_lock(ostream_lock &&other) : _ostream(other._ostream), _guard(&_lock)
+      {
+         other._guard = nullptr ;
+      }
+
+      ~ostream_lock() ;
+
+      std::ostream &stream() const { return _ostream ; }
+
+   private:
+      std::ostream &        _ostream ;
+      std::recursive_mutex *_guard ;
+
+      static std::recursive_mutex _lock ;
+} ;
+
+template<typename Tag>
+std::recursive_mutex ostream_lock<Tag>::_lock ;
+
+template<typename Tag>
+ostream_lock<Tag>::ostream_lock(std::ostream &os) :
+   _ostream(os), _guard(&_lock)
+{
+   _lock.lock() ;
+}
+
+template<typename Tag>
+ostream_lock<Tag>::~ostream_lock()
+{
+   if (_guard)
+   {
+      stream().flush() ;
+      _lock.unlock() ;
+   }
+}
+
+typedef ostream_lock<std::ostream> StreamLock ;
+
+/*******************************************************************************
+
+*******************************************************************************/
+template<typename Tag>
+struct unique_locked_ostream {
+      unique_locked_ostream(unique_locked_ostream &&) = default ;
+
+      unique_locked_ostream(std::ostream &unowned_stream) ;
+      explicit unique_locked_ostream(std::ostream *owned_stream) ;
+      explicit unique_locked_ostream(const strslice &filename) ;
+
+      ~unique_locked_ostream() ;
+
+      std::ostream &stream() const { return _lock.stream() ; }
+
+   private:
+      safe_ref<std::ostream>  _streamp ;
+      ostream_lock<Tag>       _lock ;
+} ;
+
+template<typename Tag>
+unique_locked_ostream<Tag>::unique_locked_ostream(std::ostream *owned_stream) :
+   _streamp(owned_stream), _lock(_streamp.get())
+{}
+
+template<typename Tag>
+unique_locked_ostream<Tag>::unique_locked_ostream(std::ostream &unowned_stream) :
+   _streamp(unowned_stream), _lock(_streamp.get())
+{}
+
+template<typename Tag>
+unique_locked_ostream<Tag>::unique_locked_ostream(const strslice &filename) :
+   unique_locked_ostream(new std::ofstream(std::string(filename).c_str()))
+{
+   PCOMN_THROW_IF(!stream(), environment_error, "Cannot open " P_STRSLICEQF " for writing", P_STRSLICEV(filename)) ;
+}
+
+template<typename Tag>
+unique_locked_ostream<Tag>::~unique_locked_ostream() = default ;
+
+/*******************************************************************************
                      class TestProgressListener
 *******************************************************************************/
-class TestProgressListener : public CppUnit::TextTestProgressListener {
+template<nullptr_t = nullptr>
+class TestListener : public CppUnit::TextTestProgressListener {
    public:
       void startTest(CppUnit::Test *test)
       {
-         CPPUNIT_LOG(std::endl << std::endl << "*** " << test->getName() << std::endl) ;
+         setCurrentName(test) ;
+         CPPUNIT_LOG(std::endl << std::endl << "*** " << testFullName() << std::endl) ;
       }
 
       void addFailure(const CppUnit::TestFailure &failure)
@@ -178,7 +298,37 @@ class TestProgressListener : public CppUnit::TextTestProgressListener {
          CPPUNIT_LOG((failure.isError() ? "ERROR" : "FAILURE") << std::endl
                      << failure.thrownException()->what() << std::endl) ;
       }
+
+      static const char *testFullName() { return _current_fullname ; }
+      static const char *testShortName() { return _current_shortname ; }
+
+   private:
+      static char _current_fullname[2048] ;
+      static const char *_current_shortname ;
+
+      static void setCurrentName(CppUnit::Test *test) ;
+      static void resetCurrentName() { *_current_fullname = 0 ; }
 } ;
+
+template<nullptr_t n>
+char TestListener<n>::_current_fullname[2048] ;
+template<nullptr_t n>
+const char *TestListener<n>::_current_shortname = _current_fullname ;
+
+template<nullptr_t n>
+void TestListener<n>::setCurrentName(CppUnit::Test *test)
+{
+   const std::string &name = test->getName() ;
+   const size_t len = std::min(sizeof _current_fullname - 1, name.size()) ;
+   strncpy(_current_fullname, name.c_str(), len) ;
+   _current_fullname[len] = 0 ;
+   if ((_current_shortname = strrchr(_current_fullname, ':')) != NULL)
+      ++_current_shortname ;
+   else
+      _current_shortname = _current_fullname ;
+}
+
+typedef TestListener<> TestProgressListener ;
 
 /*******************************************************************************
                      class TestRunner
@@ -198,6 +348,9 @@ class TestRunner : public CppUnit::TextUi::TestRunner {
       }
 
       const CppUnit::TestSuite *suite() const { return m_suite ; }
+
+      static const char *testFullName() { return TestProgressListener::testFullName() ; }
+      static const char *testShortName() { return TestProgressListener::testShortName() ; }
 
    private:
       TestProgressListener _listener ;
@@ -220,82 +373,128 @@ class TestRunner : public CppUnit::TextUi::TestRunner {
   at_data_dir_abs("bar.out") ;
   @endcode
 *******************************************************************************/
-template<const char *private_dirname = emptystr<char[1]>::value>
+template<const char *private_dirname>
 class TestFixture : public CppUnit::TestFixture {
    public:
-      const char *basename() const { return _basename.c_str() ; }
-      const char *testname() const { return _testname.c_str() ; }
-      static int current_round() { return _current_round ; }
+      typedef ostream_lock<TestFixture<private_dirname> > locked_out ;
+
+      const char *testname() const { return TestRunner::testShortName() ; }
 
       /// Get the temporary writeable directory allocated/dedicated for the runnning test
       /// function (not fixture!)
-      const std::string &dataDir() const { return _datadir ; }
+      const std::string &dataDir() const
+      {
+         ensure_datadir() ;
+         return _datadir ;
+      }
       /// @overload
       const std::string &data_dir() const { return dataDir() ; }
 
-      template<typename S>
-      std::string at_data_dir(const S &filename) const
-      {
-         return data_dir() + '/' + str::stdstr(filename) ;
-      }
+      const std::string &data_file() const { return _datafile ; }
 
-      template<typename S>
-      std::string at_data_dir_abs(const S &filename) const
-      {
-         return pcomn::path::abspath<std::string>(this->at_data_dir(filename)) ;
-      }
+      /// Get relative path for a filename in the temporary writeable directory (@see
+      /// data_dir())
+      ///
+      /// The path is relative to the current working directory
+      std::string at_data_dir(const strslice &filename) const ;
+      /// Get absolute path for a filename in the temporary writeable directory (@see data_dir())
+      std::string at_data_dir_abs(const strslice &filename) const ;
 
-      /// Get absolute path for a filename specified realtive to test sources directory
-      template<typename S>
-      std::string at_testdir_abs(const S &filename) const ;
+      /// Get absolute path for a filename specified relative to test sources directory
+      std::string at_src_dir_abs(const strslice &filename) const ;
+      /// Same as at_src_dir_abs, backward compatibility
+      std::string at_testdir_abs(const strslice &filename) const ;
+
+      locked_out out() const ;
 
       virtual void cleanupDirs()
       {
-         CPPUNIT_LOG(dataDir() << " cleanup." << std::endl) ;
-         CPPUNIT_ASSERT((unsigned)system(("rm -rf " + dataDir()).c_str()) <= 1) ;
-         CPPUNIT_ASSERT(!system(("mkdir -p " + dataDir()).c_str())) ;
+         _datadir_ready = true ;
+         CPPUNIT_LOG(_datadir << " cleanup." << std::endl) ;
+         CPPUNIT_ASSERT((unsigned)system(("rm -rf " + _datadir).c_str()) <= 1) ;
+         _datadir_ready = false ;
       }
 
       void setUp()
       {
-         ++_current_round ;
          const char * const dirname = private_dirname ? private_dirname : "test" ;
 
-         char buf[8192] ;
-         snprintf(buf, sizeof buf, "%s%2.2d", dirname, current_round()) ;
-         _testname = buf ;
-         snprintf(buf, sizeof buf, "%s/data/%s.%s%2.2d",
-                  pcomn::str::cstr(CPPUNIT_PROGDIR), dirname, basename(), current_round()) ;
+         char buf[2048] ;
+         _data_basedir = CPPUNIT_PROGDIR + "/data" ;
+         snprintf(buf, sizeof buf, "%s/%s.%s", pcomn::str::cstr(_data_basedir), dirname, testname()) ;
          _datadir = buf ;
+         snprintf(buf, sizeof buf, "%s/%s.out", pcomn::str::cstr(_data_basedir), testname()) ;
+         _datafile = buf ;
 
          cleanupDirs() ;
       }
 
-   protected:
-      explicit TestFixture(const std::string &base = std::string()) :
-         _basename(base)
-      {}
-
+      void tearDown()
+      {
+         _out.reset() ;
+      }
    private:
-      static int _current_round ;
-      const std::string _basename ;
-      std::string _testname ;
-      std::string _datadir ;
+      std::string    _data_basedir ;
+      std::string    _datadir ;
+      std::string    _datafile ;
+      mutable bool   _datadir_ready ; /* true is datadir is created */
+      mutable std::unique_ptr<std::ofstream> _out ;
+
+      void ensure_datadir() const ;
 } ;
 
 template<const char *private_dirname>
-int TestFixture<private_dirname>::_current_round ;
+__noinline void TestFixture<private_dirname>::ensure_datadir() const
+{
+   if (_datadir_ready)
+      return ;
+   CPPUNIT_ASSERT(!system(("mkdir -p " + _datadir).c_str())) ;
+   _datadir_ready = true ;
+}
 
 template<const char *private_dirname>
-template<typename S>
-__noinline std::string TestFixture<private_dirname>::at_testdir_abs(const S &filename) const
+__noinline std::string TestFixture<private_dirname>::at_data_dir(const strslice &filename) const
 {
-   return pcomn::path::abspath<std::string>(CPPUNIT_AT_TESTDIR(filename)) ;
+   return (data_dir() + '/').append(filename.begin(), filename.end()) ;
+}
+
+template<const char *private_dirname>
+__noinline std::string TestFixture<private_dirname>::at_data_dir_abs(const strslice &filename) const
+{
+   return path::abspath<std::string>(this->at_data_dir(filename)) ;
+}
+
+template<const char *private_dirname>
+__noinline std::string TestFixture<private_dirname>::at_testdir_abs(const strslice &filename) const
+{
+   return path::abspath<std::string>(CPPUNIT_AT_TESTDIR(filename)) ;
+}
+
+template<const char *private_dirname>
+typename TestFixture<private_dirname>::locked_out TestFixture<private_dirname>::out() const
+{
+   if (!_out)
+   {
+      locked_out guard (std::cout) ;
+      if (!_out)
+      {
+         std::unique_ptr<std::ofstream> new_stream (new std::ofstream(data_file().c_str())) ;
+         PCOMN_THROW_IF(!*new_stream, environment_error, "Cannot open " P_STRSLICEQF " for writing", P_STRSLICEV(data_file())) ;
+         _out = std::move(new_stream) ;
+      }
+   }
+   return locked_out(*_out) ;
 }
 
 /*******************************************************************************
  Helper functions
 *******************************************************************************/
+template<typename T>
+std::string to_string(const T &value)
+{
+   return CppUnit::assertion_traits<T>::toString(value) ;
+}
+
 template<typename Char, class Traits>
 bool equal_streams(std::basic_istream<Char, Traits> *lhs_stream,
                    std::basic_istream<Char, Traits> *rhs_stream)
@@ -595,58 +794,6 @@ generate_file(const S &filename, const pcomn::strslice &content)
    os.write(content.begin(), content.size()) ;
 }
 
-static std::string resolve_test_path(const CppUnit::Test &tests, const std::string &name, bool top = true)
-{
-   using namespace CppUnit ;
-   if (!top)
-   {
-      if (tests.getChildTestCount())
-         for (int i = tests.getChildTestCount() ; i-- ;)
-         {
-            const std::string &child_path = resolve_test_path(*tests.getChildTestAt(i), name, false) ;
-            if (!child_path.empty())
-               return ("/" + tests.getName()).append(child_path) ;
-         }
-      else if (pcomn::str::endswith(tests.getName(), name))
-         return "/" + tests.getName() ;
-
-      return std::string() ;
-   }
-
-   TestPath path ;
-   std::string pathstr ;
-
-   if (tests.findTestPath(name, path))
-      pathstr = path.toString() ;
-   else if (stringchr(name, ':') == -1)
-      pathstr = resolve_test_path(tests, "::" + name, false) ;
-
-   return pathstr ;
-}
-
-inline int prepare_test_environment(int argc, char ** const argv, const char *diag_profile, const char *title)
-{
-   if (diag_profile && *diag_profile)
-      DIAG_INITTRACE(diag_profile) ;
-
-   // Disable syslog output by LOGPX... macros for tests to avoid cluttering syslog
-   diag_setmode(diag::DisableSyslog, true) ;
-
-   CPPUNIT_PROGDIR = argv && *argv && strrchr(*argv, PCOMN_PATH_NATIVE_DELIM)
-      ? std::string(*argv, strrchr(*argv, PCOMN_PATH_NATIVE_DELIM))
-      : std::string(".") ;
-
-   if (const char * const testdir = getenv("PCOMN_TESTDIR"))
-      CPPUNIT_TESTDIR = testdir ;
-
-   CPPUNIT_SETLOG(&std::cout) ;
-   if (title && *title)
-      CPPUNIT_LOG(title << std::endl) ;
-   char namebuf[4096] = "" ;
-   CPPUNIT_LOG("Current working directory is '" << (getcwd(namebuf, sizeof namebuf - 1), namebuf) << '\'') ;
-   return 0 ;
-}
-
 inline int run_tests(TestRunner &runner, int argc, char ** const argv,
                      const char *diag_profile, const char *title)
 {
@@ -671,30 +818,6 @@ inline int run_tests(TestRunner &runner, int argc, char ** const argv,
 }
 
 } // end of namespace pcomn::unit
-
-/*******************************************************************************
-                     struct PTStreamLock
-*******************************************************************************/
-template<bool dummy = true>
-struct PTStreamLock {
-      PTStreamLock(std::ostream &os) :
-         _ostream(os),
-         _guard(_lock)
-      {}
-
-      std::ostream &stream() { return _ostream ; }
-
-   private:
-      std::ostream &           _ostream ;
-      std::lock_guard<std::recursive_mutex> _guard ;
-
-      static std::recursive_mutex _lock ;
-} ;
-
-template<bool dummy>
-std::recursive_mutex PTStreamLock<dummy>::_lock ;
-
-typedef PTStreamLock<> StreamLock ;
 
 } // end of namespace pcomn
 
@@ -912,7 +1035,7 @@ struct stringify_item {
       template<typename T>
       void operator()(const T &value) const
       {
-         (_count++ ? (_result += _delimiter) : _result) += CppUnit::to_string(value) ;
+         (_count++ ? (_result += _delimiter) : _result) += pcomn::unit::to_string(value) ;
       }
    private:
       std::string &     _result ;
@@ -969,7 +1092,7 @@ struct assertion_traits_unordered {
          typedef typename Unordered::const_iterator const_iterator ;
          std::string result ;
          for (const_iterator iter (value.begin()), end (value.end()) ; iter != end ; ++iter)
-            result.append(CppUnit::to_string(*iter)).append(" ") ;
+            result.append(pcomn::unit::to_string(*iter)).append(" ") ;
          return result ;
       }
 } ;
@@ -1018,7 +1141,7 @@ struct assertion_traits<std::pair<T1, T2> > {
 template<typename T1, typename T2>
 std::string assertion_traits<std::pair<T1, T2> >::toString(const type &value)
 {
-   return std::string(1, '{') + CppUnit::to_string(value.first) + ',' + CppUnit::to_string(value.second) + '}' ;
+   return std::string(1, '{') + pcomn::unit::to_string(value.first) + ',' + pcomn::unit::to_string(value.second) + '}' ;
 }
 
 template<typename... A>
@@ -1082,12 +1205,76 @@ struct assertion_traits<pcomn::basic_strslice<C> > : assertion_traits_str<pcomn:
       }
 } ;
 
+/*******************************************************************************
+ Traits for CPPUNIT_LOG_EXCEPTION_CODE and CPPUNIT_LOG_EXCEPTION_MSG
+*******************************************************************************/
+template<typename ExceptionType>
+struct ExpectedExceptionCodeTraits {
+      static void expectedException(long code, const long *actual_code) ;
+      static void expectedException(const pcomn::strslice &expected_substr,
+                                    const pcomn::strslice &actual_msg) ;
+} ;
+
+template<typename ExceptionType>
+void ExpectedExceptionCodeTraits<ExceptionType>::expectedException(long expected_code,
+                                                                   const long *actual_code)
+{
+   std::string message ("Expected exception of type ") ;
+   char codebuf[32] ;
+   sprintf(codebuf, "%ld", expected_code) ;
+   message
+      .append(PCOMN_TYPENAME(ExceptionType))
+      .append(", errcode=")
+      .append(codebuf)
+      .append(", but got ") ;
+   if (!actual_code)
+      message += "none" ;
+   else
+   {
+      sprintf(codebuf, "%ld", *actual_code) ;
+      message
+         .append("errcode=")
+         .append(codebuf) ;
+   }
+   throw CppUnit::Exception(CppUnit::Message(message)) ;
+}
+
+template<typename ExceptionType>
+void ExpectedExceptionCodeTraits<ExceptionType>::expectedException(const pcomn::strslice &expected_substr,
+                                                                   const pcomn::strslice &actual_msg)
+{
+   if (std::search(actual_msg.begin(), actual_msg.end(), expected_substr.begin(), expected_substr.end()) != actual_msg.end())
+      return ;
+
+   std::string message ("Expected exception ") ;
+   message
+      .append(PCOMN_TYPENAME(ExceptionType))
+      .append(" with message containing '").append(expected_substr.begin(), expected_substr.end()).append("'")
+      .append(", but got the message '").append(actual_msg.begin(), actual_msg.end()).append("'") ;
+   throw CppUnit::Exception(CppUnit::Message(message)) ;
+}
+
 } // end of namespace CppUnit
+
+/*******************************************************************************
+ Output to locked streams
+*******************************************************************************/
+template<typename T, typename Tag>
+inline std::ostream &operator<<(const pcomn::unit::ostream_lock<Tag> &os, T &&v)
+{
+   return os.stream() << std::forward<T>(v) ;
+}
+
+template<typename T, typename Tag>
+inline std::ostream &operator<<(const pcomn::unit::unique_locked_ostream<Tag> &os, T &&v)
+{
+   return os.stream() << std::forward<T>(v) ;
+}
 
 /*******************************************************************************
  Containter constructor macros.
 *******************************************************************************/
-#define CPPUNIT_STRING(value) (::CppUnit::to_string(value))
+#define CPPUNIT_STRING(value) (::pcomn::unit::to_string(value))
 #define CPPUNIT_CONTAINER(type, items) (::pcomn::container_inserter< type >() items .container())
 
 #define CPPUNIT_STRVECTOR(items)    CPPUNIT_CONTAINER(std::vector<std::string>, items)

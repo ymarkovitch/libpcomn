@@ -29,8 +29,6 @@ extern const char JOURNAL_FIXTURE[] = "journal" ;
 class JournalFixture : public pcomn::unit::TestFixture<JOURNAL_FIXTURE> {
       typedef pcomn::unit::TestFixture<JOURNAL_FIXTURE> ancestor ;
    public:
-      JournalFixture(const std::string &base_name) : ancestor(base_name) {}
-
       void cleanupDirs()
       {
          ancestor::cleanupDirs() ;
@@ -40,6 +38,7 @@ class JournalFixture : public pcomn::unit::TestFixture<JOURNAL_FIXTURE> {
       void tearDown()
       {
          _dirfd.reset() ;
+         ancestor::tearDown() ;
       }
 
       template<typename S>
