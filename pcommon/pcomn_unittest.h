@@ -59,7 +59,7 @@
 #define CPPUNIT_TESTDIR (::pcomn::unit::TestEnvironment::testdir())
 
 #define CPPUNIT_AT_PROGDIR(p1, ...) (::pcomn::unit::TestEnvironment::at_progdir((p1 ##__VA_ARGS__)))
-#define CPPUNIT_AT_TESTDIR(p1, ...) (::pcomn::unit::TestEnvironment::at_testdir((p1 ##__VA_ARGS__)))
+#define CPPUNIT_AT_TESTDIR(p1, ...) (::pcomn::unit::TestEnvironment::at_srcdir((p1 ##__VA_ARGS__)))
 
 namespace pcomn {
 namespace unit {
@@ -80,7 +80,7 @@ struct test_environment {
       {
          return join_path(progdir(), path) ;
       }
-      static std::string at_testdir(const strslice &path) ;
+      static std::string at_srcdir(const strslice &path) ;
 
    private:
       static std::string _progdir ;
@@ -111,7 +111,7 @@ std::string test_environment<n>::join_path(const std::string &dir, const strslic
 }
 
 template<nullptr_t n>
-std::string test_environment<n>::at_testdir(const strslice &path)
+std::string test_environment<n>::at_srcdir(const strslice &path)
 {
    if (_testdir.empty())
    {
@@ -390,7 +390,11 @@ class TestFixture : public CppUnit::TestFixture {
       /// @overload
       const std::string &data_dir() const { return dataDir() ; }
 
+      /// Get per-test-function writeable output file name ($TESTNAME.out)
       const std::string &data_file() const { return _datafile ; }
+
+      /// Get thread-locked per-test-function output data stream (@see data_file())
+      locked_out data_ostream() const ;
 
       /// Get relative path for a filename in the temporary writeable directory (@see
       /// data_dir())
@@ -403,9 +407,12 @@ class TestFixture : public CppUnit::TestFixture {
       /// Get absolute path for a filename specified relative to test sources directory
       std::string at_src_dir_abs(const strslice &filename) const ;
       /// Same as at_src_dir_abs, backward compatibility
-      std::string at_testdir_abs(const strslice &filename) const ;
+      std::string at_testdir_abs(const strslice &filename) const
+      {
+         return at_src_dir_abs(filename) ;
+      }
 
-      locked_out out() const ;
+      void ensure_data_file_match(const strslice &data_sample_filename = {}) const ;
 
       virtual void cleanupDirs()
       {
@@ -424,7 +431,7 @@ class TestFixture : public CppUnit::TestFixture {
          snprintf(buf, sizeof buf, "%s/%s.%s", pcomn::str::cstr(_data_basedir), dirname, testname()) ;
          _datadir = buf ;
          snprintf(buf, sizeof buf, "%s/%s.out", pcomn::str::cstr(_data_basedir), testname()) ;
-         _datafile = buf ;
+         _datafile = path::abspath<std::string>(buf) ;
 
          cleanupDirs() ;
       }
@@ -455,7 +462,7 @@ __noinline void TestFixture<private_dirname>::ensure_datadir() const
 template<const char *private_dirname>
 __noinline std::string TestFixture<private_dirname>::at_data_dir(const strslice &filename) const
 {
-   return (data_dir() + '/').append(filename.begin(), filename.end()) ;
+   return path::joinpath<std::string>(data_dir(), filename) ;
 }
 
 template<const char *private_dirname>
@@ -465,13 +472,13 @@ __noinline std::string TestFixture<private_dirname>::at_data_dir_abs(const strsl
 }
 
 template<const char *private_dirname>
-__noinline std::string TestFixture<private_dirname>::at_testdir_abs(const strslice &filename) const
+__noinline std::string TestFixture<private_dirname>::at_src_dir_abs(const strslice &filename) const
 {
    return path::abspath<std::string>(CPPUNIT_AT_TESTDIR(filename)) ;
 }
 
 template<const char *private_dirname>
-typename TestFixture<private_dirname>::locked_out TestFixture<private_dirname>::out() const
+typename TestFixture<private_dirname>::locked_out TestFixture<private_dirname>::data_ostream() const
 {
    if (!_out)
    {
@@ -484,6 +491,39 @@ typename TestFixture<private_dirname>::locked_out TestFixture<private_dirname>::
       }
    }
    return locked_out(*_out) ;
+}
+
+template<const char *private_dirname>
+void TestFixture<private_dirname>::ensure_data_file_match(const strslice &data_sample_filename) const
+{
+   static const char diffopts[] = "-u" ;
+   const std::string sample_filename { at_src_dir_abs(data_sample_filename
+                                                      ? std::string(data_sample_filename)
+                                                      : std::string(path::basename(data_file())) + ".tst") } ;
+   char command[2048] ;
+   auto rundiff = [&](const char *opt, const char *redir, const char *redir_ext)
+   {
+      const int status = system(bufprintf(command, "diff %s %s '%s' '%s' >%s%s",
+                                          diffopts, opt, sample_filename.c_str(), data_file().c_str(), redir, redir_ext)) ;
+      if (status < 0)
+         CPPUNIT_FAIL("Error running diff command") ;
+      switch (WEXITSTATUS(status))
+      {
+         case 0:  return true ;
+         case 1:  return false ;
+         default: CPPUNIT_FAIL(bufprintf(command, "Either '%s' or '%s' does not exist", data_file().c_str(), sample_filename.c_str())) ;
+      }
+   } ;
+
+   if (_out)
+      data_ostream().stream() << std::flush ;
+
+   if (!rundiff("-q", "/dev/null", ""))
+   {
+      // There is a difference
+      rundiff("", data_file().c_str(), ".diff") ;
+      CPPUNIT_FAIL(bufprintf(command, "'%s' and '%s' differ", data_file().c_str(), sample_filename.c_str())) ;
+   }
 }
 
 /*******************************************************************************

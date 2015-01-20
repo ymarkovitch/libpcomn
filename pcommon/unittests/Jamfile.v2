@@ -11,7 +11,7 @@
 path-constant TESTPATH    : . ;
 path-constant VENDORPATH  : ../../vendor ;
 
-lib cppunit ;
+lib cppunit : : <link>shared ;
 lib crypto : : <link>shared ;
 lib zlib   : : <name>z <link>shared ;
 

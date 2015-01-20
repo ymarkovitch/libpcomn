@@ -197,10 +197,56 @@ void UtilityTests::Test_TupleUtils()
    CPPUNIT_LOG_EQUAL(CPPUNIT_STRING(t3), std::string(R"(("Hello" 3 world))")) ;
 }
 
+/*******************************************************************************
+ UnittestTests
+*******************************************************************************/
+extern const char UNITTEST_FIXTURE[] = "unittest" ;
+class UnittestTests : public unit::TestFixture<UNITTEST_FIXTURE> {
+
+      void Test_Unittest_Diff_Empty() ;
+      void Test_Unittest_Diff() ;
+      void Test_Unittest_Diff_Nofile_Fail() ;
+      void Test_Unittest_Diff_Mismatch_Fail() ;
+
+      CPPUNIT_TEST_SUITE(UnittestTests) ;
+
+      CPPUNIT_TEST(Test_Unittest_Diff_Empty) ;
+      CPPUNIT_TEST(Test_Unittest_Diff) ;
+
+      CPPUNIT_TEST_FAIL(Test_Unittest_Diff_Nofile_Fail) ;
+      CPPUNIT_TEST_FAIL(Test_Unittest_Diff_Mismatch_Fail) ;
+
+      CPPUNIT_TEST_SUITE_END() ;
+} ;
+
+void UnittestTests::Test_Unittest_Diff_Empty()
+{
+   CPPUNIT_LOG_RUN(data_ostream()) ;
+   CPPUNIT_LOG_RUN(ensure_data_file_match()) ;
+}
+
+void UnittestTests::Test_Unittest_Diff()
+{
+   CPPUNIT_RUN(data_ostream() << "  Start\nHello, world!\nBye, baby...\n42\n    end\n") ;
+   CPPUNIT_LOG_RUN(ensure_data_file_match()) ;
+}
+
+void UnittestTests::Test_Unittest_Diff_Nofile_Fail()
+{
+   CPPUNIT_LOG_RUN(ensure_data_file_match()) ;
+}
+
+void UnittestTests::Test_Unittest_Diff_Mismatch_Fail()
+{
+   CPPUNIT_RUN(data_ostream() << "Hello, world!\nBye, baby...\n") ;
+   CPPUNIT_LOG_RUN(ensure_data_file_match()) ;
+}
+
 int main(int argc, char *argv[])
 {
    pcomn::unit::TestRunner runner ;
    runner.addTest(UtilityTests::suite()) ;
+   runner.addTest(UnittestTests::suite()) ;
 
    return
       pcomn::unit::run_tests(runner, argc, argv,
