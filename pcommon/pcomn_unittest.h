@@ -485,6 +485,8 @@ typename TestFixture<private_dirname>::locked_out TestFixture<private_dirname>::
       locked_out guard (std::cout) ;
       if (!_out)
       {
+         // Ensure $CPPUNIT_PROGDIR/data is here
+         CPPUNIT_ASSERT(_datadir_ready || !system(("mkdir -p " + _data_basedir).c_str())) ;
          std::unique_ptr<std::ofstream> new_stream (new std::ofstream(data_file().c_str())) ;
          PCOMN_THROW_IF(!*new_stream, environment_error, "Cannot open " P_STRSLICEQF " for writing", P_STRSLICEV(data_file())) ;
          _out = std::move(new_stream) ;
