@@ -10,50 +10,47 @@
 
  CREATION DATE:   14 Apr 1998
 *******************************************************************************/
-#ifndef __PCOMMON_H
 #include <pcommon.h>
-#endif /* PCOMMON.H */
 
-#define RSUB(n)      "("n")"                          // Подвыражение в скобках
+#define RSUB(n)      "(" n ")"                        // РџРѕРґРІС‹СЂР°Р¶РµРЅРёРµ РІ СЃРєРѕР±РєР°С…
+#define RCCLASS(n)   "[" n "]"                        // РљР»Р°СЃСЃ СЃРёРјРІРѕР»РѕРІ
 
-#define RCCLASS(n)   "["n"]"                          // Класс символов
-
-#define RDECDIGIT    "[0-9]"                          // Десятичные цифры
-#define ROCTDIGIT    "[0-7]"                          // Восьмеричные цифры
-#define RHEXDIGIT    "[0-9A-Fa-f]"                    // Шестнадцатеричные цифры
-#define RDECNOZERO   "[1-9]"                          // Десятичные цифры без нуля
-#define ROCTNOZERO   "[1-7]"                          // Восьмеричные цифры без нуля
-#define RHEXNOZERO   "[1-9A-Fa-f]"                    // Шестнадцатеричные цифры без нуля
-#define RDECNUM      "0|"RDECNOZERO RDECDIGIT"*"      // Десятичное число без знака
-#define RHEXNUM      "0[Xx]"RHEXDIGIT"+"              // Шестнадцатеричное число без знака
-#define ROCTNUM      "0"ROCTDIGIT"*"                  // Восьмеричное число без знака
-#define RINTEGER     RDECNUM "|" RHEXNUM "|" ROCTNUM  // Целое число в любой форме (dec/oct/hex)
-#define RSTRIPL      "[^ ].*"                         // Удалить лидирующие пробелы
-#define RSTRIPR      ".*[^ ]"                         // Удалить хвостовые пробелы
-#define RSTRIP       "[^ ].*[^ ]|[^ ]"                // Удалить пробелы слева и справа
+#define RDECDIGIT    "[0-9]"                          // Р”РµСЃСЏС‚РёС‡РЅС‹Рµ С†РёС„СЂС‹
+#define ROCTDIGIT    "[0-7]"                          // Р’РѕСЃСЊРјРµСЂРёС‡РЅС‹Рµ С†РёС„СЂС‹
+#define RHEXDIGIT    "[0-9A-Fa-f]"                    // РЁРµСЃС‚РЅР°РґС†Р°С‚РµСЂРёС‡РЅС‹Рµ С†РёС„СЂС‹
+#define RDECNOZERO   "[1-9]"                          // Р”РµСЃСЏС‚РёС‡РЅС‹Рµ С†РёС„СЂС‹ Р±РµР· РЅСѓР»СЏ
+#define ROCTNOZERO   "[1-7]"                          // Р’РѕСЃСЊРјРµСЂРёС‡РЅС‹Рµ С†РёС„СЂС‹ Р±РµР· РЅСѓР»СЏ
+#define RHEXNOZERO   "[1-9A-Fa-f]"                    // РЁРµСЃС‚РЅР°РґС†Р°С‚РµСЂРёС‡РЅС‹Рµ С†РёС„СЂС‹ Р±РµР· РЅСѓР»СЏ
+#define RDECNUM      "0|" RDECNOZERO RDECDIGIT "*"    // Р”РµСЃСЏС‚РёС‡РЅРѕРµ С‡РёСЃР»Рѕ Р±РµР· Р·РЅР°РєР°
+#define RHEXNUM      "0[Xx]" RHEXDIGIT "+"            // РЁРµСЃС‚РЅР°РґС†Р°С‚РµСЂРёС‡РЅРѕРµ С‡РёСЃР»Рѕ Р±РµР· Р·РЅР°РєР°
+#define ROCTNUM      "0" ROCTDIGIT "*"                // Р’РѕСЃСЊРјРµСЂРёС‡РЅРѕРµ С‡РёСЃР»Рѕ Р±РµР· Р·РЅР°РєР°
+#define RINTEGER     RDECNUM "|" RHEXNUM "|" ROCTNUM  // Р¦РµР»РѕРµ С‡РёСЃР»Рѕ РІ Р»СЋР±РѕР№ С„РѕСЂРјРµ (dec/oct/hex)
+#define RSTRIPL      "[^ ].*"                         // РЈРґР°Р»РёС‚СЊ Р»РёРґРёСЂСѓСЋС‰РёРµ РїСЂРѕР±РµР»С‹
+#define RSTRIPR      ".*[^ ]"                         // РЈРґР°Р»РёС‚СЊ С…РІРѕСЃС‚РѕРІС‹Рµ РїСЂРѕР±РµР»С‹
+#define RSTRIP       "[^ ].*[^ ]|[^ ]"                // РЈРґР°Р»РёС‚СЊ РїСЂРѕР±РµР»С‹ СЃР»РµРІР° Рё СЃРїСЂР°РІР°
 
 
-#ifndef PCOMN_PL_AS400   // Мы должны учесть особенности EBCDIC-кодировки
+#ifndef PCOMN_PL_AS400   // РњС‹ РґРѕР»Р¶РЅС‹ СѓС‡РµСЃС‚СЊ РѕСЃРѕР±РµРЅРЅРѕСЃС‚Рё EBCDIC-РєРѕРґРёСЂРѕРІРєРё
 
-#  define RSEQALPHA    "A-Za-z"                         // Латинница - все буквы
-#  define RSEQALNUM    "0-9A-Za-z"                      // Латинница - все буквы и цифры
-#  define RSEQUPPER    "A-Z"                            // Латинница - верхний регистр
-#  define RSEQLOWER    "a-z"                            // Латинница - нижний регистр
+#  define RSEQALPHA    "A-Za-z"                         // Р›Р°С‚РёРЅРЅРёС†Р° - РІСЃРµ Р±СѓРєРІС‹
+#  define RSEQALNUM    "0-9A-Za-z"                      // Р›Р°С‚РёРЅРЅРёС†Р° - РІСЃРµ Р±СѓРєРІС‹ Рё С†РёС„СЂС‹
+#  define RSEQUPPER    "A-Z"                            // Р›Р°С‚РёРЅРЅРёС†Р° - РІРµСЂС…РЅРёР№ СЂРµРіРёСЃС‚СЂ
+#  define RSEQLOWER    "a-z"                            // Р›Р°С‚РёРЅРЅРёС†Р° - РЅРёР¶РЅРёР№ СЂРµРіРёСЃС‚СЂ
 
 #else // AS400/EBCDIC
 
-#  define RSEQALPHA    "A-IJ-RS-Za-ij-rs-z"             // Латинница - все буквы
-#  define RSEQALNUM    "0-9A-IJ-RS-Za-ij-rs-z"          // Латинница - все буквы и цифры
-#  define RSEQUPPER    "A-IJ-RS-Z"                      // Латинница - верхний регистр
-#  define RSEQLOWER    "a-ij-rs-z"                      // Латинница - нижний регистр
+#  define RSEQALPHA    "A-IJ-RS-Za-ij-rs-z"             // Р›Р°С‚РёРЅРЅРёС†Р° - РІСЃРµ Р±СѓРєРІС‹
+#  define RSEQALNUM    "0-9A-IJ-RS-Za-ij-rs-z"          // Р›Р°С‚РёРЅРЅРёС†Р° - РІСЃРµ Р±СѓРєРІС‹ Рё С†РёС„СЂС‹
+#  define RSEQUPPER    "A-IJ-RS-Z"                      // Р›Р°С‚РёРЅРЅРёС†Р° - РІРµСЂС…РЅРёР№ СЂРµРіРёСЃС‚СЂ
+#  define RSEQLOWER    "a-ij-rs-z"                      // Р›Р°С‚РёРЅРЅРёС†Р° - РЅРёР¶РЅРёР№ СЂРµРіРёСЃС‚СЂ
 
 #endif
 
-#define RALPHA  RCCLASS(RSEQALPHA)                       // Латинница - все буквы
-#define RALNUM  RCCLASS(RSEQALNUM)                       // Латинница - все буквы и цифры
-#define RUPPER  RCCLASS(RSEQUPPER)                       // Латинница - верхний регистр
-#define RLOWER  RCCLASS(RSEQLOWER)                       // Латинница - нижний регистр
+#define RALPHA  RCCLASS(RSEQALPHA)                       // Р›Р°С‚РёРЅРЅРёС†Р° - РІСЃРµ Р±СѓРєРІС‹
+#define RALNUM  RCCLASS(RSEQALNUM)                       // Р›Р°С‚РёРЅРЅРёС†Р° - РІСЃРµ Р±СѓРєРІС‹ Рё С†РёС„СЂС‹
+#define RUPPER  RCCLASS(RSEQUPPER)                       // Р›Р°С‚РёРЅРЅРёС†Р° - РІРµСЂС…РЅРёР№ СЂРµРіРёСЃС‚СЂ
+#define RLOWER  RCCLASS(RSEQLOWER)                       // Р›Р°С‚РёРЅРЅРёС†Р° - РЅРёР¶РЅРёР№ СЂРµРіРёСЃС‚СЂ
 
-#define RCNAME  RCCLASS(RSEQALPHA"_")RCCLASS(RSEQALNUM"_")"*"  // Имя (в стиле языка программирования)
+#define RCNAME  RCCLASS(RSEQALPHA "_") RCCLASS(RSEQALNUM "_") "*"  // РРјСЏ (РІ СЃС‚РёР»Рµ СЏР·С‹РєР° РїСЂРѕРіСЂР°РјРјРёСЂРѕРІР°РЅРёСЏ)
 
 #endif /* __PREGUTIL_H */

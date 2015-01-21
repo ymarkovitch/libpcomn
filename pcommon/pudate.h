@@ -16,8 +16,6 @@
 *******************************************************************************/
 #include <pcommon.h>
 
-#include <packpsh1.h>
-
 #ifndef PCOMN_CPU_BIG_ENDIAN
 
 typedef struct bdate
@@ -50,7 +48,7 @@ typedef struct btime
 *******************************************************************************/
 typedef struct bdate
 {
-   unsigned short int year ;     /* Year (4-digit)             */
+   unsigned short year ;     /* Year (4-digit)             */
    unsigned char mon ; /* Month                */
    unsigned char day ; /* Day of month         */
 } bdate_t ;
@@ -87,8 +85,6 @@ typedef struct btimestamp {
    btime_t time ;
 
 } btimestamp_t ;
-
-#include <packpop.h>
 
 PCOMN_CFUNC _PCOMNEXP int32_t  pu_date2days(const bdate_t *date) ;
 PCOMN_CFUNC _PCOMNEXP bdate_t *pu_days2date(int32_t days, bdate_t *date) ;

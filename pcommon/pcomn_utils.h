@@ -25,19 +25,47 @@
 #include <vector>
 #include <typeinfo>
 #include <memory>
+#include <typeindex>
 
 #include <stddef.h>
 
 namespace pcomn {
 
-template<typename T, size_t n>
-struct static_buf {
-      T *data() { return _data ; }
-      const T *data() const { return _data ; }
-      size_t size() const { return n ; }
+/******************************************************************************/
+/** Output stream with "embedded" stream buffer (i.e. the memory buffer is a C array -
+ the member of of the class).
 
-      T _data[n] ;
+The template argument defines (fixed) size of the output buffer. This class doesn't make
+dynamic allocations.
+*******************************************************************************/
+template<size_t sz>
+class bufstr_ostream : private std::basic_streambuf<char>, public std::ostream {
+   public:
+      /// Create the stream with embedded buffer of @a sz bytes.
+      bufstr_ostream() throw() ;
+
+      /// Get the pouinter to internal buffer memory
+      const char *str() const { return _buffer ; }
+      char *str() { return _buffer ; }
+
+      bufstr_ostream &reset()
+      {
+         clear() ;
+         setp(_buffer + 0, _buffer + sizeof _buffer - 1) ;
+         return *this ;
+      }
+
+   private:
+      char _buffer[sz] ;
 } ;
+
+template<size_t sz>
+bufstr_ostream<sz>::bufstr_ostream() throw() :
+   std::ostream(static_cast<std::basic_streambuf<char> *>(this))
+{
+   *_buffer = _buffer[sizeof _buffer - 1] = 0 ;
+   reset() ;
+}
 
 /******************************************************************************/
 /** This template class is intended to save an old variable value before it is
@@ -144,6 +172,9 @@ class finalizer {
       finalizer_type _finalize ;
 } ;
 
+/*******************************************************************************
+ Name/value pair functions
+*******************************************************************************/
 template<typename Val, typename Name>
 Name valmap_find_name(const std::pair<Name, Val> *valmap, Val value)
 {
@@ -178,80 +209,6 @@ inline Val valmap_find_value(const std::pair<Name, Val> *valmap, const Char *nam
    const Val * const found = valmap_find_value(valmap, name) ;
    return found ? *found : defval ;
 }
-
-/******************************************************************************/
-/** type_info wrapper type
-*******************************************************************************/
-struct typeinfo {
-      typeinfo(const std::type_info &info) :
-         _info(&info)
-      {}
-
-      const std::type_info &info() const { return *_info ; }
-      operator const std::type_info &() const { return *_info ; }
-
-      const char *name() const { return info().name() ; }
-
-   private:
-      const std::type_info *_info ;
-} ;
-
-inline bool operator==(const typeinfo &lhs, const typeinfo &rhs)
-{
-   return lhs.info() == rhs.info() ;
-}
-inline bool operator<(const typeinfo &lhs, const typeinfo &rhs)
-{
-   return lhs.info().before(rhs.info()) ;
-}
-
-PCOMN_DEFINE_RELOP_FUNCTIONS(, typeinfo) ;
-
-inline std::ostream &operator<<(std::ostream &os, const typeinfo &v)
-{
-   return os << PCOMN_DEMANGLE(v.name()) ;
-}
-
-/******************************************************************************/
-/** Output stream with "embedded" stream buffer (i.e. the memory buffer is a C array -
- the member of of the class).
-
-The template argument defines (fixed) size of the output buffer. This class doesn't make
-dynamic allocations.
-*******************************************************************************/
-template<size_t sz>
-class bufstr_ostream : private std::basic_streambuf<char>, public std::ostream {
-   public:
-      static constexpr size_t BUFSIZE = sz ;
-
-      /// Create the stream with embedded buffer of @a sz bytes.
-      bufstr_ostream() throw() ;
-
-      /// Get the pouinter to internal buffer memory
-      const char *str() const { return _buffer ; }
-      char *str() { return _buffer ; }
-
-      bufstr_ostream &reset()
-      {
-         clear() ;
-         setp(_buffer + 0, _buffer + sizeof _buffer - 1) ;
-         return *this ;
-      }
-
-   private:
-      char _buffer[sz] ;
-} ;
-
-template<size_t sz>
-bufstr_ostream<sz>::bufstr_ostream() throw() :
-   std::ostream(static_cast<std::basic_streambuf<char> *>(this))
-{
-   *_buffer = _buffer[sizeof _buffer - 1] = 0 ;
-   reset() ;
-}
-
-template<size_t sz>
-constexpr size_t bufstr_ostream<sz>::BUFSIZE ;
 
 /*******************************************************************************
  Utility functions
@@ -716,9 +673,17 @@ inline const T &vcref(const T &value)
    return value ;
 }
 
+} // end of pcomn namespace
+
+
+
 /*******************************************************************************
- ostream output for simple_slice, etc.
+ *
+ * std::ostream output for various classes, including std namespace members
+ *
 *******************************************************************************/
+namespace pcomn {
+
 template<typename T> class simple_slice ;
 
 template<typename T>
@@ -730,28 +695,31 @@ inline std::ostream &operator<<(std::ostream &os, const simple_slice<T> &v)
 } // end of pcomn namespace
 
 
-// We need std namespace to ensure proper Koenig lookup in some compilers
-// (notably all MS compilers).
+// We need std namespace to ensure proper Koenig lookup
 namespace std {
 
 template<typename T1, typename T2>
-inline std::ostream &operator<<(std::ostream &os, const std::pair<T1,T2> &p)
+inline ostream &operator<<(ostream &os, const pair<T1,T2> &p)
 {
    return os << '{' << p.first << ',' << p.second << '}' ;
 }
 
 template<typename T, typename A>
-inline std::ostream &operator<<(std::ostream &os, const std::vector<T, A> &v)
+inline ostream &operator<<(ostream &os, const vector<T, A> &v)
 {
    return os << pcomn::osequence(v.begin(), v.end(), " ") ;
 }
 
 template<typename T, typename D>
-inline std::ostream &operator<<(std::ostream &os, const std::unique_ptr<T, D> &v)
+inline ostream &operator<<(ostream &os, const unique_ptr<T, D> &v)
 {
    return os << v.get() ;
 }
 
+inline ostream &operator<<(ostream &os, const type_index &v)
+{
+   return os << PCOMN_DEMANGLE(v.name()) ;
+}
 } // end of namespace std
 
 #endif /* __PCOMN_UTILS_H */
