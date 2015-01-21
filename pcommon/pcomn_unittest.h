@@ -503,8 +503,11 @@ void TestFixture<private_dirname>::ensure_data_file_match(const strslice &data_s
    char command[2048] ;
    auto rundiff = [&](const char *opt, const char *redir, const char *redir_ext)
    {
-      const int status = system(bufprintf(command, "diff %s %s '%s' '%s' >%s%s",
-                                          diffopts, opt, sample_filename.c_str(), data_file().c_str(), redir, redir_ext)) ;
+      bufprintf(command, "diff %s %s '%s' '%s'%s%s%s",
+                diffopts, opt, sample_filename.c_str(), data_file().c_str(),
+                *redir || *redir_ext ? " >" : "", redir, redir_ext) ;
+      CPPUNIT_LOG_LINE("\n" << command) ;
+      const int status = system(command) ;
       if (status < 0)
          CPPUNIT_FAIL("Error running diff command") ;
       switch (WEXITSTATUS(status))
@@ -518,7 +521,7 @@ void TestFixture<private_dirname>::ensure_data_file_match(const strslice &data_s
    if (_out)
       data_ostream().stream() << std::flush ;
 
-   if (!rundiff("-q", "/dev/null", ""))
+   if (!rundiff("-q", "", ""))
    {
       // There is a difference
       rundiff("", data_file().c_str(), ".diff") ;
