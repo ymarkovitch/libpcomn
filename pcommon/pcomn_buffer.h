@@ -208,6 +208,7 @@ class PTBuffer : private Buffer {
    public:
       using Buffer::size ;
       using Buffer::empty ;
+      using Buffer::operator const void * ;
 
       // Creates a buffer of size param*sizeof (T)
       explicit PTBuffer(size_t nitems = 0) :

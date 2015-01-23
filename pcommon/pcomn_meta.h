@@ -135,7 +135,7 @@ struct default_constructed {
 } ;
 
 template<typename T>
-const T default_constructed<T>::value ;
+const T default_constructed<T>::value = {} ;
 
 /*******************************************************************************
  Type testers
