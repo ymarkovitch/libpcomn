@@ -9,7 +9,6 @@
  DESCRIPTION  :   Iterators:
                   collection_iterator<RandomAccessContainer>
                   mapped_iterator<Container, Iterator, Reference>
-                  const_mapped_iterator<Container, Iterator, Reference>
                   xform_iterator<Iterator, Converter, Value>
 
  PROGRAMMED BY:   Yakov Markovitch
@@ -285,9 +284,6 @@ inline call_iterator<V> calliter(std::function<void(const V &)> &&callback)
 /** Mapped iterators allow traversing indexed container (e.g. vectors, maps)
  by external indices.
 *******************************************************************************/
-template<typename Container, typename Iterator, typename Reference>
-class const_mapped_iterator ;
-
 /// @cond
 namespace detail {
 template<typename C,

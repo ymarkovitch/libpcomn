@@ -20,6 +20,7 @@
 #include <pcomn_integer.h>
 
 #include <iostream>
+#include <iomanip>
 #include <utility>
 #include <functional>
 #include <vector>
@@ -689,7 +690,7 @@ template<typename T> class simple_slice ;
 template<typename T>
 inline std::ostream &operator<<(std::ostream &os, const simple_slice<T> &v)
 {
-   return os << pcomn::osequence(v.begin(), v.end(), " ") ;
+   return os << pcomn::osequence(v.begin(), v.end(), std::setw(5), ' ') ;
 }
 
 } // end of pcomn namespace

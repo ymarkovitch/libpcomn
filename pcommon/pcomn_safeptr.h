@@ -81,6 +81,38 @@ template<typename T>
 using malloc_ptr = std::unique_ptr<T, malloc_delete> ;
 
 /******************************************************************************/
+/** Safe pointer @em without move semantics
+*******************************************************************************/
+template<typename T>
+class safe_ptr : private std::unique_ptr<T> {
+      typedef std::unique_ptr<T> ancestor ;
+      PCOMN_NONCOPYABLE(safe_ptr) ;
+      PCOMN_NONASSIGNABLE(safe_ptr) ;
+   public:
+      using typename ancestor::element_type ;
+      using typename ancestor::pointer ;
+
+      using ancestor::release ;
+      using ancestor::reset ;
+      using ancestor::get ;
+
+      constexpr safe_ptr() = default ;
+      constexpr safe_ptr(nullptr_t) {}
+      explicit constexpr safe_ptr(pointer p) : ancestor(p) {}
+
+      T &operator*() const { return *get() ; }
+      T &operator[](size_t i) const { return get()[i] ; }
+      pointer operator->() const { return get() ; }
+
+      void swap(safe_ptr &other)
+      {
+         ancestor::swap(*static_cast<ancestor *>(&other)) ;
+      }
+} ;
+
+PCOMN_DEFINE_SWAP(safe_ptr<T>, template<typename T>) ;
+
+/******************************************************************************/
 /** unique_ptr creation helper
 
  Don't confuse with C++14 make_unique<T>(), which calls T's constructor forwarding
