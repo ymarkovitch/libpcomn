@@ -40,7 +40,6 @@ typedef std::pair<void *, size_t>       memvec_t ;
 /** Reference-counted copy-on-write buffer.
 *******************************************************************************/
 class PCowBuffer {
-
    public:
       /// Constructor creates buffer of given size.
       ///
@@ -48,12 +47,9 @@ class PCowBuffer {
       /// is empty: empty() for such buffer returns true even though size() is not zero.
       /// Memory is allocated after first call of non-constant get() (or, the same,
       /// non-constant operator void *)
-      explicit PCowBuffer(size_t sz = 0) :
-         _size(sz)
-      {}
+      explicit PCowBuffer(size_t sz = 0) : _size(sz) {}
 
-      PCowBuffer(const void *data, size_t sz) :
-         _size(sz)
+      PCowBuffer(const void *data, size_t sz) : _size(sz)
       {
          memcpy(get(), data, sz) ;
       }
@@ -124,15 +120,18 @@ class PCowBuffer {
 *******************************************************************************/
 class PRawBuffer {
    public:
-      explicit PRawBuffer(size_t sz = 0) :
-         _buffer(new (sz) buf(sz))
-      {}
+      explicit PRawBuffer(size_t sz = 0) : _buffer(new (sz) buf(sz)) {}
 
-      PRawBuffer(const void *srcdata, size_t sz) :
-         _buffer(new (sz) buf(sz))
+      PRawBuffer(const void *srcdata, size_t sz) : _buffer(new (sz) buf(sz))
       {
          memcpy(data(), srcdata, sz) ;
       }
+
+      PRawBuffer(const PRawBuffer &) = default ;
+      PRawBuffer(PRawBuffer &&) = default ;
+
+      PRawBuffer &operator=(const PRawBuffer &) = default ;
+      PRawBuffer &operator=(PRawBuffer &&) = default ;
 
       /// Get buffer size.
       size_t size() const { return _buffer->_size ; }
@@ -167,10 +166,7 @@ class PRawBuffer {
    private:
       struct buf : PRefCount {
 
-            buf(size_t sz) :
-               _size(sz),
-               _data(sz ? this + 1 : NULL)
-            {}
+            buf(size_t sz) : _size(sz), _data(sz ? this + 1 : NULL) {}
 
             static void *operator new(size_t sz, size_t asz)
             {
@@ -197,6 +193,7 @@ class PRawBuffer {
             static void operator delete(void *p) { std::free(p) ; }
       } ;
 
+   private:
       shared_intrusive_ptr<buf> _buffer ;
 } ;
 
@@ -211,9 +208,13 @@ class PTBuffer : private Buffer {
       using Buffer::operator const void * ;
 
       // Creates a buffer of size param*sizeof (T)
-      explicit PTBuffer(size_t nitems = 0) :
-         Buffer(nitems*sizeof(T))
-      {}
+      explicit PTBuffer(size_t nitems = 0) : Buffer(nitems*sizeof(T)) {}
+
+      PTBuffer(const PTBuffer &) = default ;
+      PTBuffer(PTBuffer &&) = default ;
+
+      PTBuffer &operator=(const PTBuffer &) = default ;
+      PTBuffer &operator=(PTBuffer &&) = default ;
 
       size_t nitems() const { return this->size()/sizeof(T) ; }
 
@@ -225,6 +226,7 @@ class PTBuffer : private Buffer {
 
       operator const T *() const { return get() ; }
       const T &operator[] (int ndx) const { return *(get()+ndx) ; }
+      T &operator[] (int ndx) { return *(get()+ndx) ; }
 
       void swap(PTBuffer &other) { Buffer::swap(other) ; }
 } ;

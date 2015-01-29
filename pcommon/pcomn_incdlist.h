@@ -441,26 +441,21 @@ class incdlist : private PDList {
 } ;
 
 
-/*******************************************************************************
-          template<class T, incdlist_node T::*N>
-          class incdlist_managed
+/******************************************************************************/
+/** Doubly-linked (bidirectional) inclusive list which always owns its hodes
 
- Derived from the incdlist and holds all it properties except owns its
- hodes (elements) by default. I.e. nodes are deleted during list destruction
- (if opposite is not set).
+ List nodes are deleted during list destruction
 *******************************************************************************/
 template<class T, incdlist_node T::*N>
 class incdlist_managed : public incdlist<T, N> {
    public:
       typedef incdlist<T, N> ancestor ;
-      typedef typename ancestor::iterator               iterator ;
-      typedef typename ancestor::const_iterator         const_iterator ;
-      typedef typename ancestor::reverse_iterator       reverse_iterator ;
-      typedef typename ancestor::const_reverse_iterator const_reverse_iterator ;
+      using typename ancestor::iterator ;
+      using typename ancestor::const_iterator ;
+      using typename ancestor::reverse_iterator ;
+      using typename ancestor::const_reverse_iterator ;
 
-      incdlist_managed() :
-         ancestor(true)
-      {}
+      incdlist_managed() : ancestor(true) {}
 } ;
 
 /******************************************************************************/

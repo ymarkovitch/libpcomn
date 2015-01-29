@@ -208,9 +208,9 @@ InputIterator find_first_not_of(InputIterator begin1, InputIterator end1,
 template<typename InputIterator, typename ForwardIterator, typename BinaryPredicate>
 InputIterator find_first_not_of(InputIterator begin1, InputIterator end1,
                                 ForwardIterator begin2, ForwardIterator end2,
-                                BinaryPredicate comp)
+                                BinaryPredicate pred)
 {
-   while (begin1 != end1 && exists_if(begin2, end2, *begin1, comp))
+   while (begin1 != end1 && std::any_of(begin2, end2, [&](decltype(*begin2) &c){ return pred(*begin1, c) ; }))
       ++begin1 ;
    return begin1 ;
 }

@@ -217,7 +217,7 @@ inline Val valmap_find_value(const std::pair<Name, Val> *valmap, const Char *nam
 template<typename T>
 inline T *clone_object(const T *obj)
 {
-   return obj ? new T(*obj) : (T *)NULL ;
+   return obj ? new T(*obj) : nullptr ;
 }
 
 /// Delete the scalar object a pointer points to and assign nullptr to the pointer
@@ -396,11 +396,19 @@ inline bool xinrange(const T &value, const T &left, const T &right)
    return !(value < left) && value < right ;
 }
 
-template<class T>
-inline void swapByOrder(T &op1, T &op2)
+template<typename T>
+inline void ordered_swap(T &op1, T &op2)
 {
    using std::swap ;
    if (op2 < op1)
+      swap(op1, op2) ;
+}
+
+template<typename T, typename Compare>
+inline void ordered_swap(T &op1, T &op2, Compare comp)
+{
+   using std::swap ;
+   if (comp(op2, op1))
       swap(op1, op2) ;
 }
 

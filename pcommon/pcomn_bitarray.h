@@ -179,9 +179,10 @@ class bitarray_base {
       }
 
    private:
-      int                                 _size ;
+      size_t                              _size ;
       PTBuffer<element_type, PCowBuffer>  _elements ;
 
+   private:
       int _nelements() const { return _elements.nitems() ; }
       element_type *_bits() { return _elements.get() ; }
       const element_type *_bits() const { return _elements ; }

@@ -169,18 +169,17 @@ PCOMN_DEFINE_SWAP(ivector<T>, template<typename T>) ;
 /*******************************************************************************
  Comparator functors for indirect-containers
 *******************************************************************************/
-template<class Ptr>
+template<typename Ptr>
 struct i_less : public std::binary_function<const Ptr, const Ptr, bool> {
    bool operator () (const Ptr &p1, const Ptr &p2) const { return *p1 < *p2 ; }
 } ;
 
-template<class Ptr>
+template<typename Ptr>
 struct i_equal : public std::binary_function<const Ptr, const Ptr, bool> {
-   bool operator () (const Ptr &p1, const Ptr &p2) const
-      { return p1 == p2 || *p1 == *p2 ; }
+   bool operator () (const Ptr &p1, const Ptr &p2) const { return p1 == p2 || *p1 == *p2 ; }
 } ;
 
-template<class Ptr>
+template<typename Ptr>
 struct i_compare : public std::binary_function<const Ptr, const Ptr, int> {
    int operator () (const Ptr &p1, const Ptr &p2) const
       { return i_less<Ptr>() (p1, p2) ? -1 : i_less<Ptr>() (p2, p1) ; }
