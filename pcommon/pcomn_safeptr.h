@@ -15,6 +15,7 @@
 
 #include <utility>
 #include <memory>
+#include <type_traits>
 
 namespace pcomn {
 
@@ -100,9 +101,12 @@ class safe_ptr : private std::unique_ptr<T> {
       constexpr safe_ptr(nullptr_t) {}
       explicit constexpr safe_ptr(pointer p) : ancestor(p) {}
 
-      T &operator*() const { return *get() ; }
-      T &operator[](size_t i) const { return get()[i] ; }
+      typename std::add_lvalue_reference<element_type>::type operator*() const { return *get() ; }
+      typename std::add_lvalue_reference<element_type>::type operator[](size_t i) const { return get()[i] ; }
       pointer operator->() const { return get() ; }
+      operator pointer() const { return get() ; }
+
+      constexpr explicit operator bool() const noexcept { return ancestor::operator bool() ; }
 
       void swap(safe_ptr &other)
       {

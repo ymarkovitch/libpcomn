@@ -49,6 +49,18 @@ using remove_pointer_t = typename remove_pointer<T>::type ;
 template<typename T>
 using remove_reference_t = typename remove_reference<T>::type ;
 
+template<typename T>
+using add_cv_t       = typename add_cv<T>::type ;
+template<typename T>
+using add_const_t    = typename add_const<T>::type ;
+template<typename T>
+using add_volatile_t = typename add_volatile<T>::type ;
+
+template<typename T>
+using add_lvalue_reference_t = typename add_lvalue_reference<T>::type ;
+template<typename T>
+using add_rvalue_reference_t = typename add_rvalue_reference<T>::type ;
+
 template<bool B, typename T>
 using enable_if_t = typename enable_if<B, T>::type ;
 template<bool B, typename T, typename F>
@@ -145,6 +157,9 @@ struct is_base_of_strict :
          bool_constant<!(std::is_same<Base, Derived>::value ||
                          std::is_same<const volatile Base*, const volatile void*>::value) &&
                          std::is_convertible<const volatile Derived*, const volatile Base*>::value> {} ;
+
+template<typename T, typename U>
+using is_same_unqualified = std::is_same<std::remove_cv_t<T>, std::remove_cv_t<U> > ;
 
 /*******************************************************************************
  Parameter type

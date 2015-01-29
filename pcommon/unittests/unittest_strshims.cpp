@@ -23,7 +23,7 @@
 #include <memory>
 
 template<typename C>
-using primitive_array = std::unique_ptr<C[], pcomn::identity<C *> > ;
+using primitive_array = std::unique_ptr<C[], pcomn::identity> ;
 
 /*******************************************************************************
                      class StringTraitsTests

@@ -32,7 +32,7 @@ namespace pcomn {
  Implements LRU eviction
 *******************************************************************************/
 template<typename Value,
-         typename ExtractKey = pcomn::identity<Value>,
+         typename ExtractKey = pcomn::identity,
          typename Hash = pcomn::hash_fn<noref_result_of_t<ExtractKey(Value)> >,
          typename Pred = std::equal_to<noref_result_of_t<ExtractKey(Value)> > >
 class cacher {

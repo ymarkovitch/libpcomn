@@ -685,10 +685,24 @@ inline const T &vcref(const T &value)
 *******************************************************************************/
 namespace pcomn {
 
-template<typename T> class simple_slice ;
+template<typename> class simple_slice ;
+template<typename> class simple_vector ;
+template<typename, size_t> class static_vector ;
 
 template<typename T>
 inline std::ostream &operator<<(std::ostream &os, const simple_slice<T> &v)
+{
+   return os << pcomn::osequence(v.begin(), v.end(), std::setw(5), ' ') ;
+}
+
+template<typename T>
+inline std::ostream &operator<<(std::ostream &os, const simple_vector<T> &v)
+{
+   return os << pcomn::osequence(v.begin(), v.end(), std::setw(5), ' ') ;
+}
+
+template<typename T, size_t n>
+inline std::ostream &operator<<(std::ostream &os, const static_vector<T,n> &v)
 {
    return os << pcomn::osequence(v.begin(), v.end(), std::setw(5), ' ') ;
 }

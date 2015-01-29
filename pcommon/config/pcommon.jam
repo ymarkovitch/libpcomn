@@ -374,7 +374,7 @@ module gcc {
   toolset.flags gcc.compile.c++ OPTIONS <c++98>off : --std=gnu++11 ;
   toolset.flags gcc.compile.c++ OPTIONS <c++98>on  : --std=gnu++03 ;
 
-  toolset.flags gcc.compile OPTIONS : -Werror=return-type ;
+  toolset.flags gcc.compile OPTIONS : -Werror=return-type -Werror=return-local-addr ;
 }
 
 ################################################################################

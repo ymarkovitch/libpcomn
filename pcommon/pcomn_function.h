@@ -21,25 +21,27 @@
 
 namespace pcomn {
 
-template<class T>
-struct identity : std::unary_function<T, T> {
-   const T &operator () (const T &t) const { return t ; }
+struct identity {
+      template<typename T>
+      T &&operator() (T &&t) const { return std::forward<T>(t) ; }
 } ;
 
-template<class Pair>
-struct select1st : std::unary_function<Pair, typename Pair::first_type> {
-  const typename Pair::first_type &operator()(const Pair& x) const
-  {
-    return x.first ;
-  }
+struct select1st {
+      template<typename T1, typename T2>
+      std::add_lvalue_reference_t<std::add_const_t<T1> >
+      operator()(const std::pair<T1, T2> &x) const
+      {
+         return x.first ;
+      }
 } ;
 
-template<class Pair>
-struct select2nd : std::unary_function<Pair, typename Pair::second_type> {
-  const typename Pair::second_type &operator()(const Pair& x) const
-  {
-    return x.second;
-  }
+struct select2nd {
+      template<typename T1, typename T2>
+      std::add_lvalue_reference_t<std::add_const_t<T2> >
+      operator()(const std::pair<T1, T2> &x) const
+      {
+         return x.second ;
+      }
 } ;
 
 /// Get integer value of flags() method of the class.
@@ -154,13 +156,6 @@ struct convert_object : std::unary_function<S, T>
 {
       T operator() (S &source) const { return T(source) ; }
 } ;
-
-/*******************************************************************************
-
-*******************************************************************************/
-/// Get the identity conversion.
-template<class T>
-inline identity<T> make_identity(T *) { return identity<T>() ; }
 
 /*******************************************************************************
  Dereference

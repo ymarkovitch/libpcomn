@@ -423,7 +423,7 @@ class shared_string : protected Storage {
 
       size_type find_first_of(const value_type *s, size_type pos, size_type n) const
       {
-         return __find_first<identity<const char_type *> >(s, pos, n) ;
+         return __find_first<identity>(s, pos, n) ;
       }
 
       size_type find_first_of(const value_type *s, size_type pos = 0) const
@@ -443,7 +443,7 @@ class shared_string : protected Storage {
 
       size_type find_last_of(const value_type* s, size_type pos, size_type n) const
       {
-         return __find_last<identity<const char_type *> >(s, pos, n) ;
+         return __find_last<identity>(s, pos, n) ;
       }
 
       size_type find_last_of (const value_type* s, size_type pos = npos) const

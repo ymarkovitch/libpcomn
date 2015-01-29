@@ -18,13 +18,24 @@
 class SimpleSliceTests : public CppUnit::TestFixture {
 
       void Test_Simple_Slice_Construct() ;
+      void Test_Simple_Vector_Construct() ;
 
       CPPUNIT_TEST_SUITE(SimpleSliceTests) ;
 
       CPPUNIT_TEST(Test_Simple_Slice_Construct) ;
+      CPPUNIT_TEST(Test_Simple_Vector_Construct) ;
 
       CPPUNIT_TEST_SUITE_END() ;
 } ;
+
+typedef pcomn::simple_slice<int> int_slice ;
+typedef pcomn::simple_slice<const int> cint_slice ;
+typedef pcomn::simple_slice<std::string> str_slice ;
+
+typedef pcomn::simple_vector<int> int_vec ;
+typedef pcomn::simple_vector<const int> cint_vec ;
+typedef pcomn::simple_vector<std::string> str_vec ;
+
 
 /*******************************************************************************
  DirectSmartPtrTests
@@ -32,10 +43,6 @@ class SimpleSliceTests : public CppUnit::TestFixture {
 void SimpleSliceTests::Test_Simple_Slice_Construct()
 {
    using namespace pcomn ;
-
-   typedef simple_slice<int> int_slice ;
-   typedef simple_slice<const int> cint_slice ;
-   typedef simple_slice<std::string> str_slice ;
 
    int_slice EmptyIntSlice ;
    cint_slice EmptyCIntSlice ;
@@ -99,6 +106,78 @@ void SimpleSliceTests::Test_Simple_Slice_Construct()
 
    CPPUNIT_LOG_RUN(cint_slice().swap(CIntVectorSlice1)) ;
    CPPUNIT_LOG_EQUAL(CIntVectorSlice1.size(), (size_t)0) ;
+}
+
+void SimpleSliceTests::Test_Simple_Vector_Construct()
+{
+   using namespace pcomn ;
+
+   int_vec  EmptyIntVec ;
+   cint_vec EmptyCIntVec ;
+   str_vec  EmptyStrVec ;
+
+   CPPUNIT_LOG_ASSERT(EmptyIntVec.empty()) ;
+   CPPUNIT_LOG_ASSERT(EmptyCIntVec.empty()) ;
+   CPPUNIT_LOG_ASSERT(EmptyStrVec.empty()) ;
+
+   CPPUNIT_LOG_EQUAL(EmptyIntVec.size(), (size_t)0) ;
+   CPPUNIT_LOG_EQUAL(EmptyIntVec.begin(), (int *)NULL) ;
+   CPPUNIT_LOG_EQUAL(EmptyIntVec.end(), (int *)NULL) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   int IntArray[] = { 3, 1, 2 } ;
+   int_vec IntArrayVec(IntArray) ;
+
+   CPPUNIT_LOG_IS_FALSE(IntArrayVec.empty()) ;
+   CPPUNIT_LOG_EQUAL(IntArrayVec.size(), (size_t)3) ;
+   CPPUNIT_LOG_EQUAL(IntArrayVec.front(), 3) ;
+   CPPUNIT_LOG_EQUAL(IntArrayVec.back(), 2) ;
+   CPPUNIT_LOG_EQUAL(IntArrayVec[0], 3) ;
+   CPPUNIT_LOG_EQUAL(IntArrayVec[1], 1) ;
+   CPPUNIT_LOG_EQUAL(IntArrayVec[2], 2) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   cint_vec CIntArrayVec(IntArray) ;
+   CPPUNIT_LOG_EQUAL(CIntArrayVec.size(), (size_t)3) ;
+   CPPUNIT_LOG_EQUAL(CIntArrayVec.front(), 3) ;
+   CPPUNIT_LOG_EQUAL(CIntArrayVec.back(), 2) ;
+   CPPUNIT_LOG_RUN(IntArrayVec[0] = 5) ;
+   CPPUNIT_LOG_RUN(IntArrayVec[1] = 6) ;
+   CPPUNIT_LOG_EQUAL(CIntArrayVec.front(), 3) ;
+   CPPUNIT_LOG_EQUAL(CIntArrayVec.back(), 2) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   const int CIntArray[] = { 56, 67, 78, 89 } ;
+   cint_vec CIntArrayVec1(CIntArray) ;
+
+   CPPUNIT_LOG_EQUAL(CIntArrayVec1.size(), (size_t)4) ;
+   CPPUNIT_LOG_EQUAL(CIntArrayVec1.front(), 56) ;
+   CPPUNIT_LOG_EQUAL(CIntArrayVec1.back(), 89) ;
+
+   CPPUNIT_LOG_RUN(CIntArrayVec1 = IntArrayVec) ;
+   CPPUNIT_LOG_EQUAL(CIntArrayVec1.front(), 5) ;
+   CPPUNIT_LOG_EQUAL(CIntArrayVec1.back(), 2) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   int_slice IntSlice1 {IntArrayVec}  ;
+   cint_slice CIntSlice1 {IntArrayVec} ;
+   cint_slice CIntSlice2 {CIntArrayVec} ;
+
+   auto f1 = [](const simple_slice<const int> &){} ;
+   auto f2 = [](simple_slice<int>) {} ;
+   auto f3 = [](simple_slice<const int>) {} ;
+   f1(IntArrayVec) ;
+   f2(IntArrayVec) ;
+   f3(IntArrayVec) ;
+
+   CPPUNIT_LOG_ASSERT(IntSlice1 == IntSlice1) ;
+   CPPUNIT_LOG_ASSERT(IntSlice1 == CIntSlice1) ;
+   CPPUNIT_LOG_ASSERT(CIntSlice1 == IntSlice1) ;
+   CPPUNIT_LOG_ASSERT(IntSlice1 == IntArrayVec) ;
+   CPPUNIT_LOG_ASSERT(IntArrayVec == IntSlice1) ;
 }
 
 int main(int argc, char *argv[])
