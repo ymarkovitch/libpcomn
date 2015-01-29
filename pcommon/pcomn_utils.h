@@ -69,6 +69,37 @@ bufstr_ostream<sz>::bufstr_ostream() throw() :
 }
 
 /******************************************************************************/
+/** Input stream from a memory buffer
+*******************************************************************************/
+class imemstream : private std::basic_streambuf<char>, public std::istream {
+   public:
+      imemstream(const void *data, size_t size) throw() :
+         std::istream(static_cast<std::basic_streambuf<char> *>(this)),
+         _size(size), _data(static_cast<const char *>(data))
+      {
+         reset() ;
+      }
+
+      template<size_t n>
+      imemstream(const char (&data)[n]) throw() : imemstream(data + 0, n) {}
+
+      /// Get the pointer to internal buffer memory
+      const char *data() const { return _data ; }
+
+      imemstream &reset()
+      {
+         clear() ;
+         char * const start = const_cast<char *>(_data) ;
+         setg(start, start, start + _size) ;
+         return *this ;
+      }
+
+   private:
+      const size_t         _size ;
+      const char *  const  _data ;
+} ;
+
+/******************************************************************************/
 /** This template class is intended to save an old variable value before it is
  changed and automatically restore upon exiting from the block.
 *******************************************************************************/

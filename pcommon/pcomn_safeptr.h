@@ -94,7 +94,6 @@ class safe_ptr : private std::unique_ptr<T> {
       using typename ancestor::pointer ;
 
       using ancestor::release ;
-      using ancestor::reset ;
       using ancestor::get ;
 
       constexpr safe_ptr() = default ;
@@ -107,6 +106,17 @@ class safe_ptr : private std::unique_ptr<T> {
       operator pointer() const { return get() ; }
 
       constexpr explicit operator bool() const noexcept { return ancestor::operator bool() ; }
+
+      safe_ptr &reset(pointer p)
+      {
+         ancestor::reset(p) ;
+         return *this ;
+      }
+      safe_ptr &reset(nullptr_t = nullptr)
+      {
+         ancestor::reset() ;
+         return *this ;
+      }
 
       void swap(safe_ptr &other)
       {
