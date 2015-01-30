@@ -720,7 +720,7 @@ class _PCOMNEXP raw_omemstream : public raw_ostream {
       void do_close() ;
 
    private:
-      PBasicBuffer   _buffer ;
+      basic_buffer   _buffer ;
       pos_type       _pos ;
       pos_type       _endpos ;
 
@@ -792,7 +792,7 @@ class _PCOMNEXP raw_icachestream : public raw_istream {
 
    private:
       raw_istream *  _source ;
-      PBasicBuffer   _cache ;
+      basic_buffer   _cache ;
       pos_type       _bufstart ;
       pos_type       _bufend ;
       pos_type       _position ;

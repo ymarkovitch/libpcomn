@@ -49,11 +49,11 @@ inline size_t a2b_bufsize_base64(size_t ascii_len)
    return ((ascii_len+3)/4)*3 ;
 }
 
-_PCOMNEXP unsigned a2b_base64(pcomn::PRawBuffer &buffer,
+_PCOMNEXP unsigned a2b_base64(pcomn::shared_buffer &buffer,
                               const char *ascii_data,
                               unsigned ascii_len) ;
 
-inline unsigned a2b_base64(pcomn::PRawBuffer &buffer, const char *ascii_data)
+inline unsigned a2b_base64(pcomn::shared_buffer &buffer, const char *ascii_data)
 {
    return a2b_base64(buffer, ascii_data, strlen(ascii_data)) ;
 }

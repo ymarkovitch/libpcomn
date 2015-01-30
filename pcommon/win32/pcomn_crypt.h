@@ -162,20 +162,20 @@ class Hash {
       // Returns:
       //    buffer with hash's signature
       //
-      PRawBuffer sign()
+      shared_buffer sign()
       {
          DWORD size = 0 ;
          Handle::check_result(CryptSignHash(*this, AT_SIGNATURE, 0, 0, 0, &size)) ;
-         PRawBuffer result (size) ;
+         shared_buffer result (size) ;
          Handle::check_result(CryptSignHash(*this, AT_SIGNATURE, 0, 0, (BYTE *)result.get(), &size)) ;
          return result ;
       }
 
-      PRawBuffer data()
+      shared_buffer data()
       {
          DWORD size = 0 ;
          Handle::check_result(CryptGetHashParam(*this, HP_HASHVAL, NULL, &size, 0)) ;
-         PRawBuffer result (size) ;
+         shared_buffer result (size) ;
          Handle::check_result(CryptGetHashParam(*this,
                                                 HP_HASHVAL,
                                                 (unsigned char *)result.get(),
@@ -258,11 +258,11 @@ class Key {
          _create(key) ;
       }
 
-      PRawBuffer encrypt(const void *source, size_t length) const
+      shared_buffer encrypt(const void *source, size_t length) const
       {
          return _encrypt(source, length) ;
       }
-      PRawBuffer encrypt(const void *source, size_t length, const Hash &hash) const
+      shared_buffer encrypt(const void *source, size_t length, const Hash &hash) const
       {
          return _encrypt(source, length, hash) ;
       }
@@ -279,12 +279,12 @@ class Key {
          return source ;
       }
 
-      PRawBuffer decrypt(const void *source, size_t length) const
+      shared_buffer decrypt(const void *source, size_t length) const
       {
          return _decrypt(source, length) ;
       }
 
-      PRawBuffer decrypt(const void *source, size_t length, const Hash &hash) const
+      shared_buffer decrypt(const void *source, size_t length, const Hash &hash) const
       {
          return _decrypt(source, length, hash) ;
       }
@@ -308,11 +308,11 @@ class Key {
             (int)GetLastError() != NTE_BAD_SIGNATURE && Handle::check_result(false) ;
       }
 
-      PRawBuffer export_key(unsigned blobtype = PUBLICKEYBLOB) const
+      shared_buffer export_key(unsigned blobtype = PUBLICKEYBLOB) const
       {
          DWORD size = 0 ;
          Handle::check_result(CryptExportKey(*this, 0, blobtype, 0, 0, &size)) ;
-         PRawBuffer result (size) ;
+         shared_buffer result (size) ;
          Handle::check_result(CryptExportKey(*this, 0, blobtype, 0, (BYTE *)result.get(), &size)) ;
          return result ;
       }
@@ -335,16 +335,16 @@ class Key {
          Handle::check_result(CryptDecrypt(*this, hash, TRUE, 0, (BYTE *)source, &reslen)) ;
       }
 
-      PRawBuffer _encrypt(const void *source, size_t length, HCRYPTHASH hash = 0) const
+      shared_buffer _encrypt(const void *source, size_t length, HCRYPTHASH hash = 0) const
       {
-         PRawBuffer result (source, length) ;
+         shared_buffer result (source, length) ;
          _encrypt_inplace(result, length, hash) ;
          return result ;
       }
 
-      PRawBuffer _decrypt(const void *source, size_t length, HCRYPTHASH hash = 0) const
+      shared_buffer _decrypt(const void *source, size_t length, HCRYPTHASH hash = 0) const
       {
-         PRawBuffer result (source, length) ;
+         shared_buffer result (source, length) ;
          _decrypt_inplace(result, length, hash) ;
          return result ;
       }

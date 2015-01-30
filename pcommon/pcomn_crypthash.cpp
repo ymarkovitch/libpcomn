@@ -62,7 +62,7 @@ struct HashCalc {
 
          PCOMN_ENSURE_ARG(file) ;
          ensure_init_state(state) ;
-         PBasicBuffer buf (CHUNK_SIZE) ;
+         basic_buffer buf (CHUNK_SIZE) ;
 
          for (ssize_t rcount ; (rcount = fread(buf.get(), 1, CHUNK_SIZE, file)) > 0 ; )
             update_state(state, buf.get(), rcount) ;

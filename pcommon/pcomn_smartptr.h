@@ -211,7 +211,9 @@ class shared_intrusive_ptr {
       template<class U>
       friend class shared_intrusive_ptr ;
 
-      shared_intrusive_ptr(element_type *object = nullptr) :
+      constexpr shared_intrusive_ptr() : _object() {}
+
+      shared_intrusive_ptr(element_type *object) :
          _object(object) { inc_ref() ; }
 
       shared_intrusive_ptr(const shared_intrusive_ptr &src) :
@@ -230,11 +232,11 @@ class shared_intrusive_ptr {
 
       ~shared_intrusive_ptr() { dec_ref() ; }
 
-      element_type *get() const { return _object ; }
-      element_type *operator->() const { return get() ; }
-      element_type &operator*() const { return *get() ; }
+      constexpr element_type *get() const { return _object ; }
+      constexpr element_type *operator->() const { return get() ; }
+      constexpr element_type &operator*() const { return *get() ; }
 
-      explicit operator bool() const { return !!get() ; }
+      constexpr explicit operator bool() const { return !!get() ; }
 
       /// Get the number of different intrusive_sptr instances (this included) managing
       /// the current object
@@ -246,7 +248,10 @@ class shared_intrusive_ptr {
 
       void reset() { shared_intrusive_ptr().swap(*this) ; }
 
-      void swap(shared_intrusive_ptr &other) { std::swap(_object, other._object) ; }
+      void swap(shared_intrusive_ptr &other) noexcept
+      {
+         std::swap(_object, other._object) ;
+      }
 
       shared_intrusive_ptr &operator=(const shared_intrusive_ptr &other)
       {

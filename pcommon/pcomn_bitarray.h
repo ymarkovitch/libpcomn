@@ -84,16 +84,17 @@ class bitarray_base {
       // The type of element of an array in which we store bits.
       typedef Element element_type ;
 
-      enum {
-         BITS_PER_CHUNK    = CHAR_BIT*sizeof(element_type), // Number of bits in an array element.
-      } ;
+      /// Bit count per storage element
+      static constexpr const size_t BITS_PER_CHUNK = CHAR_BIT*sizeof(element_type) ;
+
+      constexpr bitarray_base() : _size(0) {}
 
       // Constructor.
       // Parameters:
       //    sz       -  the size of array (i.e. the number of bits).
       //    initval  -  the initial value of all array items.
       //
-      explicit bitarray_base(size_t sz = 0, bool initval = false) :
+      explicit bitarray_base(size_t sz, bool initval = false) :
          _size(sz),
          _elements(sz ? (1 + ((sz - 1) / BITS_PER_CHUNK)) : 0)
       {
@@ -114,15 +115,38 @@ class bitarray_base {
             memcpy(memset(_bits(), 0, _elements.size()), memento, mem()) ;
       }
 
-      void assign(const bitarray_base<element_type> &source) ;
-      void and_assign(const bitarray_base<element_type> &source) ;
-      void or_assign(const bitarray_base<element_type> &source) ;
-      void xor_assign(const bitarray_base<element_type> &source) ;
+      bitarray_base(const bitarray_base &) = default ;
+
+      bitarray_base(bitarray_base &&other) :
+         _size(other._size)
+      {
+         other._size = 0 ;
+         _elements.swap(other._elements) ;
+      }
+
+      ~bitarray_base() = default ;
+
+      bitarray_base &operator=(const bitarray_base &other) = default ;
+
+      bitarray_base &operator=(bitarray_base &&other)
+      {
+         if (&other != this)
+         {
+            _size = other._size ;
+            other._size = 0 ;
+            _elements = std::move(other._elements) ;
+         }
+         return *this ;
+      }
+
+      void and_assign(const bitarray_base &source) ;
+      void or_assign(const bitarray_base &source) ;
+      void xor_assign(const bitarray_base &source) ;
 
       void shift_left(int pos) ;
       void shift_right(int pos) ;
 
-      void mask(const bitarray_base<element_type> &source) ;
+      void mask(const bitarray_base &source) ;
 
       void set()
       {
@@ -153,7 +177,7 @@ class bitarray_base {
          _bits()[pos / BITS_PER_CHUNK] ^= (1U << index(pos)) ;
       }
 
-      bool equal(const bitarray_base<element_type> &other) const
+      bool equal(const bitarray_base &other) const
       {
          return
             _size == other._size &&
@@ -172,15 +196,15 @@ class bitarray_base {
          return (sizeof(element_type)*8-1) & pos ;
       }
 
-      void swap(bitarray_base<element_type> &other)
+      void swap(bitarray_base &other) noexcept
       {
          std::swap(other._size, _size) ;
          _elements.swap(other._elements) ;
       }
 
    private:
-      size_t                              _size ;
-      PTBuffer<element_type, PCowBuffer>  _elements ;
+      size_t                                 _size ;
+      typed_buffer<element_type, cow_buffer> _elements ;
 
    private:
       int _nelements() const { return _elements.nitems() ; }
@@ -247,14 +271,14 @@ class bitarray : private bitarray_base<unsigned long> {
 
       typedef bit_reference reference ;
 
+      constexpr bitarray() = default ;
+
       // Constructor.
       // Parameters:
       //    sz       -  the size of array (i.e. the number of bits).
       //    initval  -  the initial value of all array items.
       //
-      explicit bitarray(size_t sz = 0, bool initval = false) :
-         ancestor(sz, initval)
-      {}
+      explicit bitarray(size_t sz, bool initval = false) : ancestor(sz, initval) {}
 
       // Constructor. Restores the bit array previously saved by mem()
       // Parameters:
@@ -262,9 +286,13 @@ class bitarray : private bitarray_base<unsigned long> {
       //                was previously saved into this buffer through bitarray::mem() call
       //    size     -  the bit array size (in bits, NOT in bytes)
       //
-      bitarray(const char *memento, size_t sz) :
-         ancestor(memento, sz)
-      {}
+      bitarray(const char *memento, size_t sz) : ancestor(memento, sz) {}
+
+      bitarray(const bitarray &) = default ;
+      bitarray(bitarray &&) = default ;
+
+      bitarray &operator=(const bitarray &) = default ;
+      bitarray &operator=(bitarray &&) = default ;
 
       bitarray &operator&=(const bitarray &source)
       {

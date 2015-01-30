@@ -49,7 +49,7 @@ static inline void print_usage()
 class FakeJournallable : public pj::Journallable {
       typedef pj::Journallable ancestor ;
    public:
-      explicit FakeJournallable(const pcomn::PRawBuffer &buffer) :
+      explicit FakeJournallable(const pcomn::shared_buffer &buffer) :
          _buffer(buffer)
       {}
    protected:
@@ -75,7 +75,7 @@ class FakeJournallable : public pj::Journallable {
       }
 
    private:
-      const pcomn::PRawBuffer _buffer ;
+      const pcomn::shared_buffer _buffer ;
 } ;
 
 int main(int argc, char *argv[])
@@ -89,14 +89,14 @@ int main(int argc, char *argv[])
 
    try {
       pcomn::binary_ifdstream input (STDIN_FILENO, false) ;
-      pcomn::PBasicBuffer ibuf ;
+      pcomn::basic_buffer ibuf ;
       char buf[1024] ;
       size_t sz = 0 ;
 
       for (size_t readcount ; (readcount = input.read(buf)) != 0 ; sz += readcount)
          memcpy(pcomn::padd(ibuf.grow(sz + readcount), sz), buf, readcount) ;
 
-      FakeJournallable journallable (pcomn::PRawBuffer(ibuf.data(), sz)) ;
+      FakeJournallable journallable (pcomn::shared_buffer(ibuf.data(), sz)) ;
       pcomn::PTSafePtr<pj::Port> journal
          (new pj::Port(new pj::MMapStorage(argv[optind], pj::MD_WRONLY))) ;
       journallable.set_journal(journal) ;

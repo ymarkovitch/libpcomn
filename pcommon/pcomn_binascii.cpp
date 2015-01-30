@@ -134,7 +134,7 @@ unsigned b2a_base64(const void *source, unsigned source_len,
    return source_len ;
 }
 
-unsigned a2b_base64(pcomn::PRawBuffer &buffer, const char *ascii_data, unsigned ascii_len)
+unsigned a2b_base64(pcomn::shared_buffer &buffer, const char *ascii_data, unsigned ascii_len)
 {
    size_t buflen = a2b_bufsize_base64(ascii_len) ;
    if (buflen)
