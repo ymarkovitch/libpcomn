@@ -133,7 +133,7 @@ class PTRefCounter : public PRefBase, public PTActiveCounter<0, ThreadPolicy> {
       ~PTRefCounter() {}
 
       /// Deletes "this" (itself); overrides pure virtual PTActiveCounter::dec_action().
-      atomic_t dec_action(atomic_t threshold)
+      atomic_t dec_action(atomic_t threshold) override
       {
          self_destroy(this) ;
          return threshold ;
@@ -141,7 +141,7 @@ class PTRefCounter : public PRefBase, public PTActiveCounter<0, ThreadPolicy> {
 
       /// Does nothing, provided in order to implement pure virtual function of
       /// PTActiveCounter.
-      atomic_t inc_action(atomic_t threshold)
+      atomic_t inc_action(atomic_t threshold) override
       {
          return threshold ;
       }
