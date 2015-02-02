@@ -371,7 +371,7 @@ inline T &set_flags(T &flags, const T &fset, bool onOff)
 }
 
 template<typename T>
-inline T &set_flags(T &flags, const T &fset, const T &mask)
+inline T &set_flags_by_mask(T &flags, const T &fset, const T &mask)
 {
    return (flags &= ~mask) |= fset & mask ;
 }
