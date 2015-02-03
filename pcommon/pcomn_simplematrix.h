@@ -299,7 +299,7 @@ class simple_ivector : public simple_vector<T *> {
       void _detach()
       {
          if (owns_elements())
-            std::for_each(this->begin(), this->end(), std::default_delete<value_type>()) ;
+            std::for_each(this->begin(), this->end(), std::default_delete<T>()) ;
       }
 } ;
 
