@@ -24,6 +24,7 @@
 #include <pcomn_except.h>
 #include <pcomn_buffer.h>
 #include <pcomn_unistd.h>
+#include <pcomn_strslice.h>
 
 #include <stdexcept>
 #include <cstdio>
@@ -637,11 +638,7 @@ class raw_guarded_ofstream : public raw_ofstream {
 class _PCOMNEXP raw_imemstream : public raw_istream {
       typedef raw_istream ancestor ;
    public:
-      raw_imemstream() :
-         _data(NULL),
-         _size(0),
-         _pos(0)
-      {}
+      raw_imemstream() = default ;
 
       raw_imemstream(const void *buf, size_t bufsize) :
          _data(buf),
@@ -652,6 +649,8 @@ class _PCOMNEXP raw_imemstream : public raw_istream {
             (buf || !bufsize, "NULL buffer with nonzero size passed to pcomn::raw_imemstream constructor.") ;
       }
 
+      explicit raw_imemstream(const strslice &buf) : raw_imemstream(buf.begin(), buf.size()) {}
+
       const void *gptr() const { return pcomn::padd(_data, _pos) ; }
       const void *data() const { return _data ; }
       size_t size() const { return _size ; }
@@ -660,9 +659,9 @@ class _PCOMNEXP raw_imemstream : public raw_istream {
       size_t do_read(void *buffer, size_t bufsize) ;
 
    private:
-      const void * const _data ;
-      const size_t       _size ;
-      pos_type           _pos ;
+      const void * const _data = nullptr ;
+      const size_t       _size = 0 ;
+      pos_type           _pos  = 0 ;
 } ;
 
 /******************************************************************************/

@@ -118,6 +118,8 @@ class safe_ptr : private std::unique_ptr<T> {
          return *this ;
       }
 
+      safe_ptr &operator=(nullptr_t) { return reset() ; }
+
       void swap(safe_ptr &other)
       {
          ancestor::swap(*static_cast<ancestor *>(&other)) ;

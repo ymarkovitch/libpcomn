@@ -66,6 +66,19 @@ get_keyed_value(const KeyedContainer &c, const typename KeyedContainer::key_type
    return i == c.end() ? defval : i->second ;
 }
 
+template<class KeyedContainer>
+inline bool erase_keyed_value(KeyedContainer &c,
+                              const typename KeyedContainer::key_type &key,
+                              typename KeyedContainer::mapped_type &result)
+{
+   const typename KeyedContainer::iterator i (c.find(key)) ;
+   if (i == c.end())
+      return false ;
+   result = std::move(i->second) ;
+   c.erase(i) ;
+   return true ;
+}
+
 /******************************************************************************/
 /** Clear a container containing pointers: delete all pointed values and clear
  the container itself.

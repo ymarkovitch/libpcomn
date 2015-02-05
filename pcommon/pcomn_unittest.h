@@ -567,6 +567,27 @@ bool equal_streams(std::basic_istream<Char, Traits> *lhs_stream,
    return lhs.eof() && rhs.eof() ;
 }
 
+template<typename Char, class Traits>
+inline bool equal_streams(std::basic_istream<Char, Traits> *lhs_stream,
+                          std::basic_istream<Char, Traits> &&rhs_stream)
+{
+   return equal_streams(lhs_stream, &rhs_stream) ;
+}
+
+template<typename Char, class Traits>
+inline bool equal_streams(std::basic_istream<Char, Traits> &&lhs_stream,
+                          std::basic_istream<Char, Traits> *rhs_stream)
+{
+   return equal_streams(&lhs_stream, rhs_stream) ;
+}
+
+template<typename Char, class Traits>
+inline bool equal_streams(std::basic_istream<Char, Traits> &&lhs_stream,
+                          std::basic_istream<Char, Traits> &&rhs_stream)
+{
+   return equal_streams(&lhs_stream, &rhs_stream) ;
+}
+
 static std::string full_file(FILE *file)
 {
    PCOMN_ENSURE_ARG(file) ;

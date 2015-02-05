@@ -823,6 +823,20 @@ class omemstream : private std::basic_streambuf<char>, public std::ostream {
       }
 } ;
 
+/******************************************************************************/
+/** Returns the result of streaming arg into pcomn::omemstream
+
+ The result is the same as for boost::lexical_cast<std::string>(arg),
+ but way more efficient due to pcomn::omemstream instead of std::stringstream
+*******************************************************************************/
+template<typename T>
+std::string string_cast(T &&arg)
+{
+   pcomn::omemstream os ;
+   os << std::forward<T>(arg) ;
+   return os.checkout() ;
+}
+
 } // end of pcomn namespace
 
 
