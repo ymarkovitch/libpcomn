@@ -124,6 +124,12 @@ class safe_ptr : private std::unique_ptr<T> {
       {
          ancestor::swap(*static_cast<ancestor *>(&other)) ;
       }
+
+      template<typename C>
+      friend std::basic_ostream<C> &operator<<(std::basic_ostream<C> &os, const safe_ptr &p)
+      {
+         return os << static_cast<const safe_ptr::ancestor &>(p) ;
+      }
 } ;
 
 PCOMN_DEFINE_SWAP(safe_ptr<T>, template<typename T>) ;

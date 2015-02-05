@@ -559,11 +559,25 @@ rule unittest ( target : args * : input-files * : requirements * )
     ");"
     "cdrun" ] ;
 
-  SEMAPHORE on
-    [ run $(target:S=.cpp) : $(args) : $(input-files)
-    : <testing.launcher>$(launcher) <define>PCOMN_TESTDIR=$(PCOMN_TESTDIR) $(requirements) ]
+  if [ modules.peek : BUILD_ONLY ]
+  {
+    # Only build unittest binary
+    exe $(target) : $(target:S=.cpp) : <define>PCOMN_TESTDIR=$(testpath) $(requirements) ;
+  }
+  else if [ modules.peek : COMPILE_ONLY ]
+  {
+    # Only compile unittest source file
+    compile $(target:S=.cpp) : <define>PCOMN_TESTDIR=$(testpath) $(requirements) ;
+  }
+  else
+  {
+    # Only compile and run unittest
+    SEMAPHORE on
+      [ run $(target:S=.cpp) : $(args) : $(input-files)
+      : <testing.launcher>$(launcher) <define>PCOMN_TESTDIR=$(PCOMN_TESTDIR) $(requirements) ]
 
       = pcomn.unittest ;
+  }
 }
 
 # Check for --exe=EXE or --dll=DLL or --run=TEST or --compile=SOURCE command-line
@@ -580,6 +594,8 @@ rule adhoc-targets ( )
     local mkdll = [ MATCH ^--dll=(.+)$ : $(ARGV[2-]) ] ;
     local runtests = [ MATCH ^--run=(.+)$ : $(ARGV[2-]) ] ;
     local comp = [ MATCH ^--compile=(.+)$ : $(ARGV[2-]) ] ;
+    modules.poke : BUILD_ONLY   : [ MATCH ^(--build-only)$ : $(ARGV[2-]) ] ;
+    modules.poke : COMPILE_ONLY : [ MATCH ^(--compile-only)$ : $(ARGV[2-]) ] ;
     return
       [ sequence.transform compile : $(comp) ]
       [ sequence.transform adhoc-dll : $(mkdll) ]
