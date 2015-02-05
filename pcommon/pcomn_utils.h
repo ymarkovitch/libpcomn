@@ -20,6 +20,7 @@
 #include <pcomn_integer.h>
 
 #include <iostream>
+#include <sstream>
 #include <iomanip>
 #include <utility>
 #include <functional>
@@ -32,76 +33,11 @@
 
 namespace pcomn {
 
-/******************************************************************************/
-/** Output stream with "embedded" stream buffer (i.e. the memory buffer is a C array -
- the member of of the class).
-
-The template argument defines (fixed) size of the output buffer. This class doesn't make
-dynamic allocations.
-*******************************************************************************/
-template<size_t sz>
-class bufstr_ostream : private std::basic_streambuf<char>, public std::ostream {
-   public:
-      /// Create the stream with embedded buffer of @a sz bytes.
-      bufstr_ostream() throw() ;
-
-      /// Get the pouinter to internal buffer memory
-      const char *str() const { return _buffer ; }
-      char *str() { return _buffer ; }
-
-      bufstr_ostream &reset()
-      {
-         clear() ;
-         setp(_buffer + 0, _buffer + sizeof _buffer - 1) ;
-         return *this ;
-      }
-
-   private:
-      char _buffer[sz] ;
-} ;
-
-template<size_t sz>
-bufstr_ostream<sz>::bufstr_ostream() throw() :
-   std::ostream(static_cast<std::basic_streambuf<char> *>(this))
-{
-   *_buffer = _buffer[sizeof _buffer - 1] = 0 ;
-   reset() ;
-}
-
-/******************************************************************************/
-/** Input stream from a memory buffer
-*******************************************************************************/
-class imemstream : private std::basic_streambuf<char>, public std::istream {
-   public:
-      imemstream(const void *data, size_t size) throw() :
-         std::istream(static_cast<std::basic_streambuf<char> *>(this)),
-         _size(size), _data(static_cast<const char *>(data))
-      {
-         reset() ;
-      }
-
-      template<size_t n>
-      imemstream(const char (&data)[n]) throw() : imemstream(data + 0, n) {}
-
-      /// Get the pointer to internal buffer memory
-      const char *data() const { return _data ; }
-
-      imemstream &reset()
-      {
-         clear() ;
-         char * const start = const_cast<char *>(_data) ;
-         setg(start, start, start + _size) ;
-         return *this ;
-      }
-
-   private:
-      const size_t         _size ;
-      const char *  const  _data ;
-} ;
+template<typename> class basic_strslice ;
 
 /******************************************************************************/
 /** This template class is intended to save an old variable value before it is
- changed and automatically restore upon exiting from the block.
+    changed and automatically restore upon exiting from the block.
 *******************************************************************************/
 template<typename T>
 class vsaver {
@@ -698,9 +634,9 @@ inline Pointer ptr_cast(const PointerLike &pointer)
    return &*const_cast<PointerLike &>(pointer) ;
 }
 
-/// Converts its parameter to a constant reference.
-/// Useful when it is necessary to pass an rvalue (e.g. a temporary object) to
-/// a template function accepting a non-const reference.
+/// Convert a parameter to a constant reference
+/// Useful to pass an rvalue (e.g. a temporary object) to a template function accepting
+/// a non-const template reference.
 /// For instance:
 /// template<typename T> void foo(T &t) ;
 /// foo(std::string("Hello, world!")) ; // Error, compiler will deduce T as
@@ -713,8 +649,181 @@ inline const T &vcref(const T &value)
    return value ;
 }
 
-} // end of pcomn namespace
+/******************************************************************************/
+/** Output stream with "embedded" stream buffer (i.e. the memory buffer is a C array -
+ the member of of the class).
 
+The template argument defines (fixed) size of the output buffer. This class doesn't make
+dynamic allocations.
+*******************************************************************************/
+template<size_t sz>
+class bufstr_ostream : private std::basic_streambuf<char>, public std::ostream {
+   public:
+      /// Create the stream with embedded buffer of @a sz bytes.
+      bufstr_ostream() throw() ;
+
+      /// Get the pouinter to internal buffer memory
+      const char *str() const { return _buffer ; }
+      char *str() { return _buffer ; }
+
+      bufstr_ostream &reset()
+      {
+         clear() ;
+         setp(_buffer + 0, _buffer + sizeof _buffer - 1) ;
+         return *this ;
+      }
+
+   private:
+      char _buffer[sz] ;
+} ;
+
+template<size_t sz>
+bufstr_ostream<sz>::bufstr_ostream() throw() :
+   std::ostream(static_cast<std::basic_streambuf<char> *>(this))
+{
+   *_buffer = _buffer[sizeof _buffer - 1] = 0 ;
+   reset() ;
+}
+
+/******************************************************************************/
+/** Input stream from a memory buffer
+*******************************************************************************/
+class imemstream : private std::basic_streambuf<char>, public std::istream {
+      typedef std::istream ancestor ;
+   public:
+      using ancestor::char_type ;
+      using ancestor::int_type ;
+      using ancestor::pos_type ;
+      using ancestor::off_type ;
+      using ancestor::traits_type ;
+
+      imemstream() throw() :
+         ancestor(static_cast<std::basic_streambuf<char> *>(this)),
+         _size(0), _data("")
+      {
+         setstate(eofbit) ;
+      }
+
+      imemstream(const void *data, size_t size) throw() :
+         ancestor(static_cast<std::basic_streambuf<char> *>(this)),
+         _size(size), _data(static_cast<const char *>(data))
+      {
+         reset() ;
+      }
+
+      template<size_t n>
+      imemstream(const char (&data)[n]) throw() : imemstream(data + 0, n) {}
+
+      /// Get the pointer to internal buffer memory
+      const char *data() const { return _data ; }
+
+      imemstream &reset()
+      {
+         clear(_size ? goodbit : eofbit) ;
+         char * const start = const_cast<char *>(_data) ;
+         setg(start, start, start + _size) ;
+         return *this ;
+      }
+
+   private:
+      const size_t         _size ;
+      const char *  const  _data ;
+} ;
+
+/******************************************************************************/
+/** Implements stream output into memory buffer (std::stream)
+
+ Allows @em moving out the resulting std::string, thus avoiding extra result buffer
+ copying. This is in contrast to std::ostringstream, whih allows only copying out
+ the resulting string buffer.
+*******************************************************************************/
+class omemstream : private std::basic_streambuf<char>, public std::ostream {
+      typedef std::ostream                ancestor ;
+      typedef std::basic_streambuf<char>  streambuf_type ;
+   public:
+      using ancestor::char_type ;
+      using ancestor::int_type ;
+      using ancestor::pos_type ;
+      using ancestor::off_type ;
+      using ancestor::traits_type ;
+
+      /// Default constructor starts with an empty string buffer.
+      omemstream() : ancestor(static_cast<streambuf_type *>(this)) {}
+
+      /// Start with an existing string buffer
+      /// @param initstr A string slic to copy as a starting buffer.
+      ///
+      explicit omemstream(const basic_strslice<char> &initstr) ;
+
+      /// Get constant reference to internal memory buffer
+      basic_strslice<char> str() const ;
+
+      /// Move out the resulting string
+      ///
+      /// After this call the internal buffer becomes empty
+      ///
+      std::string checkout()
+      {
+         const char * const tail = pbase() + _data.size() ;
+         _data.append(tail, pptr() - tail) ;
+         reset_buf() ;
+         return std::move(_data) ;
+      }
+
+   private:
+      std::string _data ;
+
+      enum : size_t {
+         init_capacity =
+         #ifdef PCOMN_COMPILER_MS
+         16
+         #else
+         64
+         #endif
+      } ;
+
+   protected:
+      void init_buf()
+      {
+         char * const pstart = const_cast<char *>(_data.data()) ;
+         setp(pstart, pstart + _data.capacity()) ;
+         pbump(_data.size()) ;
+         setg(pstart, pstart, pstart) ;
+      }
+      void reset_buf()
+      {
+         setp(nullptr, nullptr) ;
+         setg(nullptr, nullptr, nullptr) ;
+      }
+
+      int_type overflow(int_type c = traits_type::eof()) override
+      {
+         if (traits_type::eq_int_type(c, traits_type::eof()))
+            return traits_type::not_eof(c) ;
+
+         const size_t capacity = _data.capacity() ;
+         const size_t max_size = _data.max_size() ;
+
+         if (pptr() >= epptr())
+         {
+            if (capacity >= max_size - 1)
+               return traits_type::eof() ;
+
+            std::string new_buffer ;
+            // Grow buffer
+            new_buffer.reserve(midval<size_t>(init_capacity, max_size, 2 * (capacity + 1)) - 1) ;
+            if (pbase())
+               new_buffer.assign(pbase(), epptr() - pbase()) ;
+            _data.swap(new_buffer) ;
+            init_buf() ;
+         }
+         *pptr() = traits_type::to_char_type(c) ;
+         pbump(1) ;
+         return c ;
+      }
+} ;
+
+} // end of pcomn namespace
 
 
 /*******************************************************************************

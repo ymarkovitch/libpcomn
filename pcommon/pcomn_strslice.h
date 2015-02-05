@@ -784,6 +784,19 @@ quote(const S &s, typename string_traits<S>::char_type q)
 }
 
 /*******************************************************************************
+ omemstream
+*******************************************************************************/
+inline omemstream::omemstream(const strslice &initstr) : _data(initstr)
+{
+   init_buf() ;
+}
+
+inline strslice omemstream::str() const
+{
+   return {pbase(), pptr()} ;
+}
+
+/*******************************************************************************
  pcomn::str
 *******************************************************************************/
 namespace str {

@@ -26,6 +26,7 @@ class UtilityTests : public CppUnit::TestFixture {
       void Test_TaggedPtrUnion() ;
       void Test_TypeTraits() ;
       void Test_TupleUtils() ;
+      void Test_StreamUtils() ;
 
       CPPUNIT_TEST_SUITE(UtilityTests) ;
 
@@ -33,6 +34,7 @@ class UtilityTests : public CppUnit::TestFixture {
       CPPUNIT_TEST(Test_TaggedPtrUnion) ;
       CPPUNIT_TEST(Test_TypeTraits) ;
       CPPUNIT_TEST(Test_TupleUtils) ;
+      CPPUNIT_TEST(Test_StreamUtils) ;
 
       CPPUNIT_TEST_SUITE_END() ;
 } ;
@@ -195,6 +197,74 @@ void UtilityTests::Test_TupleUtils()
 
    CPPUNIT_LOG_EQUAL(CPPUNIT_STRING(empty_tuple), std::string("()")) ;
    CPPUNIT_LOG_EQUAL(CPPUNIT_STRING(t3), std::string(R"(("Hello" 3 world))")) ;
+}
+
+void UtilityTests::Test_StreamUtils()
+{
+   typedef imemstream::traits_type traits_type ;
+
+   imemstream empty_imems ;
+   CPPUNIT_LOG_ASSERT(empty_imems) ;
+   CPPUNIT_LOG_ASSERT(empty_imems.eof()) ;
+   CPPUNIT_LOG_EQ(empty_imems.get(), traits_type::eof()) ;
+   CPPUNIT_LOG_IS_FALSE(empty_imems) ;
+   CPPUNIT_LOG_ASSERT(empty_imems.reset()) ;
+   CPPUNIT_LOG_ASSERT(empty_imems.eof()) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   const char hello[] =
+      "Hello 12 15\n"
+      "Bye, baby!\n" ;
+   imemstream imems1 (hello, sizeof hello - 1) ;
+   std::string str ;
+   std::string str2 ;
+   int i = 0 ;
+
+   CPPUNIT_LOG_ASSERT(imems1) ;
+   CPPUNIT_LOG_IS_FALSE(imems1.eof()) ;
+   CPPUNIT_LOG_EQ(imems1.get(), 'H') ;
+   CPPUNIT_LOG_ASSERT(imems1) ;
+   CPPUNIT_LOG_IS_FALSE(imems1.eof()) ;
+   CPPUNIT_LOG_EQ(imems1.get(), 'e') ;
+   CPPUNIT_LOG_ASSERT(imems1 >> str) ;
+   CPPUNIT_LOG_EQ(str, "llo") ;
+   CPPUNIT_LOG_ASSERT(imems1 >> i) ;
+   CPPUNIT_LOG_EQ(i, 12) ;
+   CPPUNIT_LOG_IS_FALSE(imems1.eof()) ;
+   CPPUNIT_LOG_ASSERT(imems1.reset()) ;
+   CPPUNIT_LOG_ASSERT(imems1) ;
+   CPPUNIT_LOG_IS_FALSE(imems1.eof()) ;
+
+   CPPUNIT_LOG_ASSERT(std::getline(imems1, str)) ;
+   CPPUNIT_LOG_EQ(str, "Hello 12 15") ;
+   CPPUNIT_LOG_ASSERT(std::getline(imems1, str2)) ;
+   CPPUNIT_LOG_EQ(str2, "Bye, baby!") ;
+   CPPUNIT_LOG_IS_FALSE(imems1.eof()) ;
+   CPPUNIT_LOG_EQ(imems1.get(), traits_type::eof()) ;
+   CPPUNIT_LOG_ASSERT(imems1.eof()) ;
+   CPPUNIT_LOG_IS_FALSE(imems1) ;
+   CPPUNIT_LOG_ASSERT(imems1.reset()) ;
+   CPPUNIT_LOG_ASSERT(imems1) ;
+   CPPUNIT_LOG_IS_FALSE(imems1.eof()) ;
+   CPPUNIT_LOG_EQ(imems1.get(), 'H') ;
+
+   CPPUNIT_LOG(std::endl) ;
+   omemstream omems1 ;
+   CPPUNIT_LOG_ASSERT(omems1) ;
+   CPPUNIT_LOG_EQ(omems1.str().size(), 0) ;
+   CPPUNIT_LOG_EQUAL(omems1.checkout(), std::string()) ;
+   CPPUNIT_LOG_ASSERT(omems1) ;
+   CPPUNIT_LOG_EQ(omems1.str().size(), 0) ;
+   CPPUNIT_LOG_ASSERT(omems1 << 2 << ' ' << 3) ;
+   CPPUNIT_LOG_EQ(omems1.str(), "2 3") ;
+   CPPUNIT_LOG_EQUAL(omems1.checkout(), std::string("2 3")) ;
+   CPPUNIT_LOG_ASSERT(omems1) ;
+   CPPUNIT_LOG_EQ(omems1.str().size(), 0) ;
+   CPPUNIT_LOG_ASSERT(omems1 << std::string('A', 50) + "\n" + std::string('b', 50)+ "\n" + std::string('C', 50)) ;
+   CPPUNIT_LOG_EQ(omems1.str(), std::string('A', 50) + "\n" + std::string('b', 50)+ "\n" + std::string('C', 50)) ;
+   CPPUNIT_LOG_EQUAL(omems1.checkout(), std::string('A', 50) + "\n" + std::string('b', 50)+ "\n" + std::string('C', 50)) ;
+   CPPUNIT_LOG_ASSERT(omems1) ;
+   CPPUNIT_LOG_EQ(omems1.str().size(), 0) ;
 }
 
 /*******************************************************************************
