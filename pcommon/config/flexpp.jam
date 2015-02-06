@@ -1,0 +1,55 @@
+#-*- mode: jam; jam-indent-size: 2; tab-width: 2; indent-tabs-mode: nil; -*-
+#------------------------------------------------------------------------------
+# FILE         :  flexpp.jam
+# COPYRIGHT    :  Yakov Markovitch, 2015. All rights reserved.
+#                 See LICENSE for information on usage/redistribution.
+#
+# DESCRIPTION  :  Boost.Build v2 GNU Flex tool (for C++ parsers)
+#
+# PROGRAMMED BY:  Yakov Markovitch
+# CREATION DATE:  6 Feb 2015
+#------------------------------------------------------------------------------
+import generators ;
+import feature ;
+import type ;
+import property ;
+
+type.register LPP : lpp l++ lxx ;
+generators.register-standard flexpp.flexpp : LPP : CPP ;
+
+feature.feature flex.option : : free ;
+feature.feature flex.define : : free ;
+
+feature.feature flex.debug : off "on" : composite propagated incidental ;
+feature.feature flex.report : "default" warn verbose : composite propagated incidental ;
+feature.feature flex.preference : "default" fast small smallest : composite propagated incidental ;
+
+feature.compose <flex.debug>off ;
+feature.compose <flex.debug>on : <flex.option>--debug ;
+
+feature.compose <flex.report>default ;
+feature.compose <flex.report>warn      : <flex.option>--warn ;
+feature.compose <flex.report>verbose   : <flex.option>--verbose ;
+
+feature.compose <flex.preference>default ;
+feature.compose <flex.preference>fast     : <flex.option>--full <flex.option>-Ca ;
+feature.compose <flex.preference>small    : <flex.option>-Ce ;
+feature.compose <flex.preference>smallest : <flex.option>-Cem ;
+
+rule init ( )
+{
+}
+
+rule flexpp ( dst : src : properties * )
+{
+  local d = [ property.select flex.define : $(properties) ] ;
+  FLEX_DEFINES on $(<) = -D$(d:G=) ;
+
+  local o = [ property.select flex.option : $(properties) ] ;
+  FLEX_OPTIONS on $(<) = $(o:G=) ;
+}
+
+actions flexpp
+{
+  flex $(FLEX_DEFINES) $(FLEX_OPTIONS) --c++ -o $(<[1]) $(>)
+}
