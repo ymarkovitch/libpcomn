@@ -19,9 +19,10 @@ type.register YPP : ypp y++ yxx ;
 generators.register-standard bisonpp.bisonpp : YPP : CPP HPP ;
 
 feature.feature bison.option : : free ;
+
 feature.feature bison.debug : on off : composite propagated incidental ;
 feature.feature bison.graph : no yes : composite propagated incidental ;
-feature.feature bison.report : off state verbose lookahead itemset : composite propagated incidental ;
+feature.feature bison.report : state verbose lookahead itemset : optional composite propagated incidental ;
 
 feature.compose <bison.debug>on : <bison.option>--debug ;
 feature.compose <bison.debug>off ;
@@ -29,7 +30,6 @@ feature.compose <bison.debug>off ;
 feature.compose <bison.graph>no ;
 feature.compose <bison.graph>yes : <bison.option>--graph ;
 
-feature.compose <bison.report>off ;
 feature.compose <bison.report>state     : <bison.option>--report=state ;
 feature.compose <bison.report>verbose   : <bison.option>--verbose ;
 feature.compose <bison.report>lookahead : <bison.option>--report=lookahead ;

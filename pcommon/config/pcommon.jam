@@ -211,8 +211,23 @@ module feature {
     }
     <variant>.values = [ set.difference $(<variant>.values) : $(_vv) ] ;
   }
+
+  rule compose-augment ( composite-property : component-properties * )
+  {
+    if ! ( composite in [ attributes $(composite-property:G) ] )
+      { error "$(composite-property:G)" is not a composite feature ; }
+
+    $(composite-property).components ?= ;
+    if $(composite-property) in $(component-properties)
+      { error composite property "$(composite-property)" cannot have itself as a component ; }
+
+    $(composite-property).components += $(component-properties) ;
+  }
 }
 
+################################################################################
+# Extending module property
+################################################################################
 module property {
 
   import property : as-path : as-path-orig ;
@@ -228,45 +243,6 @@ module property {
   }
 } # end of module property
 
-# Must be imported to ensure it is already imported to the moment testing.make-test is
-# being overriden (see module testing below)
-import testing ;
-
-module testing {
-
-  # Hack: replace the testing.make-test rule to remove <location-prefix>$(target-name).test
-  # requirement from the test target.
-  # Below is the patched version of testing.make-test as it appears in
-  # Boost.Build v2 Milestone 11; in Milestone 12 it is exactly the same
-  rule make-test ( target-type : sources + : requirements * : target-name ? )
-  {
-    target-name ?= $(sources[1]:D=:S=) ;
-
-    local project = [ project.current ] ;
-    # HERE BE PATCH: no <location-prefix>$(target-name).test additional requirement
-    local t =
-      [ targets.create-typed-target
-      [ type.type-from-rule-name $(target-type) ] : $(project)
-      : $(target-name) : $(sources)
-      : $(requirements) ] ;
-
-    # Remember the test (for --dump-test).
-    .all-tests += $(t) ;
-    return $(t) ;
-  }
-
-} # end of module testing
-
-module gcc {
-  import toolset ;
-  # Boost.Build handles instruction-set feature only for MSVC
-  for local isa in pentium3 pentium3m pentium4 pentium4m
-  {
-    toolset.flags gcc.compile OPTIONS <address-model>32/<instruction-set>$(isa) : -march=$(isa) ;
-  }
-  toolset.flags gcc.compile OPTIONS <address-model>32/<instruction-set> : -march=pentium3 ;
-}
-
 OSBITS = [ modules.peek : OSBITS ] ;
 CPUX86 = [ modules.peek : CPUX86 ] ;
 
@@ -279,20 +255,6 @@ local file-offset-def =  [ iif [ is $(OSBITS) : 32 ] : _FILE_OFFSET_BITS=64 ] ;
 ################################################################################
 import feature ;
 import toolset ;
-
-module feature {
-  rule compose-augment ( composite-property : component-properties * )
-  {
-    if ! ( composite in [ attributes $(composite-property:G) ] )
-      { error "$(composite-property:G)" is not a composite feature ; }
-
-    $(composite-property).components ?= ;
-    if $(composite-property) in $(component-properties)
-      { error composite property "$(composite-property)" cannot have itself as a component ; }
-
-    $(composite-property).components += $(component-properties) ;
-  }
-}
 
 ################################################################################
 # Check/trace
@@ -530,6 +492,135 @@ rule check-tool-presence (
 }
 
 ################################################################################
+# Extending module testing
+################################################################################
+# Must be imported to ensure it is already imported to the moment testing.make-test is
+# being overriden (see module testing below)
+import testing ;
+import type ;
+import generators ;
+
+# Hack: replace the testing.make-test rule to remove <location-prefix>$(target-name).test
+# requirement from the test target.
+# Below is the patched version of testing.make-test as it appears in
+# Boost.Build v2 Milestone 11; in Milestone 12 it is exactly the same
+module testing {
+
+  rule make-test ( target-type : sources + : requirements * : target-name ? )
+  {
+    target-name ?= $(sources[1]:D=:S=) ;
+
+    local project = [ project.current ] ;
+    # HERE BE PATCH: no <location-prefix>$(target-name).test additional requirement
+    local t =
+      [ targets.create-typed-target
+      [ type.type-from-rule-name $(target-type) ] : $(project)
+      : $(target-name) : $(sources)
+      : $(requirements) ] ;
+
+    # Remember the test (for --dump-test).
+    .all-tests += $(t) ;
+    return $(t) ;
+  }
+} # end of module testing
+
+################################################################################
+# Introduce the new testing rule/target:
+#
+# run-test  ( sources + : requirements * : target-name ? )
+#
+# Creates .test file if running of executable produced from sources was successfull.
+# Also leaves behing .output file with the output from program run
+################################################################################
+# TEST is defined in /usr/share/boost-build/tools/testing.jam
+# RUN, RUN_FAIL, etc., are all derived from TEST
+type.register RUN_TEST : : TEST ;
+type.register TEST_OUTPUT : out ;
+
+generators.register-standard testing.expect-success  : TEST_OUTPUT : RUN_TEST ;
+generators.register-standard $(__name__).diff-output : EXE         : TEST_OUTPUT ;
+
+toolset.flags $(__name__).diff-output ARGS <testing.arg> ;
+toolset.flags $(__name__).diff-output INPUT_FILES <testing.input-file> ;
+toolset.flags $(__name__).diff-output LAUNCHER <testing.launcher> ;
+
+rule diff-output ( target : source : properties * : targets-to-remove * )
+{
+  DEPENDS $(target) : [ on $(target) return $(INPUT_FILES) ] ;
+
+  if $(targets-to-remove) = none
+  {
+    targets-to-remove = ;
+  }
+  else if ! $(targets-to-remove)
+  {
+    targets-to-remove = $(source) ;
+  }
+
+  testing.run-path-setup $(target) : $(source) : $(properties) ;
+
+  if ! $(preserve-test-targets)
+  {
+    TEMPORARY $(targets-to-remove) ;
+    # Set a second action on target that will be executed after diff output action.
+    testing.RmTemps $(target) : $(targets-to-remove) ;
+  }
+}
+
+if [ os.name ] = NT
+{
+    .STATUS = %status% ;
+    .SET_STATUS = "set status=%ERRORLEVEL%" ;
+    .VERBOSE = "%verbose% EQU 1 (" ;
+    .ENDIF = ")" ;
+    .SHELL_SET = "set " ;
+
+    .CATENATE = type ;
+}
+else
+{
+    .STATUS = "$status" ;
+    .SET_STATUS = "status=$?" ;
+    .VERBOSE = "test $verbose -eq 1 ; then" ;
+    .ENDIF = "fi" ;
+    .SHELL_SET = "" ;
+
+    .CATENATE = cat ;
+}
+
+if --verbose-test in [ modules.peek : ARGV ]
+{
+    .VERBOSE_TEST = 1 ;
+}
+else
+{
+    .VERBOSE_TEST = 0 ;
+}
+
+actions diff-output bind INPUT_FILES
+{
+  $(PATH_SETUP)
+  $(LAUNCHER) "$(>)" $(ARGS) "$(INPUT_FILES)" > "$(<)" 2>&1
+  $(.SET_STATUS)
+  echo "EXIT STATUS:" $(.STATUS)
+  $(.SHELL_SET)verbose=$(.VERBOSE_TEST)
+  if $(.VERBOSE)
+    echo ====== BEGIN OUTPUT ======
+    $(.CATENATE) "$(<)"
+    echo "EXIT STATUS:" $(.STATUS)
+    echo ====== END OUTPUT ======
+  $(.ENDIF)
+  exit $(.STATUS)
+}
+
+rule run-test ( sources + : args * : input-files * : requirements * : target-name ? : default-build * )
+{
+  requirements += <testing.arg>$(args:J=" ") ;
+  requirements += [ testing.handle-input-files $(input-files) ] ;
+  return [ testing.make-test run-test : $(sources) : $(requirements) : $(target-name) ] ;
+}
+
+################################################################################
 # Ad-hoc targets
 ################################################################################
 rule adhoc-exe ( name sources * : srcsuffix ? )
@@ -546,7 +637,7 @@ rule adhoc-dll ( name sources * : srcsuffix ? )
   lib $(name) : $(name)$(srcsuffix) $(sources) : <link>shared <define>PCOMN_TESTDIR=$(testpath) ;
 }
 
-rule unittest ( target : args * : input-files * : requirements * )
+local rule launch-test ( testrule : target : args * : input-files * : requirements * )
 {
   local PCOMN_TESTDIR = [ current-project-location-abspath ] ;
   local launcher = [ string.join
@@ -573,11 +664,21 @@ rule unittest ( target : args * : input-files * : requirements * )
   {
     # Only compile and run unittest
     SEMAPHORE on
-      [ run $(target:S=.cpp) : $(args) : $(input-files)
+      [ $(testrule) $(target:S=.cpp) : $(args) : $(input-files)
       : <testing.launcher>$(launcher) <define>PCOMN_TESTDIR=$(PCOMN_TESTDIR) $(requirements) ]
 
       = pcomn.unittest ;
   }
+}
+
+rule unittest ( target : args * : input-files * : requirements * )
+{
+  launch-test run : $(target) : $(args) : $(input-files) : $(requirements) ;
+}
+
+rule runtest ( target : args * : input-files * : requirements * )
+{
+  launch-test run-test : $(target) : $(args) : $(input-files) : $(requirements) ;
 }
 
 # Check for --exe=EXE or --dll=DLL or --run=TEST or --compile=SOURCE command-line
@@ -592,7 +693,8 @@ rule adhoc-targets ( )
     local ARGV = [ modules.peek : ARGV ] ;
     local mkexe = [ MATCH ^--exe=(.+)$ : $(ARGV[2-]) ] [ MATCH ^--build=(.+)$ : $(ARGV[2-]) ] ;
     local mkdll = [ MATCH ^--dll=(.+)$ : $(ARGV[2-]) ] ;
-    local runtests = [ MATCH ^--run=(.+)$ : $(ARGV[2-]) ] ;
+    local run-units = [ MATCH ^--run=(.+)$ : $(ARGV[2-]) ] ;
+    local run-tests = [ MATCH ^--test=(.+)$ : $(ARGV[2-]) ] ;
     local comp = [ MATCH ^--compile=(.+)$ : $(ARGV[2-]) ] ;
     modules.poke : BUILD_ONLY   : [ MATCH ^(--build-only)$ : $(ARGV[2-]) ] ;
     modules.poke : COMPILE_ONLY : [ MATCH ^(--compile-only)$ : $(ARGV[2-]) ] ;
@@ -600,7 +702,8 @@ rule adhoc-targets ( )
       [ sequence.transform compile : $(comp) ]
       [ sequence.transform adhoc-dll : $(mkdll) ]
       [ sequence.transform adhoc-exe : $(mkexe) ]
-      [ sequence.transform unittest : $(runtests) ] ;
+      [ sequence.transform unittest : $(run-units) ]
+      [ sequence.transform runtest : $(run-tests) ] ;
   }
 }
 
@@ -608,6 +711,6 @@ rule adhoc-targets ( )
 # Insert several rules into the global namespace
 ################################################################################
 IMPORT pcommon
-    : unittest adhoc-exe adhoc-dll adhoc-targets check-tool-presence
+    : unittest runtest adhoc-exe adhoc-dll adhoc-targets check-tool-presence
     :
-    : unittest adhoc-exe adhoc-dll adhoc-targets check-tool-presence ;
+    : unittest runtest adhoc-exe adhoc-dll adhoc-targets check-tool-presence ;

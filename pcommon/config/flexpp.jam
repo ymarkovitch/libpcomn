@@ -20,18 +20,15 @@ generators.register-standard flexpp.flexpp : LPP : CPP ;
 feature.feature flex.option : : free ;
 feature.feature flex.define : : free ;
 
-feature.feature flex.debug : off "on" : composite propagated incidental ;
-feature.feature flex.report : "default" warn verbose : composite propagated incidental ;
-feature.feature flex.preference : "default" fast small smallest : composite propagated incidental ;
+feature.feature flex.debug : "on" :  optional composite incidental ;
+feature.feature flex.report : warn verbose :  optional composite incidental ;
+feature.feature flex.preference : fast small smallest : optional composite incidental ;
 
-feature.compose <flex.debug>off ;
 feature.compose <flex.debug>on : <flex.option>--debug ;
 
-feature.compose <flex.report>default ;
 feature.compose <flex.report>warn      : <flex.option>--warn ;
 feature.compose <flex.report>verbose   : <flex.option>--verbose ;
 
-feature.compose <flex.preference>default ;
 feature.compose <flex.preference>fast     : <flex.option>--full <flex.option>-Ca ;
 feature.compose <flex.preference>small    : <flex.option>-Ce ;
 feature.compose <flex.preference>smallest : <flex.option>-Cem ;
