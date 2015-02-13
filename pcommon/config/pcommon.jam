@@ -642,7 +642,7 @@ local rule launch-test ( testrule : target : args * : input-files * : requiremen
   local PCOMN_TESTDIR = [ current-project-location-abspath ] ;
   local launcher = [ string.join
     "cdrun () ("
-        "cd `dirname $1`;"
+        "cd `dirname $1` >/dev/null;"
         "RUNTEST=./${1##*/};"
         "shift;"
         "export PCOMN_TESTDIR=$(PCOMN_TESTDIR);"
