@@ -22,19 +22,25 @@
 #include <iomanip>
 #include <utility>
 
-#define PCOMN_FLGOUT_DESC(flag) {(flag), #flag, 0}
-#define PCOMN_FLGOUT_DESCF(flag, mask) {(flag), #flag, (mask)}
+#define PCOMN_FLGOUT_DESC(flag) {(flag), #flag}
+#define PCOMN_FLGOUT_DESCF(flag, mask) {(flag), (mask), #flag}
 
-#define PCOMN_FLGOUT_TEXT(flag, name) {(flag), (name), 0}
-#define PCOMN_FLGOUT_TEXTF(flag, mask, name) {(flag), (name), (mask)}
+#define PCOMN_FLGOUT_TEXT(flag, name) {(flag), (name)}
+#define PCOMN_FLGOUT_TEXTF(flag, mask, name) {(flag), (mask), (name)}
 
 namespace pcomn {
 
-struct flg2txt_s {
-   bigflag_t   flag ;
-   const char *text ;
-   bigflag_t   mask ;
+struct flag_name {
+      constexpr flag_name(unsigned f, unsigned m, const char *txt) : flag(f), mask(m), text(txt) {}
+      constexpr flag_name(unsigned f, const char *txt) : flag(f), mask(0), text(txt) {}
+      constexpr flag_name() : flag(), mask(), text() {}
+
+      unsigned    flag ;
+      unsigned    mask ;
+      const char *text ;
 } ;
+
+typedef flag_name flg2txt_s ;
 
 /******************************************************************************/
 /** std::ostream manipulator for debugging bit flags output.
@@ -47,17 +53,17 @@ struct oflags {
       /// space is used
       /// @param  width field width for every printed flag; 0 means the width is variable
       /// to fit the flag's name
-      oflags(bigflag_t flags, const pcomn::flg2txt_s *desc, const char *delim, int width = 0) :
+      oflags(bigflag_t flags, const flag_name *desc, const char *delim, int width = 0) :
          _desc(desc),
-         _delim(delim),
+         _delim(delim ? delim : " "),
          _flags(flags),
          _width(width)
       {}
 
       /// @overload
-      oflags(bigflag_t flags, const pcomn::flg2txt_s *desc, int width = 0) :
+      oflags(bigflag_t flags, const flag_name *desc, int width = 0) :
          _desc(desc),
-         _delim(NULL),
+         _delim(" "),
          _flags(flags),
          _width(width)
       {}
@@ -72,7 +78,7 @@ struct oflags {
       std::basic_ostream<C> &out(std::basic_ostream<C> &os) const ;
 
    private:
-      const flg2txt_s * _desc ;
+      const flag_name * _desc ;
       const char *      _delim ;
       bigflag_t         _flags ;
       int               _width ;
@@ -84,14 +90,13 @@ std::basic_ostream<C> &oflags::out(std::basic_ostream<C> &os) const
    if (!_desc)
       return os ;
 
-   const char * const actual_delim = !_delim ? " " : _delim ;
-
-   for (const flg2txt_s *desc = _desc ; desc->text ; ++desc)
+   const char *delim = "" ;
+   for (const flag_name *desc = _desc ; desc->text ; ++desc)
       if (is_flags_equal(_flags, desc->flag,
                          desc->mask ? desc->mask : (desc->flag ? desc->flag : ~desc->flag)))
       {
-         if (desc != _desc)
-            os << actual_delim ;
+         os << delim ;
+         delim = _delim ;
          if (_width > 0)
             os << std::setw(_width) ;
          os << desc->text ;

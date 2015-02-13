@@ -27,7 +27,7 @@ enum DB4FileFlags
    DB2FAllowDelete   =  0x00000800
 } ;
 
-static pcomn::flg2txt_s flgdesc[] =
+static pcomn::flag_name flgdesc[] =
 {
    {DB2FLogical,     "Lgl"},
    {DB2FSrcFile,     "Src"},
