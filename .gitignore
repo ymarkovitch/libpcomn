@@ -12,6 +12,7 @@ TAGS
 *.[oa]
 *.os
 *.obj
+*.*.orig
 *.output
 *.aps
 *.ilk
