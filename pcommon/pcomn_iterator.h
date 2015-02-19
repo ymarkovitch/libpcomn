@@ -129,18 +129,18 @@ struct collection_iterator : collection_iterator_tag<RandomAccessContainer> {
 } ;
 
 /******************************************************************************/
-/** A forward iterator which counts how far it is advanced (i.e. how many times
+/** An iterator which counts how far it is advanced (i.e. how many times
  operator++() is called).
 *******************************************************************************/
 template<typename Counter = size_t>
 struct count_iterator :
          std::iterator<std::forward_iterator_tag, Counter, ptrdiff_t, void, Counter> {
 
-      explicit count_iterator(Counter init_count = Counter()) : _count(init_count) {}
+      constexpr count_iterator() : _count() {}
+      explicit constexpr count_iterator(Counter init_count) : _count(init_count) {}
 
-      Counter count() const { return _count ; }
-
-      Counter operator*() const { return count() ; }
+      constexpr Counter count() const { return _count ; }
+      constexpr Counter operator*() const { return count() ; }
 
       count_iterator &operator++()
       {
