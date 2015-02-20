@@ -211,6 +211,23 @@ struct ostream_lock {
       ~ostream_lock() ;
 
       std::ostream &stream() const { return _ostream ; }
+      operator std::ostream &() const { return stream() ; }
+
+      template<typename T>
+      std::ostream &operator<<(T &&v) const
+      {
+         return stream() << std::forward<T>(v) ;
+      }
+
+      std::ostream &operator<<(std::ios_base &(*f)(std::ios_base&)) const
+      {
+         return stream() << f ;
+      }
+
+      std::ostream &operator<<(std::ostream &(*f)(std::ostream&)) const
+      {
+         return stream() << f ;
+      }
 
    private:
       std::ostream &        _ostream ;
@@ -255,6 +272,23 @@ struct unique_locked_ostream {
       ~unique_locked_ostream() ;
 
       std::ostream &stream() const { return _lock.stream() ; }
+      operator std::ostream &() const { return stream() ; }
+
+      template<typename T>
+      std::ostream &operator<<(T &&v) const
+      {
+         return stream() << std::forward<T>(v) ;
+      }
+
+      std::ostream &operator<<(std::ios_base &(*f)(std::ios_base&)) const
+      {
+         return stream() << f ;
+      }
+
+      std::ostream &operator<<(std::ostream &(*f)(std::ostream&)) const
+      {
+         return stream() << f ;
+      }
 
    private:
       safe_ref<std::ostream>  _streamp ;
@@ -361,13 +395,12 @@ class TestRunner : public CppUnit::TextUi::TestRunner {
 
  To get the path to a file in the unittest sources directory:
   @code
-  at_testdir_abs("foo.txt") ;
-  at_testdir_abs("bar/foo.lst") ;
+  at_src_dir_abs("foo.txt") ;
+  at_src_dir_abs("bar/foo.lst") ;
   @endcode
 
- To get the path to a file in the directory, which is automatically created for every
-  test run:
-
+ To get the path to a file in the directory, which is automatically created
+ for every test, run:
   @code
   at_data_dir("foo.out") ;
   at_data_dir_abs("bar.out") ;
@@ -401,7 +434,8 @@ class TestFixture : public CppUnit::TestFixture {
       ///
       /// The path is relative to the current working directory
       std::string at_data_dir(const strslice &filename) const ;
-      /// Get absolute path for a filename in the temporary writeable directory (@see data_dir())
+      /// Get absolute path for a filename in the temporary writeable directory
+      /// (@see data_dir())
       std::string at_data_dir_abs(const strslice &filename) const ;
 
       /// Get absolute path for a filename specified relative to test sources directory
@@ -412,6 +446,15 @@ class TestFixture : public CppUnit::TestFixture {
          return at_src_dir_abs(filename) ;
       }
 
+      /// Run external diff to compare current content of data_file() with
+      /// @a data_sample_filename
+      ///
+      /// @param data_sample_filename The name of a sample file to compare the result of
+      /// test output to data_ostream() with
+      ///
+      /// If @a data_sample_filename is not absolute, it is considered relative to the
+      /// test sources directory (@see at_src_dir_abs())
+      ///
       void ensure_data_file_match(const strslice &data_sample_filename = {}) const ;
 
       virtual void cleanupDirs()
@@ -884,7 +927,6 @@ inline int run_tests(TestRunner &runner, int argc, char ** const argv,
 }
 
 } // end of namespace pcomn::unit
-
 } // end of namespace pcomn
 
 /*******************************************************************************
@@ -1322,20 +1364,6 @@ void ExpectedExceptionCodeTraits<ExceptionType>::expectedException(const pcomn::
 
 } // end of namespace CppUnit
 
-/*******************************************************************************
- Output to locked streams
-*******************************************************************************/
-template<typename T, typename Tag>
-inline std::ostream &operator<<(const pcomn::unit::ostream_lock<Tag> &os, T &&v)
-{
-   return os.stream() << std::forward<T>(v) ;
-}
-
-template<typename T, typename Tag>
-inline std::ostream &operator<<(const pcomn::unit::unique_locked_ostream<Tag> &os, T &&v)
-{
-   return os.stream() << std::forward<T>(v) ;
-}
 
 /*******************************************************************************
  Containter constructor macros.
