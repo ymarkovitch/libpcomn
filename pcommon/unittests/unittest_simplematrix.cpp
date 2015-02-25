@@ -19,11 +19,13 @@ class SimpleSliceTests : public CppUnit::TestFixture {
 
       void Test_Simple_Slice_Construct() ;
       void Test_Simple_Vector_Construct() ;
+      void Test_Simple_Matrix_Construct() ;
 
       CPPUNIT_TEST_SUITE(SimpleSliceTests) ;
 
       CPPUNIT_TEST(Test_Simple_Slice_Construct) ;
       CPPUNIT_TEST(Test_Simple_Vector_Construct) ;
+      CPPUNIT_TEST(Test_Simple_Matrix_Construct) ;
 
       CPPUNIT_TEST_SUITE_END() ;
 } ;
@@ -178,6 +180,24 @@ void SimpleSliceTests::Test_Simple_Vector_Construct()
    CPPUNIT_LOG_ASSERT(CIntSlice1 == IntSlice1) ;
    CPPUNIT_LOG_ASSERT(IntSlice1 == IntArrayVec) ;
    CPPUNIT_LOG_ASSERT(IntArrayVec == IntSlice1) ;
+}
+
+void SimpleSliceTests::Test_Simple_Matrix_Construct()
+{
+   using namespace pcomn ;
+
+   typedef matrix_slice<std::string>   string_mslice ;
+   typedef simple_matrix<std::string>  string_matrix ;
+
+   string_mslice mslice0 ;
+
+   std::string data1[] = {"1", "2", "3", "4", "5", "6"} ;
+
+   string_mslice mslice1_3x2 (data1, 3, 2) ;
+   string_mslice mslice1_2x3 (data1, 2, 3) ;
+
+   string_mslice::iterator i3x2 = mslice1_3x2.begin() ;
+   string_mslice::const_iterator ci3x2 (i3x2) ;
 }
 
 int main(int argc, char *argv[])

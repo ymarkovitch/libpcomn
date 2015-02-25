@@ -515,7 +515,6 @@ class static_stack {
 *******************************************************************************/
 template<class T>
 class simple_column {
-
    public:
       template<class V>
       class base_iterator : public std::iterator<std::random_access_iterator_tag, T, ptrdiff_t> {
@@ -631,170 +630,122 @@ class simple_column {
                      template<class T>
                      class matrix_slice
 *******************************************************************************/
-template<class T>
+template<typename T>
 class matrix_slice {
    public:
-      typedef T                 item_type ;
-      typedef simple_slice<T>   value_type ;
-      typedef simple_column<T>  column_type ;
-      typedef value_type        row_type ;
-      typedef row_type          reference ;
-      typedef const row_type    const_reference ;
-      class iterator ;
-      class const_iterator ;
+      typedef T                              item_type ;
+      typedef std::add_const_t<item_type>    const_item_type ;
 
-      class iterator :
-         public std::iterator<std::random_access_iterator_tag, value_type, ptrdiff_t> {
+      typedef simple_slice<item_type>        row_type ;
+      typedef simple_slice<const_item_type>  const_row_type ;
+      typedef simple_column<item_type>       column_type ;
 
-            friend class const_iterator ;
+   private:
+      template<bool c>
+      using iterator_descriptor = std::iterator<std::random_access_iterator_tag,
+                                                std::conditional_t<c, const_row_type, row_type>,
+                                                ptrdiff_t, void, void> ;
 
+   public:
+      template<bool c>
+      class byrow_iterator : iterator_descriptor<c> {
+            friend byrow_iterator<!c> ;
+            typedef std::conditional_t<c, const matrix_slice, matrix_slice> container_type ;
          public:
-            iterator(matrix_slice<T> &matrix, int pos = 0) :
+            using typename iterator_descriptor<c>::value_type ;
+
+            constexpr byrow_iterator() : _matrix(), _pos() {}
+
+            byrow_iterator(container_type &matrix, ptrdiff_t pos = 0) :
                _matrix(&matrix),
                _pos(pos)
             {}
 
-            iterator &operator+=(int diff)
+            byrow_iterator(const byrow_iterator<!c> &src, std::enable_if_t<c, Instantiate> = {}) :
+               _matrix(src._matrix),
+               _pos(src._pos)
+            {}
+
+            byrow_iterator &operator+=(ptrdiff_t diff)
             {
                _pos += diff ;
                return *this ;
             }
-            iterator &operator-=(int diff) { return *this += -diff ; }
+            byrow_iterator &operator-=(ptrdiff_t diff) { return *this += -diff ; }
 
-            iterator &operator++() { return *this += 1 ; }
-            iterator &operator--() { return *this += -1 ; }
-            iterator operator++(int)
+            byrow_iterator &operator++() { return *this += 1 ; }
+            byrow_iterator &operator--() { return *this -= 1 ; }
+            byrow_iterator operator++(int)
             {
-               iterator tmp(*this) ;
+               byrow_iterator tmp(*this) ;
                operator++() ;
                return tmp ;
             }
-            iterator operator--(int)
+            byrow_iterator operator--(int)
             {
-               iterator tmp(*this) ;
+               byrow_iterator tmp(*this) ;
                operator--() ;
                return tmp ;
             }
-            iterator operator+ (int diff) const { return iterator(*this) += diff ; }
-            iterator operator- (int diff) const { return iterator(*this) -= diff ; }
-            int operator- (const iterator &iter) const { return _pos - iter._pos ; }
-            bool operator== (const iterator &i2) const { return _pos == i2._pos ; }
-            bool operator!= (const iterator &i2) const { return _pos != i2._pos ; }
-            bool operator< (const iterator &i2) const { return _pos < i2._pos ; }
-            bool operator<= (const iterator& i2) const { return ( !(i2 < *this)) ; }
-            bool operator> (const iterator& i2) const { return i2 < *this ; }
-            bool operator>= (const iterator& i2) const { return !(*this < i2) ; }
+            byrow_iterator operator+ (ptrdiff_t diff) const { return byrow_iterator(*this) += diff ; }
+            byrow_iterator operator- (ptrdiff_t diff) const { return byrow_iterator(*this) -= diff ; }
+            ptrdiff_t operator-(const byrow_iterator &iter) const { return _pos - iter._pos ; }
 
-            value_type operator*() const
-            {
-               return (*_matrix)[_pos] ;
-            }
+            bool operator==(const byrow_iterator &i2) const { return _pos == i2._pos ; }
+            bool operator<(const byrow_iterator &i2) const { return _pos < i2._pos ; }
+
+            PCOMN_DEFINE_RELOP_METHODS(byrow_iterator) ;
+
+            value_type operator*() const { return (*_matrix)[_pos] ; }
 
          private:
-            matrix_slice<T> *_matrix ;
-            int               _pos ;
+            container_type *  _matrix ;
+            ptrdiff_t         _pos ;
       } ;
 
-      class const_iterator :
-         public std::iterator<std::random_access_iterator_tag, value_type, ptrdiff_t> {
+   public:
+      typedef byrow_iterator<false> iterator ;
+      typedef byrow_iterator<true>  const_iterator ;
 
-         public:
-            const_iterator(const matrix_slice<T> &matrix, int pos = 0) :
-               _matrix(&matrix),
-               _pos(pos)
-            {}
-
-            const_iterator(const iterator &source) :
-               _matrix(source._matrix),
-               _pos(source._pos)
-            {}
-
-            const_iterator &operator+=(int diff)
-            {
-               _pos += diff ;
-               return *this ;
-            }
-            const_iterator &operator-=(int diff) { return *this += -diff ; }
-
-            const_iterator &operator++() { return *this += 1 ; }
-            const_iterator &operator--() { return *this += -1 ; }
-            const_iterator operator++(int)
-            {
-               const_iterator tmp(*this) ;
-               operator++() ;
-               return tmp ;
-            }
-            const_iterator operator--(int)
-            {
-               const_iterator tmp(*this) ;
-               operator--() ;
-               return tmp ;
-            }
-            const_iterator operator+ (int diff) const { return const_iterator(*this) += diff ; }
-            const_iterator operator- (int diff) const { return const_iterator(*this) -= diff ; }
-            int operator- (const const_iterator &iter) const { return _pos - iter._pos ; }
-            bool operator== (const const_iterator &i2) const { return _pos == i2._pos ; }
-            bool operator!= (const const_iterator &i2) const { return _pos != i2._pos ; }
-            bool operator< (const const_iterator &i2) const { return _pos < i2._pos ; }
-            bool operator<= (const const_iterator& i2) const { return ( !(i2 < *this)) ; }
-            bool operator> (const const_iterator& i2) const { return i2 < *this ; }
-            bool operator>= (const const_iterator& i2) const { return !(*this < i2) ; }
-
-            const value_type operator*() const
-            {
-               return (*_matrix)[_pos] ;
-            }
-
-         private:
-            const matrix_slice<T> *_matrix ;
-            int               _pos ;
-      } ;
-
-      matrix_slice() :
-         _rows(0),
-         _cols(0),
-         _data(NULL)
-      {}
+      matrix_slice() = default ;
 
       matrix_slice(item_type *init, size_t rows, size_t cols) :
          _rows(rows),
          _cols(cols),
          _data(init)
-      {}
+      {
+         NOXCHECK(init || empty()) ;
+      }
 
       size_t size() const { return _rows ; }
       size_t rows() const { return _rows ; }
       size_t columns() const { return _cols ; }
-      bool empty() const { return _rows * _cols  == 0 ; }
+      bool empty() const { return !!(_rows | _cols) ; }
 
-      std::pair<size_t, size_t> dim() const { return std::pair<size_t, size_t>(_rows, _cols) ; }
+      unipair<size_t> dim() const { return {_rows, _cols} ; }
 
-      row_type operator[](int ndx)
-      {
-         return row_type(_data + _cols * ndx, _cols) ;
-      }
+      row_type       row(int ndx)       { return {_data + _cols * ndx, _cols} ; }
+      const_row_type row(int ndx) const { return {_data + _cols * ndx, _cols} ; }
 
-      const row_type operator[](int ndx) const
-      {
-         return row_type(_data + _cols * ndx, _cols) ;
-      }
-
-      const row_type row(int ndx) const { return row_type(_data + _cols * ndx, _cols) ; }
-      row_type row(int ndx) { return row_type(_data + _cols * ndx, _cols) ; }
+      row_type operator[](int ndx) { return row(ndx) ; }
+      const_row_type operator[](int ndx) const { return row(ndx) ; }
 
       const column_type column(int num) const { return column_type(_data + num, _rows, _cols) ; }
       column_type column(int num) { return column_type(_data + num, _rows, _cols) ; }
 
-      iterator begin() { return iterator(*this) ; }
-      iterator end() { return iterator(*this, size()) ; }
+      iterator begin() { return {*this, 0} ; }
+      iterator end() { return {*this, size()} ; }
 
-      const_iterator begin() const { return const_iterator(*this) ; }
-      const_iterator end() const { return const_iterator(*this, size()) ; }
+      const_iterator begin() const { return {*this, 0} ; }
+      const_iterator end() const { return {*this, size()} ; }
+
+      const_iterator cbegin() const { return begin() ; }
+      const_iterator cend() const { return end() ; }
 
       item_type *data() { return _data ; }
       const item_type *data() const { return _data ; }
 
-      matrix_slice<T> &fill(const T &init)
+      matrix_slice &fill(const T &init)
       {
          std::fill_n(_data, _rows * _cols, init) ;
          return *this ;
@@ -811,9 +762,9 @@ class matrix_slice {
       }
 
    private:
-      int   _rows ;
-      int   _cols ;
-      T *   _data ;
+      int   _rows = 0 ;
+      int   _cols = 0 ;
+      T *   _data = nullptr ;
 } ;
 
 
@@ -821,13 +772,13 @@ class matrix_slice {
                      template<class T>
                      class simple_matrix
 *******************************************************************************/
-template<class T>
+template<typename T>
 class simple_matrix : public matrix_slice<T> {
       typedef matrix_slice<T> ancestor ;
    public:
-      simple_matrix() {}
+      simple_matrix() = default ;
 
-      simple_matrix(const simple_matrix<T> &src) :
+      simple_matrix(const simple_matrix &src) :
          ancestor(_new_data(src.rows(), src.columns()), src.rows(), src.columns())
       {
          std::copy(src.data(), src.data() + src.rows() * src.columns(), this->data()) ;
@@ -848,19 +799,19 @@ class simple_matrix : public matrix_slice<T> {
          delete [] this->data() ;
       }
 
-      simple_matrix<T> &reset(size_t rows, size_t cols)
+      simple_matrix &reset(size_t rows, size_t cols)
       {
          delete [] ancestor::reset(_new_data(rows, cols), rows, cols) ;
          return *this ;
       }
 
-      simple_matrix<T> &operator=(const simple_matrix<T> &src) ;
+      simple_matrix &operator=(const simple_matrix &src) ;
 
    private:
       static T *_new_data(size_t rows, size_t cols)
       {
          size_t sz = rows * cols ;
-         return sz ? new T[sz] : NULL ;
+         return sz ? new T[sz] : nullptr ;
       }
 } ;
 
@@ -868,7 +819,7 @@ class simple_matrix : public matrix_slice<T> {
  simple_matrix
 *******************************************************************************/
 template<class T>
-simple_matrix<T> &simple_matrix<T>::operator=(const simple_matrix<T> &src)
+simple_matrix<T> &simple_matrix<T>::operator=(const simple_matrix &src)
 {
    ancestor new_obj (_new_data(src.rows(), src.columns()), src.rows(), src.columns()) ;
    std::copy(src.data(), src.data() + src.rows() * src.columns(), new_obj.data()) ;
