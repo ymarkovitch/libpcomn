@@ -198,6 +198,54 @@ void SimpleSliceTests::Test_Simple_Matrix_Construct()
 
    string_mslice::iterator i3x2 = mslice1_3x2.begin() ;
    string_mslice::const_iterator ci3x2 (i3x2) ;
+
+   CPPUNIT_LOG_EQ(*i3x2,        (string_vector{"1", "2"})) ;
+   CPPUNIT_LOG_EQ(*(ci3x2 + 1), (string_vector{"3", "4"})) ;
+   CPPUNIT_LOG_EQ(*(ci3x2 + 2), (string_vector{"5", "6"})) ;
+
+   CPPUNIT_LOG_EQ(mslice1_3x2[0], (string_vector{"1", "2"})) ;
+   CPPUNIT_LOG_EQ(mslice1_3x2[1], (string_vector{"3", "4"})) ;
+   CPPUNIT_LOG_EQ(mslice1_3x2[2], (string_vector{"5", "6"})) ;
+
+   CPPUNIT_LOG_EQ(mslice1_2x3[0], (string_vector{"1", "2", "3"})) ;
+   CPPUNIT_LOG_EQ(mslice1_2x3[1], (string_vector{"4", "5", "6"})) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   string_matrix matrix0_3x2 (mslice0) ;
+
+   string_matrix matrix1_3x2 (mslice1_3x2) ;
+   string_matrix matrix2_3x2 (1, 4, "Hello!") ;
+
+   CPPUNIT_LOG_EQ(matrix0_3x2.dim(), unipair<size_t>(0, 0)) ;
+   CPPUNIT_LOG_ASSERT(matrix0_3x2.empty()) ;
+
+   CPPUNIT_LOG_EQ(matrix1_3x2.dim(), unipair<size_t>(3, 2)) ;
+
+   CPPUNIT_LOG_EQ(matrix1_3x2[0], (string_vector{"1", "2"})) ;
+   CPPUNIT_LOG_EQ(matrix1_3x2[1], (string_vector{"3", "4"})) ;
+   CPPUNIT_LOG_EQ(matrix1_3x2[2], (string_vector{"5", "6"})) ;
+
+   CPPUNIT_LOG_ASSERT(matrix0_3x2.empty()) ;
+   CPPUNIT_LOG_RUN(matrix0_3x2 = matrix1_3x2) ;
+   CPPUNIT_LOG_EQ(matrix1_3x2.dim(), unipair<size_t>(3, 2)) ;
+   CPPUNIT_LOG_EQ(matrix0_3x2.dim(), unipair<size_t>(3, 2)) ;
+
+   CPPUNIT_LOG_EQ(matrix1_3x2[0], (string_vector{"1", "2"})) ;
+   CPPUNIT_LOG_EQ(matrix1_3x2[2], (string_vector{"5", "6"})) ;
+
+   CPPUNIT_LOG_EQ(matrix0_3x2[0], (string_vector{"1", "2"})) ;
+   CPPUNIT_LOG_EQ(matrix0_3x2[2], (string_vector{"5", "6"})) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_EQ(matrix2_3x2.dim(), unipair<size_t>(1, 4)) ;
+   CPPUNIT_LOG_EQ(matrix2_3x2[0], (string_vector(4, "Hello!"))) ;
+
+   CPPUNIT_LOG_EQ((matrix2_3x2 = std::move(matrix1_3x2)).dim(), unipair<size_t>(3, 2)) ;
+   CPPUNIT_LOG_EQ(matrix1_3x2.dim(), unipair<size_t>(0, 0)) ;
+   CPPUNIT_LOG_ASSERT(matrix1_3x2.empty()) ;
+
+   CPPUNIT_LOG_EQ(matrix2_3x2[0], (string_vector{"1", "2"})) ;
+   CPPUNIT_LOG_EQ(matrix2_3x2[2], (string_vector{"5", "6"})) ;
 }
 
 int main(int argc, char *argv[])

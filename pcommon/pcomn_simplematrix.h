@@ -720,18 +720,18 @@ class matrix_slice {
       size_t size() const { return _rows ; }
       size_t rows() const { return _rows ; }
       size_t columns() const { return _cols ; }
-      bool empty() const { return !!(_rows | _cols) ; }
+      bool empty() const { return !(_rows | _cols) ; }
 
       unipair<size_t> dim() const { return {_rows, _cols} ; }
 
-      row_type       row(int ndx)       { return {_data + _cols * ndx, _cols} ; }
-      const_row_type row(int ndx) const { return {_data + _cols * ndx, _cols} ; }
+      row_type       row(int ndx)       { return {_data + _cols * ndx, columns()} ; }
+      const_row_type row(int ndx) const { return {_data + _cols * ndx, columns()} ; }
 
       row_type operator[](int ndx) { return row(ndx) ; }
       const_row_type operator[](int ndx) const { return row(ndx) ; }
 
-      const column_type column(int num) const { return column_type(_data + num, _rows, _cols) ; }
-      column_type column(int num) { return column_type(_data + num, _rows, _cols) ; }
+      const column_type column(int num) const { return column_type(_data + num, _rows, columns()) ; }
+      column_type column(int num) { return column_type(_data + num, _rows, columns()) ; }
 
       iterator begin() { return {*this, 0} ; }
       iterator end() { return {*this, size()} ; }
@@ -778,11 +778,15 @@ class simple_matrix : public matrix_slice<T> {
    public:
       simple_matrix() = default ;
 
+      template<typename U>
+      simple_matrix(const matrix_slice<U> &src,
+                    std::enable_if_t<std::is_convertible<U, T>::value, Instantiate> = {}) ;
+
       simple_matrix(const simple_matrix &src) :
-         ancestor(_new_data(src.rows(), src.columns()), src.rows(), src.columns())
-      {
-         std::copy(src.data(), src.data() + src.rows() * src.columns(), this->data()) ;
-      }
+         simple_matrix(static_cast<const ancestor &>(src))
+      {}
+
+      simple_matrix(simple_matrix &&src) { swap(src) ; }
 
       simple_matrix(size_t rows, size_t cols) :
          ancestor(_new_data(rows, cols), rows, cols)
@@ -805,7 +809,29 @@ class simple_matrix : public matrix_slice<T> {
          return *this ;
       }
 
-      simple_matrix &operator=(const simple_matrix &src) ;
+      void swap(simple_matrix &other)
+      {
+         if (&other != this)
+            pcomn_swap(static_cast<ancestor &>(other), *static_cast<ancestor *>(this)) ;
+      }
+
+      simple_matrix &operator=(const ancestor &src)
+      {
+         if (&src != this)
+            *this = std::move(simple_matrix(src)) ;
+         return *this ;
+      }
+      simple_matrix &operator=(const simple_matrix &src)
+      {
+         return *this = static_cast<const ancestor &>(src) ;
+      }
+      simple_matrix &operator=(simple_matrix &&src)
+      {
+         simple_matrix tmp ;
+         tmp.swap(src) ;
+         swap(tmp) ;
+         return *this ;
+      }
 
    private:
       static T *_new_data(size_t rows, size_t cols)
@@ -815,18 +841,18 @@ class simple_matrix : public matrix_slice<T> {
       }
 } ;
 
+PCOMN_DEFINE_SWAP(simple_matrix<T>, template<typename T>) ;
+
 /*******************************************************************************
  simple_matrix
 *******************************************************************************/
-template<class T>
-simple_matrix<T> &simple_matrix<T>::operator=(const simple_matrix &src)
+template<typename T>
+template<typename U>
+simple_matrix<T>::simple_matrix(const matrix_slice<U> &src,
+                                std::enable_if_t<std::is_convertible<U, T>::value, Instantiate>) :
+   ancestor(_new_data(src.rows(), src.columns()), src.rows(), src.columns())
 {
-   ancestor new_obj (_new_data(src.rows(), src.columns()), src.rows(), src.columns()) ;
-   std::copy(src.data(), src.data() + src.rows() * src.columns(), new_obj.data()) ;
-   T *tmp = this->data() ;
-   *static_cast<ancestor *>(this) = new_obj ;
-   delete [] tmp ;
-   return *this ;
+   std::copy(src.data(), src.data() + src.rows() * src.columns(), this->data()) ;
 }
 
 /*******************************************************************************
