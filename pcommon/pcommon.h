@@ -385,16 +385,16 @@ constexpr int P_CURRENT_ALIGNMENT = sizeof (___offsTest)-sizeof(double) ;
 
 /// Given that there is '<' operator for the type, define all remaining ordering operators
 /// as global functions.
-#define PCOMN_DEFINE_ORDER_FUNCTIONS(prefix, type)                      \
-   prefix inline bool operator>(const type &lhs, const type &rhs) { return rhs < lhs ; } \
-   prefix inline bool operator<=(const type &lhs, const type &rhs) { return !(rhs < lhs) ; } \
-   prefix inline bool operator>=(const type &lhs, const type &rhs) { return !(lhs < rhs) ; }
+#define PCOMN_DEFINE_ORDER_FUNCTIONS(pfx, type)                         \
+   pfx inline bool operator>(const type &lhs, const type &rhs) { return rhs < lhs ; } \
+   pfx inline bool operator<=(const type &lhs, const type &rhs) { return !(rhs < lhs) ; } \
+   pfx inline bool operator>=(const type &lhs, const type &rhs) { return !(lhs < rhs) ; }
 
 /// Given that there are operators '==' and '<' for the type, define through them all
 /// remaining relational operators as global functions.
-#define PCOMN_DEFINE_RELOP_FUNCTIONS(prefix, type)                      \
-   prefix inline bool operator!=(const type &lhs, const type &rhs) { return !(lhs == rhs) ; } \
-   PCOMN_DEFINE_ORDER_FUNCTIONS(P_PASS(prefix), P_PASS(type))
+#define PCOMN_DEFINE_RELOP_FUNCTIONS(pfx, type)                         \
+   pfx inline bool operator!=(const type &lhs, const type &rhs) { return !(lhs == rhs) ; } \
+   PCOMN_DEFINE_ORDER_FUNCTIONS(P_PASS(pfx), P_PASS(type))
 
 /// Given that there is '<' operator for the type, define all remaining ordering operators
 /// as type methods.
@@ -411,15 +411,23 @@ constexpr int P_CURRENT_ALIGNMENT = sizeof (___offsTest)-sizeof(double) ;
 
 /// Define operators '+' and '-' for the type through corresponding augmented operations
 /// '+=' and '-='.
-#define PCOMN_DEFINE_ADDOP_FUNCTIONS(prefix, type)                              \
-   prefix inline type operator+(const type &lhs, const type &rhs) { type result (lhs) ; return result += rhs ; } \
-   prefix inline type operator-(const type &lhs, const type &rhs) { type result (lhs) ; return result -= rhs ; }
+#define PCOMN_DEFINE_ADDOP_FUNCTIONS(pfx, type)                         \
+   pfx inline type operator+(const type &lhs, const type &rhs) { type ret (lhs) ; return std::move(ret += rhs) ; } \
+   pfx inline type operator-(const type &lhs, const type &rhs) { type ret (lhs) ; return std::move(ret -= rhs) ; }
+
+#define PCOMN_DEFINE_NONASSOC_ADDOP_FUNCTIONS(pfx, type, rhstype)       \
+   pfx inline type operator+(const type &lhs, const rhstype &rhs) { type ret (lhs) ; return std::move(ret += rhs) ; } \
+   pfx inline type operator-(const type &lhs, const rhstype &rhs) { type ret (lhs) ; return std::move(ret -= rhs) ; }
 
 /// Define operators '+' and '-' for the type through corresponding augmented operations
 /// '+=' and '-='.
 #define PCOMN_DEFINE_ADDOP_METHODS(type)                                \
-   type operator+(const type &rhs) const { type result (*this) ; return result += rhs ; } \
-   type operator-(const type &rhs) const { type result (*this) ; return result -= rhs ; }
+   type operator+(const type &rhs) const { type ret (*this) ; return std::move(ret += rhs) ; } \
+   type operator-(const type &rhs) const { type ret (*this) ; return std::move(ret -= rhs) ; }
+
+#define PCOMN_DEFINE_NONASSOC_ADDOP_METHODS(type, rhstype)              \
+   type operator+(const rhstype &rhs) const { type ret (*this) ; return std::move(ret += rhs) ; } \
+   type operator-(const rhstype &rhs) const { type ret (*this) ; return std::move(ret -= rhs) ; }
 
 /// Define post(inc|dec)rement.
 #define PCOMN_DEFINE_POSTCREMENT(type, op) \
