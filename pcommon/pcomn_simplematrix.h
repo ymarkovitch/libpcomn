@@ -165,11 +165,7 @@ class simple_vector {
       simple_vector &operator=(const simple_vector &src) { return assign(src.base()) ; }
       simple_vector &operator=(simple_vector &&src)
       {
-         if (&src != this)
-         {
-            src.base().swap(base()) ;
-            simple_vector().swap(src) ;
-         }
+         simple_vector(std::move(src)).swap(*this) ;
          return *this ;
       }
 
