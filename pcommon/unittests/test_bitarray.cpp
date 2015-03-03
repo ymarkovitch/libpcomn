@@ -14,12 +14,6 @@
 #include <algorithm>
 #include <iterator>
 
-inline std::ostream &operator<<(std::ostream &os, const pcomn::bitarray &data)
-{
-   for (int i = data.size() ; i-- ; os << (data[i] ? '1' : '0')) ;
-   return os ;
-}
-
 static void test(size_t sz)
 {
    std::cout << std::endl << "Testing "  << sz << std::endl ;
@@ -101,7 +95,7 @@ static void test_positional_iterator(size_t sz)
    std::cout << std::endl ;
 }
 
-void main()
+int main()
 {
    test(80) ;
    test(79) ;

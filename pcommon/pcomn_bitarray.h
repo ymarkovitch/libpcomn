@@ -3,7 +3,7 @@
 #define __PCOMN_BITARRAY_H
 /*******************************************************************************
  FILE         :   pcomn_bitarray.h
- COPYRIGHT    :   Yakov Markovitch, 2000-2014. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2000-2015. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Bit array. A kind of combination of std::bitset and std::vector<bool>
@@ -31,17 +31,15 @@
 #include <pcomn_assert.h>
 #include <pcomn_buffer.h>
 #include <pcomn_integer.h>
+#include <pcomn_function.h>
 
 #include <algorithm>
 #include <iterator>
 #include <iostream>
 
 #include <limits.h>
+#include <stdint.h>
 #include <stddef.h>
-
-#ifdef __BORLANDC__
-#pragma warn -inl
-#endif
 
 namespace pcomn {
 
@@ -52,18 +50,23 @@ namespace pcomn {
 template<typename Element = unsigned long>
 class bitarray_base {
    public:
-      // count()  -  get number of bits in the array
-      //
-      size_t count(bool bits = true) const ;
+      /// Get the count of 1 or 0 bit in the array
+      size_t count(bool bitval = true) const ;
+      /// Get the size of array (in bits)
       size_t size() const { return _size ; }
 
       bool test(size_t pos) const
       {
          NOXCHECK(pos < size()) ;
-         return (_bits()[pos / BITS_PER_CHUNK] & ((Element)1 << index(pos))) != 0 ;
+         return !!(const_elem(pos) & bitmask(pos)) ;
       }
 
-      bool any() const ;
+      /// Indicate if there exists '1' bit in this array
+      bool any() const
+      {
+         const element_type * const data = cbits() ;
+         return std::any_of(data, data + nelements(), identity()) ;
+      }
 
       // find_first_bit()  -  get the position of first nonzero bit
       //                      between 'start' and 'finish'
@@ -84,8 +87,10 @@ class bitarray_base {
       // The type of element of an array in which we store bits.
       typedef Element element_type ;
 
+      PCOMN_STATIC_CHECK(std::is_integral<element_type>::value && std::is_unsigned<element_type>::value) ;
+
       /// Bit count per storage element
-      static constexpr const size_t BITS_PER_CHUNK = CHAR_BIT*sizeof(element_type) ;
+      static constexpr const size_t BITS_PER_ELEMENT = CHAR_BIT*sizeof(element_type) ;
 
       constexpr bitarray_base() : _size(0) {}
 
@@ -94,9 +99,7 @@ class bitarray_base {
       //    sz       -  the size of array (i.e. the number of bits).
       //    initval  -  the initial value of all array items.
       //
-      explicit bitarray_base(size_t sz, bool initval = false) :
-         _size(sz),
-         _elements(sz ? (1 + ((sz - 1) / BITS_PER_CHUNK)) : 0)
+      explicit bitarray_base(size_t sz, bool initval = false) : bitarray_base(sz, nullptr)
       {
          initval ? set() : reset() ;
       }
@@ -107,21 +110,19 @@ class bitarray_base {
       //                was previously saved into this buffer through bitarray::mem() call
       //    size     -  the bit array size (in bits, NOT in bytes)
       //
-      bitarray_base(const char *memento, size_t sz) :
-         _size(sz),
-         _elements(sz ? (1 + ((sz - 1) / BITS_PER_CHUNK)) : 0)
+      bitarray_base(const char *memento, size_t sz) : bitarray_base(sz, nullptr)
       {
          if (sz)
-            memcpy(memset(_bits(), 0, _elements.size()), memento, mem()) ;
+            memcpy(memset(mbits(), 0, _elements.size()), memento, mem()) ;
       }
 
       bitarray_base(const bitarray_base &) = default ;
 
       bitarray_base(bitarray_base &&other) :
-         _size(other._size)
+         _size(other._size),
+         _elements(std::move(other._elements))
       {
          other._size = 0 ;
-         _elements.swap(other._elements) ;
       }
 
       ~bitarray_base() = default ;
@@ -148,52 +149,66 @@ class bitarray_base {
 
       void mask(const bitarray_base &source) ;
 
+      void reset() { memset(mbits(), 0, _elements.size()) ; }
+
       void set()
       {
-         int full = _size / BITS_PER_CHUNK ;
-         element_type *data = _bits() ;
-         std::fill_n(data, full, ~0) ;
-         if (full < _nelements())
-            data[full] = ~(~0 << (_size % BITS_PER_CHUNK)) ;
+         if (const size_t datasize = _elements.size())
+         {
+            element_type * const data = mbits() ;
+            memset(data, -1, datasize) ;
+            data[datasize - 1] &= tailmask() ;
+         }
       }
 
       void set(size_t pos, bool val = true)
       {
          NOXCHECK(pos < size()) ;
-         element_type &data = _bits()[pos / BITS_PER_CHUNK] ;
-         element_type mask = 1U << index(pos) ;
-         if (val)
-            data |= mask ;
-         else
-            data &= ~mask ;
+         element_type &data = mutable_elem(pos) ;
+         const element_type mask = bitmask(pos) ;
+         val ? (data |= mask) : (data &= ~mask) ;
       }
-
-      void reset() { memset(_bits(), 0, _elements.size()) ; }
 
       void flip() ;
       void flip(size_t pos)
       {
          NOXCHECK(pos < size()) ;
-         _bits()[pos / BITS_PER_CHUNK] ^= (1U << index(pos)) ;
+         mutable_elem(pos) ^= bitmask(pos) ;
       }
 
       bool equal(const bitarray_base &other) const
       {
          return
             _size == other._size &&
-            std::equal(_bits(), _bits() + _nelements(), other._bits()) ;
+            std::equal(cbits(), cbits() + nelements(), other.cbits()) ;
       }
 
-      // valid_position()  -  is pos a valid bitarray position?
-      //
-      bool valid_position(size_t pos) { return pos < (size_t)_nelements() ; }
+      /// Indicate if given position is a valid bitarray index
+      bool valid_position(size_t pos) { return pos < nelements() ; }
 
-      // Given a bit position `pos', returns the index into the appropriate
-      // chunk in bits[] such that 0 <= index < BITS_PER_CHUNK.
-      //
-      unsigned long index(size_t pos) const
+      /// Given a bit position, get the position of an element containing specified bit
+      ///
+      static constexpr size_t elemndx(size_t pos)
       {
-         return (sizeof(element_type)*8-1) & pos ;
+         return pos / BITS_PER_ELEMENT ;
+      }
+
+      /// Given a bit position, get the index inside the appropriate chunk in bits[]
+      /// such that 0 <= index < BITS_PER_ELEMENT.
+      ///
+      static constexpr size_t bitndx(size_t pos)
+      {
+         return pos & (BITS_PER_ELEMENT - 1) ;
+      }
+
+      static constexpr element_type bitmask(size_t pos)
+      {
+         return std::integral_constant<element_type, 1>::value << bitndx(pos) ;
+      }
+
+      constexpr element_type tailmask() const
+      {
+         return ~element_type() << (BITS_PER_ELEMENT - 1 - bitndx(_size - 1)) ;
       }
 
       void swap(bitarray_base &other) noexcept
@@ -207,69 +222,172 @@ class bitarray_base {
       typed_buffer<element_type, cow_buffer> _elements ;
 
    private:
-      int _nelements() const { return _elements.nitems() ; }
-      element_type *_bits() { return _elements.get() ; }
-      const element_type *_bits() const { return _elements ; }
+      bitarray_base(size_t sz, nullptr_t) :
+         _size(sz), _elements((sz + (BITS_PER_ELEMENT - 1))/BITS_PER_ELEMENT) {}
 
+      size_t nelements() const { return _elements.nitems() ; }
+      element_type *mbits() { return _elements.get() ; }
+      const element_type *cbits() const { return _elements ; }
+
+      element_type &mutable_elem(size_t bitpos) { return mbits()[elemndx(bitpos)] ; }
+      const element_type &const_elem(size_t bitpos) const { return cbits()[elemndx(bitpos)] ; }
 } ;
 
 
-/*******************************************************************************
-                     class bitarray
+/******************************************************************************/
+/** Like std::bitset, but has its size specified at runtime paramete
 *******************************************************************************/
 class bitarray : private bitarray_base<unsigned long> {
       typedef bitarray_base<unsigned long> ancestor ;
    public:
-      typedef bool value_type ;
-      class        iterator ;
-      class        const_iterator ;
+      class                      bit_reference ;
+      template<typename> class   bit_iterator ;
 
-      // bit reference
-      //
+      typedef bit_iterator<const bit_reference &>  iterator ;
+      typedef bit_iterator<bool>                   const_iterator ;
+
+      typedef bool            value_type ;
+      typedef bit_reference   reference ;
+
+      /************************************************************************/
+      /** Proxy class representing a reference to a bit in pcomn::bitarray
+      *************************************************************************/
       class bit_reference {
-            friend class bitarray ;
-            friend class iterator ;
-            friend class const_iterator ;
          public:
-            bit_reference &operator=(bool val)
+            const bit_reference &operator=(bool val) const
             {
                _ref->set(_pos, val) ;
                return *this ;
             }
 
-            bit_reference &operator=(const bit_reference &source)
+            const bit_reference &operator=(const bit_reference &source) const
             {
-               _ref->set(_pos, source._ref->test(source._pos)) ;
-               return *this ;
+               return *this = source._ref->test(source._pos) ;
             }
 
             bool operator~() const { return !_ref->test(_pos) ; }
-
             operator bool() const { return _ref->test(_pos) ; }
 
-            bit_reference &flip()
+            const bit_reference &flip() const
             {
                _ref->flip(_pos) ;
                return *this ;
             }
 
-         protected:
+         private:
             bitarray * _ref ;
-            size_t     _pos ;
+            ptrdiff_t  _pos ;
 
-            bit_reference(bitarray &r, size_t p) :
-               _ref(&r),
-               _pos(p)
-            {}
+         private:
+            friend bitarray ;
+            template<typename> friend class bit_iterator ;
 
-            void copy(const bit_reference &rhs)
-            {
-               _pos = rhs._pos ;
-               _ref = rhs._ref ;
-            }
+            bit_reference() : _ref(), _pos() {}
+            bit_reference(bitarray *r, ptrdiff_t p) : _ref(r), _pos(p) {}
+            bit_reference(const bit_reference &) = default ;
       } ;
 
-      typedef bit_reference reference ;
+      /************************************************************************/
+      /** Implementor of random-access iterator over bitarray bits
+      *************************************************************************/
+      template<typename R>
+      struct bit_iterator : std::iterator<std::random_access_iterator_tag, R, ptrdiff_t, void, void> {
+            bit_iterator() = default ;
+            bit_iterator(const bit_iterator &) = default ;
+
+            bit_iterator(std::conditional_t<std::is_same<R, bool>::value, const bitarray, bitarray> &arr,
+                         ptrdiff_t pos = 0) :
+               _ref(const_cast<bitarray *>(&arr), pos)
+            {}
+
+            R operator*() const { return _ref ; }
+
+            bit_iterator &operator=(const bit_iterator &src)
+            {
+               _ref._ref = src._ref._ref ;
+               _ref._pos = src._ref._pos ;
+               return *this ;
+            }
+
+            bit_iterator &operator+=(ptrdiff_t diff)
+            {
+               _ref._pos += diff ;
+               return *this ;
+            }
+            bit_iterator &operator-=(ptrdiff_t diff) { return *this += -diff ; }
+
+            bit_iterator &operator++() { ++_ref._pos ; return *this ; }
+            bit_iterator &operator--() { --_ref._pos ; return *this ; }
+
+            PCOMN_DEFINE_POSTCREMENT_METHODS(bit_iterator) ;
+            PCOMN_DEFINE_NONASSOC_ADDOP_METHODS(bit_iterator, ptrdiff_t) ;
+
+            friend ptrdiff_t operator-(const bit_iterator &x, const bit_iterator &y)
+            {
+               return x.pos() - y.pos() ;
+            }
+
+            friend bool operator==(const bit_iterator &x, const bit_iterator &y)
+            {
+               return x.pos() == y.pos() ;
+            }
+            friend bool operator<(const bit_iterator &x, const bit_iterator &y)
+            {
+               return x.pos() < y.pos() ;
+            }
+
+            PCOMN_DEFINE_RELOP_FUNCTIONS(friend, bit_iterator) ;
+
+         private:
+            bit_reference _ref ;
+
+            ptrdiff_t pos() const { return _ref._pos ; }
+      } ;
+
+      /************************************************************************/
+      /** A constant iterator over a bit set, which traverses bit @em positions
+       instead of bit @em values.
+
+       That is, positional_iterator successively returns positions of a bitarray
+       where bits are set to 'true'.
+      *************************************************************************/
+      struct positional_iterator : std::iterator<std::forward_iterator_tag, ptrdiff_t, ptrdiff_t> {
+
+            positional_iterator(const bitarray &array, ptrdiff_t pos = 0) :
+               _ref(&array),
+               _pos(array.find_first_bit(pos, array.size()))
+            {}
+
+            ptrdiff_t operator*() const { return _pos ; }
+
+            positional_iterator &operator++()
+            {
+               _pos = _ref->find_first_bit(_pos + 1, _ref->size()) ;
+               return *this ;
+            }
+            PCOMN_DEFINE_POSTCREMENT(positional_iterator, ++) ;
+
+            bool operator==(const positional_iterator &rhs) const
+            {
+               NOXCHECK(_ref == rhs._ref) ;
+               return _pos == rhs._pos ;
+            }
+            bool operator!=(const positional_iterator &rhs) const { return !(*this == rhs) ; }
+
+         private:
+            const bitarray *_ref ;
+            ptrdiff_t       _pos ;
+      } ;
+
+   public:
+      // Inherited public members
+      //
+      using ancestor::count ;
+      using ancestor::size ;
+      using ancestor::test ;
+      using ancestor::any ;
+      using ancestor::find_first_bit ;
+      using ancestor::mem ;
 
       constexpr bitarray() = default ;
 
@@ -324,15 +442,6 @@ class bitarray : private bitarray_base<unsigned long> {
          return *this ;
       }
 
-      // Inherited public members
-      //
-      using ancestor::count ;
-      using ancestor::size ;
-      using ancestor::test ;
-      using ancestor::any ;
-      using ancestor::find_first_bit ;
-      using ancestor::mem ;
-
       bitarray &mask(const bitarray &source)
       {
          ancestor::mask(source) ;
@@ -379,13 +488,14 @@ class bitarray : private bitarray_base<unsigned long> {
 
       // element access
       //
-      reference operator[](size_t pos) { return reference(*this, pos) ; }
+      reference operator[](size_t pos) { return reference(this, pos) ; }
       bool operator[](size_t pos) const { return test(pos) ; }
 
       bool operator==(const bitarray &other) const { return equal(other) ; }
       bool operator!=(const bitarray &other) const { return !equal(other) ; }
 
-      bool none () const { return !any() ; }
+      /// Indicate if all the bits in this array are '0'
+      bool none() const { return !any() ; }
 
       bitarray operator<<(int pos) const
       {
@@ -406,159 +516,6 @@ class bitarray : private bitarray_base<unsigned long> {
          ancestor::swap(other) ;
       }
 
-      /*************************************************************************
-                           Iterators
-      *************************************************************************/
-      class iterator :
-         public std::iterator<std::random_access_iterator_tag, bool, ptrdiff_t> {
-            friend class const_iterator ;
-         public:
-            iterator(bitarray &arr, int pos = 0) :
-               _ref(arr, pos)
-            {}
-
-            iterator &operator=(const iterator &rhs)
-            {
-               _ref.copy(rhs._ref) ;
-               return *this ;
-            }
-
-            iterator &operator+=(int diff)
-            {
-               _ref._pos += diff ;
-               return *this ;
-            }
-            iterator &operator-=(int diff) { return *this += -diff ; }
-
-            iterator &operator++() { ++_ref._pos ; return *this ; }
-            iterator &operator--() { --_ref._pos ; return *this ; }
-            iterator operator++(int)
-            {
-               iterator tmp(*this) ;
-               operator++() ;
-               return tmp ;
-            }
-            iterator operator--(int)
-            {
-               iterator tmp(*this) ;
-               operator--() ;
-               return tmp ;
-            }
-            iterator operator+ (int diff) const { return iterator(*this) += diff ; }
-            iterator operator- (int diff) const { return iterator(*this) -= diff ; }
-            int operator- (const iterator &iter) const { return _ref._pos - iter._ref._pos ; }
-            bool operator== (const iterator &i2) const { return _ref._pos == i2._ref._pos ; }
-            bool operator!= (const iterator &i2) const { return _ref._pos != i2._ref._pos ; }
-            bool operator< (const iterator &i2) const { return _ref._pos < i2._ref._pos ; }
-            bool operator<= (const iterator& i2) const { return ( !(i2 < *this)) ; }
-            bool operator> (const iterator& i2) const { return i2 < *this ; }
-            bool operator>= (const iterator& i2) const { return !(*this < i2) ; }
-
-            bit_reference &operator*() const { return const_cast<iterator *>(this)->_ref ; }
-
-         private:
-            bit_reference _ref ;
-      } ;
-
-      class const_iterator :
-         public std::iterator<std::random_access_iterator_tag, bool, ptrdiff_t> {
-
-         public:
-            const_iterator(const bitarray &arr, int pos = 0) :
-               _ref(const_cast<bitarray &>(arr), pos)
-            {}
-            const_iterator(const bitarray::iterator &source) :
-               _ref(source._ref)
-            {}
-
-            const_iterator &operator=(const const_iterator &rhs)
-            {
-               _ref.copy(rhs._ref) ;
-               return *this ;
-            }
-
-            const_iterator &operator=(const bitarray::iterator &rhs)
-            {
-               _ref.copy(rhs._ref) ;
-               return *this ;
-            }
-
-            const_iterator &operator+=(int diff)
-            {
-               _ref._pos += diff ;
-               return *this ;
-            }
-            const_iterator &operator-=(int diff) { return *this += -diff ; }
-
-            const_iterator &operator++() { ++_ref._pos ; return *this ; }
-            const_iterator &operator--() { --_ref._pos ; return *this ; }
-            const_iterator operator++(int)
-            {
-               const_iterator tmp(*this) ;
-               operator++() ;
-               return tmp ;
-            }
-            const_iterator operator--(int)
-            {
-               const_iterator tmp(*this) ;
-               operator--() ;
-               return tmp ;
-            }
-            const_iterator operator+ (int diff) const { return const_iterator(*this) += diff ; }
-            const_iterator operator- (int diff) const { return const_iterator(*this) -= diff ; }
-            int operator- (const const_iterator &iter) const { return _ref._pos - iter._ref._pos ; }
-            bool operator== (const const_iterator &i2) const { return _ref._pos == i2._ref._pos ; }
-            bool operator!= (const const_iterator &i2) const { return _ref._pos != i2._ref._pos ; }
-            bool operator< (const const_iterator &i2) const { return _ref._pos < i2._ref._pos ; }
-            bool operator<= (const const_iterator& i2) const { return ( !(i2 < *this)) ; }
-            bool operator> (const const_iterator& i2) const { return i2 < *this ; }
-            bool operator>= (const const_iterator& i2) const { return !(*this < i2) ; }
-
-            bool operator*() const { return _ref ; }
-
-         private:
-            bit_reference _ref ;
-      } ;
-
-      /*************************************************************************
-                           class positional_iterator
-       This iterators traverses bit positions instead of bit values.
-       I.e. it successively returns positions of a bitarray where bits are
-       set to 'true'.
-      *************************************************************************/
-      class positional_iterator : public std::iterator<std::forward_iterator_tag, int, ptrdiff_t> {
-         public:
-            positional_iterator(const bitarray &array, int pos = 0) :
-               _ref(&array),
-               _pos(array.find_first_bit(pos, array.size()))
-            {}
-
-            positional_iterator &operator++()
-            {
-               _pos = _ref->find_first_bit(_pos + 1, _ref->size()) ;
-               return *this ;
-            }
-            positional_iterator operator++(int)
-            {
-               positional_iterator tmp(*this) ;
-               operator++() ;
-               return tmp ;
-            }
-
-            bool operator==(const positional_iterator &rhs) const
-            {
-               NOXCHECK(_ref == rhs._ref) ;
-               return _pos == rhs._pos ;
-            }
-            bool operator!= (const positional_iterator &rhs) const { return !(*this == rhs) ; }
-
-            int operator*() const { return _pos ; }
-
-         private:
-            const bitarray *_ref ;
-            int             _pos ;
-      } ;
-
       //
       // STL-like access
       //
@@ -566,6 +523,8 @@ class bitarray : private bitarray_base<unsigned long> {
       iterator end() { return iterator(*this, size()) ; }
       const_iterator begin() const { return const_iterator(*this, 0) ; }
       const_iterator end() const { return const_iterator(*this, size()) ; }
+      const_iterator cbegin() const { return begin() ; }
+      const_iterator cend() const { return end() ; }
 
       positional_iterator begin_positional() const { return positional_iterator(*this) ; }
       positional_iterator end_positional() const { return positional_iterator(*this, size()) ; }
@@ -616,75 +575,67 @@ inline bitarray mask(const bitarray &left, const bitarray &right)
 template<typename Element>
 void bitarray_base<Element>::flip()
 {
-   int full = _size / BITS_PER_CHUNK ;
-   for (int i = 0 ; i < full ; i++)
-      _bits()[i] = ~_bits()[i] ;
-   if (full < _nelements())
-      _bits()[full] ^= ~(~0 << (_size % BITS_PER_CHUNK)) ;
+   const size_t n = nelements() ;
+   if (unlikely(!n))
+      return ;
+
+   element_type *data = mbits() ;
+   for (element_type * const end = data + n ; data != end ; ++data)
+      *data = ~*data ;
+
+   data[n - 1] &= tailmask() ;
 }
 
 template<typename Element>
-size_t bitarray_base<Element>::count(bool bits) const
+size_t bitarray_base<Element>::count(bool bitval) const
 {
    size_t cnt = 0 ;
-   const element_type *data = _bits() ;
-   for (int i = _nelements() ; i-- ; cnt += bitop::bitcount(data[i])) ;
-   if (!bits)
-      cnt = _size - cnt ;
-   return cnt ;
-}
+   for (const element_type *data = cbits(), *end = data + nelements() ; data != end ; ++data)
+      cnt += bitop::bitcount(*data) ;
 
-template<typename Element>
-bool bitarray_base<Element>::any() const
-{
-   const element_type *data = _bits() ;
-   const element_type *dend = data + _nelements() ;
-   while(data != dend)
-      if (*data++)
-         return true ;
-   return false ;
+   return bitval ? cnt : _size - cnt ;
 }
 
 template<typename Element>
 void bitarray_base<Element>::and_assign(const bitarray_base<Element> &source)
 {
    int minsize = std::min(_size, source._size) ;
-   int full = minsize / BITS_PER_CHUNK ;
-   int elem = std::min(_nelements(), source._nelements()) ;
-   element_type *data = _bits() ;
-   const element_type *source_data = source._bits() ;
+   int full = minsize / BITS_PER_ELEMENT ;
+   int elem = std::min(nelements(), source.nelements()) ;
+   element_type *data = mbits() ;
+   const element_type *source_data = source.cbits() ;
    for (int i = 0 ; i < full ; ++i)
       data[i] &= source_data[i] ;
    if (full < elem)
-      data[full] &= source_data[full] | (~0 << (minsize % BITS_PER_CHUNK)) ;
+      data[full] &= source_data[full] | (~0 << (minsize % BITS_PER_ELEMENT)) ;
 }
 
 template<typename Element>
 void bitarray_base<Element>::or_assign(const bitarray_base<Element> &source)
 {
    int minsize = std::min(_size, source._size) ;
-   int full = minsize / BITS_PER_CHUNK ;
-   int elem = std::min(_nelements(), source._nelements()) ;
-   element_type *data = _bits() ;
-   const element_type *source_data = source._bits() ;
+   int full = minsize / BITS_PER_ELEMENT ;
+   int elem = std::min(nelements(), source.nelements()) ;
+   element_type *data = mbits() ;
+   const element_type *source_data = source.cbits() ;
    for (int i = 0 ; i < full ; ++i)
       data[i] |= source_data[i] ;
    if (full < elem)
-      data[full] |= source_data[full] & ~(~0 << (minsize % BITS_PER_CHUNK)) ;
+      data[full] |= source_data[full] & ~(~0 << (minsize % BITS_PER_ELEMENT)) ;
 }
 
 template<typename Element>
 void bitarray_base<Element>::xor_assign(const bitarray_base<Element> &source)
 {
    int minsize = std::min(_size, source._size) ;
-   int full = minsize / BITS_PER_CHUNK ;
-   int elem = std::min(_nelements(), source._nelements()) ;
-   element_type *data = _bits() ;
-   const element_type *source_data = source._bits() ;
+   int full = minsize / BITS_PER_ELEMENT ;
+   int elem = std::min(nelements(), source.nelements()) ;
+   element_type *data = mbits() ;
+   const element_type *source_data = source.cbits() ;
    for (int i = 0 ; i < full ; ++i)
       data[i] ^= source_data[i] ;
    if (full < elem)
-      data[full] ^= source_data[full] & ~(~0 << (minsize % BITS_PER_CHUNK)) ;
+      data[full] ^= source_data[full] & ~(~0 << (minsize % BITS_PER_ELEMENT)) ;
 }
 
 template<typename Element>
@@ -714,24 +665,24 @@ void bitarray_base<Element>::shift_right(int pos)
 template<typename Element>
 void bitarray_base<Element>::mask(const bitarray_base<Element> &source)
 {
-   int minsize = std::min(_size, source._size) ;
-   int full = minsize / BITS_PER_CHUNK ;
-   int elem = std::min(_nelements(), source._nelements()) ;
-   element_type *data = _bits() ;
-   const element_type *source_data = source._bits() ;
+   const int minsize = std::min(_size, source._size) ;
+   const int full = minsize / BITS_PER_ELEMENT ;
+   int elem = std::min(nelements(), source.nelements()) ;
+   element_type *data = mbits() ;
+   const element_type *source_data = source.cbits() ;
    for (int i = 0 ; i < full ; ++i)
       data[i] &= ~source_data[i] ;
    if (full < elem)
-      data[full] &= ~(source_data[full] & ~(~0 << (minsize % BITS_PER_CHUNK))) ;
+      data[full] &= ~(source_data[full] & ~(~0 << (minsize % BITS_PER_ELEMENT))) ;
 }
 
 template<typename Element>
 size_t bitarray_base<Element>::mem(char *memento) const
 {
-   size_t memsize = (size() + 7) / 8 ;
+   const size_t memsize = (size() + 7) / 8 ;
    if (memento)
    {
-      const element_type *data = _bits() ;
+      const element_type * const data = cbits() ;
 #ifndef PCOMN_CPU_BIG_ENDIAN
       memcpy(memento, data, memsize) ;
 #else
@@ -753,18 +704,18 @@ int bitarray_base<Element>::find_first_bit(int start, int finish) const
    if (start >= finish)
       return finish ;
 
-   int pos = start / BITS_PER_CHUNK ;
-   const element_type *bits = _bits() + pos ;
-   element_type el = *bits >> index(start) ;
+   int pos = elemndx(start) ;
+   const element_type *bits = cbits() + pos ;
+   element_type el = *bits >> bitndx(start) ;
    if (!el)
    {
-      int to = finish / BITS_PER_CHUNK ;
+      int to = elemndx(finish) ;
       do {
          if (++pos > to)
             return finish ;
          el = *++bits ;
       } while (!el) ;
-      start = pos * BITS_PER_CHUNK ;
+      start = pos * BITS_PER_ELEMENT ;
    }
    while (!(el & 1) && start < finish)
    {
@@ -789,9 +740,5 @@ inline std::ostream &operator<<(std::ostream &os, const bitarray &data)
 }
 
 } // end of namespace pcomn
-
-#ifdef __BORLANDC__
-#pragma warn .inl
-#endif
 
 #endif /* __PCOMN_BITARRAY_H */

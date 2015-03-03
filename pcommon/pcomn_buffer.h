@@ -43,11 +43,11 @@ class basic_buffer {
       PCOMN_NONASSIGNABLE(basic_buffer) ;
       PCOMN_NONCOPYABLE(basic_buffer) ;
    public:
-      basic_buffer() noexcept :
+      constexpr basic_buffer() :
          _maxsize((size_t)-1),
          _avail(0),
          _size(0),
-         _data(NULL)
+         _data(nullptr)
       {}
 
       explicit basic_buffer(size_t size, size_t maxsize = (size_t)-1) :
@@ -262,10 +262,20 @@ class cow_buffer {
       }
 
       cow_buffer(const cow_buffer &) = default ;
-      cow_buffer(cow_buffer &&) = default ;
+
+      cow_buffer(cow_buffer &&src) :
+         _size(src._size),
+         _buffer(std::move(src._buffer))
+      {
+         src._size = 0 ;
+      }
 
       cow_buffer &operator=(const cow_buffer &) = default ;
-      cow_buffer &operator=(cow_buffer &&) = default ;
+      cow_buffer &operator=(cow_buffer &&src)
+      {
+         cow_buffer(std::move(src)).swap(*this) ;
+         return *this ;
+      }
 
       /// Get buffer size (that has been specified in constructor call)
       size_t size() const { return _size ; }
