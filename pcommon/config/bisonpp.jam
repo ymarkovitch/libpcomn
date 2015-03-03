@@ -2,7 +2,7 @@
 #------------------------------------------------------------------------------
 # FILE         :  bisonpp.jam
 # COPYRIGHT    :  Vladimir Prus, 2003. All rights reserved.
-#                 Yakov Markovitch, 2010-2014. All rights reserved.
+#                 Yakov Markovitch, 2010-2015. All rights reserved.
 #                 See LICENSE for information on usage/redistribution.
 #
 # DESCRIPTION  :  Boost.Build v2 GNU Bison tool (for C++ parsers)

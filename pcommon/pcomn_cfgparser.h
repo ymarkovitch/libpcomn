@@ -3,7 +3,7 @@
 #define __PCOMN_CFGPARSER_H
 /*******************************************************************************
  FILE         :   pcomn_cfgparser.h
- COPYRIGHT    :   Yakov Markovitch, 1998-2014. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1998-2015. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Functions for .INI/.config file processing

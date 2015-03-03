@@ -1,7 +1,7 @@
 #-*- mode: jam; jam-indent-size: 4; tab-width: 4; indent-tabs-mode: nil; -*-
 #------------------------------------------------------------------------------
 # FILE         :  swig.jam
-# COPYRIGHT    :  Yakov Markovitch, 2009-2014. All rights reserved.
+# COPYRIGHT    :  Yakov Markovitch, 2009-2015. All rights reserved.
 #                 See LICENSE for information on usage/redistribution.
 #
 # DESCRIPTION  :  Boost.Build toolset for building extensions for script language from SWIG

@@ -3,7 +3,7 @@
 #define __PCOMN_KEYEDSET_H
 /*******************************************************************************
  FILE         :   pcomn_keyedset.h
- COPYRIGHT    :   Yakov Markovitch, 2014
+ COPYRIGHT    :   Yakov Markovitch, 2014-2015
 
  DESCRIPTION  :
 

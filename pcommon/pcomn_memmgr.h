@@ -3,7 +3,7 @@
 #define __PCOMN_MEMMGR_H
 /*******************************************************************************
  FILE         :   pcomn_memmgr.h
- COPYRIGHT    :   Yakov Markovitch, 1995-2014. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1995-2015. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Memory management - custom heaps

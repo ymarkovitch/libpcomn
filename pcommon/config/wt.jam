@@ -1,7 +1,7 @@
 #-*- mode: jam; jam-indent-size: 4; tab-width: 4; indent-tabs-mode: nil; -*-
 #------------------------------------------------------------------------------
 # FILE         :  wt.jam
-# COPYRIGHT    :  Yakov Markovitch, 2011-2014. All rights reserved.
+# COPYRIGHT    :  Yakov Markovitch, 2011-2015. All rights reserved.
 #                 See LICENSE for information on usage/redistribution.
 #
 # DESCRIPTION  :  Boost.Build v2 Apache Wt webtool binary tool

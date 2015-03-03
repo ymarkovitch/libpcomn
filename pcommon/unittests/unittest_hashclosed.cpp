@@ -1,7 +1,7 @@
 /*-*- tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   unittest_hashclosed.cpp
- COPYRIGHT    :   Yakov Markovitch, 2008-2014. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2008-2015. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Unittests for a closed hashtable.

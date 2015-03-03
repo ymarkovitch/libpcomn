@@ -1,14 +1,10 @@
 /*-*- mode: c++; tab-width: 3; indent-tabs-mode: nil; c-file-style: "ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 //
 // FILE         :   pcomn_safeformat.h
-// VERSION INFO :   $URL: https://swflab.ashmanov.com/svn/webfilter/trunk/share/pcommon/pcomn_safeformat.h $
-//                  $Revision: 2553 $
-//                  $Author: markovitch $
-//                  $LastChangedDate: 2013-12-09 21:50:35 +0400 (Mon, 09 Dec 2013) $
 ////////////////////////////////////////////////////////////////////////////////
 // Copyright (c) 2005 by Andrei Alexandrescu
 // Copyright (c) 2006 Peter Kümmel
-// Copyright (c) 2006-2010 Yakov Markovitch
+// Copyright (c) 2006-2015 Yakov Markovitch
 // Permission to use, copy, modify, distribute, and sell this software for any
 //     purpose is hereby granted without fee, provided that the above copyright
 //     notice appear in all copies and that both that copyright notice and this

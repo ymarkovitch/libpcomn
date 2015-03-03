@@ -1,7 +1,7 @@
 /*-*- tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   qntest.cpp
- COPYRIGHT    :   Yakov Markovitch, 1999-2014. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1999-2015. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Qualified name test

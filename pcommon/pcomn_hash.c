@@ -1,7 +1,7 @@
 /*-*- tab-width: 3; indent-tabs-mode: nil; c-file-style: "ellemtel" -*-*/
 /*******************************************************************************
  FILE         :   pcomn_hash.c
- COPYRIGHT    :   Yakov Markovitch, 2000-2014. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2000-2015. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Hash functions.

@@ -1,7 +1,7 @@
 /*-*- tab-width: 3; indent-tabs-mode: nil; c-file-style: "ellemtel"; c-file-offsets: ((inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   pcomn_nrthreadmutex.c
- COPYRIGHT    :   Yakov Markovitch, 2000-2014. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2000-2015. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Fast non-recursive mutex. Has the same logic as Event. I.e. from the one hand,

@@ -3,7 +3,7 @@
 #define __PCOMN_NRTHREADMUTEX_H
 /*******************************************************************************
  FILE         :   pcomn_nrthreadmutex.h
- COPYRIGHT    :   Yakov Markovitch, 2000-2014. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2000-2015. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Fast non-recursive mutex. Has the same logic as Event. I.e. from the one hand,

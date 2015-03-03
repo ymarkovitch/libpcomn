@@ -3,7 +3,7 @@
 #define __PCOMN_NATIVE_SYNCOBJ_H
 /*******************************************************************************
  FILE         :   pcomn_native_syncobj.h
- COPYRIGHT    :   Yakov Markovitch, 2008-2014. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2008-2015. All rights reserved.
 
  DESCRIPTION  :   Native synchronization objects for Unices
 

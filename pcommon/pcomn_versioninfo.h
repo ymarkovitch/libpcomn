@@ -3,7 +3,7 @@
 #define __PCOMN_VERSIONINFO_H
 /*******************************************************************************
  FILE         :   pcomn_versioninfo.h
- COPYRIGHT    :   Yakov Markovitch, 2001-2014. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2001-2015. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Version info structures and macros

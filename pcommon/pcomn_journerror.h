@@ -3,7 +3,7 @@
 #define __PCOMN_JOURNERROR_H
 /*******************************************************************************
  FILE         :   pcomn_journerror.h
- COPYRIGHT    :   Yakov Markovitch, 2010-2014. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2010-2015. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Journal exceptions.

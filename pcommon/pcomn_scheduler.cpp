@@ -1,7 +1,7 @@
 /*-*- mode:c++;tab-width:3;indent-tabs-mode:nil;c-file-style:"ellemtel";c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   pcomn_scheduler.cpp
- COPYRIGHT    :   Yakov Markovitch, 2010-2014. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2010-2015. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Trivial task scheduler

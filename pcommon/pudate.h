@@ -3,7 +3,7 @@
 #define __PUDATE_H
 /*******************************************************************************
  FILE         :   pudate.h
- COPYRIGHT    :   Yakov Markovitch, 1999-2014. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1999-2015. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   64-bit date, time and timestamp type(s)

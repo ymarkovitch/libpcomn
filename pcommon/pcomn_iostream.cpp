@@ -1,7 +1,7 @@
 /*-*- tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   pcomn_iostream.cpp
- COPYRIGHT    :   Yakov Markovitch, 2007-2014. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2007-2015. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Simple binary I/O streams.

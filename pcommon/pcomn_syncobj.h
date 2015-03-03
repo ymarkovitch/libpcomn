@@ -3,7 +3,7 @@
 #define __PCOMN_SYNCOBJ_H
 /*******************************************************************************
  FILE         :   pcomn_syncobj.h
- COPYRIGHT    :   Yakov Markovitch, 1997-2014. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1997-2015. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Synchronisation primitives

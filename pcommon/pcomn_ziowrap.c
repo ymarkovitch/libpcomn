@@ -1,7 +1,7 @@
 /*-*- mode: c; tab-width: 3; indent-tabs-mode: nil; c-file-style: "ellemtel" -*-*/
 /*******************************************************************************
  FILE         :   pcomn_ziowrap.c
- COPYRIGHT    :   2004-2010 Yakov Markovitch. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2004-2015. All rights reserved.
                   See LICENCE.pcommon.txt for information on usage/redistribution.
                   The original software is copyright (C) 1995-2003 Jean-Loup Gailly.
 

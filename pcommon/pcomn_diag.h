@@ -3,7 +3,7 @@
 #define __PCOMN_DIAG_H
 /*******************************************************************************
  FILE         :   pcomn_diag.h
- COPYRIGHT    :   Yakov Markovitch, 1995-2014. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1995-2015. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   PCommon diagnostics groups declaration.

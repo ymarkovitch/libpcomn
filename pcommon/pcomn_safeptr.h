@@ -3,7 +3,7 @@
 #define __PCOMN_SAFEPTR_H
 /*******************************************************************************
  FILE         :   pcomn_safeptr.h
- COPYRIGHT    :   Yakov Markovitch, 1994-2014. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1994-2015. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Safe pointer templates

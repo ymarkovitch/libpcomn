@@ -3,7 +3,7 @@
 #define __PCOMN_XATTR_H
 /*******************************************************************************
  FILE         :   pcomn_xattr.h
- COPYRIGHT    :   Yakov Markovitch, 2008-2014. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2008-2015. All rights reserved.
 
  DESCRIPTION  :   Linux filesystem extended attributes
 

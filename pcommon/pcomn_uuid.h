@@ -3,7 +3,7 @@
 #define __PCOMN_UUID_H
 /*******************************************************************************
  FILE         :   pcomn_uuid.h
- COPYRIGHT    :   Yakov Markovitch, 2014
+ COPYRIGHT    :   Yakov Markovitch, 2014-2015
 
  DESCRIPTION  :   UUID data type
 

@@ -3,7 +3,7 @@
 #define __PCOMN_INCDLIST_H
 /*******************************************************************************
  FILE         :   pcomn_incdlist.h
- COPYRIGHT    :   Yakov Markovitch, 1998-2014. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1998-2015. All rights reserved.
                   See LICENCE for information on usage/redistribution.
 
  DESCRIPTION  :   Template for the doubly-linked inclusive list.

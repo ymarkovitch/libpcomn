@@ -1,13 +1,9 @@
 /*-*- tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 //
 // FILE         :   test_safeformat.cpp
-// VERSION INFO :   $URL: https://peach.ashmanov.com/svn/webfilter/trunk/share/pcommon/tests/test_safeformat.cpp $
-//                  $Revision: 6 $
-//                  $Author: markovitch $
-//                  $LastChangedDate: 2010-06-22 20:50:39 +0400 (Tue, 22 Jun 2010) $
 ////////////////////////////////////////////////////////////////////////////////
 // Copyright (c) 2005 by Andrei Alexandrescu
-// Copyright (c) 2006-2010 Yakov Markovitch
+// Copyright (c) 2006-2015 Yakov Markovitch
 // Permission to use, copy, modify, distribute, and sell this software for any
 //     purpose is hereby granted without fee, provided that the above copyright
 //     notice appear in all copies and that both that copyright notice and this

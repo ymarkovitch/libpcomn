@@ -1,7 +1,7 @@
 /*-*- tab-width: 3; indent-tabs-mode: nil; c-file-style: "ellemtel"; c-file-offsets:((innamespace . 0)) -*-*/
 /*******************************************************************************
  FILE         :   perftest_locks.cpp
- COPYRIGHT    :   Yakov Markovitch, 2008-2014. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2008-2015. All rights reserved.
 
  DESCRIPTION  :   Performance and sizes of various synchronization primitives.
 

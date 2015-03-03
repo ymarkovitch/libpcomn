@@ -3,7 +3,7 @@
 #define __PCOMN_IOSTREAM_H
 /*******************************************************************************
  FILE         :   pcomn_iostream.h
- COPYRIGHT    :   Yakov Markovitch, 2007-2014. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2007-2015. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Simple binary I/O streams.

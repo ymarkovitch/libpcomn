@@ -3,7 +3,7 @@
 #define ___PREGEX_H
 /*******************************************************************************
  FILE         :   _pregex.h
- COPYRIGHT    :   Yakov Markovitch, 2000-2014. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2000-2015. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Private header
