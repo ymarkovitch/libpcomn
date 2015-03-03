@@ -93,6 +93,31 @@ inline Container &clear_icontainer(Container &container)
    return container ;
 }
 
+/******************************************************************************/
+/** Ensure the size of a container is at least as big as specified; resize
+ the container to the specified size if its current size is less
+
+ In contrast with common STL container resize() method, never shrinks
+ the container.
+*******************************************************************************/
+template<typename Container>
+inline Container &ensure_size(Container &container, size_t sz)
+{
+   if (sz > container.size())
+      container.resize(sz) ;
+   return container ;
+}
+
+/// @overload
+template<typename Container>
+inline Container &ensure_size(Container &container, size_t sz,
+                              const typename Container::value_type &value)
+{
+   if (sz > container.size())
+      container.resize(sz, value) ;
+   return container ;
+}
+
 /*******************************************************************************
  Sort a container
 *******************************************************************************/
