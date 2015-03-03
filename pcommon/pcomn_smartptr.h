@@ -195,7 +195,7 @@ template<typename U> struct refcount_policy_<refcount_policy<U> > {
     instance.
   - There is a specialization of refcount_policy template for the class T.
 *******************************************************************************/
-template<class T>
+template<typename T>
 class shared_intrusive_ptr {
       // SFINAE selector for refcount policy
       // If refcount_policy<T> is a complete type, use it;
@@ -208,7 +208,7 @@ class shared_intrusive_ptr {
       typedef T element_type ;
       typedef typename detail::refcount_policy_<typename std::remove_pointer<decltype(policy((T *)nullptr))>::type>::type refcount_policy_type ;
 
-      template<class U>
+      template<typename U>
       friend class shared_intrusive_ptr ;
 
       constexpr shared_intrusive_ptr() : _object() {}
@@ -217,18 +217,24 @@ class shared_intrusive_ptr {
          _object(object) { inc_ref() ; }
 
       shared_intrusive_ptr(const shared_intrusive_ptr &src) :
-         shared_intrusive_ptr(src.get()) {}
+         shared_intrusive_ptr(src.get())
+      {}
 
       shared_intrusive_ptr(shared_intrusive_ptr &&src) :
-         _object(src._object) { src._object = nullptr ; }
+         _object(src._object)
+      { src._object = nullptr ; }
+
+      template<typename U>
+      shared_intrusive_ptr(const shared_intrusive_ptr<U> &src,
+                           instance_if_t<std::is_convertible<U*, element_type*>::value> = {}) :
+         shared_intrusive_ptr(src.get())
+      {}
 
       template<class U>
-      shared_intrusive_ptr(const shared_intrusive_ptr<U> &src) :
-         shared_intrusive_ptr(src.get()) {}
-
-      template<class U>
-      shared_intrusive_ptr(shared_intrusive_ptr<U> &&src) :
-         _object(src._object) { src._object = nullptr ; }
+      shared_intrusive_ptr(shared_intrusive_ptr<U> &&src,
+                           instance_if_t<std::is_convertible<U*, element_type*>::value> = {}) :
+         _object(src._object)
+      { src._object = nullptr ; }
 
       ~shared_intrusive_ptr() { dec_ref() ; }
 
@@ -273,10 +279,9 @@ class shared_intrusive_ptr {
       }
 
    private:
-      typename std::remove_const<element_type>::type *
-      mutable_object() const
+      std::remove_const_t<element_type> * mutable_object() const
       {
-         return const_cast<typename std::remove_const<element_type>::type *>(_object) ;
+         return const_cast<std::remove_const_t<element_type> *>(_object) ;
       }
 
       void inc_ref() const { if (_object) refcount_policy_type::inc_ref(mutable_object()) ; }
@@ -286,7 +291,7 @@ class shared_intrusive_ptr {
       void assign_element(E *other_element)
       {
          typedef typename shared_intrusive_ptr<E>::refcount_policy_type other_policy_type ;
-         typedef typename std::remove_const<E>::type                    other_mutable_element ;
+         typedef std::remove_const_t<E>                                 other_mutable_element ;
 
          other_mutable_element *other_object = const_cast<other_mutable_element *>(other_element) ;
 
@@ -392,7 +397,7 @@ PCOMN_SPTR_RELOP(shared_intrusive_ptr, <) ;
 *******************************************************************************/
 template<typename T>
 class shared_ref {
-      typedef typename std::remove_const<T>::type nctype ;
+      typedef typename std::remove_cv<T>::type mutable_type ;
    public:
       typedef T type ;
       typedef T element_type ;
@@ -401,18 +406,30 @@ class shared_ref {
       smartptr_type ;
 
       shared_ref(const shared_ref &other) = default ;
-      shared_ref(shared_ref &&other) : _ptr(other.ptr()) {}
 
       template<typename R>
-      shared_ref(const shared_ref<R> &other) : _ptr(other.ptr()) {}
+      shared_ref(const shared_ref<R> &other,
+                 instance_if_t<std::is_convertible<R*, element_type*>::value> = {}) :
+         _ptr(other.ptr())
+      {}
 
-      shared_ref() : _ptr(new nctype) {}
+      shared_ref() :
+         _ptr(new mutable_type) {}
 
       template<typename A1>
-      shared_ref(const A1 &p1) : _ptr(new nctype(p1)) {}
+      shared_ref(const A1 &p1) :
+         _ptr(new mutable_type(p1)) {}
 
       template<typename A1, typename... Args>
-      shared_ref(const A1 &p1, Args&&... p) : _ptr(new nctype(p1, std::forward<Args>(p)...)) {}
+      shared_ref(const A1 &p1, Args&&... p) :
+         _ptr(new mutable_type(p1, std::forward<Args>(p)...)) {}
+
+      explicit shared_ref(const smartptr_type &ptr) :
+         _ptr(PCOMN_ENSURE_ARG(ptr))
+      {}
+      explicit shared_ref(smartptr_type &&ptr) :
+         _ptr(std::move(PCOMN_ENSURE_ARG(ptr)))
+      {}
 
       type &get() const { return *_ptr ; }
       operator type &() const { return get() ; }
@@ -422,13 +439,24 @@ class shared_ref {
       const smartptr_type &ptr() const { return _ptr ; }
 
       shared_ref &operator=(const shared_ref &) = default ;
-      shared_ref &operator=(shared_ref &&) = default ;
 
       template<typename R>
-      shared_ref &operator=(const shared_ref<R> &other)
+      std::enable_if_t<std::is_convertible<R*, element_type*>::value,
+                       shared_ref &>
+      operator=(const shared_ref<R> &other)
       {
          _ptr = other.ptr() ;
          return *this ;
+      }
+
+      /// Call the Callable object, reference to which is stored.
+      /// @note Available only if the stored reference points to a Callable object.
+      ///
+      template<typename... Args>
+      std::result_of_t<element_type(Args...)>
+      operator()(Args&&... args) const
+      {
+         return std::ref(get())(std::forward<Args>(args)...) ;
       }
 
       int instances() const { return _ptr.use_count() ; }

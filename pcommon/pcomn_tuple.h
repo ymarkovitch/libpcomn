@@ -71,7 +71,7 @@ template<> struct for_each_visit<0> {
  std::tuple, std::pair, and std::array).
 *******************************************************************************/
 template<class Tuple>
-struct tuple_for_each : for_each_visit<std::tuple_size<typename std::remove_const<Tuple>::type>::value> {
+struct tuple_for_each : for_each_visit<std::tuple_size<std::remove_const_t<Tuple> >::value> {
       template<typename F>
       static void apply(Tuple &value, const F &visitor)
       {
@@ -83,7 +83,7 @@ struct tuple_for_each : for_each_visit<std::tuple_size<typename std::remove_cons
          applier::visit_lvalue(value, visitor) ;
       }
    private:
-      typedef for_each_visit<std::tuple_size<typename std::remove_const<Tuple>::type>::value> applier ;
+      typedef for_each_visit<std::tuple_size<std::remove_const_t<Tuple> >::value> applier ;
 } ;
 
 // Prevent compiler from emitting a warning about return type having a const qualifier:
