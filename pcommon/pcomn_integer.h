@@ -81,8 +81,17 @@ if_signed_int : std::enable_if<(std::numeric_limits<T>::is_integer && std::numer
 template<typename T, typename R = T> struct
 if_unsigned_int : std::enable_if<(std::numeric_limits<T>::is_integer && !std::numeric_limits<T>::is_signed), R> {} ;
 
+template<typename T, typename R = T>
+using if_integer_t = typename if_integer<T, R>::type ;
+template<typename T, typename R = T>
+using if_not_integer_t = typename if_not_integer<T, R>::type ;
+template<typename T, typename R = T>
+using if_signed_int_t = typename if_signed_int<T, R>::type ;
+template<typename T, typename R = T>
+using if_unsigned_int_t = typename if_unsigned_int<T, R>::type ;
+
 template<typename T>
-inline constexpr typename if_signed_int<T, T>::type sign_bit(T value)
+inline constexpr if_signed_int_t<T> sign_bit(T value)
 {
    return value & int_traits<T>::signbit ;
 }
@@ -295,7 +304,7 @@ inline int log2ceil(I i)
 /// Clear Rightmost Non-Zero Bit.
 /// 00001010 -> 00001000
 template<typename I>
-inline typename if_integer<I>::type clrrnzb(I x)
+constexpr inline if_integer_t<I> clrrnzb(I x)
 {
    return static_cast<I>(x & (x - 1)) ;
 }
@@ -304,7 +313,7 @@ inline typename if_integer<I>::type clrrnzb(I x)
 /// 00001010 -> 00000010
 /// If there is no such bit, returns 0
 template<typename I>
-inline typename if_integer<I>::type getrnzb(I x)
+constexpr inline if_integer_t<I> getrnzb(I x)
 {
    return static_cast<I>(x & -x) ;
 }
@@ -313,7 +322,7 @@ inline typename if_integer<I>::type getrnzb(I x)
 /// 01001111 -> 00010000
 /// If there is no such bit, returns 0
 template<typename I>
-inline typename if_integer<I>::type getrzb(I x)
+constexpr inline if_integer_t<I> getrzb(I x)
 {
    return static_cast<I>(~x & (x + 1)) ;
 }
@@ -322,7 +331,7 @@ inline typename if_integer<I>::type getrzb(I x)
 /// 00101000 -> 00000111
 /// If there is no such bit, returns 0
 template<typename I>
-inline typename if_integer<I>::type getrzbseq(I x)
+constexpr inline if_integer_t<I> getrzbseq(I x)
 {
    return static_cast<I>(~(-getrnzb(x))) ;
 }
@@ -341,20 +350,16 @@ inline typename if_integer<I>::type getrzbseq(I x)
  20000
 *******************************************************************************/
 template<typename I>
-class nzbit_iterator : public std::iterator<std::forward_iterator_tag, I> {
-   public:
-      explicit nzbit_iterator(typename if_integer<I>::type value) :
-         _data(value)
-      {}
+struct nzbit_iterator : std::iterator<std::forward_iterator_tag, I> {
+
+      explicit constexpr nzbit_iterator(if_integer_t<I> value) : _data(value) {}
 
       // Construct the end iterator
       // Please note that the end iterator _can_ be dereferenced and, by design,
       // returns 0
-      nzbit_iterator() :
-         _data()
-      {}
+      constexpr nzbit_iterator() : _data() {}
 
-      I operator*() const { return getrnzb(_data) ; }
+      constexpr I operator*() const { return getrnzb(_data) ; }
 
       nzbit_iterator &operator++()
       {
@@ -380,16 +385,14 @@ class nzbit_iterator : public std::iterator<std::forward_iterator_tag, I> {
 /// Construct an object of type nzbit_iterator, where the iterable types is based
 /// on the data type passed as its parameter.
 template<typename I>
-inline nzbit_iterator<typename if_integer<I>::type> make_nzbit_iterator(I value)
+inline nzbit_iterator<if_integer_t<I> > make_nzbit_iterator(I value)
 {
    return nzbit_iterator<I>(value) ;
 }
 
-/*******************************************************************************
-                     template<typename I>
-                     class nzbitpos_iterator
-*******************************************************************************/
-/** This iterators traverses bit positions instead of bit values.
+/******************************************************************************/
+/** Nonzero-bit positions iterator traverses bit @em positions instead of bit values
+
  It successively returns positions of nonzero bits.
  E.g.
  for (nzbitpos_iterator<unsigned> foo_iter (0x20005), foo_end ; foo_iter != foo_end ; ++foo_iter)
