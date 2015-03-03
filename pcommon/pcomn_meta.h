@@ -90,6 +90,9 @@ using disable_if = std::enable_if<!disabled, T> ;
 template<bool disabled, typename T>
 using disable_if_t = typename disable_if<disabled, T>::type ;
 
+template<bool enabled>
+using instance_if_t = std::enable_if_t<enabled, Instantiate> ;
+
 /*******************************************************************************
  Template compile-time logic operations.
 *******************************************************************************/
