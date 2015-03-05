@@ -212,6 +212,7 @@ class shared_intrusive_ptr {
       friend class shared_intrusive_ptr ;
 
       constexpr shared_intrusive_ptr() : _object() {}
+      constexpr shared_intrusive_ptr(nullptr_t) : shared_intrusive_ptr() {}
 
       shared_intrusive_ptr(element_type *object) :
          _object(object) { inc_ref() ; }
@@ -401,6 +402,7 @@ class shared_ref {
    public:
       typedef T type ;
       typedef T element_type ;
+      typedef element_type &reference ;
       typedef typename std::conditional<std::is_base_of<PRefBase, T>::value, shared_intrusive_ptr<type>,
                                         std::shared_ptr<type> >::type
       smartptr_type ;
@@ -453,10 +455,10 @@ class shared_ref {
       /// @note Available only if the stored reference points to a Callable object.
       ///
       template<typename... Args>
-      std::result_of_t<element_type(Args...)>
+      std::result_of_t<reference(Args...)>
       operator()(Args&&... args) const
       {
-         return std::ref(get())(std::forward<Args>(args)...) ;
+         return get()(std::forward<Args>(args)...) ;
       }
 
       int instances() const { return _ptr.use_count() ; }
