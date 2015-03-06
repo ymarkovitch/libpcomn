@@ -94,7 +94,6 @@
    (CPPUNIT_LOG(__CPPUNIT_CONCAT_SRC_LINE("EXPECTING: (") #actual ") == (" #expected << ")... "), \
     CPPUNIT_LOG((CPPUNIT_ASSERT_EQ(expected, actual), "OK") << std::endl))
 
-
 #define CPPUNIT_LOG_NOT_EQUAL(left, right)                                                  \
   (CPPUNIT_LOG(__CPPUNIT_CONCAT_SRC_LINE("EXPECTING: (") #left ") != (" #right << ")... "), \
    CPPUNIT_LOG((CppUnit::X::assertNotEquals(left, right, "(" #left ") != (" #right ")", \
@@ -225,7 +224,7 @@ inline void assertEq(const Expected &expected, const Actual &actual,
 
 template <class T>
 inline void assertNotEquals(const T &left, const T &right,
-                            const std::string &expr, CppUnit::SourceLine ln)
+                            const std::string &expr, CppUnit::SourceLine line)
 {
    if (left != right)
       return ;
@@ -241,8 +240,16 @@ inline void assertNotEquals(const T &left, const T &right,
                "not equal assertion failed",
                CppUnit::Asserter::makeExpected(expr),
                CppUnit::Asserter::makeActual(actual)),
-         ln) ;
+         line) ;
 }
+
+template<typename L, typename R>
+inline void assertNotEq(const L &left, const R &right,
+                        const std::string &expr, CppUnit::SourceLine line)
+{
+   X::assertNotEquals<L>(left, right, expr, line) ;
+}
+
 } // end of namespace CppUnit::X
 } // end of namespace CppUnit
 

@@ -183,13 +183,27 @@
 #define GCC_MAKE_PRAGMA(text)
 
 #ifndef __noreturn
+#ifdef PCOMN_COMPILER_MS
+#define __noreturn __declspec(noreturn)
+#else
 #define __noreturn
 #endif
+#endif
+
 #ifndef __deprecated
+#ifdef PCOMN_COMPILER_MS
+#define __deprecated __declspec(deprecated)
+#else
 #define __deprecated
 #endif
+#endif
+
 #ifndef __noinline
+#ifdef PCOMN_COMPILER_MS
+#define __noinline __declspec(noinline)
+#else
 #define __noinline
+#endif
 #endif
 
 #endif

@@ -200,6 +200,9 @@ struct pstring_traits {
 template<typename S>
 struct string_traits { typedef char undefined ; } ;
 
+template<typename S>
+struct string_traits<S &> : string_traits<S> {} ;
+
 template<>
 struct string_traits<char *> : cstring_traits<char> {} ;
 template<>
@@ -466,8 +469,8 @@ strip_inplace(S &s)
 /// @cond
 namespace detail {
 template<typename Converter, typename S>
-inline S &convert_inplace_stdstr(S &s, Converter &converter,
-                                 size_t offs = 0, size_t size = std::string::npos)
+inline S &&convert_inplace_stdstr(S &&s, Converter &converter,
+                                  size_t offs = 0, size_t size = std::string::npos)
 {
    typename S::iterator begin (s.begin()) ;
    std::transform(begin + offs,
@@ -480,9 +483,9 @@ inline S &convert_inplace_stdstr(S &s, Converter &converter,
 
 template<typename Converter, typename S>
 inline std::enable_if_t<string_traits<S>::has_std_write, S &>
-convert_inplace(S &s, Converter converter, size_t offs = 0, size_t size = std::string::npos)
+convert_inplace(S &&s, Converter converter, size_t offs = 0, size_t size = std::string::npos)
 {
-   return detail::convert_inplace_stdstr(s, converter, offs, size) ;
+   return detail::convert_inplace_stdstr(std::forward<S>(s), converter, offs, size) ;
 }
 
 template<typename Converter, typename Char>
@@ -491,13 +494,6 @@ convert_inplace(Char *s, Converter converter, size_t offs = 0, size_t size = (si
 {
    std::transform(s + offs, (size == (size_t)-1 ? s + len(s) : s + size), s + offs, converter) ;
    return s ;
-}
-
-template<typename Converter, typename Char, size_t n>
-inline std::enable_if_t<is_char<Char>::value, Char *>
-convert_inplace(Char (&s)[n], Converter converter, size_t offs = 0, size_t size = (size_t)-1)
-{
-   return convert_inplace(s + 0, offs, size) ;
 }
 
 template<typename Buf, typename Converter, typename S>
@@ -509,19 +505,33 @@ convert_copy(const S &s, Converter converter, size_t offs = 0, size_t size = std
 }
 
 template<typename S>
-inline typename enable_if_string<S, S &>::type
-to_lower_inplace(S &s, size_t offs = 0, size_t size = std::string::npos)
+inline S &&to_lower_inplace(S &&s, size_t offs = 0,
+                            enable_if_string_t<std::remove_reference_t<S>, size_t> size = std::string::npos)
 {
-   return convert_inplace(s, ctype_traits<typename string_traits<S>::char_type>::tolower,
-                          offs, size) ;
+   convert_inplace(std::forward<S>(s), ctype_traits<typename string_traits<S>::char_type>::tolower, offs, size) ;
+   return std::forward<S>(s) ;
+}
+
+template<typename Char, size_t n>
+inline Char *to_lower_inplace(Char (&s)[n], size_t offs = 0,
+                              std::enable_if_t<is_char<Char>::value, size_t> size = std::string::npos)
+{
+   return convert_inplace(s, ctype_traits<Char>::tolower, offs, size) ;
 }
 
 template<typename S>
-inline typename enable_if_string<S, S &>::type
-to_upper_inplace(S &s, size_t offs = 0, size_t size = std::string::npos)
+inline S &&to_upper_inplace(S &&s, size_t offs = 0,
+                            enable_if_string_t<std::remove_reference_t<S>, size_t> size = std::string::npos)
 {
-   return convert_inplace(s, ctype_traits<typename string_traits<S>::char_type>::toupper,
-                          offs, size) ;
+   convert_inplace(std::forward<S>(s), ctype_traits<typename string_traits<S>::char_type>::toupper, offs, size) ;
+   return std::forward<S>(s) ;
+}
+
+template<typename Char, size_t n>
+inline Char *to_upper_inplace(Char (&s)[n], size_t offs = 0,
+                              std::enable_if_t<is_char<Char>::value, size_t> size = std::string::npos)
+{
+   return convert_inplace(s, ctype_traits<Char>::toupper, offs, size) ;
 }
 
 template<typename C>
@@ -531,9 +541,21 @@ inline std::basic_string<C> to_lower(const std::basic_string<C> &s)
 }
 
 template<typename C>
+inline std::basic_string<C> to_lower(std::basic_string<C> &&s)
+{
+   return std::move(to_lower_inplace(std::move(s)))  ;
+}
+
+template<typename C>
 inline std::basic_string<C> to_upper(const std::basic_string<C> &s)
 {
    return convert_copy<std::basic_string<C> >(s, ctype_traits<C>::toupper) ;
+}
+
+template<typename C>
+inline std::basic_string<C> to_upper(std::basic_string<C> &&s)
+{
+   return std::move(to_upper_inplace(std::move(s)))  ;
 }
 
 /*******************************************************************************

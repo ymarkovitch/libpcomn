@@ -155,12 +155,12 @@ inline const char *enum_name(Enum value)
 
 #define PCOMN_ENUM_ELEMENT(ns, value) {#value, ns::value}
 
-#define PCOMN_ENDDEF_ENUM_ELEMENTS {NULL} } ; }
+#define PCOMN_ENDDEF_ENUM_ELEMENTS {} } ; }
 
 #define PCOMN_DEFINE_ENUM_ELEMENTS(ns, Enum, count, ...)  \
    PCOMN_STARTDEF_ENUM_ELEMENTS(ns::Enum)                 \
    P_APPL1(PCOMN_ENUM_ELEMENT, ns, count, __VA_ARGS__),   \
-   {NULL, (ns::Enum)0} } ; }
+   {} } ; }
 
 /******************************************************************************/
 /** Enum output std::ostream manipulator.

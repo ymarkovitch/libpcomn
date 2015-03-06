@@ -380,6 +380,22 @@ inline void ordered_swap(T &op1, T &op2, Compare comp)
 }
 
 template<typename T>
+inline unipair<T> ordered_pair(T &&op1, T &&op2)
+{
+   return (op1 < op2)
+      ? unipair<T>(std::forward<T>(op1), std::forward<T>(op2))
+      : unipair<T>(std::forward<T>(op2), std::forward<T>(op1)) ;
+}
+
+template<typename T, typename Compare>
+inline unipair<T> ordered_pair(T &&op1, T &&op2, Compare &&comp)
+{
+   return std::forward<Compare>(comp)(op1, op2)
+      ? unipair<T>(std::forward<T>(op1), std::forward<T>(op2))
+      : unipair<T>(std::forward<T>(op2), std::forward<T>(op1)) ;
+}
+
+template<typename T>
 inline ptrdiff_t range_length(const std::pair<T, T> &range)
 {
    return range.second - range.first ;

@@ -69,6 +69,9 @@ using conditional_t = typename conditional<B, T, F>::type ;
 template<typename T>
 using result_of_t = typename result_of<T>::type ;
 
+template<typename T>
+using underlying_type_t = typename underlying_type<T>::type ;
+
 }
 
 #endif /* __cplusplus > 201103 */

@@ -25,6 +25,24 @@
 template<typename C>
 using primitive_array = std::unique_ptr<C[], pcomn::identity> ;
 
+typedef char char_buffer[80] ;
+
+template<typename T>
+struct string_init {
+      T &operator ()(T &dest, const T &src) const
+      {
+         return dest = src ;
+      }
+} ;
+
+template<typename C, size_t n>
+struct string_init<C[n]> {
+      const char *operator ()(C (&dest)[n], const C *src) const
+      {
+         return strncpy(dest, src, n) ;
+      }
+} ;
+
 /*******************************************************************************
                      class StringTraitsTests
 *******************************************************************************/
@@ -70,12 +88,14 @@ class StringFunctionTests : public CppUnit::TestFixture {
 
       template<class T>
       void Test_Narrow_Output() ;
-
       template<class T>
       void Test_Strip() ;
-
       template<class T>
       void Test_Strip_Inplace() ;
+      template<class T>
+      void Test_To_Upper_Lower_Inplace() ;
+      template<class T>
+      void Test_To_Upper_Lower() ;
 
       CPPUNIT_TEST_SUITE(StringFunctionTests) ;
 
@@ -98,6 +118,9 @@ class StringFunctionTests : public CppUnit::TestFixture {
       CPPUNIT_TEST(Test_Strip<std::unique_ptr<char[]> >) ;
       CPPUNIT_TEST(Test_Strip<std::unique_ptr<const char[]> >) ;
       CPPUNIT_TEST(Test_Strip<primitive_array<const char> >) ;
+      CPPUNIT_TEST(Test_To_Upper_Lower_Inplace<std::string>) ;
+      CPPUNIT_TEST(Test_To_Upper_Lower_Inplace<char_buffer>) ;
+      CPPUNIT_TEST(Test_To_Upper_Lower<std::string>) ;
 
       CPPUNIT_TEST_SUITE_END() ;
 } ;
@@ -137,6 +160,9 @@ struct TestData {
       static const T left_stripped_string ;
       static const T right_stripped_string ;
       static const T stripped_string ;
+      static const T upper_string ;
+      static const T lower_string ;
+      static const T mixed_string ;
       typedef typename pcomn::string_traits<T>::char_type char_type ;
 } ;
 
@@ -151,19 +177,24 @@ template<> type const TestData<type>::name { strpfx##value }
    TEST_ITEM(type, strpfx, non_stripped_string, "\n\n\t Foo, bar! \n") ; \
    TEST_ITEM(type, strpfx, left_stripped_string, "Foo, bar! \n") ;      \
    TEST_ITEM(type, strpfx, right_stripped_string, "\n\n\t Foo, bar!") ; \
-   TEST_ITEM(type, strpfx, stripped_string, "Foo, bar!")
+   TEST_ITEM(type, strpfx, stripped_string, "Foo, bar!") ;              \
+   TEST_ITEM(type, strpfx, upper_string, "FOO, BAR!") ;                 \
+   TEST_ITEM(type, strpfx, lower_string, "foo, bar!") ;                 \
+   TEST_ITEM(type, strpfx, mixed_string, "Foo, bar!")
 
-TEST_DATA(const char *, P_EMPTY()) ;
-TEST_DATA(std::string, P_EMPTY()) ;
+TEST_DATA(const char *,) ;
+TEST_DATA(std::string,) ;
 TEST_DATA(const wchar_t *, L) ;
 TEST_DATA(std::wstring, L) ;
 
-TEST_DATA(pcomn::istring, P_EMPTY()) ;
+TEST_DATA(char_buffer,) ;
+
+TEST_DATA(pcomn::istring,) ;
 TEST_DATA(pcomn::iwstring, L) ;
 
-TEST_DATA(primitive_array<const char>, P_EMPTY()) ;
+TEST_DATA(primitive_array<const char>,) ;
 
-TEST_DATA(pcomn::cstrptr, P_EMPTY()) ;
+TEST_DATA(pcomn::cstrptr,) ;
 TEST_DATA(pcomn::cwstrptr, L) ;
 
 #undef TEST_ITEM
@@ -171,8 +202,8 @@ TEST_DATA(pcomn::cwstrptr, L) ;
 #define TEST_ITEM(type, strpfx, name, value)                       \
 template<> type const TestData<type>::name { strnew(strpfx##value) }
 
-TEST_DATA(std::unique_ptr<char[]>, P_EMPTY()) ;
-TEST_DATA(std::unique_ptr<const char[]>, P_EMPTY()) ;
+TEST_DATA(std::unique_ptr<char[]>,) ;
+TEST_DATA(std::unique_ptr<const char[]>,) ;
 
 template<typename T>
 void StringShimTests::Test_Shims()
@@ -258,6 +289,44 @@ void StringFunctionTests::Test_Strip()
    CPPUNIT_LOG_EQUAL(pcomn::str::lstrip(data::non_stripped_string), slc(data::left_stripped_string)) ;
    CPPUNIT_LOG_EQUAL(pcomn::str::rstrip(data::non_stripped_string), slc(data::right_stripped_string)) ;
    CPPUNIT_LOG_EQUAL(pcomn::str::strip(data::non_stripped_string), slc(data::stripped_string)) ;
+}
+
+
+template<class T>
+void StringFunctionTests::Test_To_Upper_Lower_Inplace()
+{
+   using namespace pcomn ;
+   typedef TestData<T> data ;
+   string_init<T> init ;
+
+   T ustr ;
+   init(ustr, data::upper_string) ;
+
+   CPPUNIT_LOG_EQ(strslice(str::to_lower_inplace(ustr)), data::lower_string) ;
+   CPPUNIT_LOG_EQ(strslice(ustr), data::lower_string) ;
+   CPPUNIT_LOG_NOT_EQUAL(strslice(ustr), strslice(data::upper_string)) ;
+   CPPUNIT_LOG_EQ(strslice(str::to_upper_inplace(ustr)), data::upper_string) ;
+}
+
+template<class T>
+void StringFunctionTests::Test_To_Upper_Lower()
+{
+   using namespace pcomn ;
+   typedef TestData<T> data ;
+
+   T ustr (data::mixed_string) ;
+
+   CPPUNIT_LOG_NOT_EQUAL(ustr, data::upper_string) ;
+   CPPUNIT_LOG_NOT_EQUAL(ustr, data::lower_string) ;
+   CPPUNIT_LOG_EQ(ustr, data::mixed_string) ;
+
+   CPPUNIT_LOG_EQ(str::to_lower(ustr), data::lower_string) ;
+   CPPUNIT_LOG_EQ(ustr, data::mixed_string) ;
+   CPPUNIT_LOG_EQ(str::to_upper(ustr), data::upper_string) ;
+   CPPUNIT_LOG_EQ(ustr, data::mixed_string) ;
+
+   CPPUNIT_LOG_EQ(str::to_lower(T(data::mixed_string)), data::lower_string) ;
+   CPPUNIT_LOG_EQ(str::to_upper(T(data::mixed_string)), data::upper_string) ;
 }
 
 int main(int argc, char *argv[])
