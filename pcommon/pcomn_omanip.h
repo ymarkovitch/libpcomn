@@ -22,14 +22,26 @@
 
 namespace pcomn {
 
+enum class NoOut { nout } ;
+const NoOut nout = NoOut::nout ;
+
+inline std::ostream &operator<<(std::ostream &os, NoOut) { return os ; }
+
 template<typename> struct omanip ;
 
 template<typename F, typename... Args>
 auto make_omanip(F &&fn, Args &&...args)
    -> omanip<decltype(std::bind(std::forward<F>(fn), std::placeholders::_1, std::forward<Args>(args)...))> ;
 
+/*******************************************************************************
+
+*******************************************************************************/
+#define PCOMN_DERIVE_OMANIP(basecall) decltype(basecall) { return basecall ; }
 #define PCOMN_MAKE_OMANIP(...) decltype(pcomn::make_omanip(__VA_ARGS__)) { return pcomn::make_omanip(__VA_ARGS__) ; }
 
+/******************************************************************************/
+/* Universal ostream manipulator
+*******************************************************************************/
 template<typename Bind>
 struct omanip final {
       static_assert(std::is_same<typename std::remove_reference<typename std::result_of<Bind(std::ostream &)>::type>::type, std::ostream>::value,
@@ -66,7 +78,13 @@ inline std::ostream &operator<<(std::ostream &os, const omanip<F> &manip)
    return manip(os) ;
 }
 
+/*******************************************************************************
+ Various ostream manipulators
+*******************************************************************************/
 namespace detail {
+template<typename T>
+using decayed = typename std::decay<T>::type ;
+
 template<typename InputIterator, typename Before, typename After>
 std::ostream &print_sequence(std::ostream &os, InputIterator begin, InputIterator end,
                              const Before &before, const After &after)
@@ -79,50 +97,34 @@ std::ostream &print_sequence(std::ostream &os, InputIterator begin, InputIterato
 
 template<typename InputIterator, typename Before, typename After>
 inline auto osequence(InputIterator begin, InputIterator end, const Before &before, const After &after)
-   ->PCOMN_MAKE_OMANIP(detail::print_sequence<InputIterator, const Before &, const After &>, begin, end,
-                       std::cref(before), std::cref(after)) ;
+   ->PCOMN_MAKE_OMANIP(detail::print_sequence<InputIterator, detail::decayed<Before>, detail::decayed<After> >,
+                       begin, end, detail::decayed<Before>(before), detail::decayed<After>(after)) ;
 
 
 template<typename InputIterator, typename After>
 inline auto osequence(InputIterator begin, InputIterator end, const After &after)
-   ->decltype(osequence(begin, end, "", after))
-{
-   return osequence(begin, end, "", after) ;
-}
+   ->PCOMN_DERIVE_OMANIP(osequence(begin, end, nout, after)) ;
 
-template<typename InputIterator, typename After>
+template<typename InputIterator>
 inline auto osequence(InputIterator begin, InputIterator end)
-   ->decltype(osequence(begin, end, "", '\n'))
-{
-   return osequence(begin, end, "", '\n') ;
-}
-
+   ->PCOMN_DERIVE_OMANIP(osequence(begin, end, nout, '\n')) ;
 
 template<class Container, typename Before, typename After>
 inline auto ocontainer(const Container &container, const Before &before, const After &after)
-   ->decltype(osequence(std::begin(container), std::end(container), before, after))
-{
-   return osequence(std::begin(container), std::end(container), before, after) ;
-}
+   ->PCOMN_DERIVE_OMANIP(osequence(std::begin(container), std::end(container), before, after)) ;
 
 template<class Container, typename After>
 inline auto ocontainer(const Container &container, const After &after)
-   ->decltype(osequence(std::begin(container), std::end(container), after))
-{
-   return osequence(std::begin(container), std::end(container), after) ;
-}
+   ->PCOMN_DERIVE_OMANIP(osequence(std::begin(container), std::end(container), after)) ;
 
 template<class Container>
 inline auto ocontainer(const Container &container)
-   ->decltype(osequence(std::begin(container), std::end(container)))
-{
-   return osequence(std::begin(container), std::end(container)) ;
-}
+   ->PCOMN_DERIVE_OMANIP(osequence(std::begin(container), std::end(container))) ;
 
 namespace detail {
 template<typename InputIterator, typename Delim>
-std::ostream &print_sequence_delimited(std::ostream &os, InputIterator begin, InputIterator end,
-                                       const Delim &delim)
+inline std::ostream &print_sequence_delimited(std::ostream &os, InputIterator begin, InputIterator end,
+                                              const Delim &delim)
 {
     for (bool first = true ; begin != end ; ++begin)
     {
@@ -134,32 +136,31 @@ std::ostream &print_sequence_delimited(std::ostream &os, InputIterator begin, In
     }
     return os ;
 }
+
+template<typename InputIterator>
+std::ostream &print_sequence_delimited(std::ostream &os, InputIterator begin, InputIterator end)
+{
+   return print_sequence_delimited(os, begin, end, ", ") ;
+}
+
 }
 
 template<typename InputIterator, typename Delim>
 inline auto oseqdelim(InputIterator begin, InputIterator end, const Delim &delim)
-   ->PCOMN_MAKE_OMANIP(detail::print_sequence_delimited<InputIterator, Delim>, begin, end, std::cref(delim)) ;
+   ->PCOMN_MAKE_OMANIP(detail::print_sequence_delimited<InputIterator, detail::decayed<Delim> >,
+                       begin, end, detail::decayed<Delim>(delim)) ;
 
 template<typename InputIterator>
 inline auto oseqdelim(InputIterator begin, InputIterator end)
-   ->decltype(oseqdelim(begin, end, ", "))
-{
-   return oseqdelim(begin, end, ", ") ;
-}
+   ->PCOMN_MAKE_OMANIP(detail::print_sequence_delimited<InputIterator>, begin, end) ;
 
 template<class Container, typename Delim>
 inline auto ocontdelim(const Container &container, const Delim &delim)
-   ->decltype(oseqdelim(std::begin(container), std::end(container), delim))
-{
-   return oseqdelim(std::begin(container), std::end(container), delim) ;
-}
+   ->PCOMN_DERIVE_OMANIP(oseqdelim(std::begin(container), std::end(container), delim)) ;
 
 template<class Container>
 inline auto ocontdelim(const Container &container)
-   ->decltype(oseqdelim(std::begin(container), std::end(container)))
-{
-   return oseqdelim(std::begin(container), std::end(container)) ;
-}
+   ->PCOMN_DERIVE_OMANIP(oseqdelim(std::begin(container), std::end(container)))
 
 inline char *hrsize(unsigned long long sz, char *buf)
 {

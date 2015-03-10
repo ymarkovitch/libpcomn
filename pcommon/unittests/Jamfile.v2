@@ -50,6 +50,7 @@ if ! [ adhoc-targets ]
   unittest unittest_smartptr ;
   unittest unittest_strshims ;
   unittest unittest_strslice ;
+  unittest unittest_omanip ;
 
   #unittest unittest_strunicode ;
 
