@@ -634,70 +634,60 @@ inline const T& diag_cref(const T &v)
 namespace diag {
 
 template<typename T>
-struct _otptr { std::ostream &operator() (std::ostream &, const T *) const ; } ;
-template<typename T>
-std::ostream &_otptr<T>::operator()(std::ostream &os, const T *ptr) const
-{
-   os << '(' << PCOMN_DEREFTYPENAME(ptr) << "*)" ;
-   return
-      ptr ? (os << ptr) : (os << "NULL") ;
-}
+struct tptr_printer {
+      static std::ostream &print(std::ostream &os, const T *ptr)
+      {
+         os << '(' << PCOMN_DEREFTYPENAME(ptr) << "*)" ;
+         return
+            ptr ? (os << ptr) : (os << "NULL") ;
+      }
+} ;
 
 template<>
-struct _otptr<char> {
-      std::ostream &operator() (std::ostream &os, const char *ptr) const
+struct tptr_printer<char> {
+      static std::ostream &print(std::ostream &os, const char *ptr)
       {
          return !ptr ? (os << "(char*)NULL") : (os << '"' << ptr << '"') ;
       }
 } ;
 
-template<typename T>
-inline pcomn::omanip<_otptr<T>, const T *> otptr(const T *ptr)
-{
-   return pcomn::omanip<_otptr<T>, const T *>(_otptr<T>(), ptr) ;
-}
-
 template<typename P>
-struct _oderef { std::ostream &operator() (std::ostream &, const P &) const ; } ;
-template<typename P>
-std::ostream &_oderef<P>::operator()(std::ostream &os, const P &ptr) const
+std::ostream &print_dereferenced(std::ostream &os, const P &ptr)
 {
    return !ptr
       ? os << "((" << PCOMN_TYPENAME(P) << ")NULL)"
       : os << *ptr ;
 }
 
+inline std::ostream &print_file(std::ostream &os, FILE *file)
+{
+   if (!file || feof(file) || ferror(file))
+      return os ;
+   const long pos = ftell(file) ;
+   if (pos < 0)
+      return os ;
+
+   char buf[4096] ;
+   do os.write(buf, fread(buf, 1, sizeof buf, file)) ;
+   while (!feof(file) && !ferror(file)) ;
+
+   if (pos)
+      fseek(file, pos, SEEK_SET) ;
+   else
+      rewind(file) ;
+   return os ;
+}
+
+/*******************************************************************************
+
+*******************************************************************************/
+template<typename T>
+inline auto otptr(const T *ptr) ->PCOMN_MAKE_OMANIP(tptr_printer<T>::print, ptr) ;
+
 template<typename P>
-inline pcomn::omanip<_oderef<P>, const P &> oderef(const P &ptr)
-{
-   return pcomn::omanip<_oderef<P>, const P &>(_oderef<P>(), ptr) ;
-}
+inline auto oderef(const P &ptr) ->PCOMN_MAKE_OMANIP(print_dereferenced<P>, std::cref(ptr)) ;
 
-struct _ofile {
-      __noinline std::ostream &operator() (std::ostream &os, FILE *file) const
-      {
-         if (!file || feof(file) || ferror(file))
-            return os ;
-         const long pos = ftell(file) ;
-         if (pos < 0)
-            return os ;
-
-         char buf[4096] ;
-         do os.write(buf, fread(buf, 1, sizeof buf, file)) ;
-         while (!feof(file) && !ferror(file)) ;
-
-         if (pos)
-            fseek(file, pos, SEEK_SET) ;
-         else
-            rewind(file) ;
-         return os ;
-      }
-} ;
-
-inline pcomn::omanip<_ofile, FILE *> ofile(FILE *file)
-{
-   return pcomn::omanip<_ofile, FILE *>(_ofile(), file) ;
-}
+inline auto ofile(FILE *file) ->PCOMN_MAKE_OMANIP(print_file, file) ;
 
 enum EndArgs { endargs } ;
 

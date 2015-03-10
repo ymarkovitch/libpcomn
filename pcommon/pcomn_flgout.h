@@ -168,21 +168,15 @@ inline const char *enum_name(Enum value)
  Providing there is enum_traits defined, outputs the name of an enum value.
 *******************************************************************************/
 template<typename Enum>
-struct _oenum {
-      std::ostream &operator() (std::ostream &os, Enum value) const
-      {
-         if (const char * const name = enum_name(value))
-            return os << name ;
-         return os << "<UNKNOWN>(" << (long long)value << ')' ;
-      }
-} ;
+std::ostream &print_enum(std::ostream &os, Enum value)
+{
+   if (const char * const name = enum_name(value))
+      return os << name ;
+   return os << "<UNKNOWN>(" << (long long)value << ')' ;
+}
 
 template<typename Enum>
-inline omanip<_oenum<Enum>, Enum> oenum(Enum value)
-{
-   typedef _oenum<Enum> fn_t ;
-   return omanip<fn_t, Enum>(fn_t(), value) ;
-}
+inline auto oenum(Enum value) ->PCOMN_MAKE_OMANIP(print_enum<Enum>, value) ;
 
 } // end of namespace pcomn
 

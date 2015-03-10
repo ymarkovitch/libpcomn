@@ -470,19 +470,19 @@ strip_inplace(S &s)
 namespace detail {
 template<typename Converter, typename S>
 inline S &&convert_inplace_stdstr(S &&s, Converter &converter,
-                                  size_t offs = 0, size_t size = std::string::npos)
+                                size_t offs = 0, size_t size = std::string::npos)
 {
-   typename S::iterator begin (s.begin()) ;
+   auto begin (s.begin()) ;
    std::transform(begin + offs,
                   (size == std::string::npos ? s.end() : begin + size), begin + offs,
                   converter) ;
-   return s ;
+   return std::forward<S>(s) ;
 }
 } // end of namespace pcomn::str::detail
 /// @endcond
 
 template<typename Converter, typename S>
-inline std::enable_if_t<string_traits<S>::has_std_write, S &>
+inline std::enable_if_t<string_traits<S>::has_std_write, S &&>
 convert_inplace(S &&s, Converter converter, size_t offs = 0, size_t size = std::string::npos)
 {
    return detail::convert_inplace_stdstr(std::forward<S>(s), converter, offs, size) ;

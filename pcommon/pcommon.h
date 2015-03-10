@@ -436,6 +436,18 @@ constexpr int P_CURRENT_ALIGNMENT = sizeof (___offsTest)-sizeof(double) ;
 #define PCOMN_DEFINE_SWAP(type, ...) \
    __VA_ARGS__ inline void swap(type &lhs, type &rhs) { lhs.swap(rhs) ; }
 
+/// For a type without state, define operators '==' and '!=' that are invariantly 'true'
+/// and 'false' respectively
+///
+/// I.e. we actually say "since object of type T is, in fact, just a namespace, consider
+/// any two T objects equal".
+#define PCOMN_DEFINE_INVARIANT_EQ(prefix, type)                         \
+   prefix inline constexpr bool operator==(const type &, const type &) { return true ; } \
+   prefix inline constexpr bool operator!=(const type &, const type &) { return false ; }
+
+#define PCOMN_DEFINE_INVARIANT_PRINT(prefix, type)                      \
+   prefix inline std::ostream &operator<<(std::ostream &os, const type &) { return os << PCOMN_CLASSNAME(type) ; }
+
 /******************************************************************************/
 /** Swap wrapper that calls std::swap on the arguments, but may also use ADL
  (Argument-Dependent Lookup, Koenig lookup) to use a specialised form.

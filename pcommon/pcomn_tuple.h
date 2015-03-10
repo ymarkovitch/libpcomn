@@ -127,5 +127,34 @@ const_tie(A&& ...args)
 
 } // end of namespace pcomn
 
+// We need std namespace to ensure proper Koenig lookup
+namespace std {
+
+namespace detail {
+struct out_element {
+      template<typename T>
+      void operator()(const T &v)
+      {
+         if (next)
+            os << ',' ;
+         else
+            next = true ;
+         os << v ;
+      }
+
+      std::ostream &os ;
+      bool next ;
+} ;
+}
+
+template<typename... T>
+std::ostream &operator<<(std::ostream &os, const std::tuple<T...> &v)
+{
+   detail::out_element out_element = { os << '{', false } ;
+   pcomn::tuple_for_each<const std::tuple<T...> >::apply_lvalue(v, out_element) ;
+
+   return os << '}' ;
+}
+} // end of namespace std
 
 #endif /* __PCOMN_TUPLE_H */

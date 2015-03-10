@@ -12,251 +12,159 @@
  CREATION DATE:   12 May 2000
 *******************************************************************************/
 #include <pcomn_platform.h>
+
 #include <iostream>
+#include <iomanip>
+#include <functional>
+#include <type_traits>
+
 #include <stdio.h>
 
 namespace pcomn {
 
-struct noparam {} ;
-typedef noparam empty_param ;
-template<class P>
-struct param_count { enum { Count = 1 } ; } ;
-template<>
-struct param_count<empty_param> { enum { Count = 0 } ; } ;
+template<typename> struct omanip ;
 
-template<int i>
-struct type2int { enum { Value = i } ; } ;
+template<typename F, typename... Args>
+auto make_omanip(F &&fn, Args &&...args)
+   -> omanip<decltype(std::bind(std::forward<F>(fn), std::placeholders::_1, std::forward<Args>(args)...))> ;
 
-template<class Fn,
-         class P1 = empty_param,
-         class P2 = empty_param,
-         class P3 = empty_param,
-         class P4 = empty_param>
-class omanip {
-   public:
-      enum { ParamCount =
-             param_count<P1>::Count +
-             param_count<P2>::Count +
-             param_count<P3>::Count +
-             param_count<P4>::Count } ;
+#define PCOMN_MAKE_OMANIP(...) decltype(pcomn::make_omanip(__VA_ARGS__)) { return pcomn::make_omanip(__VA_ARGS__) ; }
 
-      omanip(Fn f, P1 arg1, P2 arg2, P3 arg3, P4 arg4) :
-         _f(f),
-         _arg1(arg1),
-         _arg2(arg2),
-         _arg3(arg3),
-         _arg4(arg4)
-      {}
+template<typename Bind>
+struct omanip final {
+      static_assert(std::is_same<typename std::remove_reference<typename std::result_of<Bind(std::ostream &)>::type>::type, std::ostream>::value,
+                    "Invalid pcomn::omanip template argument: must be callable with std::ostream & argument and return std::ostream &") ;
 
-      omanip(Fn f, P1 arg1, P2 arg2, P3 arg3) :
-         _f(f),
-         _arg1(arg1),
-         _arg2(arg2),
-         _arg3(arg3)
-      {}
+      omanip(omanip &&other) : _fn(std::move(other._fn)) {}
 
-      omanip(Fn f, P1 arg1, P2 arg2) :
-         _f(f),
-         _arg1(arg1),
-         _arg2(arg2)
-      {}
+      omanip(const omanip &) = delete ;
+      omanip &operator=(const omanip &) = delete ;
+      omanip &operator=(omanip &&) = delete ;
 
-      omanip(Fn f, P1 arg1) :
-         _f(f),
-         _arg1(arg1)
-      {}
+      std::ostream &operator()(std::ostream &os) const { return _fn(os) ; }
 
-      omanip(Fn f) :
-         _f(f)
-      {}
-
-      template<typename E>
-      std::basic_ostream<E> &operator()(std::basic_ostream<E> &os) const
-      {
-         return call(os, type2int<ParamCount>()) ;
-      }
+      template<typename F, typename... Args>
+      friend auto make_omanip(F &&fn, Args &&...args)
+         -> omanip<decltype(std::bind(std::forward<F>(fn), std::placeholders::_1, std::forward<Args>(args)...))> ;
 
    private:
-      Fn _f ;
-      P1 _arg1 ;
-      P2 _arg2 ;
-      P3 _arg3 ;
-      P4 _arg4 ;
+      mutable Bind _fn ;
 
-      template<typename E>
-      std::basic_ostream<E> &
-      call(std::basic_ostream<E> &os, type2int<0>) const { return _f(os) ; }
-
-      template<typename E>
-      std::basic_ostream<E> &
-      call(std::basic_ostream<E> &os, type2int<1>) const { return _f(os, _arg1) ; }
-
-      template<typename E>
-      std::basic_ostream<E> &
-      call(std::basic_ostream<E> &os, type2int<2>) const { return _f(os, _arg1, _arg2) ; }
-
-      template<typename E>
-      std::basic_ostream<E> &
-      call(std::basic_ostream<E> &os, type2int<3>) const { return _f(os, _arg1, _arg2, _arg3) ; }
-
-      template<typename E>
-      std::basic_ostream<E> &
-      call(std::basic_ostream<E> &os, type2int<4>) const { return _f(os, _arg1, _arg2, _arg3, _arg4) ; }
+      omanip(Bind &&f) : _fn(std::move(f)) {}
 } ;
 
-template<class InputIterator, typename Before, typename After>
-struct _oseq {
-      std::ostream &operator() (std::ostream &os,
-                                InputIterator begin,
-                                InputIterator end,
-                                const Before &before,
-                                const After &after) const ;
-} ;
+template<typename F, typename... Args>
+inline auto make_omanip(F &&fn, Args &&...args)
+   -> omanip<decltype(std::bind(std::forward<F>(fn), std::placeholders::_1, std::forward<Args>(args)...))>
+{
+   return std::bind(std::forward<F>(fn), std::placeholders::_1, std::forward<Args>(args)...) ;
+}
 
-template<class InputIterator, typename Before, typename After>
-std::ostream &_oseq<InputIterator, Before, After>::operator()
-   (std::ostream &os,
-    InputIterator begin, InputIterator end,
-    const Before &before, const After &after) const
+template<typename F>
+inline std::ostream &operator<<(std::ostream &os, const omanip<F> &manip)
+{
+   return manip(os) ;
+}
+
+namespace detail {
+template<typename InputIterator, typename Before, typename After>
+std::ostream &print_sequence(std::ostream &os, InputIterator begin, InputIterator end,
+                             const Before &before, const After &after)
 {
    for (; begin != end ; ++begin)
       os << before << *begin << after ;
    return os ;
 }
-
-template<class InputIterator, typename Before, typename After>
-inline omanip<_oseq<InputIterator, Before, After>,
-              InputIterator, InputIterator, const Before &, const After &>
-osequence(InputIterator begin, InputIterator end, const Before &before, const After &after)
-{
-   typedef _oseq<InputIterator, Before, After> fn_t ;
-   return
-      omanip<fn_t, InputIterator, InputIterator, const Before &, const After &>
-      (fn_t(), begin, end, before, after) ;
 }
 
-template<class InputIterator, typename After>
-inline omanip<_oseq<InputIterator, const char *, After>,
-              InputIterator, InputIterator, const char *, const After &>
-osequence(InputIterator begin, InputIterator end, const After &after)
+template<typename InputIterator, typename Before, typename After>
+inline auto osequence(InputIterator begin, InputIterator end, const Before &before, const After &after)
+   ->PCOMN_MAKE_OMANIP(detail::print_sequence<InputIterator, const Before &, const After &>, begin, end,
+                       std::cref(before), std::cref(after)) ;
+
+
+template<typename InputIterator, typename After>
+inline auto osequence(InputIterator begin, InputIterator end, const After &after)
+   ->decltype(osequence(begin, end, "", after))
 {
-   typedef _oseq<InputIterator, const char *, After> fn_t ;
-   return
-      omanip<fn_t, InputIterator, InputIterator, const char *, const After &>
-      (fn_t(), begin, end, "", after) ;
+   return osequence(begin, end, "", after) ;
 }
 
-template<class InputIterator>
-inline omanip<_oseq<InputIterator, const char *, char>,
-              InputIterator, InputIterator, const char *, char>
-osequence(InputIterator begin, InputIterator end)
+template<typename InputIterator, typename After>
+inline auto osequence(InputIterator begin, InputIterator end)
+   ->decltype(osequence(begin, end, "", '\n'))
 {
-   typedef _oseq<InputIterator, const char *, char> fn_t ;
-   return
-      omanip<fn_t, InputIterator, InputIterator, const char *, char>
-      (fn_t(), begin, end, "", '\n') ;
+   return osequence(begin, end, "", '\n') ;
 }
+
 
 template<class Container, typename Before, typename After>
-inline omanip<_oseq<typename Container::const_iterator, Before, After>,
-              typename Container::const_iterator, typename Container::const_iterator,
-              const Before &, const After &>
-ocontainer(const Container &container, const Before &before, const After &after)
+inline auto ocontainer(const Container &container, const Before &before, const After &after)
+   ->decltype(osequence(std::begin(container), std::end(container), before, after))
 {
-   return osequence(container.begin(), container.end(), before, after) ;
+   return osequence(std::begin(container), std::end(container), before, after) ;
 }
 
 template<class Container, typename After>
-inline omanip<_oseq<typename Container::const_iterator, const char *, After>,
-              typename Container::const_iterator, typename Container::const_iterator,
-              const char *, const After &>
-ocontainer(const Container &container, const After &after)
+inline auto ocontainer(const Container &container, const After &after)
+   ->decltype(osequence(std::begin(container), std::end(container), after))
 {
-   return osequence(container.begin(), container.end(), after) ;
+   return osequence(std::begin(container), std::end(container), after) ;
 }
 
 template<class Container>
-inline omanip<_oseq<typename Container::const_iterator, const char *, char>,
-              typename Container::const_iterator, typename Container::const_iterator,
-              const char *, char>
-ocontainer(const Container &container)
+inline auto ocontainer(const Container &container)
+   ->decltype(osequence(std::begin(container), std::end(container)))
 {
-   return osequence(container.begin(), container.end()) ;
+   return osequence(std::begin(container), std::end(container)) ;
 }
 
-template<class E, class Fn, class P1, class P2, class P3, class P4>
-inline std::basic_ostream<E> &operator<<(std::basic_ostream<E> &os,
-                                         const pcomn::omanip<Fn, P1, P2, P3, P4> &omanip)
+namespace detail {
+template<typename InputIterator, typename Delim>
+std::ostream &print_sequence_delimited(std::ostream &os, InputIterator begin, InputIterator end,
+                                       const Delim &delim)
 {
-   return omanip(os) ;
-}
-
-template<class InputIterator, typename Delim>
-struct _oseqdelim {
-      std::ostream &operator() (std::ostream &os,
-                                InputIterator begin,
-                                InputIterator end,
-                                const Delim &delim) const ;
-} ;
-
-template<class InputIterator, typename Delim>
-std::ostream &_oseqdelim<InputIterator, Delim>::operator()
-   (std::ostream &os,
-    InputIterator begin, InputIterator end,
-    const Delim &delim) const
-{
-    for (bool first = true; begin != end ; ++begin, first = false) {
+    for (bool first = true ; begin != end ; ++begin)
+    {
         if (!first)
             os << delim ;
+        else
+           first = false ;
         os << *begin ;
     }
     return os ;
 }
-
-template<class InputIterator, typename Delim>
-inline omanip<_oseqdelim<InputIterator, Delim>,
-              InputIterator, InputIterator, const Delim&>
-oseqdelim(InputIterator begin, InputIterator end, const Delim &delim)
-{
-   typedef _oseqdelim<InputIterator, Delim> fn_t ;
-   return
-      omanip<fn_t, InputIterator, InputIterator, const Delim&>
-      (fn_t(), begin, end, delim) ;
 }
 
-template<class InputIterator>
-inline omanip<_oseqdelim<InputIterator, const char *>,
-              InputIterator, InputIterator, const char *>
-oseqdelim(InputIterator begin, InputIterator end, const char *delim = ", ")
+template<typename InputIterator, typename Delim>
+inline auto oseqdelim(InputIterator begin, InputIterator end, const Delim &delim)
+   ->PCOMN_MAKE_OMANIP(detail::print_sequence_delimited<InputIterator, Delim>, begin, end, std::cref(delim)) ;
+
+template<typename InputIterator>
+inline auto oseqdelim(InputIterator begin, InputIterator end)
+   ->decltype(oseqdelim(begin, end, ", "))
 {
-   typedef _oseqdelim<InputIterator, const char*> fn_t ;
-   return
-      omanip<fn_t, InputIterator, InputIterator, const char*>
-      (fn_t(), begin, end, delim) ;
+   return oseqdelim(begin, end, ", ") ;
 }
 
 template<class Container, typename Delim>
-inline omanip<_oseqdelim<typename Container::const_iterator, Delim>,
-              typename Container::const_iterator, typename Container::const_iterator,
-              const Delim&>
-ocontdelim(const Container &container, const Delim &delim)
+inline auto ocontdelim(const Container &container, const Delim &delim)
+   ->decltype(oseqdelim(std::begin(container), std::end(container), delim))
 {
-    return oseqdelim(container.begin(), container.end(), delim) ;
+   return oseqdelim(std::begin(container), std::end(container), delim) ;
 }
 
 template<class Container>
-inline omanip<_oseqdelim<typename Container::const_iterator, const char*>,
-              typename Container::const_iterator, typename Container::const_iterator,
-              const char*>
-ocontdelim(const Container &container)
+inline auto ocontdelim(const Container &container)
+   ->decltype(oseqdelim(std::begin(container), std::end(container)))
 {
-    return oseqdelim(container.begin(), container.end()) ;
+   return oseqdelim(std::begin(container), std::end(container)) ;
 }
 
-inline char *hrsize(uint64_t sz, char *buf)
+inline char *hrsize(unsigned long long sz, char *buf)
 {
    if (sz < KiB)
-      sprintf(buf, "%uB", (unsigned)sz) ;
+      sprintf(buf, "%lluB", sz) ;
    else if (sz < MiB)
       sprintf(buf, "%.1fK", sz/(KiB * 1.0)) ;
    else if (sz < GiB)
@@ -266,35 +174,28 @@ inline char *hrsize(uint64_t sz, char *buf)
    return buf ;
 }
 
+namespace detail {
 template<typename T>
-struct _ohrsize {
-      std::ostream &operator() (std::ostream &os, const T &sz) const
-      {
-         char buf[64] ;
-         return os << hrsize(sz, buf) ;
-      }
-} ;
-
-template<typename T>
-inline omanip<_ohrsize<T>, const T &> ohrsize(const T &sz)
+std::ostream &print_hrsize(std::ostream &os, const T &sz)
 {
-   typedef _ohrsize<T> fn_t ;
-   return omanip<fn_t, const T &>(fn_t(), sz) ;
+   char buf[64] ;
+   return os << hrsize(sz, buf) ;
 }
 
 template<typename T>
-struct _ostrq {
-      std::ostream &operator() (std::ostream &os, const T &str) const
-      {
-         return os << '\'' << str << '\'' ;
-      }
-} ;
+std::ostream &print_quoted_string(std::ostream &os, const T &str)
+{
+   return os << '\'' << str << '\'' ;
+}
+}
 
 template<typename T>
-inline omanip<_ostrq<T>, const T &> ostrq(const T &str)
-{
-   return omanip<_ostrq<T>, const T &>(_ostrq<T>(), str) ;
-}
+inline auto ohrsize(const T &sz)
+   ->PCOMN_MAKE_OMANIP(detail::print_hrsize<unsigned long long>, (unsigned long long)(sz)) ;
+
+template<typename T>
+inline auto ostrq(const T &str)
+   ->PCOMN_MAKE_OMANIP(detail::print_quoted_string<T>, std::cref(str)) ;
 
 } // end of namespace pcomn
 
