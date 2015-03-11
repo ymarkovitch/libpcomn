@@ -190,13 +190,52 @@ void UtilityTests::Test_TypeTraits()
    CPPUNIT_LOG_IS_FALSE((std::is_trivially_copyable<std::pair<int, std::string> >::value)) ;
 }
 
+namespace {
+struct visitor {
+      template<typename... Args>
+      void operator()(Args &&...args)
+      {
+         result += string_cast(sizeof...(Args)) + ":" + string_cast(const_tie(std::forward<Args>(args)...)) + "\n" ;
+      }
+
+      std::string &result ;
+} ;
+}
+
 void UtilityTests::Test_TupleUtils()
 {
    const std::tuple<> empty_tuple ;
    const std::tuple<std::string, int, const char *> t3 {"Hello", 3, "world"} ;
+   const std::pair<int, double> p1 {20, 1.5} ;
+
 
    CPPUNIT_LOG_EQUAL(CPPUNIT_STRING(empty_tuple), std::string("()")) ;
    CPPUNIT_LOG_EQUAL(CPPUNIT_STRING(t3), std::string(R"(("Hello" 3 world))")) ;
+
+   PCOMN_STATIC_CHECK(pcomn::tuplesize<std::tuple<> >() != -65535) ;
+   PCOMN_STATIC_CHECK(pcomn::tuplesize<int>() != -65535) ;
+   PCOMN_STATIC_CHECK(pcomn::tuplesize(t3) != -65535) ;
+
+   CPPUNIT_LOG_EQ(pcomn::tuplesize<std::tuple<> >(), 0) ;
+   CPPUNIT_LOG_EQ(pcomn::tuplesize<int>(), -1) ;
+   CPPUNIT_LOG_EQ(pcomn::tuplesize(20), -1) ;
+   CPPUNIT_LOG_EQ(pcomn::tuplesize(empty_tuple), 0) ;
+   CPPUNIT_LOG_EQ(pcomn::tuplesize(t3), 3) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   std::string s ;
+   visitor v = {s} ;
+   CPPUNIT_LOG_RUN(tuple_zip(v, p1)) ;
+   CPPUNIT_LOG_EQ(s, "1:{20}\n1:{1.5}\n") ;
+   s.clear() ;
+   CPPUNIT_LOG_RUN(tuple_zip(v, p1, t3)) ;
+   CPPUNIT_LOG_EQ(s, "2:{20,Hello}\n2:{1.5,3}\n") ;
+   s.clear() ;
+   CPPUNIT_LOG_RUN(tuple_zip(v, t3, p1)) ;
+   CPPUNIT_LOG_EQ(s, "2:{Hello,20}\n2:{3,1.5}\n") ;
+   s.clear() ;
+   CPPUNIT_LOG_RUN(tuple_zip(v, empty_tuple, p1)) ;
+   CPPUNIT_LOG_EQ(s, "") ;
 }
 
 void UtilityTests::Test_StreamUtils()

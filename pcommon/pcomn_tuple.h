@@ -86,6 +86,46 @@ struct tuple_for_each : for_each_visit<std::tuple_size<std::remove_const_t<Tuple
       typedef for_each_visit<std::tuple_size<std::remove_const_t<Tuple> >::value> applier ;
 } ;
 
+/******************************************************************************/
+/** Visit every item of any object compatible with std::get<n> function (this
+ includes at least std::tuple, std::pair, and std::array).
+*******************************************************************************/
+template<unsigned tuplesz>
+struct for_each_apply {
+      template<typename F, typename... S>
+      static void apply(F &&visitor, S &&...seq)
+      {
+         for_each_apply<tuplesz-1>::apply(std::forward<F>(visitor), std::forward<S>(seq)...) ;
+         std::forward<F>(visitor)(std::get<tuplesz-1>(std::forward<S>(seq))...) ;
+      }
+} ;
+
+/******************************************************************************/
+/** @cond detail
+ Explicit specialization of for_each_apply for size 0; serves as a sentry in for
+ recursive for_each_apply definition.
+*******************************************************************************/
+template<> struct for_each_apply<0> {
+      template<typename F, typename... S>
+      static void apply(F &&, S &&...) {}
+} ;
+/// @endcond
+
+/******************************************************************************/
+/** Apply a functor object to every item of a sequence of tuples, where the
+ i-th tuple contains the i-th element from each of the argument sequences.
+
+ The number of vizited tuples is the min(tuple_size<sequence>...) (i.e. the shortest
+ from @a sequences)
+*******************************************************************************/
+template<typename F, typename... Tuples>
+void tuple_zip(F &&visitor, Tuples &&...sequences)
+{
+   PCOMN_STATIC_CHECK(sizeof...(Tuples) > 0) ;
+   typedef for_each_apply<ct_min<size_t, std::tuple_size<valtype_t<Tuples> >::value...>::value> applier ;
+   applier::apply(std::forward<F>(visitor), std::forward<Tuples>(sequences)...) ;
+} ;
+
 // Prevent compiler from emitting a warning about return type having a const qualifier:
 // we actually need such qualifier for valid template instantiation while decaying pointers
 GCC_IGNORE_WARNING(ignored-qualifiers)
@@ -124,6 +164,23 @@ const_tie(A&& ...args)
 {
    return std::tie(pcomn::decay(std::forward<A>(args))...) ;
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
+namespace detail {
+template<typename T, bool> struct tuplesize_ : std::tuple_size<std::remove_cv_t<T> > {} ;
+template<typename T> struct tuplesize_<T, false> : std::integral_constant<ssize_t, -1> {} ;
+}
+
+template<typename T>
+inline constexpr ssize_t tuplesize()
+{
+   return detail::tuplesize_<T, std::is_destructible<std::tuple_size<T> >::value>::value ;
+}
+
+template<typename T>
+inline constexpr ssize_t tuplesize(const T &) { return tuplesize<T>() ; }
 
 } // end of namespace pcomn
 
