@@ -11,6 +11,7 @@
  CREATION DATE:   11 Jan 1999
 *******************************************************************************/
 #include <pcomn_platform.h>
+#include <pcomn_macros.h>
 
 #include <assert.h>
 #include <stdlib.h>
@@ -33,31 +34,31 @@
 #define PARANOID_NOXCHECK(condition)  PARANOID_NOXCHECKX((condition), #condition)
 
 #define NOXFAIL(msg) \
-   ((void)(pcomn_fail("Failure: %s, file %s, line %d\n", (char *)(msg), __FILE__, __LINE__)))
+   ((pcomn_fail("Failure: %s, file %s, line %d\n", (char *)(msg), __FILE__, __LINE__), 0))
 
 #define PCOMN_FAIL(msg) NOXFAIL(msg)
 
-#define PCOMN_ENSURE(p, s) (likely(!!(p)) ? (void)0 : NOXFAIL(s))
+#define PCOMN_ENSURE(p, s) (likely(!!(p)) ? (1) : NOXFAIL(s))
 
-#define PCOMN_VERIFY(p)                                                 \
-   (unlikely(!(p)) ? (void)(pcomn_fail(                                 \
-                               "Verify failed: %s, file %s, line %d\n", \
-                               (char *)#p, __FILE__, __LINE__ )) : (void)0)
+#define PCOMN_VERIFY(p)                                              \
+   (unlikely(!(p)) ? (pcomn_fail(                                    \
+                         "Verify failed: %s, file %s, line %d\n",    \
+                         (char *)#p, __FILE__, __LINE__), 0) : (1))
 
 #ifndef __PCOMN_DEBUG
 
-#define NOXPRECONDITIONX(p,s)   ((void)0)
-#define NOXCHECKX(p,s)          ((void)0)
-#define PARANOID_NOXCHECKX(p,s) ((void)0)
-#define NOXVERIFY(p)            ((void)(p))
+#define NOXPRECONDITIONX(p,s)   ((1))
+#define NOXCHECKX(p,s)          ((1))
+#define PARANOID_NOXCHECKX(p,s) ((1))
+#define NOXVERIFY(p)            (!!(p))
 #define NOXDBG(...)
 
 #else
 
-#define _NOXCHECKX(condition, message, type)                         \
-   (!(condition) ? (void)(pcomn_fail(                                \
-                   #type " violated: %s, file %s, line %d\n",        \
-                   (char *)message, __FILE__, __LINE__ )) : (void)0)
+#define _NOXCHECKX(condition, message, type)                            \
+   (!(condition) ? (pcomn_fail(                                         \
+                       (#type " violated: %s, file %s, line %d\n"), \
+                       (char *)message, __FILE__, __LINE__), 0) : (1))
 
 #define NOXPRECONDITIONX(condition, message) _NOXCHECKX((condition), message, Precondition)
 #define NOXCHECKX(condition, message) _NOXCHECKX((condition), message, Check)
@@ -76,7 +77,7 @@
 
 #ifdef PCOMN_COMPILER_BORLAND
 
-#  define __pcomn_assert_fail__(fmt, msg, file, line) \
+#  define __pcomn_assert_fail__(fmt, msg, file, line)         \
    __assertfail((char *)(fmt), (char *)(msg), (char *)(file), (line))
 
 #elif defined(PCOMN_COMPILER_MS)
@@ -109,7 +110,7 @@ DECLSPEC_IMPORT FARPROC WINAPI GetConsoleWindow() ;
 #else /* __cplusplus */
 extern "C" { DECLSPEC_IMPORT FARPROC WINAPI GetConsoleWindow() ; }
 template<typename N>
-__noreturn void __pcomn_assert_fail__(const char *fmt, const char *msg, const char *file, N line)
+__noreturn __noinline void __pcomn_assert_fail__(const char *fmt, const char *msg, const char *file, N line)
 {
    // This is a hack: there is no good and simple way to know in MSVC whether
    // the application is console or windows.
