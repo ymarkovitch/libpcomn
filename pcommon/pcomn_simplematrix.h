@@ -716,7 +716,7 @@ class matrix_slice {
       size_t size() const { return _rows ; }
       size_t rows() const { return _rows ; }
       size_t columns() const { return _cols ; }
-      bool empty() const { return !(_rows | _cols) ; }
+      bool empty() const { return !(_rows + _cols) ; }
 
       unipair<size_t> dim() const { return {_rows, _cols} ; }
 
