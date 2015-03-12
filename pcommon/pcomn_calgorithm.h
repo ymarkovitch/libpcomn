@@ -80,6 +80,16 @@ inline bool erase_keyed_value(KeyedContainer &c,
 }
 
 /******************************************************************************/
+/** Get both iterators of a container
+*******************************************************************************/
+template<typename C>
+inline auto both_ends(C &&container)
+   ->unipair<decltype(std::begin(std::forward<C>(container)))>
+{
+   return {std::begin(std::forward<C>(container)), std::end(std::forward<C>(container))} ;
+}
+
+/******************************************************************************/
 /** Clear a container containing pointers: delete all pointed values and clear
  the container itself.
  @note The name 'clear_icontainer' stands for 'clear indirect container'

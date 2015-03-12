@@ -46,6 +46,7 @@ if ! [ adhoc-targets ]
 
   # Test the library
   #
+  unittest unittest_algorithms ;
   unittest unittest_immutablestr ;
   unittest unittest_smartptr ;
   unittest unittest_strshims ;
