@@ -691,13 +691,13 @@ class _PCOMNEXP BodylessOperation : public Operation {
       /// Should never be called.
       void do_save(binary_obufstream &) const
       {
-         NOXFAIL("BodylessOperation::do_save() is called, should have never been") ;
+         PCOMN_FAIL("BodylessOperation::do_save() is called, should have never been") ;
       }
 
       /// Should never be called.
       void do_restore(const void *, size_t)
       {
-         NOXFAIL("BodylessOperation::do_restore() is called, should have never been") ;
+         PCOMN_FAIL("BodylessOperation::do_restore() is called, should have never been") ;
       }
 } ;
 

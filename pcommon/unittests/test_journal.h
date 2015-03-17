@@ -284,7 +284,7 @@ template<> class StringMapOp<SM_OP_ADD> : public pj::TargetOperation<Journallabl
                break ;
 
             default:
-               NOXFAIL("Invalid OP_ADD version!") ;
+               PCOMN_FAIL("Invalid OP_ADD version!") ;
          }
       }
       void do_save(pcomn::binary_obufstream &os) const

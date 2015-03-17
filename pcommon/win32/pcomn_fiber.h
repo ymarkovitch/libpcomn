@@ -185,7 +185,7 @@ class Fiber : public virtual PRefCount, public virtual Runnable, protected Fiber
          {
             TRACEPX(PCOMN_Fibers, DBGL_ALWAYS, "Fiber " << *fiber << " has a scheduler. Yelding...") ;
             fiber->yield() ;
-            NOXCHECK(!"We must never get here!") ;
+            PCOMN_DEBUG_FAIL("We must never get here!") ;
          }
       }
 } ;

@@ -216,7 +216,7 @@ void Scheduler::handle_events()
                   -1 : std::max<int64_t>(next_schedule - time_point::now().as_useconds(), 0) ;
                break ;
 
-            default: NOXFAIL("Unknown scheduler event") ;
+            default: PCOMN_FAIL("Unknown scheduler event") ;
          }
       }
 
@@ -226,7 +226,7 @@ void Scheduler::handle_events()
       // If we've got an exception in the scheduler event thread, there is nothing for it
       // but to abort a process (we have no way to inform the rest of our program the
       // sheduler is broken).
-      LOGPXALERT_CALL(NOXFAIL, PCOMN_Scheduler,
+      LOGPXALERT_CALL(PCOMN_FAIL, PCOMN_Scheduler,
                       STDEXCEPTOUT(x) << " handling events for scheduler " << *this) ;
    }
 }

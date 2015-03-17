@@ -315,7 +315,7 @@ raw_ios::pos_type raw_icachestream::seekoff(off_type offset, seekdir origin)
          break ;
 
       default:
-         NOXFAIL("Invalid 'origin' parameter to raw_icachestream::seekoff.") ;
+         PCOMN_FAIL("Invalid 'origin' parameter to raw_icachestream::seekoff.") ;
    }
    if (newpos > (off_type)cache_endpos())
       read_forward(NULL, newpos - cache_endpos()) ;

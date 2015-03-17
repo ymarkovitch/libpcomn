@@ -187,7 +187,7 @@ bool MMapStorage::do_close_storage()
          break ;
 
       default:
-         NOXFAIL("Invalid MMapStorage state while closing a storage") ;
+         PCOMN_FAIL("Invalid MMapStorage state while closing a storage") ;
    }
 
    _segment.reset() ;

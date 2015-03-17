@@ -33,17 +33,17 @@
 #define NOXCHECK(condition)           NOXCHECKX((condition), #condition)
 #define PARANOID_NOXCHECK(condition)  PARANOID_NOXCHECKX((condition), #condition)
 
-#define NOXFAIL(msg) \
-   ((pcomn_fail("Failure: %s, file %s, line %d\n", (char *)(msg), __FILE__, __LINE__), 0))
+#define PCOMN_FAIL(msg)                                                 \
+   ((void)(pcomn_fail("Failure: %s, file %s, line %d\n", (char *)(msg), __FILE__, __LINE__)))
 
-#define PCOMN_FAIL(msg) NOXFAIL(msg)
+#define PCOMN_ENSURE(p, s) (likely(!!(p)) ? (1) : (PCOMN_FAIL(s), 0))
 
-#define PCOMN_ENSURE(p, s) (likely(!!(p)) ? (1) : NOXFAIL(s))
-
-#define PCOMN_VERIFY(p)                                              \
-   (unlikely(!(p)) ? (pcomn_fail(                                    \
-                         "Verify failed: %s, file %s, line %d\n",    \
+#define PCOMN_VERIFY(p)                                                 \
+   (unlikely(!(p)) ? (pcomn_fail(                                       \
+                         "Verify failed: %s, file %s, line %d\n",       \
                          (char *)#p, __FILE__, __LINE__), 0) : (1))
+
+#define NOXFAIL(msg) PCOMN_FAIL(msg)
 
 #ifndef __PCOMN_DEBUG
 
@@ -53,11 +53,13 @@
 #define NOXVERIFY(p)            (!!(p))
 #define NOXDBG(...)
 
+#define PCOMN_DEBUG_FAIL(msg) ((void)0)
+
 #else
 
 #define _NOXCHECKX(condition, message, type)                            \
    (!(condition) ? (pcomn_fail(                                         \
-                       (#type " violated: %s, file %s, line %d\n"), \
+                       (#type " violated: %s, file %s, line %d\n"),     \
                        (char *)message, __FILE__, __LINE__), 0) : (1))
 
 #define NOXPRECONDITIONX(condition, message) _NOXCHECKX((condition), message, Precondition)
@@ -65,12 +67,14 @@
 #define NOXVERIFY(p) PCOMN_VERIFY(p)
 
 #if __PCOMN_DEBUG < 255
-#define PARANOID_NOXCHECKX(condition, message) ((void)0)
+#define PARANOID_NOXCHECKX(condition, message) ((1))
 #else
 #define PARANOID_NOXCHECKX(condition, message) _NOXCHECKX((condition), message, Paranoid check)
 #endif
 
 #define NOXDBG(...) __VA_ARGS__
+
+#define PCOMN_DEBUG_FAIL(msg) PCOMN_FAIL(msg)
 
 #endif
 

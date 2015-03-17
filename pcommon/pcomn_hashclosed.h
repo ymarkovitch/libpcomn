@@ -718,7 +718,7 @@ class closed_hashtable {
                      result = bucket ;
                   break ;
                default:
-                  NOXCHECK(!"Invalid bucket state while searching available bucket") ;
+                  PCOMN_DEBUG_FAIL("Invalid bucket state while searching available bucket") ;
             }
          while ((bucket = next(bucket)) != first_found) ;
          return result ;

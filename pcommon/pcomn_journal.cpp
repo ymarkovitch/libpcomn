@@ -330,12 +330,12 @@ void Journallable::apply_created(const Operation &op)
       atomic_op::inc(&_changecnt) ;
    }
    catch (const std::exception &x) {
-      LOGPXERR_CALL(NOXFAIL, PCOMN_Journal, STDEXCEPTOUT(x) << "\nwhile applying " << op
+      LOGPXERR_CALL(PCOMN_FAIL, PCOMN_Journal, STDEXCEPTOUT(x) << "\nwhile applying " << op
                     << "\nto " << *unlocked_journal() << ".\nThe operation is NOT applied") ;
       return ;
    }
    catch (...) {
-      LOGPXERR_CALL(NOXFAIL, PCOMN_Journal, "Unknown exception while applying " << op
+      LOGPXERR_CALL(PCOMN_FAIL, PCOMN_Journal, "Unknown exception while applying " << op
                     << "\nto " << *unlocked_journal() << ".\nThe operation is NOT applied") ;
       return ;
    }

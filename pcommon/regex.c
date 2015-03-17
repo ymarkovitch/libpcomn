@@ -155,7 +155,7 @@
 #endif
 
 #define FAIL(code,m,data)  { errh((code),(m),(data)); return(NULL); }
-#define FAIL_COMPLETELY(s) NOXFAIL(s)
+#define FAIL_COMPLETELY(s) PCOMN_FAIL(s)
 #define ISMULT(c)   ((c) == '*' || (c) == '+' || (c) == '?')
 #define META  "^$.[()|?+*\\"
 
