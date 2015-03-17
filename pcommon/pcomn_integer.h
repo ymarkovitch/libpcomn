@@ -402,10 +402,13 @@ inline nzbit_iterator<if_integer_t<I> > make_nzbit_iterator(I value)
  2
  17
 *************************************************************************/
-template<typename I>
-class nzbitpos_iterator : public std::iterator<std::forward_iterator_tag, int> {
+template<typename I, typename V = int>
+class nzbitpos_iterator : public std::iterator<std::forward_iterator_tag, V> {
       typedef typename int_traits<I>::utype datatype ;
+      typedef std::iterator<std::forward_iterator_tag, V> ancestor ;
    public:
+      using typename ancestor::value_type ;
+
       constexpr nzbitpos_iterator() : _data(), _pos(bitsizeof(I)) {}
       explicit nzbitpos_iterator(I value) : _data((datatype)value), _pos(-1)
       {
@@ -433,7 +436,7 @@ class nzbitpos_iterator : public std::iterator<std::forward_iterator_tag, int> {
          return !(*this == rhs) ;
       }
 
-      constexpr int operator*() { return _pos ; }
+      constexpr value_type operator*() { return static_cast<value_type>(_pos) ; }
 
    private:
       datatype _data ;
@@ -546,7 +549,7 @@ struct one_of {
          ct_shl<1U, v7>::value | ct_shl<1U, v8>::value ;
       PCOMN_STATIC_CHECK(v1 < msz && v2+1 <= msz && v3+1 <= msz && v4+1 <= msz &&
                          v5+1 <= msz && v6+1 <= msz && v7+1 <= msz && v8+1 <= msz) ;
-      static bool is(unsigned value) { return !!(mask & (1U<<value)) ; }
+      static constexpr bool is(unsigned value) { return !!(mask & (1U<<value)) ; }
 } ;
 
 } // end of namespace pcomn

@@ -164,6 +164,13 @@ void IntegerTests::Test_NzbitIterator()
    CPPUNIT_LOG_IS_TRUE(iter == end) ;
 }
 
+enum TestEnum : uint8_t {
+   TE_0,
+   TE_1,
+   TE_2,
+   TE_3
+} ;
+
 void IntegerTests::Test_NzbitPosIterator()
 {
    using namespace pcomn ;
@@ -195,6 +202,10 @@ void IntegerTests::Test_NzbitPosIterator()
    CPPUNIT_LOG_EQUAL(*iter64, 63) ;
    CPPUNIT_LOG_EQUAL(*iter64++, 63) ;
    CPPUNIT_LOG_IS_TRUE(iter64 == end64) ;
+
+   typedef bitop::nzbitpos_iterator<unsigned, TestEnum> te_iter ;
+   te_iter iter_te((1 << TE_1) | (1 << TE_3)) ;
+   CPPUNIT_LOG_EQUAL(std::vector<TestEnum>(iter_te, te_iter()), (std::vector<TestEnum>{TE_1, TE_3})) ;
 }
 
 void IntegerTests::Test_OneOf()
