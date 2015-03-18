@@ -10,11 +10,13 @@
 *******************************************************************************/
 #include <pcomn_net/netstreams.h>
 #include <pcomn_unittest.h>
+#include <pcomn_exec.h>
 
 #include <stdlib.h>
 #include <stdio.h>
 
 using namespace pcomn ;
+using namespace pcomn::sys ;
 
 #define TEST_PORT 64997
 
@@ -43,14 +45,14 @@ public:
 } ;
 
 #define SPAWN_ECHOSERVER(sleep_after)                                   \
-    pcomn::unit::spawncmd echoserver (EchoServerName + "'run(port=" P_STRINGIFY_I(TEST_PORT) ")'", false) ; \
+    spawncmd echoserver (EchoServerName + "'run(port=" P_STRINGIFY_I(TEST_PORT) ")'", false) ; \
     CPPUNIT_LOG("Spawned echo server listening at port " << TEST_PORT << std::endl) ; \
     sleep(sleep_after)
 
 void SocketStreamTests::Test_Socket_Stream()
 {
-    CPPUNIT_LOG_EXCEPTION(net::socket_istream(net::stream_socket_ptr(NULL)), std::invalid_argument) ;
-    CPPUNIT_LOG_EXCEPTION(net::socket_ostream(net::stream_socket_ptr(NULL)), std::invalid_argument) ;
+    CPPUNIT_LOG_EXCEPTION(net::socket_istream(net::stream_socket_ptr{}), std::invalid_argument) ;
+    CPPUNIT_LOG_EXCEPTION(net::socket_ostream(net::stream_socket_ptr{}), std::invalid_argument) ;
 
     char buf[8096] ;
 

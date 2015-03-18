@@ -38,6 +38,7 @@ typedef pcomn::simple_vector<int> int_vec ;
 typedef pcomn::simple_vector<const int> cint_vec ;
 typedef pcomn::simple_vector<std::string> str_vec ;
 
+typedef std::vector<int> int_vector ;
 
 /*******************************************************************************
  DirectSmartPtrTests
@@ -189,6 +190,7 @@ void SimpleSliceTests::Test_Simple_Matrix_Construct()
    typedef matrix_slice<std::string>   string_mslice ;
    typedef simple_matrix<std::string>  string_matrix ;
    typedef matrix_slice<const std::string> string_mcslice ;
+   typedef simple_matrix<int> int_matrix ;
 
    string_mslice mslice0 ;
    string_mcslice mc0 (mslice0) ;
@@ -248,6 +250,30 @@ void SimpleSliceTests::Test_Simple_Matrix_Construct()
 
    CPPUNIT_LOG_EQ(matrix2_3x2[0], (string_vector{"1", "2"})) ;
    CPPUNIT_LOG_EQ(matrix2_3x2[2], (string_vector{"5", "6"})) ;
+   CPPUNIT_LOG_EQ(matrix2_3x2.dim(), unipair<size_t>(3, 2)) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   int_matrix matrix3_4x3 (3, {
+         {2, 4, 6},
+         {1, 3, 5},
+         {20, 40, 60},
+         {10, 30, 50}}) ;
+
+   int_matrix matrix4_0x0 (0, {}) ;
+
+   CPPUNIT_LOG_EXCEPTION_MSG(int_matrix(3, {{2, 4, 6}, {1, 3}, {20, 40, 60}}),
+                             std::invalid_argument, "mismatch") ;
+
+   CPPUNIT_LOG_EQ(matrix4_0x0.dim(), unipair<size_t>(0, 0)) ;
+   CPPUNIT_LOG_EQ(matrix3_4x3.dim(), unipair<size_t>(4, 3)) ;
+
+   CPPUNIT_LOG_EQ(matrix3_4x3[0], (int_vector{2, 4, 6})) ;
+   CPPUNIT_LOG_EQ(matrix3_4x3[1], (int_vector{1, 3, 5})) ;
+   CPPUNIT_LOG_EQ(matrix3_4x3[2], (int_vector{20, 40, 60})) ;
+   CPPUNIT_LOG_EQ(matrix3_4x3[3], (int_vector{10, 30, 50})) ;
+
+   CPPUNIT_LOG_EXPRESSION(matrix3_4x3) ;
+   CPPUNIT_LOG_EQUAL(matrix3_4x3, matrix3_4x3) ;
 }
 
 int main(int argc, char *argv[])

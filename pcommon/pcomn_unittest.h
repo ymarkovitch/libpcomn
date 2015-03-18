@@ -621,6 +621,12 @@ std::string to_string(const T &value)
 *******************************************************************************/
 namespace CppUnit {
 
+template<typename T>
+struct assertion_traits<T &> : assertion_traits<T> {} ;
+
+template<typename T>
+struct assertion_traits<const T> : assertion_traits<T> {} ;
+
 struct stringify_item {
       stringify_item(std::string &result, char delimiter) :
          _result(result), _delimiter(delimiter), _count(0)
@@ -667,6 +673,25 @@ std::string assertion_traits_sequence<Seq, delim>::toString(const Seq &value)
    return result.append(1, ')') ;
 }
 
+template<typename M>
+struct assertion_traits_matrix : assertion_traits_sequence<M, '\n'> {
+      typedef assertion_traits_sequence<M, '\n'> ancestor ;
+
+      static bool equal(const M &x, const M &y)
+      {
+         return x.columns() == y.columns() && ancestor::equal(x, y) ;
+      }
+      static std::string toString(const M &m)
+      {
+         return
+            pcomn::strprintf("%lux%lu%s",
+                             (unsigned long)m.rows(),
+                             (unsigned long)m.columns(),
+                             m.empty() ? "" : "\n") +
+            ancestor::toString(m) ;
+      }
+} ;
+
 template<typename Unordered>
 struct assertion_traits_unordered {
 
@@ -710,8 +735,8 @@ _CPPUNIT_ASSERTION_TRAITS_SEQUENCE(std::deque) ;
 _CPPUNIT_ASSERTION_TRAITS_SEQUENCE(std::set) ;
 _CPPUNIT_ASSERTION_TRAITS_SEQUENCE(std::multiset) ;
 
-//_CPPUNIT_ASSERTION_TRAITS_MATRIX(pcomn::matrix_slice) ;
-//_CPPUNIT_ASSERTION_TRAITS_MATRIX(pcomn::simple_matrix) ;
+_CPPUNIT_ASSERTION_TRAITS_MATRIX(pcomn::matrix_slice) ;
+_CPPUNIT_ASSERTION_TRAITS_MATRIX(pcomn::simple_matrix) ;
 
 #undef _CPPUNIT_ASSERTION_TRAITS_SEQUENCE
 #undef _CPPUNIT_ASSERTION_TRAITS_MATRIX

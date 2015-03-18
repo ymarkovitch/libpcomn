@@ -11,11 +11,14 @@
 #include <pcomn_net/netsockets.h>
 #include <pcomn_unittest.h>
 #include <pcomn_sys.h>
+#include <pcomn_exec.h>
 
 #include <stdlib.h>
 #include <stdio.h>
 
 using namespace pcomn ;
+using namespace pcomn::sys ;
+using namespace pcomn::unit ;
 
 /*******************************************************************************
                             class StreamSocketTests
@@ -47,7 +50,7 @@ void StreamSocketTests::Test_Client_Socket_Read_Write()
 
     char buf[8096] ;
     {
-        pcomn::unit::spawncmd echoserver (EchoServerName + "'run(port=49999)'", false) ;
+        spawncmd echoserver (EchoServerName + "'run(port=49999)'", false) ;
         CPPUNIT_LOG("Spawned echo server listening at port 49999" << std::endl) ;
         sleep(2) ;
         net::client_socket sock (net::sock_address(49999)) ;
@@ -56,7 +59,7 @@ void StreamSocketTests::Test_Client_Socket_Read_Write()
         CPPUNIT_LOG_ASSERT(sock.sock_addr().port() > 1024) ;
         CPPUNIT_LOG_EQUAL(sock.peer_addr(), net::sock_address(49999)) ;
         CPPUNIT_LOG_EQUAL(sock.transmit("Hello, world!"), (size_t)13) ;
-        CPPUNIT_LOG_EQUAL(sock.receive(pcomn::unit::fillstrbuf(buf), sizeof buf - 1), (size_t)13) ;
+        CPPUNIT_LOG_EQUAL(sock.receive(fillstrbuf(buf), sizeof buf - 1), (size_t)13) ;
         CPPUNIT_LOG_EQUAL(std::string(buf), std::string("Hello, world!")) ;
     }
 }
@@ -64,7 +67,7 @@ void StreamSocketTests::Test_Client_Socket_Read_Write()
 void StreamSocketTests::Test_Server_Socket()
 {
     struct local {
-        static void run_client(pcomn::unit::forkcmd &process, int port)
+        static void run_client(forkcmd &process, int port)
         {
             if (process.is_child())
                 try
@@ -104,7 +107,7 @@ void StreamSocketTests::Test_Server_Socket()
     net::sock_address accepted_addr ;
     CPPUNIT_LOG_EXCEPTION(net::stream_socket(acceptor, &accepted_addr), net::socket_error) ;
 
-    pcomn::unit::forkcmd connecting_client ;
+    forkcmd connecting_client ;
     local::run_client(connecting_client, addr.port()) ;
     sleep(1) ;
 

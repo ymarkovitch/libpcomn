@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <vector>
 #include <memory>
+#include <initializer_list>
 
 #include <limits.h>
 
@@ -740,7 +741,7 @@ class matrix_slice {
       iterator end() { return {*this, size()} ; }
 
       const_iterator begin() const { return {*this, 0} ; }
-      const_iterator end() const { return {*this, size()} ; }
+      const_iterator end() const { return {*this, (ptrdiff_t)size()} ; }
 
       const_iterator cbegin() const { return begin() ; }
       const_iterator cend() const { return end() ; }
@@ -801,6 +802,8 @@ class simple_matrix : public matrix_slice<T> {
          this->fill(init) ;
       }
 
+      simple_matrix(size_t cols, std::initializer_list<std::initializer_list<T> > init) ;
+
       ~simple_matrix()
       {
          delete [] this->data() ;
@@ -856,6 +859,20 @@ simple_matrix<T>::simple_matrix(const matrix_slice<U> &src,
    ancestor(_new_data(src.rows(), src.columns()), src.rows(), src.columns())
 {
    std::copy(src.data(), src.data() + src.rows() * src.columns(), this->data()) ;
+}
+
+template<typename T>
+simple_matrix<T>::simple_matrix(size_t cols, std::initializer_list<std::initializer_list<T> > init) :
+   ancestor(_new_data(init.size(), cols), init.size(), cols)
+{
+   unsigned rownum = 0 ;
+   for (const auto &r: init)
+   {
+      ensure_eq<std::invalid_argument>
+         (r.size(), cols, "Item count mismatch in the initializer of a matrix row") ;
+      std::copy(r.begin(), r.end(), this->row(rownum).begin()) ;
+      ++rownum ;
+   }
 }
 
 /*******************************************************************************
