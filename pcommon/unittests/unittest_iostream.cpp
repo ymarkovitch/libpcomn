@@ -14,6 +14,8 @@
 #include <pcomn_iostream.h>
 #include <pcomn_fstream.h>
 
+#include "pcomn_testhelpers.h"
+
 #include <stdio.h>
 #include <typeinfo>
 

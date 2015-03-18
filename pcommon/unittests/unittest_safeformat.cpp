@@ -13,6 +13,8 @@
 #include <pcomn_safeformat.h>
 #include <pcomn_unittest.h>
 
+#include "pcomn_testhelpers.h"
+
 #include <iostream>
 #include <utility>
 

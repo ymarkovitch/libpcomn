@@ -47,10 +47,10 @@
 
 #ifndef __PCOMN_DEBUG
 
-#define NOXPRECONDITIONX(p,s)   ((1))
-#define NOXCHECKX(p,s)          ((1))
-#define PARANOID_NOXCHECKX(p,s) ((1))
-#define NOXVERIFY(p)            (!!(p))
+#define NOXPRECONDITIONX(p,s)   ((void)0)
+#define NOXCHECKX(p,s)          ((void)0)
+#define PARANOID_NOXCHECKX(p,s) ((void)0)
+#define NOXVERIFY(p)            ((void)(p))
 #define NOXDBG(...)
 
 #define PCOMN_DEBUG_FAIL(msg) ((void)0)
@@ -60,14 +60,14 @@
 #define _NOXCHECKX(condition, message, type)                            \
    (!(condition) ? (pcomn_fail(                                         \
                        (#type " violated: %s, file %s, line %d\n"),     \
-                       (char *)message, __FILE__, __LINE__), 0) : (1))
+                       (char *)message, __FILE__, __LINE__)) : (void)0)
 
 #define NOXPRECONDITIONX(condition, message) _NOXCHECKX((condition), message, Precondition)
 #define NOXCHECKX(condition, message) _NOXCHECKX((condition), message, Check)
 #define NOXVERIFY(p) PCOMN_VERIFY(p)
 
 #if __PCOMN_DEBUG < 255
-#define PARANOID_NOXCHECKX(condition, message) ((1))
+#define PARANOID_NOXCHECKX(condition, message) ((void)0)
 #else
 #define PARANOID_NOXCHECKX(condition, message) _NOXCHECKX((condition), message, Paranoid check)
 #endif

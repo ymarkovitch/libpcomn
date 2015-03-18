@@ -14,6 +14,8 @@
 #include <pcomn_handle.h>
 #include <pcomn_unittest.h>
 
+#include "pcomn_testhelpers.h"
+
 using namespace pcomn ;
 using namespace pcomn::unit ;
 

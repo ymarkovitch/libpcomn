@@ -1,4 +1,4 @@
-/*-*- mode: c++; tab-width: 3; indent-tabs-mode: nil; c-file-style: "ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
+/*-*- mode:c++;tab-width:3;indent-tabs-mode:nil;c-file-style:"ellemtel";c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 #ifndef __PCOMN_UNITTEST_H
 #define __PCOMN_UNITTEST_H
 /*******************************************************************************
@@ -14,7 +14,6 @@
 #include <pcomn_platform.h>
 #include <pcomn_macros.h>
 #include <pcomn_trace.h>
-#include <pcomn_handle.h>
 #include <pcomn_tuple.h>
 #include <pcomn_meta.h>
 #include <pcomn_except.h>
@@ -24,6 +23,7 @@
 #include <pcomn_path.h>
 #include <pcomn_function.h>
 #include <pcomn_safeptr.h>
+#include <pcomn_handle.h>
 
 #include <cppunit/ui/text/TestRunner.h>
 #include <cppunit/TestResult.h>
@@ -39,7 +39,6 @@
 #include <list>
 #include <map>
 #include <set>
-#include <tuple>
 #include <stdexcept>
 #include <mutex>
 
@@ -47,12 +46,11 @@
 #include <stdio.h>
 #include <errno.h>
 
-// GNU C++ 4.3 and higher uses variadic templates for tuples definition
-#if PCOMN_WORKAROUND(__GNUC_VER__, >= 430)
-#pragma GCC system_header
-#endif
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+// For getcwd()
+#ifdef PCOMN_PL_WINDOWS
+#include <direct.h>
+#else
+#include <unistd.h>
 #endif
 
 #define CPPUNIT_PROGDIR (::pcomn::unit::TestEnvironment::progdir())
@@ -65,7 +63,7 @@ namespace pcomn {
 namespace unit {
 
 /*******************************************************************************
-
+ Test environment
 *******************************************************************************/
 template<nullptr_t = nullptr>
 struct test_environment {
@@ -183,7 +181,7 @@ int test_environment<n>::prepare_test_environment(int argc, char ** const argv, 
 }
 
 /*******************************************************************************
-
+ Test path resolving
 *******************************************************************************/
 typedef test_environment<> TestEnvironment ;
 
@@ -386,6 +384,12 @@ class TestRunner : public CppUnit::TextUi::TestRunner {
       static const char *testFullName() { return TestProgressListener::testFullName() ; }
       static const char *testShortName() { return TestProgressListener::testShortName() ; }
 
+   public: // overridden from TestRunner (to avoid hidden virtual function warning)
+      void run(CppUnit::TestResult &controller, const std::string &testPath) override
+      {
+         ancestor::run(controller, testPath) ;
+      }
+
    private:
       TestProgressListener _listener ;
 } ;
@@ -408,6 +412,7 @@ class TestRunner : public CppUnit::TextUi::TestRunner {
 *******************************************************************************/
 template<const char *private_dirname>
 class TestFixture : public CppUnit::TestFixture {
+      PCOMN_STATIC_CHECK(private_dirname != nullptr) ;
    public:
       typedef ostream_lock<TestFixture<private_dirname> > locked_out ;
 
@@ -467,11 +472,9 @@ class TestFixture : public CppUnit::TestFixture {
 
       void setUp()
       {
-         const char * const dirname = private_dirname ? private_dirname : "test" ;
-
          char buf[2048] ;
          _data_basedir = CPPUNIT_PROGDIR + "/data" ;
-         snprintf(buf, sizeof buf, "%s/%s.%s", pcomn::str::cstr(_data_basedir), dirname, testname()) ;
+         snprintf(buf, sizeof buf, "%s/%s.%s", pcomn::str::cstr(_data_basedir), private_dirname, testname()) ;
          _datadir = buf ;
          snprintf(buf, sizeof buf, "%s/%s.out", pcomn::str::cstr(_data_basedir), testname()) ;
          _datafile = path::abspath<std::string>(buf) ;
@@ -561,6 +564,7 @@ void TestFixture<private_dirname>::ensure_data_file_match(const strslice &data_s
          case 1:  return false ;
          default: CPPUNIT_FAIL(bufprintf(command, "Either '%s' or '%s' does not exist", data_file().c_str(), sample_filename.c_str())) ;
       }
+      return false ;
    } ;
 
    if (_out)
@@ -572,335 +576,6 @@ void TestFixture<private_dirname>::ensure_data_file_match(const strslice &data_s
       rundiff("", data_file().c_str(), ".diff") ;
       CPPUNIT_FAIL(bufprintf(command, "'%s' and '%s' differ", data_file().c_str(), sample_filename.c_str())) ;
    }
-}
-
-/*******************************************************************************
- Helper functions
-*******************************************************************************/
-template<typename T>
-std::string to_string(const T &value)
-{
-   return CppUnit::assertion_traits<T>::toString(value) ;
-}
-
-template<typename Char, class Traits>
-bool equal_streams(std::basic_istream<Char, Traits> *lhs_stream,
-                   std::basic_istream<Char, Traits> *rhs_stream)
-{
-   typedef std::basic_istream<Char, Traits> istream_type ;
-   if (lhs_stream == rhs_stream)
-      return true ;
-   if (!lhs_stream || !rhs_stream)
-      return false ;
-   istream_type &lhs = *lhs_stream ;
-   istream_type &rhs = *rhs_stream ;
-
-   std::basic_string<Char, Traits>
-      lineLeft,
-      lineRight ;
-   while (lhs && rhs)
-   {
-      do std::getline(lhs, lineLeft) ;
-      while(lineLeft.empty() && lhs) ;
-      do std::getline(rhs, lineRight) ;
-      while(lineRight.empty() && rhs) ;
-      if (lineLeft != lineRight)
-         return false ;
-   }
-   return lhs.eof() && rhs.eof() ;
-}
-
-template<typename Char, class Traits>
-inline bool equal_streams(std::basic_istream<Char, Traits> *lhs_stream,
-                          std::basic_istream<Char, Traits> &&rhs_stream)
-{
-   return equal_streams(lhs_stream, &rhs_stream) ;
-}
-
-template<typename Char, class Traits>
-inline bool equal_streams(std::basic_istream<Char, Traits> &&lhs_stream,
-                          std::basic_istream<Char, Traits> *rhs_stream)
-{
-   return equal_streams(&lhs_stream, rhs_stream) ;
-}
-
-template<typename Char, class Traits>
-inline bool equal_streams(std::basic_istream<Char, Traits> &&lhs_stream,
-                          std::basic_istream<Char, Traits> &&rhs_stream)
-{
-   return equal_streams(&lhs_stream, &rhs_stream) ;
-}
-
-static std::string full_file(FILE *file)
-{
-   PCOMN_ENSURE_ARG(file) ;
-   char buf[4096] ;
-   std::string result ;
-   while (!feof(file))
-   {
-      CPPUNIT_ASSERT(!ferror(file)) ;
-      result.append(buf, fread(buf, 1, sizeof buf, file)) ;
-   }
-   return result ;
-}
-
-template<typename S>
-__noinline typename pcomn::enable_if_strchar<S, char, std::string>::type
-full_file(const S &name)
-{
-   return full_file(pcomn::FILE_safehandle(fopen(pcomn::str::cstr(name), "r")).handle()) ;
-}
-
-template<typename S>
-__noinline typename pcomn::enable_if_strchar<S, char, string_vector>::type
-file_lines(const S &name)
-{
-   std::ifstream file (pcomn::str::cstr(name)) ;
-   CPPUNIT_ASSERT(file) ;
-   string_vector result ;
-   for (std::string line ; std::getline(file, line) ; result.push_back(line)) ;
-   return result ;
-}
-
-template<typename Char, size_t n>
-inline Char *fillbuf(Char (&buf)[n], Char filler)
-{
-   for (unsigned i = 0 ; i < n ; buf[i++] = filler) ;
-   return buf ;
-}
-
-template<typename Char, size_t n>
-inline Char *fillbuf(Char (&buf)[n]) { return fillbuf(buf, (Char)'\xCC') ; }
-
-template<typename Char, size_t n>
-inline Char *fillstrbuf(Char (&buf)[n], Char filler)
-{
-   fillbuf(buf, filler) ;
-   buf[n-1] = 0 ;
-   return buf ;
-}
-
-template<typename Char, size_t n>
-inline Char *fillstrbuf(Char (&buf)[n])  { return fillstrbuf(buf, (Char)0) ; }
-
-inline void pause()
-{
-   std::cerr << "Press ENTER to continue..." << std::flush ;
-   getchar() ;
-}
-
-const int DWIDTH = 6 ;
-
-#define PCOMN_CHECK_TESTSEQ_BOUNDS(buf, begin, end, width)              \
-   PCOMN_THROW_MSG_IF                                                   \
-   (begin < end && (snprintf(buf, (width + 1), "%d", end - 1) > (width) || \
-                    snprintf(buf, (width + 1), "%*d", (width), begin) > (width)), \
-    std::invalid_argument,                                              \
-    "%d or %d is out of range: cannot print it into a field of width %d", begin, end, (width))
-
-/*******************************************************************************
- generate_sequence
-*******************************************************************************/
-template<class OStream>
-pcomn::disable_if_t<std::is_pointer<OStream>::value, OStream &>
-generate_sequence(OStream &os, int begin, int end)
-{
-   const size_t bufsz = DWIDTH + 1 ;
-   char buf[bufsz] ;
-
-   PCOMN_CHECK_TESTSEQ_BOUNDS(buf, begin, end, DWIDTH) ;
-
-   if (begin < end)
-      // "begin" is already printed by PCOMN_CHECK_TESTSEQ_BOUNDS
-      for(os.write(buf, DWIDTH) ; ++begin < end ; os.write(buf, DWIDTH))
-         snprintf(buf, bufsz, "%*d", DWIDTH, begin)  ;
-
-   return os ;
-}
-
-inline void *generate_sequence(void *buf, int begin, int end)
-{
-   char tmpbuf[DWIDTH + 1] ;
-
-   PCOMN_CHECK_TESTSEQ_BOUNDS(tmpbuf, begin, end, DWIDTH) ;
-
-   // "begin" is already printed by PCOMN_CHECK_TESTSEQ_BOUNDS
-   if (begin < end)
-   {
-      char *cbuf = (char *)buf ;
-      for (memcpy(buf, tmpbuf, DWIDTH) ; ++begin < end ; memcpy(cbuf += DWIDTH, tmpbuf, DWIDTH))
-         snprintf(tmpbuf, DWIDTH + 1, "%*d", DWIDTH, begin) ;
-   }
-   return buf ;
-}
-
-template<class IStream>
-pcomn::disable_if_t<std::is_pointer<IStream>::value, void>
-checked_read_sequence(IStream &is, int from, int to)
-{
-   CPPUNIT_LOG("Reading from " << from << " to " << to << " through " << CPPUNIT_TYPENAME(IStream) << std::endl) ;
-
-   const int begin = from ;
-   for (char buf[DWIDTH + 1] = "\0\0\0\0\0\0" ; from < to ; ++from)
-      if (is.read(buf, sizeof buf - 1))
-      {
-         char *end ;
-         CPPUNIT_ASSERT_EQUAL((long)from, strtol(buf, &end, 10)) ;
-         CPPUNIT_EQUAL(buf + DWIDTH, end) ;
-      }
-      else
-      {
-         CPPUNIT_LOG((is.eof() ? "EOF" : "Failure") << " reading item " << from
-                     << " at offset " << (from - begin)*DWIDTH
-                     << " from " << CPPUNIT_TYPENAME(is) << std::endl) ;
-         CPPUNIT_ASSERT(false) ;
-      }
-   CPPUNIT_LOG("OK" << std::endl) ;
-}
-
-inline void check_sequence(const void *buf, int from, int to)
-{
-   char *cbuf = (char *)buf ;
-   for (char tmpbuf[DWIDTH + 1] ; from < to ; ++from, cbuf += DWIDTH)
-   {
-      char *end ;
-
-      memcpy(memset(tmpbuf, 0, sizeof tmpbuf), cbuf, DWIDTH) ;
-      CPPUNIT_EQUAL(strtol(tmpbuf, &end, 10), (long)from) ;
-      CPPUNIT_EQUAL(tmpbuf + DWIDTH, end) ;
-   }
-}
-
-inline void checked_read_sequence(const void *buf, int from, int to)
-{
-   CPPUNIT_LOG("Checking buffer " << buf << " from " << from << " to " << to << std::endl) ;
-   check_sequence(buf, from, to) ;
-   CPPUNIT_LOG("OK" << std::endl) ;
-}
-
-/*******************************************************************************
- generate_seqn<>
-*******************************************************************************/
-template<unsigned n, class OStream>
-pcomn::disable_if_t<std::is_pointer<OStream>::value, OStream &>
-generate_seqn(OStream &os, int begin, int end)
-{
-   const size_t bufsz = n + 1 ;
-   char buf[bufsz] ;
-
-   PCOMN_CHECK_TESTSEQ_BOUNDS(buf, begin, end, n - 1) ;
-   buf[n-1] = '\n' ;
-
-   if (begin < end)
-      // "begin" is already printed by PCOMN_CHECK_TESTSEQ_BOUNDS
-      for(os.write(buf, n) ; ++begin < end ; os.write(buf, n))
-         snprintf(buf, bufsz, "%*d\n", n - 1, begin)  ;
-
-   return os ;
-}
-
-template<unsigned n>
-void *generate_seqn(void *buf, int begin, int end)
-{
-   const size_t bufsz = n + 1 ;
-   char tmpbuf[bufsz] ;
-
-   PCOMN_CHECK_TESTSEQ_BOUNDS(tmpbuf, begin, end, (int)n - 1) ;
-   tmpbuf[n-1] = '\n' ;
-
-   // "begin" is already printed by PCOMN_CHECK_TESTSEQ_BOUNDS
-   if (begin < end)
-   {
-      char *cbuf = (char *)buf ;
-      for (memcpy(buf, tmpbuf, n) ; ++begin < end ; memcpy(cbuf += n, tmpbuf, n))
-         snprintf(tmpbuf, bufsz, "%*d\n", n - 1, begin) ;
-   }
-   return buf ;
-}
-
-template<unsigned n, typename S>
-typename pcomn::enable_if_strchar<S, char, void>::type
-generate_seqn_file(const S &filename, int begin, int end)
-{
-   std::ofstream os (pcomn::str::cstr(filename)) ;
-   PCOMN_THROW_MSG_IF(!os, std::runtime_error, "Cannot open '%s' for writing", pcomn::str::cstr(filename)) ;
-   generate_seqn<n>(os, begin, end) ;
-}
-
-template<unsigned n, typename S>
-typename pcomn::enable_if_strchar<S, char, void>::type
-generate_seqn_file(const S &filename, int end = 0)
-{
-   generate_seqn_file<n>(filename, 0, end) ;
-}
-
-template<unsigned n, class IStream>
-pcomn::disable_if_t<std::is_pointer<IStream>::value, void>
-checked_read_seqn(IStream &is, int from, int to)
-{
-   CPPUNIT_LOG("Reading from " << from << " to " << to << " through " << CPPUNIT_TYPENAME(IStream) << std::endl) ;
-
-   const size_t bufsz = n + 1 ;
-   char buf[bufsz] ;
-   const int begin = from ;
-   for (memset(buf, 0, bufsz) ; from < to ; ++from)
-      if (is.read(buf, sizeof buf - 1))
-      {
-         char *end ;
-         CPPUNIT_ASSERT_EQUAL((long)from, strtol(buf, &end, 10)) ;
-         CPPUNIT_EQUAL(buf + (n - 1), end) ;
-         CPPUNIT_EQUAL(*end, '\n') ;
-      }
-      else
-      {
-         CPPUNIT_LOG((is.eof() ? "EOF" : "Failure") << " reading item " << from
-                     << " at offset " << (from - begin)*n
-                     << " from " << CPPUNIT_TYPENAME(is) << std::endl) ;
-         CPPUNIT_ASSERT(false) ;
-      }
-   CPPUNIT_LOG("OK" << std::endl) ;
-}
-
-template<unsigned n, typename S>
-typename pcomn::enable_if_strchar<S, char, void>::type
-checked_read_seqn_file(const S &filename, int begin, int end)
-{
-   std::ifstream is (pcomn::str::cstr(filename)) ;
-   PCOMN_THROW_MSG_IF(!is, std::runtime_error, "Cannot open '%s' for reading", pcomn::str::cstr(filename)) ;
-   checked_read_seqn<n>(is, begin, end) ;
-}
-
-template<unsigned n>
-void check_seqn(const void *buf, int from, int to)
-{
-   const char *cbuf = (const char *)buf ;
-   for (char tmpbuf[n + 1] ; from < to ; ++from, cbuf += n)
-   {
-      char *end ;
-      memcpy(memset(tmpbuf, 0, sizeof tmpbuf), cbuf, n) ;
-      CPPUNIT_EQUAL(strtol(tmpbuf, &end, 10), (long)from) ;
-      CPPUNIT_EQUAL(tmpbuf + (n - 1), end) ;
-      CPPUNIT_EQUAL(*end, '\n') ;
-   }
-}
-
-template<unsigned n>
-void checked_read_seqn(const void *buf, int from, int to)
-{
-   CPPUNIT_LOG("Checking buffer " << buf << " from " << from << " to " << to << std::endl) ;
-   check_seqn<n>(buf, from, to) ;
-   CPPUNIT_LOG("OK" << std::endl) ;
-}
-
-#undef PCOMN_CHECK_TESTSEQ_BOUNDS
-
-template<typename S>
-typename pcomn::enable_if_strchar<S, char, void>::type
-generate_file(const S &filename, const pcomn::strslice &content)
-{
-   std::ofstream os (pcomn::str::cstr(filename)) ;
-   PCOMN_THROW_MSG_IF(!os, std::runtime_error, "Cannot open '%s' for writing", pcomn::str::cstr(filename)) ;
-   os.write(content.begin(), content.size()) ;
 }
 
 inline int run_tests(TestRunner &runner, int argc, char ** const argv,
@@ -926,212 +601,23 @@ inline int run_tests(TestRunner &runner, int argc, char ** const argv,
       !runner.run(test_path) ;
 }
 
+/******************************************************************************/
+/** Convert an object to a string as specified by CppUnit::assertion_traits
+
+ This is in contrast to pcomn::string_cast(), which always uses std::ostream
+ output operator to stringify objects
+*******************************************************************************/
+template<typename T>
+std::string to_string(const T &value)
+{
+   return CppUnit::assertion_traits<T>::toString(value) ;
+}
+
 } // end of namespace pcomn::unit
 } // end of namespace pcomn
 
 /*******************************************************************************
- Unix-specific handling: process forking, pipes, etc.
-*******************************************************************************/
-#ifdef PCOMN_PL_UNIX
-#include <pcomn_string.h>
-#include <pcomn_except.h>
-
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <signal.h>
-
-namespace pcomn {
-namespace unit {
-
-struct forkcmd {
-      explicit forkcmd(bool wait_term = true) :
-         _pid(fork()),
-         _status(0),
-         _wait(wait_term)
-      {
-         if (pid())
-         {
-            std::cout << "Forked " << pid() << std::endl ;
-            PCOMN_THROW_MSG_IF(pid() < 0, std::runtime_error, "Error while forking: %s", strerror(errno)) ;
-         }
-      }
-
-      ~forkcmd()
-      {
-         if (pid() <= 0)
-            return ;
-         terminate() ;
-      }
-
-      pid_t pid() const { return _pid ; }
-
-      bool is_child() const { return !pid() ; }
-
-      int close()
-      {
-         PCOMN_THROW_MSG_IF(!pid(), std::runtime_error, "Child is already terminated") ;
-         PCOMN_THROW_MSG_IF(terminate() < 0, std::runtime_error, "Error while terminating: %s", strerror(errno)) ;
-         return _status ;
-      }
-
-   private:
-      const std::string _cmd ;
-      pid_t             _pid ;
-      int               _status ;
-      bool              _wait ;
-
-      int terminate()
-      {
-         if (pid() <= 0)
-            return 0 ;
-         pid_t p = _pid ;
-         _pid = 0 ;
-         if (_wait)
-            return waitpid(p, &_status, 0) ;
-         if (int result = waitpid(p, &_status, WNOHANG))
-            return result ;
-         std::cout << "Killing " << p << std::endl ;
-         if (int result = kill(p, SIGTERM))
-            return result ;
-         return waitpid(p, &_status, 0) ;
-      }
-
-      forkcmd(const forkcmd &) ;
-} ;
-
-/*******************************************************************************
-                            struct spawncmd
-*******************************************************************************/
-struct spawncmd {
-      explicit spawncmd(const std::string &cmd, bool wait_term = true) :
-         _cmd(cmd),
-         _pid(fork()),
-         _status(0),
-         _wait(wait_term)
-      {
-         if (pid())
-         {
-            std::cout << "Spawned " << pid() << std::endl ;
-            PCOMN_THROW_MSG_IF(pid() < 0, std::runtime_error, "Error attempting to spawn shell command '%s': %s", cmd.c_str(), strerror(errno)) ;
-         }
-         else
-         {
-            setsid() ;
-            execl("/bin/sh", "sh", "-c", cmd.c_str(), NULL) ;
-            exit(127) ;
-         }
-      }
-
-      ~spawncmd()
-      {
-         if (pid() <= 0)
-            return ;
-         terminate() ;
-      }
-
-      pid_t pid() const { return _pid ; }
-
-      int close()
-      {
-         PCOMN_THROW_MSG_IF(!pid(), std::runtime_error, "Child is already terminated") ;
-         PCOMN_THROW_MSG_IF(terminate() < 0, std::runtime_error, "Error terminating shell command '%s': %s", _cmd.c_str(), strerror(errno)) ;
-         PCOMN_THROW_MSG_IF(_status == 127, std::runtime_error, "Failure running the shell. Cannot run shell command '%s'", _cmd.c_str()) ;
-         return _status ;
-      }
-
-   private:
-      const std::string _cmd ;
-      pid_t             _pid ;
-      int               _status ;
-      bool              _wait ;
-
-      int terminate()
-      {
-         if (pid() <= 0)
-            return 0 ;
-         pid_t p = _pid ;
-         _pid = 0 ;
-         if (_wait)
-            return waitpid(p, &_status, 0) ;
-         if (int result = waitpid(p, &_status, WNOHANG))
-            return result ;
-         std::cout << "Killing " << p << std::endl ;
-         if (int result = kill(-getpgid(p), SIGTERM))
-            return result ;
-         return waitpid(p, &_status, 0) ;
-      }
-
-      spawncmd(const spawncmd &) ;
-} ;
-
-struct netpipe : private spawncmd {
-
-      netpipe(unsigned inport, unsigned outport, bool wait_term = true) :
-         spawncmd(pcomn::strprintf("nc -vv -l -p %u | tee /dev/stderr | nc -vv localhost %u", inport, outport))
-      {
-         sleep(1) ;
-      }
-} ;
-
-} // end of namespace pcomn::unit
-} // end of namespace pcomn
-
-#endif /* PCOMN_PL_UNIX */
-
-/*******************************************************************************
- "Hello, world!" in different languages and encodings.
-*******************************************************************************/
-#define PCOMN_HELLO_WORLD_EN_UTF8                        \
-   "A greeting to the world in English: 'Hello, world!'"
-#define PCOMN_HELLO_WORLD_EN_UCS                            \
-   L"A greeting to the world in English: 'Hello, world!'"
-
-#define PCOMN_HELLO_WORLD_DE_UTF8                                    \
-   "Der Gr\xc3\xbc\xc3\x9f an der Welt auf Deutsch: 'Hallo, Welt!'"
-
-#define PCOMN_HELLO_WORLD_DE_ISO8859_1                      \
-   "Der Gr\xfc\xdf an der Welt auf Deutsch: 'Hallo, Welt!'"
-
-#define PCOMN_HELLO_WORLD_DE_UCS                                  \
-   L"Der Gr\x00fc\x00df an der Welt auf Deutsch: 'Hallo, Welt!'"
-
-#define PCOMN_HELLO_WORLD_RU_UTF8 "\
-\xd0\x9f\xd1\x80\xd0\xb8\xd0\xb2\xd0\xb5\xd1\x82\xd1\x81\xd1\x82\xd0\xb2\xd0\xb8\xd0\xb5\x20\xd0\xbc\
-\xd0\xb8\xd1\x80\xd1\x83\x20\xd0\xbf\xd0\xbe\x2d\xd1\x80\xd1\x83\xd1\x81\xd1\x81\xd0\xba\xd0\xb8\x3a\
-\x20\x27\xd0\x9f\xd1\x80\xd0\xb8\xd0\xb2\xd0\xb5\xd1\x82\x2c\x20\xd0\xbc\xd0\xb8\xd1\x80\x21\x27"
-
-#define PCOMN_HELLO_WORLD_RU_1251 "\
-\xcf\xf0\xe8\xe2\xe5\xf2\xf1\xf2\xe2\xe8\xe5\x20\xec\xe8\xf0\xf3\x20\xef\xee\x2d\
-\xf0\xf3\xf1\xf1\xea\xe8\x3a\x20\x27\xcf\xf0\xe8\xe2\xe5\xf2\x2c\x20\xec\xe8\xf0\x21\x27"
-
-#define PCOMN_HELLO_WORLD_RU_UCS L"\
-\x041f\x0440\x0438\x0432\x0435\x0442\x0441\x0442\x0432\x0438\x0435\x0020\x043c\x0438\x0440\x0443\
-\x0020\x043f\x043e\x002d\x0440\x0443\x0441\x0441\x043a\x0438\x003a\x0020\x0027\x041f\x0440\x0438\
-\x0432\x0435\x0442\x002c\x0020\x043c\x0438\x0440\x0021\x0027"
-
-#ifdef PCOMN_PL_WINDOWS
-#define PCOMN_HELLO_WORLD_RU_CHAR PCOMN_HELLO_WORLD_RU_1251
-#define PCOMN_HELLO_WORLD_DE_CHAR PCOMN_HELLO_WORLD_DE_ISO8859_1
-#else
-#define PCOMN_HELLO_WORLD_RU_CHAR PCOMN_HELLO_WORLD_RU_UTF8
-#define PCOMN_HELLO_WORLD_DE_CHAR PCOMN_HELLO_WORLD_DE_UTF8
-#endif
-
-#define PCOMN_HELLO_WORLD_EN_CHAR PCOMN_HELLO_WORLD_EN_UTF8
-
-/*******************************************************************************
- Defining test string literals.
-*******************************************************************************/
-#define PCOMN_DEFINE_TEST_STR(name, value)                              \
-   template<> const char * const TestStrings<char>::name = value ;      \
-   template<> const wchar_t * const TestStrings<wchar_t>::name = P_CAT(L, #value)
-
-#define PCOMN_DEFINE_TEST_BUF(cvqual, name, value)                      \
-   template<> cvqual char TestStrings<char>::name[] = value ;           \
-   template<> cvqual wchar_t TestStrings<wchar_t>::name[] = P_CAT(L, #value)
-
-/*******************************************************************************
- Containter traits.
+ Assertion traits for STL containers, pcommon containers, pairs, tuples, ets.
 *******************************************************************************/
 namespace CppUnit {
 
@@ -1166,16 +652,18 @@ struct assertion_traits_sequence {
 template<typename Seq, char delim>
 bool assertion_traits_sequence<Seq, delim>::equal(const Seq &lhs, const Seq &rhs)
 {
+   using namespace std ;
    return
       lhs.size() == rhs.size() &&
-      std::equal(lhs.begin(), lhs.end(), rhs.begin(), assertion_traits_eq()) ;
+      std::equal(begin(lhs), end(lhs), begin(rhs), assertion_traits_eq()) ;
 }
 
 template<typename Seq, char delim>
 std::string assertion_traits_sequence<Seq, delim>::toString(const Seq &value)
 {
+   using namespace std ;
    std::string result (1, '(') ;
-   std::for_each(value.begin(), value.end(), stringify_item(result, delim)) ;
+   std::for_each(begin(value), end(value), stringify_item(result, delim)) ;
    return result.append(1, ')') ;
 }
 
@@ -1212,13 +700,21 @@ struct assertion_traits<std::map<K, T> > : assertion_traits_sequence<std::map<K,
    template<typename T>                                                 \
    struct assertion_traits<sequence<T> > : assertion_traits_sequence<sequence<T> > {}
 
+#define _CPPUNIT_ASSERTION_TRAITS_MATRIX(matrix)                    \
+   template<typename T>                                                 \
+   struct assertion_traits<matrix<T> > : assertion_traits_matrix<matrix<T> > {}
+
 _CPPUNIT_ASSERTION_TRAITS_SEQUENCE(std::vector) ;
 _CPPUNIT_ASSERTION_TRAITS_SEQUENCE(std::list) ;
 _CPPUNIT_ASSERTION_TRAITS_SEQUENCE(std::deque) ;
 _CPPUNIT_ASSERTION_TRAITS_SEQUENCE(std::set) ;
 _CPPUNIT_ASSERTION_TRAITS_SEQUENCE(std::multiset) ;
 
+//_CPPUNIT_ASSERTION_TRAITS_MATRIX(pcomn::matrix_slice) ;
+//_CPPUNIT_ASSERTION_TRAITS_MATRIX(pcomn::simple_matrix) ;
+
 #undef _CPPUNIT_ASSERTION_TRAITS_SEQUENCE
+#undef _CPPUNIT_ASSERTION_TRAITS_MATRIX
 
 template<> struct assertion_traits<std::type_info> {
       static bool equal(const std::type_info &x, const std::type_info &y)
@@ -1361,9 +857,7 @@ void ExpectedExceptionCodeTraits<ExceptionType>::expectedException(const pcomn::
       .append(", but got the message '").append(actual_msg.begin(), actual_msg.end()).append("'") ;
    throw CppUnit::Exception(CppUnit::Message(message)) ;
 }
-
 } // end of namespace CppUnit
-
 
 /*******************************************************************************
  Containter constructor macros.
@@ -1390,5 +884,121 @@ Container &CPPUNIT_SORTED(Container &&container)
    std::sort(container.begin(), container.end()) ;
    return container ;
 }
+
+/*******************************************************************************
+ Helper functions
+*******************************************************************************/
+namespace pcomn {
+namespace unit {
+
+template<typename Char, class Traits>
+bool equal_streams(std::basic_istream<Char, Traits> *lhs_stream,
+                   std::basic_istream<Char, Traits> *rhs_stream)
+{
+   typedef std::basic_istream<Char, Traits> istream_type ;
+   if (lhs_stream == rhs_stream)
+      return true ;
+   if (!lhs_stream || !rhs_stream)
+      return false ;
+   istream_type &lhs = *lhs_stream ;
+   istream_type &rhs = *rhs_stream ;
+
+   std::basic_string<Char, Traits>
+      lineLeft,
+      lineRight ;
+   while (lhs && rhs)
+   {
+      do std::getline(lhs, lineLeft) ;
+      while(lineLeft.empty() && lhs) ;
+      do std::getline(rhs, lineRight) ;
+      while(lineRight.empty() && rhs) ;
+      if (lineLeft != lineRight)
+         return false ;
+   }
+   return lhs.eof() && rhs.eof() ;
+}
+
+template<typename Char, class Traits>
+inline bool equal_streams(std::basic_istream<Char, Traits> *lhs_stream,
+                          std::basic_istream<Char, Traits> &&rhs_stream)
+{
+   return equal_streams(lhs_stream, &rhs_stream) ;
+}
+
+template<typename Char, class Traits>
+inline bool equal_streams(std::basic_istream<Char, Traits> &&lhs_stream,
+                          std::basic_istream<Char, Traits> *rhs_stream)
+{
+   return equal_streams(&lhs_stream, rhs_stream) ;
+}
+
+template<typename Char, class Traits>
+inline bool equal_streams(std::basic_istream<Char, Traits> &&lhs_stream,
+                          std::basic_istream<Char, Traits> &&rhs_stream)
+{
+   return equal_streams(&lhs_stream, &rhs_stream) ;
+}
+
+__noinline inline
+std::string full_file(FILE *file)
+{
+   PCOMN_ENSURE_ARG(file) ;
+   char buf[4096] ;
+   std::string result ;
+   while (!feof(file))
+   {
+      CPPUNIT_ASSERT(!ferror(file)) ;
+      result.append(buf, fread(buf, 1, sizeof buf, file)) ;
+   }
+   return result ;
+}
+
+template<typename S>
+__noinline typename pcomn::enable_if_strchar<S, char, std::string>::type
+full_file(const S &name)
+{
+   return full_file(pcomn::FILE_safehandle(fopen(pcomn::str::cstr(name), "r")).handle()) ;
+}
+
+template<typename S>
+__noinline typename pcomn::enable_if_strchar<S, char, string_vector>::type
+file_lines(const S &name)
+{
+   std::ifstream file (pcomn::str::cstr(name)) ;
+   CPPUNIT_ASSERT(file) ;
+   string_vector result ;
+   for (std::string line ; std::getline(file, line) ; result.push_back(line)) ;
+   return result ;
+}
+
+template<typename Char, size_t n>
+inline Char *fillbuf(Char (&buf)[n], Char filler)
+{
+   for (unsigned i = 0 ; i < n ; buf[i++] = filler) ;
+   return buf ;
+}
+
+template<typename Char, size_t n>
+inline Char *fillbuf(Char (&buf)[n]) { return fillbuf(buf, (Char)'\xCC') ; }
+
+template<typename Char, size_t n>
+inline Char *fillstrbuf(Char (&buf)[n], Char filler)
+{
+   fillbuf(buf, filler) ;
+   buf[n-1] = 0 ;
+   return buf ;
+}
+
+template<typename Char, size_t n>
+inline Char *fillstrbuf(Char (&buf)[n])  { return fillstrbuf(buf, (Char)0) ; }
+
+inline void pause()
+{
+   std::cerr << "Press ENTER to continue..." << std::flush ;
+   getchar() ;
+}
+
+} // end of namespace pcomn::unit
+} // end of namespace pcomn
 
 #endif /* __PCOMN_UNITTEST_H */

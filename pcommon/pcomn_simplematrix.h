@@ -43,7 +43,7 @@ class simple_slice {
       constexpr simple_slice() : _start(), _finish() {}
 
       template<typename U>
-      simple_slice(const simple_slice<U> &src, std::enable_if_t<std::is_same<T, std::add_const_t<U> >::value, Instantiate> = {}) :
+      simple_slice(const simple_slice<U> &src, instance_if_t<std::is_same<T, std::add_const_t<U> >::value> = {}) :
          _start(const_cast<T *>(src.begin())), _finish(const_cast<T *>(src.end()))
       {}
 
@@ -657,7 +657,7 @@ class matrix_slice {
                _pos(pos)
             {}
 
-            byrow_iterator(const byrow_iterator<!c> &src, std::enable_if_t<c, Instantiate> = {}) :
+            byrow_iterator(const byrow_iterator<!c> &src, instance_if_t<c> = {}) :
                _matrix(src._matrix),
                _pos(src._pos)
             {}
@@ -712,6 +712,13 @@ class matrix_slice {
       {
          NOXCHECK(init || empty()) ;
       }
+
+      matrix_slice(const matrix_slice<std::remove_const_t<item_type> > &other,
+                   instance_if_t<std::is_same<const_item_type, item_type>::value> = {}) :
+         _rows(other.rows()),
+         _cols(other.columns()),
+         _data(other.data())
+      {}
 
       size_t size() const { return _rows ; }
       size_t rows() const { return _rows ; }
@@ -776,7 +783,7 @@ class simple_matrix : public matrix_slice<T> {
 
       template<typename U>
       simple_matrix(const matrix_slice<U> &src,
-                    std::enable_if_t<std::is_convertible<U, T>::value, Instantiate> = {}) ;
+                    instance_if_t<std::is_convertible<U, T>::value> = {}) ;
 
       simple_matrix(const simple_matrix &src) :
          simple_matrix(static_cast<const ancestor &>(src))
@@ -845,7 +852,7 @@ PCOMN_DEFINE_SWAP(simple_matrix<T>, template<typename T>) ;
 template<typename T>
 template<typename U>
 simple_matrix<T>::simple_matrix(const matrix_slice<U> &src,
-                                std::enable_if_t<std::is_convertible<U, T>::value, Instantiate>) :
+                                instance_if_t<std::is_convertible<U, T>::value>) :
    ancestor(_new_data(src.rows(), src.columns()), src.rows(), src.columns())
 {
    std::copy(src.data(), src.data() + src.rows() * src.columns(), this->data()) ;

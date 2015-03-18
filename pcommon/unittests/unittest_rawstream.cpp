@@ -13,6 +13,8 @@
 #include <pcomn_string.h>
 #include <pcomn_unittest.h>
 
+#include "pcomn_testhelpers.h"
+
 using namespace pcomn::unit ;
 
 /*******************************************************************************

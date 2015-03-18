@@ -188,8 +188,10 @@ void SimpleSliceTests::Test_Simple_Matrix_Construct()
 
    typedef matrix_slice<std::string>   string_mslice ;
    typedef simple_matrix<std::string>  string_matrix ;
+   typedef matrix_slice<const std::string> string_mcslice ;
 
    string_mslice mslice0 ;
+   string_mcslice mc0 (mslice0) ;
 
    std::string data1[] = {"1", "2", "3", "4", "5", "6"} ;
 

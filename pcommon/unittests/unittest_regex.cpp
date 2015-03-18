@@ -9,12 +9,12 @@
  PROGRAMMED BY:   Yakov Markovitch
  CREATION DATE:   1 Aug 2007
 *******************************************************************************/
-#include <pcomn_regex.h>
 #include <pcomn_immutablestr.h>
 #include <pcomn_unittest.h>
-
 #include <pcomn_strslice.h>
 #include <pcomn_regex.h>
+
+#include "pcomn_testhelpers.h"
 
 #include <iostream>
 #include <utility>

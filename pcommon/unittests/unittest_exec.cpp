@@ -17,6 +17,8 @@
 #include <pcomn_string.h>
 #include <pcomn_except.h>
 
+#include "pcomn_testhelpers.h"
+
 #include <iostream>
 
 using namespace pcomn::path ;

@@ -15,6 +15,8 @@
 #include <pcomn_unittest.h>
 #include <pcomn_sys.h>
 
+#include "pcomn_testhelpers.h"
+
 #include <memory>
 
 #include <sys/stat.h>

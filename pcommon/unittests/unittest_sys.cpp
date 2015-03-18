@@ -17,6 +17,8 @@
 #include <pcomn_handle.h>
 #include <pcomn_sys.h>
 
+#include "pcomn_testhelpers.h"
+
 #include <iostream>
 
 using namespace pcomn ;

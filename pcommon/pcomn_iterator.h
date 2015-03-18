@@ -24,6 +24,52 @@
 
 namespace pcomn {
 
+/*******************************************************************************
+ *
+ * is_iterator<Iterator, Category = std::input_iterator_tag>
+ *
+ * Type trait to check if the type is an iterator of at least specified category
+ *
+ *******************************************************************************/
+namespace detail {
+template<typename T, typename = std::remove_pointer_t<std::remove_cv_t<T> > >
+struct icategory : std::iterator_traits<T> {} ;
+template<typename T> struct icategory<T, void> {} ;
+
+template<typename, typename>
+std::false_type test_icategory(...) ;
+
+template<typename T, typename C>
+std::is_base_of<C, typename icategory<T>::iterator_category>
+test_icategory(typename icategory<T>::iterator_category const volatile *) ;
+}
+
+/// type trait to check if the type is an iterator of at least specified category
+///
+template<typename T, typename C = std::input_iterator_tag>
+using is_iterator = decltype(detail::test_icategory<T, C>(0)) ;
+
+/*******************************************************************************
+
+*******************************************************************************/
+template<typename T>
+using iterator_difference_t = typename std::iterator_traits<T>::difference_type ;
+
+template<typename T>
+using iterator_value_t = typename std::iterator_traits<T>::value_type ;
+
+template<typename T>
+using iterator_pointer_t = typename std::iterator_traits<T>::pointer_type ;
+
+template<typename T>
+using iterator_reference_t = typename std::iterator_traits<T>::reference ;
+
+template<typename T>
+using iterator_category_t = typename std::iterator_traits<T>::iterator_category ;
+
+/*******************************************************************************
+
+*******************************************************************************/
 template<class RandomAccessContainer>
 struct collection_iterator_tag :
          public std::iterator<std::random_access_iterator_tag,
@@ -41,10 +87,7 @@ struct collection_iterator_tag :
        typename container_type::reference>::type reference ;
 } ;
 
-/*******************************************************************************
-                     template<struct RandomAccessContainer>
-                     struct collection_iterator
-*******************************************************************************/
+/******************************************************************************/
 /** An iterator over a random-access container.
     Container requirements:
       - there should be types value_type, reference, const_reference;
@@ -613,31 +656,6 @@ struct block_buffer {
 } ;
 
 typedef const_buffer_iterator<block_buffer> const_block_buffer_iterator ;
-
-/*******************************************************************************
- *
- * is_iterator<Iterator, Category = std::input_iterator_tag>
- *
- * Type trait to check if the type is an iterator of at least specified category
- *
- *******************************************************************************/
-namespace detail {
-template<typename T, typename = std::remove_pointer_t<std::remove_cv_t<T> > >
-struct icategory : std::iterator_traits<T> {} ;
-template<typename T> struct icategory<T, void> {} ;
-
-template<typename, typename>
-std::false_type test_icategory(...) ;
-
-template<typename T, typename C>
-std::is_base_of<C, typename icategory<T>::iterator_category>
-test_icategory(typename icategory<T>::iterator_category const volatile *) ;
-}
-
-/// type trait to check if the type is an iterator of at least specified category
-///
-template<typename T, typename C = std::input_iterator_tag>
-using is_iterator = decltype(detail::test_icategory<T, C>(0)) ;
 
 /*******************************************************************************
  Helper functions that construct adapted iterators on-the-fly
