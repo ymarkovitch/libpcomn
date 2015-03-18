@@ -62,6 +62,63 @@ struct _PCOMNEXP popencmd {
          return _status = ::pclose(p) ;
       }
 } ;
+/******************************************************************************/
+/** Fork the current process
+*******************************************************************************/
+struct _PCOMNEXP forkcmd {
+
+      explicit forkcmd(bool wait_term = true) ;
+
+      ~forkcmd() ;
+
+      pid_t pid() const { return _pid ; }
+      bool is_child() const { return !pid() ; }
+
+      int close() ;
+
+   private:
+      const std::string _cmd ;
+      pid_t             _pid ;
+      int               _status ;
+      bool              _wait ;
+
+      int terminate() ;
+
+      PCOMN_NONCOPYABLE(forkcmd) ;
+      PCOMN_NONASSIGNABLE(forkcmd) ;
+} ;
+
+/******************************************************************************/
+/** Spawn a shell command
+*******************************************************************************/
+struct _PCOMNEXP spawncmd {
+
+      explicit spawncmd(const std::string &cmd, bool wait_term = true) ;
+
+      ~spawncmd() ;
+
+      pid_t pid() const { return _pid ; }
+
+      int close() ;
+
+   private:
+      const std::string _cmd ;
+      pid_t             _pid ;
+      int               _status ;
+      bool              _wait ;
+
+      int terminate() ;
+
+      PCOMN_NONCOPYABLE(spawncmd) ;
+      PCOMN_NONASSIGNABLE(spawncmd) ;
+} ;
+
+/*******************************************************************************
+
+*******************************************************************************/
+struct _PCOMNEXP netpipe : private spawncmd {
+      netpipe(unsigned inport, unsigned outport, bool wait_term = true) ;
+} ;
 
 } // end of namespace pcomn::sys
 
