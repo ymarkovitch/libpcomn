@@ -314,38 +314,32 @@ class static_vector {
       typedef const T & const_reference ;
       typedef size_t    size_type ;
 
-      explicit static_vector(size_t size = 0) :
-         _size(size)
+      explicit static_vector(size_t size = 0) : _size(size)
       {
          NOXPRECONDITION(size <= maxsize) ;
-      }
-
-      static_vector(size_t size, const value_type &init) :
-         _size(size)
-      {
-         NOXPRECONDITION(size <= maxsize) ;
-         std::fill(begin(), end(), init) ;
-      }
-
-      static_vector(const simple_slice<const T> &src) :
-         _size(src.size())
-      {
-         NOXPRECONDITION(size() <= maxsize) ;
-         std::copy(src.begin(), src.end(), begin()) ;
       }
 
       static_vector(const static_vector &src) :
          _size(src.size())
       {
-         std::copy(src.begin(), src.end(), begin()) ;
+         std::copy(src.begin(), src.end(), mutable_data()) ;
+      }
+
+      static_vector(size_t size, const value_type &init) :
+         static_vector(size)
+      {
+         std::fill(mutable_data(), mutable_data() + size, init) ;
       }
 
       static_vector(const T *start, const T *finish) :
-         _size(finish - start)
+         static_vector(finish - start)
       {
-         NOXPRECONDITION(size() <= maxsize) ;
-         std::copy(start, finish, begin()) ;
+         std::copy(start, finish, mutable_data()) ;
       }
+
+      static_vector(const simple_slice<const T> &src) :
+         static_vector(src.begin(), src.end())
+      {}
 
       size_t size() const { return _size ; }
 
@@ -378,6 +372,9 @@ class static_vector {
 
       const value_type &front() const { return *_data ; }
       const value_type &back() const { return _data[_size - 1] ; }
+
+      value_type *data() { return _data ; }
+      const value_type *data() const { return _data ; }
 
       value_type &operator[] (ptrdiff_t ndx)
       {
@@ -418,6 +415,8 @@ class static_vector {
    private:
       size_t   _size ;
       T        _data[maxsize] ;
+
+      std::remove_cv_t<T> *mutable_data() { return (std::remove_cv_t<T> *)(_data + 0) ; }
 } ;
 
 /******************************************************************************/
@@ -658,7 +657,8 @@ class matrix_slice {
                _pos(pos)
             {}
 
-            byrow_iterator(const byrow_iterator<!c> &src, instance_if_t<c> = {}) :
+            template<bool other>
+            byrow_iterator(const byrow_iterator<other> &src, instance_if_t<((int)other < (int)c)> = {}) :
                _matrix(src._matrix),
                _pos(src._pos)
             {}
@@ -714,11 +714,10 @@ class matrix_slice {
          NOXCHECK(init || empty()) ;
       }
 
-      matrix_slice(const matrix_slice<std::remove_const_t<item_type> > &other,
-                   instance_if_t<std::is_same<const_item_type, item_type>::value> = {}) :
+      matrix_slice(const matrix_slice<std::remove_const_t<item_type> > &other) :
          _rows(other.rows()),
          _cols(other.columns()),
-         _data(other.data())
+         _data(const_cast<matrix_slice<std::remove_const_t<item_type> > &>(other).data())
       {}
 
       size_t size() const { return _rows ; }
@@ -780,17 +779,18 @@ template<typename T>
 class simple_matrix : public matrix_slice<T> {
       typedef matrix_slice<T> ancestor ;
    public:
-      simple_matrix() = default ;
+      using typename ancestor::item_type ;
+      using typename ancestor::const_item_type ;
 
-      template<typename U>
-      simple_matrix(const matrix_slice<U> &src,
-                    instance_if_t<std::is_convertible<U, T>::value> = {}) ;
+      simple_matrix() = default ;
 
       simple_matrix(const simple_matrix &src) :
          simple_matrix(static_cast<const ancestor &>(src))
       {}
 
       simple_matrix(simple_matrix &&src) { swap(src) ; }
+
+      simple_matrix(const matrix_slice<std::remove_const_t<item_type> > &other) ;
 
       simple_matrix(size_t rows, size_t cols) :
          ancestor(_new_data(rows, cols), rows, cols)
@@ -853,9 +853,7 @@ PCOMN_DEFINE_SWAP(simple_matrix<T>, template<typename T>) ;
  simple_matrix
 *******************************************************************************/
 template<typename T>
-template<typename U>
-simple_matrix<T>::simple_matrix(const matrix_slice<U> &src,
-                                instance_if_t<std::is_convertible<U, T>::value>) :
+simple_matrix<T>::simple_matrix(const matrix_slice<std::remove_const_t<item_type> > &src) :
    ancestor(_new_data(src.rows(), src.columns()), src.rows(), src.columns())
 {
    std::copy(src.data(), src.data() + src.rows() * src.columns(), this->data()) ;

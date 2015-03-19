@@ -12,6 +12,7 @@
  CREATION DATE:   12 May 2000
 *******************************************************************************/
 #include <pcomn_platform.h>
+#include <pcomn_iterator.h>
 
 #include <iostream>
 #include <iomanip>

@@ -648,15 +648,15 @@ struct assertion_traits_eq {
       bool operator()(const T &x, const T &y) const { return assertion_traits<T>::equal(x, y) ; }
 } ;
 
-template<typename Seq, char delim = ' '>
+template<typename Seq, char delim = ' ', char before = '(', char after = ')'>
 struct assertion_traits_sequence {
 
       static bool equal(const Seq &, const Seq &) ;
       static std::string toString(const Seq &) ;
 } ;
 
-template<typename Seq, char delim>
-bool assertion_traits_sequence<Seq, delim>::equal(const Seq &lhs, const Seq &rhs)
+template<typename Seq, char d, char b, char a>
+bool assertion_traits_sequence<Seq, d, b, a>::equal(const Seq &lhs, const Seq &rhs)
 {
    using namespace std ;
    return
@@ -664,18 +664,18 @@ bool assertion_traits_sequence<Seq, delim>::equal(const Seq &lhs, const Seq &rhs
       std::equal(begin(lhs), end(lhs), begin(rhs), assertion_traits_eq()) ;
 }
 
-template<typename Seq, char delim>
-std::string assertion_traits_sequence<Seq, delim>::toString(const Seq &value)
+template<typename Seq, char d, char b, char a>
+std::string assertion_traits_sequence<Seq, d, b, a>::toString(const Seq &value)
 {
    using namespace std ;
-   std::string result (1, '(') ;
-   std::for_each(begin(value), end(value), stringify_item(result, delim)) ;
-   return result.append(1, ')') ;
+   std::string result (1, b) ;
+   std::for_each(begin(value), end(value), stringify_item(result, d)) ;
+   return result.append(1, a) ;
 }
 
 template<typename M>
-struct assertion_traits_matrix : assertion_traits_sequence<M, '\n'> {
-      typedef assertion_traits_sequence<M, '\n'> ancestor ;
+struct assertion_traits_matrix : assertion_traits_sequence<M, '\n', '\n', '\n'> {
+      typedef assertion_traits_sequence<M, '\n', '\n', '\n'> ancestor ;
 
       static bool equal(const M &x, const M &y)
       {
@@ -683,12 +683,11 @@ struct assertion_traits_matrix : assertion_traits_sequence<M, '\n'> {
       }
       static std::string toString(const M &m)
       {
-         return
-            pcomn::strprintf("%lux%lu%s",
-                             (unsigned long)m.rows(),
-                             (unsigned long)m.columns(),
-                             m.empty() ? "" : "\n") +
-            ancestor::toString(m) ;
+         std::string desc
+            (pcomn::strprintf("%lux%lu", (unsigned long)m.rows(), (unsigned long)m.columns())) ;
+         return m.empty()
+            ? std::move(desc)
+            : std::move(desc) + "\n========" + ancestor::toString(m) + "========\n" ;
       }
 } ;
 

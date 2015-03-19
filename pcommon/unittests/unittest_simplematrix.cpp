@@ -272,6 +272,7 @@ void SimpleSliceTests::Test_Simple_Matrix_Construct()
    CPPUNIT_LOG_EQ(matrix3_4x3[2], (int_vector{20, 40, 60})) ;
    CPPUNIT_LOG_EQ(matrix3_4x3[3], (int_vector{10, 30, 50})) ;
 
+   CPPUNIT_LOG_EXPRESSION(matrix4_0x0) ;
    CPPUNIT_LOG_EXPRESSION(matrix3_4x3) ;
    CPPUNIT_LOG_EQUAL(matrix3_4x3, matrix3_4x3) ;
 }
