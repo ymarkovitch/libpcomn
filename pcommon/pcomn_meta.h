@@ -84,6 +84,21 @@ using bool_constant = std::integral_constant<bool, v> ;
 template<int v>
 using int_constant = std::integral_constant<int, v> ;
 
+template<unsigned v>
+using uint_constant = std::integral_constant<unsigned, v> ;
+
+template<long v>
+using long_constant = std::integral_constant<long, v> ;
+
+template<unsigned long v>
+using ulong_constant = std::integral_constant<unsigned long, v> ;
+
+template<long long v>
+using longlong_constant = std::integral_constant<long long, v> ;
+
+template<unsigned long long v>
+using ulonglong_constant = std::integral_constant<unsigned long long, v> ;
+
 /******************************************************************************/
 /** disable_if is a complement to std::enable_if
 *******************************************************************************/
