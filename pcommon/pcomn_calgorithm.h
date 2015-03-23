@@ -83,8 +83,7 @@ inline bool erase_keyed_value(KeyedContainer &c,
 /** Get both iterators of a container
 *******************************************************************************/
 template<typename C>
-inline auto both_ends(C &&container)
-   ->unipair<decltype(std::begin(std::forward<C>(container)))>
+inline unipair<decltype(std::begin(std::declval<C>()))> both_ends(C &&container)
 {
    return {std::begin(std::forward<C>(container)), std::end(std::forward<C>(container))} ;
 }
