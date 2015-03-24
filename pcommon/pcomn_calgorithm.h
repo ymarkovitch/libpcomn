@@ -88,6 +88,13 @@ inline unipair<decltype(std::begin(std::declval<C>()))> both_ends(C &&container)
    return {std::begin(std::forward<C>(container)), std::end(std::forward<C>(container))} ;
 }
 
+template<typename C>
+inline decltype(std::distance(std::begin(std::declval<C>()), std::end(std::declval<C>())))
+range_size(const C &c)
+{
+   return std::distance(std::begin(c), std::end(c)) ;
+}
+
 /******************************************************************************/
 /** Clear a container containing pointers: delete all pointed values and clear
  the container itself.
