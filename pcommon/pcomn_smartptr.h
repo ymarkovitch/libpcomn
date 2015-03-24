@@ -439,6 +439,7 @@ class shared_ref {
       type &operator*() const { return get() ; }
 
       const smartptr_type &ptr() const { return _ptr ; }
+      operator const smartptr_type &() const { return ptr() ; }
 
       shared_ref &operator=(const shared_ref &) = default ;
 

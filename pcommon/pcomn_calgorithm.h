@@ -100,11 +100,11 @@ range_size(const C &c)
  the container itself.
  @note The name 'clear_icontainer' stands for 'clear indirect container'
 *******************************************************************************/
-template<typename Container>
-inline Container &clear_icontainer(Container &container)
+template<typename C>
+inline C &clear_icontainer(C &container)
 {
    std::for_each(container.begin(), container.end(),
-                 std::default_delete<typename std::remove_pointer<typename Container::value_type>::type>()) ;
+                 std::default_delete<std::remove_pointer_t<typename C::value_type> >()) ;
    container.clear() ;
    return container ;
 }
@@ -116,8 +116,8 @@ inline Container &clear_icontainer(Container &container)
  In contrast with common STL container resize() method, never shrinks
  the container.
 *******************************************************************************/
-template<typename Container>
-inline Container &ensure_size(Container &container, size_t sz)
+template<typename C>
+inline C &ensure_size(C &container, size_t sz)
 {
    if (sz > container.size())
       container.resize(sz) ;
@@ -125,12 +125,19 @@ inline Container &ensure_size(Container &container, size_t sz)
 }
 
 /// @overload
-template<typename Container>
-inline Container &ensure_size(Container &container, size_t sz,
-                              const typename Container::value_type &value)
+template<typename C>
+inline C &ensure_size(C &container, size_t sz, const typename C::value_type &value)
 {
    if (sz > container.size())
       container.resize(sz, value) ;
+   return container ;
+}
+
+template<typename C>
+inline std::enable_if_t<is_iterator<typename C::iterator, std::random_access_iterator_tag>::value, C &>
+truncate_container(C &container, const typename C::iterator &pos)
+{
+   container.resize(pos - container.begin()) ;
    return container ;
 }
 

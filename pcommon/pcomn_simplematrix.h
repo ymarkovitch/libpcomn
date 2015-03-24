@@ -790,7 +790,13 @@ class simple_matrix : public matrix_slice<T> {
 
       simple_matrix(simple_matrix &&src) { swap(src) ; }
 
-      simple_matrix(const matrix_slice<std::remove_const_t<item_type> > &other) ;
+      simple_matrix(const matrix_slice<std::remove_const_t<item_type> > &other) :
+         simple_matrix(other.data(), other.rows(), other.columns(), std::true_type())
+      {}
+
+      simple_matrix(const matrix_slice<const_item_type> &other) :
+         simple_matrix(other.data(), other.rows(), other.columns(), std::true_type())
+      {}
 
       simple_matrix(size_t rows, size_t cols) :
          ancestor(_new_data(rows, cols), rows, cols)
@@ -845,6 +851,8 @@ class simple_matrix : public matrix_slice<T> {
          size_t sz = rows * cols ;
          return sz ? new T[sz] : nullptr ;
       }
+
+      simple_matrix(const_item_type *other_data, size_t rows, size_t cols, std::true_type) ;
 } ;
 
 PCOMN_DEFINE_SWAP(simple_matrix<T>, template<typename T>) ;
@@ -853,10 +861,10 @@ PCOMN_DEFINE_SWAP(simple_matrix<T>, template<typename T>) ;
  simple_matrix
 *******************************************************************************/
 template<typename T>
-simple_matrix<T>::simple_matrix(const matrix_slice<std::remove_const_t<item_type> > &src) :
-   ancestor(_new_data(src.rows(), src.columns()), src.rows(), src.columns())
+simple_matrix<T>::simple_matrix(const_item_type *src_data, size_t rows, size_t cols, std::true_type) :
+   ancestor(_new_data(rows, cols), rows, cols)
 {
-   std::copy(src.data(), src.data() + src.rows() * src.columns(), this->data()) ;
+   std::copy(src_data, src_data + rows * cols, this->data()) ;
 }
 
 template<typename T>

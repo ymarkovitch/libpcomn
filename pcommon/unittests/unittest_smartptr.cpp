@@ -478,7 +478,7 @@ void SmartRefTests::Test_Constructors()
    CPPUNIT_LOG_EQUAL(bar.instances(), 1) ;
    CPPUNIT_LOG_EQUAL(bar.get().instances(), 1) ;
 
-   pcomn::shared_intrusive_ptr<Foo> foobar (bar.ptr()) ;
+   pcomn::shared_intrusive_ptr<Foo> foobar (bar) ;
 
    CPPUNIT_LOG_IS_TRUE(bar_reg.constructed) ;
    CPPUNIT_LOG_IS_FALSE(bar_reg.destructed) ;
