@@ -80,6 +80,43 @@ inline std::ostream &operator<<(std::ostream &os, const omanip<F> &manip)
 }
 
 /*******************************************************************************
+ Printing algorithms
+*******************************************************************************/
+template<typename InputIterator, typename Delim>
+std::ostream &print_sequence(InputIterator begin, InputIterator end, std::ostream &os,
+                             const Delim &delimiter)
+{
+   int count = -1 ;
+   for (; begin != end ; ++begin)
+   {
+      if (++count)
+         os << delimiter ;
+      os << *begin ;
+   }
+   return os ;
+}
+
+template<typename InputIterator, typename Delim, typename Fn>
+std::ostream &print_sequence(InputIterator begin, InputIterator end, std::ostream &os,
+                             const Delim &delimiter, Fn &&fn)
+{
+   int count = -1 ;
+   for (; begin != end ; ++begin)
+   {
+      if (++count)
+         os << delimiter ;
+      std::forward<Fn>(fn)(os, *begin) ;
+   }
+   return os ;
+}
+
+template<typename InputIterator>
+inline std::ostream &print_sequence(InputIterator begin, InputIterator end, std::ostream &os)
+{
+   return print_sequence(begin, end, os, ", ") ;
+}
+
+/*******************************************************************************
  Various ostream manipulators
 *******************************************************************************/
 namespace detail {
@@ -87,18 +124,31 @@ template<typename T>
 using decayed = typename std::decay<T>::type ;
 
 template<typename InputIterator, typename Before, typename After>
-std::ostream &print_sequence(std::ostream &os, InputIterator begin, InputIterator end,
-                             const Before &before, const After &after)
+std::ostream &o_sequence(std::ostream &os, InputIterator begin, InputIterator end,
+                         const Before &before, const After &after)
 {
    for (; begin != end ; ++begin)
       os << before << *begin << after ;
    return os ;
 }
+
+template<typename InputIterator, typename Delim>
+inline std::ostream &o_sequence(std::ostream &os, InputIterator begin, InputIterator end,
+                                const Delim &delimiter)
+{
+   return print_sequence(begin, end, os, delimiter) ;
+}
+
+template<typename InputIterator>
+inline std::ostream &o_sequence(std::ostream &os, InputIterator begin, InputIterator end)
+{
+   return print_sequence(begin, end, os) ;
+}
 }
 
 template<typename InputIterator, typename Before, typename After>
 inline auto osequence(InputIterator begin, InputIterator end, const Before &before, const After &after)
-   ->PCOMN_MAKE_OMANIP(detail::print_sequence<InputIterator, detail::decayed<Before>, detail::decayed<After> >,
+   ->PCOMN_MAKE_OMANIP(detail::o_sequence<InputIterator, detail::decayed<Before>, detail::decayed<After> >,
                        begin, end, detail::decayed<Before>(before), detail::decayed<After>(after)) ;
 
 
@@ -122,38 +172,14 @@ template<class Container>
 inline auto ocontainer(const Container &container)
    ->PCOMN_DERIVE_OMANIP(osequence(std::begin(container), std::end(container))) ;
 
-namespace detail {
-template<typename InputIterator, typename Delim>
-inline std::ostream &print_sequence_delimited(std::ostream &os, InputIterator begin, InputIterator end,
-                                              const Delim &delim)
-{
-    for (bool first = true ; begin != end ; ++begin)
-    {
-        if (!first)
-            os << delim ;
-        else
-           first = false ;
-        os << *begin ;
-    }
-    return os ;
-}
-
-template<typename InputIterator>
-std::ostream &print_sequence_delimited(std::ostream &os, InputIterator begin, InputIterator end)
-{
-   return print_sequence_delimited(os, begin, end, ", ") ;
-}
-
-}
-
 template<typename InputIterator, typename Delim>
 inline auto oseqdelim(InputIterator begin, InputIterator end, const Delim &delim)
-   ->PCOMN_MAKE_OMANIP(detail::print_sequence_delimited<InputIterator, detail::decayed<Delim> >,
+   ->PCOMN_MAKE_OMANIP(detail::o_sequence<InputIterator, detail::decayed<Delim> >,
                        begin, end, detail::decayed<Delim>(delim)) ;
 
 template<typename InputIterator>
 inline auto oseqdelim(InputIterator begin, InputIterator end)
-   ->PCOMN_MAKE_OMANIP(detail::print_sequence_delimited<InputIterator>, begin, end) ;
+   ->PCOMN_MAKE_OMANIP(detail::o_sequence<InputIterator>, begin, end) ;
 
 template<class Container, typename Delim>
 inline auto ocontdelim(const Container &container, const Delim &delim)

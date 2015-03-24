@@ -328,6 +328,9 @@ public:
     /// Get subnet mask (host order)
     constexpr uint32_t netmask() const { return ~0UL << (32 - _pfxlen) ; }
 
+    constexpr bool is_host() const { return pfxlen() == 32 ; }
+    constexpr bool is_any() const { return pfxlen() == 0 ; }
+
     /// Get the closed address interval for this subnetwork
     ///
     /// The resulting interval is @em closed, hence includes both its endpoints.
