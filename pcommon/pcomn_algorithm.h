@@ -261,6 +261,29 @@ void adjacent_for_each(ForwardIterator begin, ForwardIterator end, Function f)
    }
 }
 
+template<typename ForwardIterator, typename BinaryPredicate, typename BinaryOperation>
+inline ForwardIterator adjacent_coalesce(ForwardIterator first, ForwardIterator last,
+                                         BinaryPredicate pred, BinaryOperation coalesce)
+{
+    first = std::adjacent_find(first, last, pred) ;
+    if (first == last)
+        return last ;
+    ForwardIterator result = first ;
+    ++first ;
+    *result = coalesce(*result, *first) ;
+
+    for (++first ; first != last ; ++first)
+       if (pred(*result, *first))
+          *result = coalesce(*result, *first) ;
+       else
+       {
+          ++result ;
+          *result = std::move(*first) ;
+       }
+    ++result ;
+    return result ;
+}
+
 template <typename T>
 inline std::enable_if_t<std::is_trivially_copyable<T>::value, T *>
 raw_copy(const T *first, const T *last, T *dest)
