@@ -185,6 +185,10 @@ template<class Container, typename Delim>
 inline auto ocontdelim(const Container &container, const Delim &delim)
    ->PCOMN_DERIVE_OMANIP(oseqdelim(std::begin(container), std::end(container), delim)) ;
 
+template<typename T, size_t sz, typename Delim>
+inline auto ocontdelim(T (&container)[sz], const Delim &delim)
+   ->PCOMN_DERIVE_OMANIP(oseqdelim(std::begin(container), std::end(container), delim)) ;
+
 template<class Container>
 inline auto ocontdelim(const Container &container)
    ->PCOMN_DERIVE_OMANIP(oseqdelim(std::begin(container), std::end(container)))

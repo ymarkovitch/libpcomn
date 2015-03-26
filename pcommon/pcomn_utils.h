@@ -872,19 +872,19 @@ template<typename> struct simple_matrix ;
 template<typename T>
 inline std::ostream &operator<<(std::ostream &os, const simple_slice<T> &v)
 {
-   return os << pcomn::osequence(v.begin(), v.end(), std::setw(5), ' ') ;
+   return os << oseqdelim(v.begin(), v.end(), ' ') ;
 }
 
 template<typename T>
 inline std::ostream &operator<<(std::ostream &os, const simple_vector<T> &v)
 {
-   return os << pcomn::osequence(v.begin(), v.end(), std::setw(5), ' ') ;
+   return os << oseqdelim(v.begin(), v.end(), ' ') ;
 }
 
 template<typename T, size_t n>
 inline std::ostream &operator<<(std::ostream &os, const static_vector<T,n> &v)
 {
-   return os << pcomn::osequence(v.begin(), v.end(), std::setw(5), ' ') ;
+   return os << oseqdelim(v.begin(), v.end(), ' ') ;
 }
 
 } // end of pcomn namespace
@@ -902,7 +902,7 @@ inline ostream &operator<<(ostream &os, const pair<T1,T2> &p)
 template<typename T, typename A>
 inline ostream &operator<<(ostream &os, const vector<T, A> &v)
 {
-   return os << pcomn::osequence(v.begin(), v.end(), " ") ;
+   return os << pcomn::oseqdelim(v.begin(), v.end(), ' ') ;
 }
 
 template<typename T, typename D>
