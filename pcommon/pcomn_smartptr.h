@@ -399,12 +399,22 @@ PCOMN_SPTR_RELOP(shared_intrusive_ptr, <) ;
 template<typename T>
 class shared_ref {
       typedef typename std::remove_cv<T>::type mutable_type ;
+
+      template<typename... Args, typename = decltype(mutable_type(std::declval<Args>()...))>
+      static std::true_type test_constructible(int) ;
+      template<typename...>
+      static std::false_type test_constructible(...) ;
+      template<typename... Args>
+      using constructible = instance_if_t<decltype(shared_ref::test_constructible<Args...>(0))::value> ;
+
    public:
       typedef T type ;
       typedef T element_type ;
       typedef element_type &reference ;
-      typedef typename std::conditional<std::is_base_of<PRefBase, T>::value, shared_intrusive_ptr<type>,
-                                        std::shared_ptr<type> >::type
+
+      typedef std::conditional_t<std::is_base_of<PRefBase, T>::value,
+                                 shared_intrusive_ptr<type>,
+                                 std::shared_ptr<type> >
       smartptr_type ;
 
       shared_ref(const shared_ref &other) = default ;
@@ -415,16 +425,19 @@ class shared_ref {
          _ptr(other.ptr())
       {}
 
-      shared_ref() :
-         _ptr(new mutable_type) {}
+      shared_ref() : _ptr(new mutable_type)
+      {
+         static_assert(decltype(shared_ref::test_constructible<>(0))::value,
+                       "Referenced type is not default constructible") ;
+      }
 
       template<typename A1>
-      shared_ref(const A1 &p1) :
+      shared_ref(A1 &&p1, constructible<A1> = {}) :
          _ptr(new mutable_type(p1)) {}
 
-      template<typename A1, typename... Args>
-      shared_ref(const A1 &p1, Args&&... p) :
-         _ptr(new mutable_type(p1, std::forward<Args>(p)...)) {}
+      template<typename A1, typename A2, typename...Args>
+      shared_ref(A1 &&p1, A2 &&p2, Args &&...args, constructible<A1, A2, Args...> = {}) :
+         _ptr(new mutable_type(std::forward<A1>(p1), std::forward<A2>(p2), std::forward<Args>(args)...)) {}
 
       explicit shared_ref(const smartptr_type &ptr) :
          _ptr(PCOMN_ENSURE_ARG(ptr))

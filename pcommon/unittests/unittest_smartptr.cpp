@@ -459,8 +459,8 @@ void SmartRefTests::Test_Constructors()
    LifetimeRegister foo_reg ;
    LifetimeRegister bar_reg ;
 
-   pcomn::shared_ref<Foo> foo (std::ref(foo_reg)) ;
-   pcomn::shared_ref<Foo> bar (std::ref(bar_reg)) ;
+   pcomn::shared_ref<Foo> foo {std::ref(foo_reg)} ;
+   pcomn::shared_ref<Foo> bar {std::ref(bar_reg)} ;
 
    pcomn::shared_ref<Quux> quux12 ;
 
