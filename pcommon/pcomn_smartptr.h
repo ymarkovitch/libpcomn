@@ -432,7 +432,7 @@ class shared_ref {
       }
 
       template<typename A1>
-      shared_ref(A1 &&p1, constructible<A1> = {}) :
+      explicit shared_ref(A1 &&p1, constructible<A1> = {}) :
          _ptr(new mutable_type(p1)) {}
 
       template<typename A1, typename A2, typename...Args>

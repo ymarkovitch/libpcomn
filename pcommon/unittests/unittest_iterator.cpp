@@ -20,6 +20,7 @@
 #include <list>
 #include <vector>
 #include <string>
+#include <forward_list>
 
 typedef std::list<std::string> strlist_t ;
 typedef std::vector<std::string> strvector_t ;
@@ -36,11 +37,13 @@ class IteratorTests : public CppUnit::TestFixture {
       void Test_Mapped_Iterator() ;
       void Test_XForm_Iterator() ;
       void Test_Iterator_Type_Traits() ;
+      void Test_Estimated_Distance() ;
 
       CPPUNIT_TEST_SUITE(IteratorTests) ;
 
       CPPUNIT_TEST(Test_Mapped_Iterator) ;
       CPPUNIT_TEST(Test_XForm_Iterator) ;
+      CPPUNIT_TEST(Test_Estimated_Distance) ;
 
       CPPUNIT_TEST_SUITE_END() ;
 } ;
@@ -178,6 +181,27 @@ void IteratorTests::Test_Iterator_Type_Traits()
 
    PCOMN_STATIC_CHECK(is_iterator<intlist_t::const_iterator, std::forward_iterator_tag>::value) ;
    PCOMN_STATIC_CHECK(!is_iterator<intlist_t::const_iterator, std::random_access_iterator_tag>::value) ;
+}
+
+void IteratorTests::Test_Estimated_Distance()
+{
+   std::list<int> lst01 {1, 2, 3} ;
+   std::vector<int> vec01 {1, 2, 3} ;
+   std::forward_list<int> slist01 {1, 2, 3, 4, 5} ;
+
+   CPPUNIT_LOG_EQ(estimated_distance(vec01.begin(), vec01.end()), 3) ;
+   CPPUNIT_LOG_EQ(estimated_distance(vec01.begin(), vec01.end(), 2), 3) ;
+   CPPUNIT_LOG_EQ(estimated_distance(vec01.begin(), vec01.end(), 4), 4) ;
+
+   CPPUNIT_LOG_EQ(estimated_distance(lst01.begin(), lst01.end()), 0) ;
+   CPPUNIT_LOG_EQ(estimated_distance(lst01.begin(), lst01.end(), -1), 0) ;
+
+   CPPUNIT_LOG_EQ(estimated_distance<std::bidirectional_iterator_tag>(lst01.begin(), lst01.end()), 3) ;
+   CPPUNIT_LOG_EQ(estimated_distance<std::bidirectional_iterator_tag>(vec01.begin(), vec01.end()), 3) ;
+
+   CPPUNIT_LOG_EQ(estimated_distance(slist01.begin(), slist01.end()), 0) ;
+   CPPUNIT_LOG_EQ(estimated_distance<std::bidirectional_iterator_tag>(slist01.begin(), slist01.end()), 0) ;
+   CPPUNIT_LOG_EQ(estimated_distance<std::forward_iterator_tag>(slist01.begin(), slist01.end()), 5) ;
 }
 
 int main(int argc, char *argv[])

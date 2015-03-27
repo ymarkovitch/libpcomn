@@ -42,6 +42,7 @@ std::false_type test_icategory(...) ;
 template<typename T, typename C>
 std::is_base_of<C, typename icategory<T>::iterator_category>
 test_icategory(typename icategory<T>::iterator_category const volatile *) ;
+
 }
 
 /// type trait to check if the type is an iterator of at least specified category
@@ -50,7 +51,7 @@ template<typename T, typename C = std::input_iterator_tag>
 using is_iterator = decltype(detail::test_icategory<T, C>(0)) ;
 
 /*******************************************************************************
-
+ Convenience typedefs for various iterator traits
 *******************************************************************************/
 template<typename T>
 using iterator_difference_t = typename std::iterator_traits<T>::difference_type ;
@@ -66,6 +67,34 @@ using iterator_reference_t = typename std::iterator_traits<T>::reference ;
 
 template<typename T>
 using iterator_category_t = typename std::iterator_traits<T>::iterator_category ;
+
+/******************************************************************************/
+/**
+*******************************************************************************/
+template<typename Category = std::random_access_iterator_tag, typename Iter = int *>
+iterator_difference_t<Iter> estimated_distance(const Iter &first, const Iter &last,
+                                               iterator_difference_t<Iter> mindist = 0) ;
+
+namespace detail {
+template<typename I>
+inline iterator_difference_t<I> estimate_distance(const I &first, const I &last, std::true_type)
+{
+   return std::distance(first, last) ;
+}
+
+template<typename I>
+inline iterator_difference_t<I> estimate_distance(const I &, const I &, std::false_type)
+{
+   return 0 ;
+}
+}
+
+template<typename C, typename I>
+inline iterator_difference_t<I> estimated_distance(const I &first, const I &last,
+                                                   iterator_difference_t<I> mindist)
+{
+   return std::max(detail::estimate_distance(first, last, is_iterator<I, C>()), mindist) ;
+}
 
 /*******************************************************************************
 
