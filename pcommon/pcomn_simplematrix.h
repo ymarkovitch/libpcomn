@@ -784,10 +784,12 @@ class simple_matrix : public matrix_slice<T> {
 
       simple_matrix() = default ;
 
+      /// Copy constructor (O(n))
       simple_matrix(const simple_matrix &src) :
          simple_matrix(static_cast<const ancestor &>(src))
       {}
 
+      /// Move constructor (O(1))
       simple_matrix(simple_matrix &&src) { swap(src) ; }
 
       simple_matrix(const matrix_slice<std::remove_const_t<item_type> > &other) :
@@ -827,16 +829,21 @@ class simple_matrix : public matrix_slice<T> {
             pcomn_swap(static_cast<ancestor &>(other), *static_cast<ancestor *>(this)) ;
       }
 
+      /// Copy assignment (O(n))
       simple_matrix &operator=(const ancestor &src)
       {
          if (&src != this)
             *this = std::move(simple_matrix(src)) ;
          return *this ;
       }
+
+      /// Copy assignment (O(n))
       simple_matrix &operator=(const simple_matrix &src)
       {
          return *this = static_cast<const ancestor &>(src) ;
       }
+
+      /// Move assignment (O(1))
       simple_matrix &operator=(simple_matrix &&src)
       {
          simple_matrix tmp ;

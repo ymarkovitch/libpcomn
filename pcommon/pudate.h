@@ -1,4 +1,4 @@
-/*-*- mode: c++; tab-width: 3; indent-tabs-mode: nil; c-file-style: "ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
+/*-*- mode:c++;tab-width:3;indent-tabs-mode:nil;c-file-style:"ellemtel";c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 #ifndef __PUDATE_H
 #define __PUDATE_H
 /*******************************************************************************
@@ -16,23 +16,69 @@
 *******************************************************************************/
 #include <pcommon.h>
 
-#ifndef PCOMN_CPU_BIG_ENDIAN
+GCC_DIAGNOSTIC_PUSH()
+GCC_IGNORE_WARNING(reorder)
 
 typedef struct bdate
 {
- unsigned char day ;
- unsigned char mon ;
- unsigned short int year ;
+#ifndef PCOMN_CPU_BIG_ENDIAN
+      uint8_t day ;
+      uint8_t mon ;
+      uint16_t year ;
+#else
+      uint16_t year ;
+      uint8_t mon ;
+      uint8_t day ;
+#endif
+#ifdef __cplusplus
+      constexpr bdate(uint16_t y, uint8_t m, uint8_t d = 1) :
+         year(y), mon(m), day(d)
+      {}
+      explicit constexpr bdate(uint16_t y = 1) : bdate(y, 1) {}
+
+      explicit constexpr operator uint32_t() const
+      {
+         return *reinterpret_cast<const uint32_t *>(this) ;
+      }
+      explicit constexpr operator bool() const
+      {
+         return static_cast<uint32_t>(*this) ;
+      }
+#endif
 } bdate_t ;
 
 typedef struct btime
 {
-   unsigned char hundr ;
-   unsigned char sec ;
-   unsigned char min ;
-   unsigned char hour ;
+#ifndef PCOMN_CPU_BIG_ENDIAN
+   uint8_t hundr ;
+   uint8_t sec ;
+   uint8_t min ;
+   uint8_t hour ;
+#else
+   uint8_t hour ;
+   uint8_t min ;
+   uint8_t sec ;
+   uint8_t hundr ;
+#endif
+#ifdef __cplusplus
+      constexpr btime(uint8_t hr, uint8_t m, uint8_t s = 0, uint8_t hs = 0) :
+         hour(hr), min(m), sec(s), hundr(hs)
+      {}
+      constexpr explicit btime(uint8_t hr = 0) : btime(hr, 0) {}
+
+      explicit constexpr operator uint32_t() const
+      {
+         return *reinterpret_cast<const uint32_t *>(this) ;
+      }
+      explicit constexpr operator bool() const
+      {
+         return static_cast<uint32_t>(*this) ;
+      }
+#endif
 } btime_t ;
 
+
+#ifndef PCOMN_CPU_BIG_ENDIAN
 /*
    Macros for bdate & btime static initialisation
 */
@@ -40,27 +86,6 @@ typedef struct btime
 #define PCOMN_SCTR_BTIME(h,m,s,hs) {(hs),(s),(m),(h)}
 
 #else // PCOMN_CPU_BIG_ENDIAN
-
-/*******************************************************************************
-                           struct bdate
-                           struct btime
- Packed & big-endian bdate & btime
-*******************************************************************************/
-typedef struct bdate
-{
-   unsigned short year ;     /* Year (4-digit)             */
-   unsigned char mon ; /* Month                */
-   unsigned char day ; /* Day of month         */
-} bdate_t ;
-
-typedef struct btime
-{
-   unsigned char hour ;
-   unsigned char min ;
-   unsigned char sec ;
-   unsigned char hundr ;
-} btime_t ;
-
 /*
    Macros for bdate & btime static initialisation
 */
@@ -68,7 +93,6 @@ typedef struct btime
 #define PCOMN_SCTR_BTIME(h,m,s,hs) {(h),(m),(s),(hs)}
 
 #endif // PCOMN_CPU_BIG_ENDIAN
-
 
 #define PCOMN_BDATE_AS_ULONG(bd) (*(const uint32_t *)(&(bd)))
 #define PCOMN_BTIME_AS_ULONG(bt) (*(const uint32_t *)(&(bt)))
@@ -81,9 +105,13 @@ typedef struct btime
 
 typedef struct btimestamp {
 
-   bdate_t date ;
-   btime_t time ;
+      bdate_t date ;
+      btime_t time ;
 
+#ifdef __cplusplus
+      constexpr btimestamp() = default ;
+      constexpr btimestamp(bdate d, btime t = {}) : date(d), time(t) {}
+#endif
 } btimestamp_t ;
 
 PCOMN_CFUNC _PCOMNEXP int32_t  pu_date2days(const bdate_t *date) ;
@@ -109,59 +137,36 @@ PCOMN_CFUNC _PCOMNEXP bdate_t *pu_days2date(int32_t days, bdate_t *date) ;
 // 64-bit integer, we don't care about portability.
 typedef int64_t putimestamp_t ;
 
-inline std::ostream &operator<< (std::ostream &os, const bdate_t &d)
+inline std::ostream &operator<<(std::ostream &os, const bdate_t &d)
 {
    char buf[11] ;
    sprintf(buf, "%04hu-%02hu-%02hu", (short)d.year, (short)d.mon, (short)d.day) ;
    return os << buf ;
 }
 
-inline std::ostream &operator<< (std::ostream &os, const btime_t &t)
+inline std::ostream &operator<<(std::ostream &os, const btime_t &t)
 {
    char buf[12] ;
    sprintf(buf, "%02hu.%02hu.%02hu.%02hu", (short)t.hour, (short)t.min, (short)t.sec, (short)t.hundr) ;
    return os << buf ;
 }
 
-inline std::ostream &operator<< (std::ostream &os, const btimestamp_t &ts)
+inline std::ostream &operator<<(std::ostream &os, const btimestamp_t &ts)
 {
    return os << ts.date << '-' << ts.time ;
 }
 
-inline bool operator< (const bdate_t &d1, const bdate_t &d2)
-{
-   return PCOMN_BDATE_AS_ULONG(d1) < PCOMN_BDATE_AS_ULONG(d2) ;
-}
-
-inline bool operator> (const bdate_t &d1, const bdate_t &d2)
-{
-   return PCOMN_BDATE_AS_ULONG(d1) > PCOMN_BDATE_AS_ULONG(d2) ;
-}
-
-inline bool operator== (const bdate_t &d1, const bdate_t &d2)
+inline constexpr bool operator==(const bdate_t &d1, const bdate_t &d2)
 {
    return PCOMN_BDATE_AS_ULONG(d1) == PCOMN_BDATE_AS_ULONG(d2) ;
 }
 
-inline bool operator<= (const bdate_t &d1, const bdate_t &d2)
+inline constexpr bool operator<(const bdate_t &d1, const bdate_t &d2)
 {
-   return PCOMN_BDATE_AS_ULONG(d1) <= PCOMN_BDATE_AS_ULONG(d2) ;
+   return PCOMN_BDATE_AS_ULONG(d1) < PCOMN_BDATE_AS_ULONG(d2) ;
 }
 
-inline bool operator>= (const bdate_t &d1, const bdate_t &d2)
-{
-   return PCOMN_BDATE_AS_ULONG(d1) >= PCOMN_BDATE_AS_ULONG(d2) ;
-}
-
-inline bool operator!= (const bdate_t &d1, const bdate_t &d2)
-{
-   return PCOMN_BDATE_AS_ULONG(d1) != PCOMN_BDATE_AS_ULONG(d2) ;
-}
-
-inline bool operator! (const bdate_t &d)
-{
-   return PCOMN_IS_NULL_BDATE(d) ;
-}
+PCOMN_DEFINE_RELOP_FUNCTIONS(constexpr, bdate) ;
 
 // pu_tsdaytime() -  extract the time of day part from the timestamp
 //                   (i.e. cut off all but incomplete day).
@@ -262,5 +267,7 @@ inline time_t pu_ts2time(putimestamp_t ts)
 }
 
 #endif /* __cplusplus */
+
+GCC_DIAGNOSTIC_POP()
 
 #endif /* __PUDATE_H */
