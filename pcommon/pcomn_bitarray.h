@@ -68,19 +68,30 @@ class bitarray_base {
          return std::any_of(data, data + nelements(), identity()) ;
       }
 
-      // find_first_bit()  -  get the position of first nonzero bit
-      //                      between 'start' and 'finish'
-      // If there is no such bit, returns 'finish'
-      //
-      int find_first_bit(int start, int finish) const ;
+      /// Indicate if all bits in this array are '1'
+      bool all() const
+      {
+         if (const size_t n = nelements())
+         {
+            const element_type * const data = cbits() ;
+            return
+               std::all_of(data, data + (n-1), [](element_type e){ return e == ~element_type() ; }) &&
+               (data[n-1] & tailmask()) == tailmask() ;
+         }
+         return true ;
+      }
 
-      // mem() -  marshall the array of bits into the external platform-independent representation
-      // Parameters:
-      //    memento  -  the buffer where to save the array. If this parameter is NULL,
-      //                this function simply returns the required size of buffer (in bytes)
-      // Returns:
-      //    The size of buffer required to save the array.
-      //
+      /// Get the position of first nonzero bit between 'start' and 'finish'
+      ///
+      /// If there is no such bit, returns 'finish'
+      size_t find_first_bit(size_t start, size_t finish) const ;
+
+      /// Marshall the array of bits into the external platform-independent
+      /// representation
+      ///
+      /// @param memento The buffer where to save the array; if NULL, the function
+      /// @return        Required size of buffer (in bytes)
+      ///
       size_t mem(char *memento = NULL) const ;
 
    protected:
@@ -115,6 +126,11 @@ class bitarray_base {
          if (sz)
             memcpy(memset(mbits(), 0, _elements.size()), memento, mem()) ;
       }
+
+      template<typename InputIterator>
+      bitarray_base(InputIterator start, std::enable_if_t<is_iterator<InputIterator>::value, InputIterator> finish) :
+         bitarray_base(start, finish, is_iterator<InputIterator, std::random_access_iterator_tag>())
+      {}
 
       bitarray_base(const bitarray_base &) = default ;
 
@@ -208,7 +224,7 @@ class bitarray_base {
 
       constexpr element_type tailmask() const
       {
-         return ~element_type() << (BITS_PER_ELEMENT - 1 - bitndx(_size - 1)) ;
+         return ~(~element_type() << (bitndx(_size - 1) + 1)) ;
       }
 
       void swap(bitarray_base &other) noexcept
@@ -231,6 +247,28 @@ class bitarray_base {
 
       element_type &mutable_elem(size_t bitpos) { return mbits()[elemndx(bitpos)] ; }
       const element_type &const_elem(size_t bitpos) const { return cbits()[elemndx(bitpos)] ; }
+
+      template<typename InputIterator>
+      bitarray_base(InputIterator &start, InputIterator &finish, std::false_type) :
+         bitarray_base(std::vector<bool>(start, finish), Instance)
+      {}
+
+      template<typename RandomAccessIterator>
+      bitarray_base(RandomAccessIterator &start, RandomAccessIterator &finish, std::true_type) :
+         bitarray_base(std::distance(start, finish))
+      {
+         if (size())
+         {
+            element_type * const data = mbits() ;
+            for (size_t pos = 0 ; pos < size() ; ++pos, ++start)
+               if (*start)
+                  data[elemndx(pos)] |= bitmask(pos) ;
+         }
+      }
+
+      bitarray_base(std::vector<bool> &&bits, Instantiate) :
+         bitarray_base(bits.begin(), bits.end())
+      {}
 } ;
 
 
@@ -386,6 +424,7 @@ class bitarray : private bitarray_base<unsigned long> {
       using ancestor::size ;
       using ancestor::test ;
       using ancestor::any ;
+      using ancestor::all ;
       using ancestor::find_first_bit ;
       using ancestor::mem ;
 
@@ -405,6 +444,11 @@ class bitarray : private bitarray_base<unsigned long> {
       //    size     -  the bit array size (in bits, NOT in bytes)
       //
       bitarray(const char *memento, size_t sz) : ancestor(memento, sz) {}
+
+      template<typename InputIterator>
+      bitarray(InputIterator start, std::enable_if_t<is_iterator<InputIterator>::value, InputIterator> finish) :
+         ancestor(start, finish)
+      {}
 
       bitarray(const bitarray &) = default ;
       bitarray(bitarray &&) = default ;
@@ -576,14 +620,14 @@ template<typename Element>
 void bitarray_base<Element>::flip()
 {
    const size_t n = nelements() ;
-   if (unlikely(!n))
+   if (!n)
       return ;
 
    element_type *data = mbits() ;
    for (element_type * const end = data + n ; data != end ; ++data)
       *data = ~*data ;
 
-   data[n - 1] &= tailmask() ;
+   *--data &= tailmask() ;
 }
 
 template<typename Element>
@@ -697,19 +741,19 @@ size_t bitarray_base<Element>::mem(char *memento) const
 }
 
 template<typename Element>
-int bitarray_base<Element>::find_first_bit(int start, int finish) const
+size_t bitarray_base<Element>::find_first_bit(size_t start, size_t finish) const
 {
-   NOXPRECONDITION(start >= 0 && (size_t)finish <= size()) ;
+   NOXCHECK(finish <= size()) ;
 
    if (start >= finish)
       return finish ;
 
-   int pos = elemndx(start) ;
+   size_t pos = elemndx(start) ;
    const element_type *bits = cbits() + pos ;
    element_type el = *bits >> bitndx(start) ;
    if (!el)
    {
-      int to = elemndx(finish) ;
+      size_t to = elemndx(finish) ;
       do {
          if (++pos > to)
             return finish ;
