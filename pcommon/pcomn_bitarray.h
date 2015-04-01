@@ -153,11 +153,11 @@ class bitarray_base {
 
       void set()
       {
-         if (const size_t datasize = _elements.size())
+         if (const size_t itemcount = _elements.nitems())
          {
             element_type * const data = mbits() ;
-            memset(data, -1, datasize) ;
-            data[datasize - 1] &= tailmask() ;
+            memset(data, -1, itemcount * sizeof data) ;
+            data[itemcount - 1] &= tailmask() ;
          }
       }
 
