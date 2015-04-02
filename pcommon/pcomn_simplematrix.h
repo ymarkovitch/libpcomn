@@ -959,6 +959,16 @@ operator==(const S &x, const simple_slice<T> &y)
    return sx == y ;
 }
 
+/*******************************************************************************
+ Debug output
+*******************************************************************************/
+template<typename T>
+inline std::ostream &operator<<(std::ostream &os, const matrix_slice<T> &v)
+{
+   return os << '{' << PCOMN_TYPENAME(T) << '@' << v.data()
+             << '[' << v.rows() << ']' << '[' << v.columns() << "]}" ;
+}
+
 } // end of namespace pcomn
 
 #endif /* __SIMPLEMATRIX_H */
