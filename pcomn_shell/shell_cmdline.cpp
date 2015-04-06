@@ -14,7 +14,7 @@
 #include <pcomn_safeptr.h>
 #include <pcomn_string.h>
 
-#include <iostream>
+#include <fstream>
 #include <iomanip>
 #include <iterator>
 #include <string>
@@ -197,6 +197,42 @@ int CommandSuite::exec(CmdLine &cmdline, CmdLineArgIter &argv, unsigned flags) c
 int IndividualCommand::exec(CmdLine &cmdline, CmdLineArgIter &argv, unsigned) const
 {
     return handler()(cmdline, argv) ;
+}
+
+/*******************************************************************************
+ CommandStream
+*******************************************************************************/
+CommandStream::CommandStream(CommandSuite &suite) :
+    _commands(suite),
+    _linenum(0)
+
+{}
+
+CommandStream &CommandStream::exec_line(strslice line)
+{
+    ++_linenum ;
+
+    if (line.strip_inplace().empty() || line.front() == '#')
+        return *this ;
+
+    string_vector args ;
+    split_args(line, args) ;
+
+    NOXCHECK(!args.empty()) ;
+    cmdl::ArgIter<string_vector::const_iterator> argv (args.begin(), args.end()) ;
+
+    commands()
+        .exec(CmdLine().quit_handler([](int){ throw parse_error() ; }), argv) ;
+
+    return *this ;
+}
+
+CommandStream &CommandStream::exec_from(const strslice &fn)
+{
+    set_filename(std::string(fn)) ;
+    std::ifstream is {filename()} ;
+    PCOMN_THROW_IF(!is, std::runtime_error, "Cannot open '%s' for reading", str::cstr(filename())) ;
+    return exec_from(is) ;
 }
 
 /*******************************************************************************

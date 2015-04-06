@@ -18,8 +18,8 @@
 #include <pcomn_strslice.h>
 #include <pcomn_smartptr.h>
 #include <pcomn_meta.h>
+#include <pcomn_function.h>
 
-#include <functional>
 #include <string>
 #include <vector>
 #include <map>
@@ -262,6 +262,46 @@ public:
 
 private:
     handler_fn  _handler ;
+} ;
+
+/******************************************************************************/
+/** Execute commands from a line stream
+*******************************************************************************/
+class CommandStream {
+    PCOMN_NONCOPYABLE(CommandStream) ;
+    PCOMN_NONASSIGNABLE(CommandStream) ;
+public:
+    explicit CommandStream(CommandSuite &suite) ;
+
+    CommandStream &exec_line(strslice line) ;
+    CommandStream &exec_from(const strslice &filename) ;
+    CommandStream &exec_from(std::istream &is)
+    {
+        for (std::string line ; std::getline(is, line) ; line.clear())
+            exec_line(line) ;
+        return *this ;
+    }
+
+    template<typename InputIterator>
+    CommandStream &exec_from(InputIterator begin, InputIterator end)
+    {
+        std::for_each(begin, end, bind_thisptr(&CommandStream::exec_line, this)) ;
+        return *this ;
+    }
+
+    CommandSuite &commands() { return _commands ; }
+    const CommandSuite &commands() const { return _commands ; }
+
+    unsigned linenum() const { return _linenum ; }
+    void set_linenum(unsigned num) { _linenum = num ; }
+
+    const char *filename() const { return _filename.c_str() ; }
+    void set_filename(const strslice &fn) { _filename = fn.stdstring() ; }
+
+private:
+    CommandSuite &  _commands ;
+    std::string     _filename ;
+    unsigned        _linenum ; /* Last executed line number */
 } ;
 
 /*******************************************************************************
