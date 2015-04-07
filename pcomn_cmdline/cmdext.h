@@ -59,6 +59,7 @@
 #include "cmdargs.h"
 
 #include <string>
+#include <algorithm>
 #include <iostream>
 #include <vector>
 #include <set>
@@ -71,6 +72,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <ctype.h>
 
 #if !defined(EXIT_USAGE)
 /// Exit code for invalid usage (bad argument, etc.)
@@ -196,6 +198,11 @@ struct scalar_argument : B {
    operator type() const { return value() ; }
    const type &default_value() const { return _default_value ; }
 
+   friend std::ostream &operator<<(std::ostream &os, const scalar_argument &v)
+   {
+      return os << v.value() ;
+   }
+
 protected:
    type _value ;
 private:
@@ -222,12 +229,12 @@ protected:
    {}
 
    scalar_argument(type &&default_value, const char *value_name, const char *description) :
-      scalar_argument(default_value, value_name, description, CmdArg::isVALREQ)
+      scalar_argument(default_value, value_name, description, CmdArg::isPOSVALREQ)
    {}
 
    void assign(const type &value) { _value = value ; }
 
-   void reset()
+   void reset() override
    {
       ancestor::reset() ;
       assign(default_value()) ;
@@ -282,7 +289,7 @@ struct argtype_traits_instance { typedef argtype_handler<T, B> basetype ; } ;
 *******************************************************************************/
 template<typename T>
 struct item_compiler : argtype_traits<T>::basetype {
-   item_compiler() : argtype_traits<T>::basetype(T(), "", NULL, CmdArg::isPOS) {}
+   item_compiler() : argtype_traits<T>::basetype(T(), "", nullptr, CmdArg::isPOS) {}
 
    bool compile(const char *&arg, CmdLine &cmdline)
    {
@@ -351,12 +358,13 @@ struct argint_traits {
    class basetype : public scalar_argument<T> {
       typedef scalar_argument<T> ancestor ;
    public:
-      typedef typename ancestor::type type ;
+      using typename ancestor::type ;
 
    protected:
-      CMDL_CONSTRUCTORS(basetype) ;
+      template<typename... Args>
+      basetype(Args &&...args) : ancestor(std::forward<Args>(args)...) {}
 
-      bool compile(const char *&arg, CmdLine &) ;
+      bool compile(const char *&arg, CmdLine &) override ;
 
    private:
       static const char *type_name()
@@ -428,10 +436,10 @@ bool argint_traits<T>::basetype::compile(const char *&arg, CmdLine &cmdline)
    char *ptr = NULL ;
    // Compile the string into an integer; watch out for -c0xa vs -axc0!
    const type result = local::strtoint(arg, &ptr, is_signed()) ;
-   if (ptr == arg)
+   if (ptr == arg || (*ptr && std::any_of(ptr, ptr + strlen(ptr), [](char c) { return !isspace(c) ; })))
    {
       // Invalid integer (or overflow, or a sign where should be unsigned)
-      if (result)
+      if (result && ptr == arg)
          CMDL_LOG_CMDERROR(cmdline, "'" << arg << "' does not fit into " << type_name() << '.') ;
       else
          CMDL_LOG_CMDERROR(cmdline, "invalid " << type_name() << " value '" << arg << "'.") ;
@@ -469,16 +477,25 @@ public:
    size_t size() const { return value().size() ; }
    bool empty() const { return value().empty() ; }
 
-protected:
-   container_type             _container ;
-   item_compiler<value_type>  _compiler ;
+   friend std::ostream &operator<<(std::ostream &os, const list_argument &v)
+   {
+      const char *delim = "" ;
+      for (const auto &value: v)
+      {
+         os << delim << value ;
+         delim = " " ;
+      }
+      return os ;
+   }
 
-   list_argument(char         optchar,
+protected:
+   list_argument(char optchar, char separator,
                  const char * keyword,
                  const char * value_name,
                  const char * description,
                  unsigned     flags = CmdArg::isVALREQ) :
-      ancestor(optchar, keyword, value_name, description, CmdArg::isLIST | flags)
+      ancestor(optchar, keyword, value_name, description, CmdArg::isLIST | flags),
+      _separator(separator)
    {}
 
    list_argument(const char * value_name,
@@ -496,19 +513,57 @@ protected:
 
    virtual bool validate(type &, CmdLine &) { return true ; }
 
-private:
-   bool compile(const char *&arg, CmdLine &cmdline)
+   void reset() override
    {
-      if (!arg)
-         return true ;  // no value given - nothing to do
-
-      if (!_compiler.compile(arg, cmdline))
-         return false ;
-
-      _container.insert(_container.end(), _compiler.value()) ;
-      return true ;
+      using namespace std ;
+      ancestor::reset() ;
+      container_type dummy ;
+      swap(_container, dummy) ;
    }
+
+private:
+   container_type             _container ;
+   item_compiler<value_type>  _compiler ;
+   char                       _separator = 0 ;
+
+   bool compile(const char *&arg, CmdLine &cmdline) ;
 } ;
+
+template<typename T>
+bool list_argument<T>::compile(const char *&arg, CmdLine &cmdline)
+{
+   if (!arg)
+      return true ;  // no value given - nothing to do
+
+   char buf[1024] ;
+   std::vector<char> bufvec ;
+   for (const char *end = arg + strlen(arg), *finish = arg ; arg != end ; arg = finish)
+   {
+      const char *current_arg ;
+
+      finish = std::find(finish, end, _separator) ;
+      if (!*finish)
+         current_arg = arg ;
+      else
+      {
+         const size_t argsize = finish - arg ;
+         if (argsize < sizeof buf)
+            current_arg = buf ;
+         else
+         {
+            bufvec.resize(argsize + 1) ;
+            current_arg = bufvec.data() ;
+         }
+         *((char *)memcpy(const_cast<char *>(current_arg), arg, argsize)  + argsize) = 0 ;
+         ++finish ;
+      }
+
+      if (!_compiler.compile(current_arg, cmdline))
+         return false ;
+      _container.insert(_container.end(), _compiler.value()) ;
+   }
+   return true ;
+}
 
 } // end of namespace cmdl::detail
 
@@ -532,15 +587,15 @@ CMDL_DEFINE_INTTRAITS(unsigned long long) ;
 #undef CMDL_DEFINE_INTTRAITS
 
 /*******************************************************************************
-                     struct argtype_traits<double>
+  argtype_traits<double>
 *******************************************************************************/
 template<> struct argtype_traits<double> {
-   class basetype : public scalar_argument<double> {
-      typedef scalar_argument<double> ancestor ;
+   struct basetype : scalar_argument<double> {
    protected:
-      CMDL_CONSTRUCTORS(basetype) ;
+      template<typename... Args>
+      basetype(Args &&...args) : scalar_argument<double>(std::forward<Args>(args)...) {}
 
-      bool compile(const char *&arg, CmdLine &cmdline)
+      bool compile(const char *&arg, CmdLine &cmdline) override
       {
          if (!arg)
             return true ;  // no value given - nothing to do
@@ -569,15 +624,16 @@ template<> struct argtype_traits<double> {
 } ;
 
 /*******************************************************************************
-                     struct argtype_traits<char>
+ argtype_traits<char>
 *******************************************************************************/
 template<> struct argtype_traits<char> {
-   class basetype : public scalar_argument<char, CmdArgCharCompiler> {
-      typedef scalar_argument<char, CmdArgCharCompiler> ancestor ;
+   struct basetype : scalar_argument<char, CmdArgCharCompiler> {
    protected:
-      CMDL_CONSTRUCTORS(basetype) ;
+      template<typename... Args>
+      basetype(Args &&...args) :
+         scalar_argument<char, CmdArgCharCompiler>(std::forward<Args>(args)...) {}
 
-      bool compile(const char *&arg, CmdLine &cmdline)
+      bool compile(const char *&arg, CmdLine &cmdline) override
       {
          return !CmdArgCharCompiler::compile(arg, cmdline, _value) ;
       }
@@ -585,30 +641,28 @@ template<> struct argtype_traits<char> {
 } ;
 
 /*******************************************************************************
-                     struct argtype_traits<std::string>
+  argtype_traits<std::string>
 *******************************************************************************/
 template<> struct argtype_traits<std::string> {
-   class basetype : public scalar_argument<std::string> {
-      typedef scalar_argument<std::string> ancestor ;
+   struct basetype : scalar_argument<std::string> {
    protected:
-      CMDL_CONSTRUCTORS(basetype) ;
+      template<typename... Args>
+      basetype(Args &&...args) : scalar_argument<std::string>(std::forward<Args>(args)...) {}
 
       bool compile(const char *&arg, CmdLine &)
       {
-         if (!arg)
-            return true ;
-
-
-         std::string(arg).swap(_value) ;
-         arg = NULL ;
+         if (arg)
+         {
+            _value = arg ;
+            arg = nullptr ;
+         }
          return true ;
       }
    } ;
 } ;
 
-
 /*******************************************************************************
-                     struct argtype_traits<std::pair>
+ argtype_traits<std::pair>
 *******************************************************************************/
 template<typename K, typename V> struct argtype_traits<std::pair<K, V> > {
    class basetype : public scalar_argument<std::pair<K, V> > {
@@ -631,9 +685,10 @@ template<typename K, typename V> struct argtype_traits<std::pair<K, V> > {
    protected:
       item_compiler<key_type>   _key_compiler ;
       item_compiler<value_type> _value_compiler ;
-      std::pair<char, char>      _delim ;
+      std::pair<char, char>     _delim ;
 
-      CMDL_CONSTRUCTORS(basetype) ;
+      template<typename... Args>
+      basetype(Args &&...args) : ancestor(std::forward<Args>(args)...) {}
 
       bool compile(const char *&arg, CmdLine &cmdline)
       {
@@ -676,11 +731,10 @@ template<typename K, typename V> struct argtype_traits<std::pair<K, V> > {
 } ;
 
 /*******************************************************************************
-                     struct argtype_traits<bool>
+  argtype_traits<bool>
 *******************************************************************************/
 template<> struct argtype_traits<bool> {
-   class arg_compiler : public CmdArgBoolCompiler {
-   public:
+   struct arg_compiler : CmdArgBoolCompiler {
       arg_compiler(char         optchar,
                    const char * keyword,
                    const char *, // value_name - unused
@@ -720,11 +774,10 @@ template<> struct argtype_traits<bool> {
 /******************************************************************************/
 /** Arg<T> specialization for boolean arguments.
 *******************************************************************************/
-template<> class Arg<bool> : public argtype_traits<bool>::basetype {
-   typedef argtype_traits<bool>::basetype ancestor ;
-public:
+template<> struct Arg<bool> : argtype_traits<bool>::basetype {
+
    Arg(bool initval, char optchar, const char *keyword, const char *description, unsigned flags = 0) :
-      ancestor(initval, optchar, keyword, description, flags) {}
+      argtype_traits<bool>::basetype(initval, optchar, keyword, description, flags) {}
 
    Arg(char optchar, const char *keyword, const char *description, unsigned flags = 0) :
       Arg(false, optchar, keyword, description, flags) {}
@@ -747,16 +800,24 @@ template<typename T>                                                    \
 class Arg<stemplate<T> > : public detail::list_argument<stemplate<T> > { \
    typedef detail::list_argument<stemplate<T> > ancestor ;               \
 public:                                                                 \
+   Arg(char optchar, char delim,                                        \
+       const char * keyword,                                            \
+       const char * value_name,                                         \
+       const char * description,                                        \
+       unsigned     flags =CmdArg::isVALREQ) :                          \
+      ancestor(optchar, delim, keyword, value_name, description, flags)  \
+   {}                                                                   \
+                                                                        \
    Arg(char         optchar,                                            \
        const char * keyword,                                            \
        const char * value_name,                                         \
        const char * description,                                        \
        unsigned     flags =CmdArg::isVALREQ) :                          \
-      ancestor(optchar, keyword, value_name, description, flags)        \
+      Arg(optchar, '\0', keyword, value_name, description, flags)       \
    {}                                                                   \
                                                                         \
-   Arg(const char * value_name,                                         \
-       const char * description,                                        \
+   Arg(const char *value_name,                                          \
+       const char *description,                                         \
        unsigned     flags =CmdArg::isPOSVALREQ) :                       \
       ancestor(value_name, description, flags)                          \
    {}                                                                   \
@@ -765,15 +826,6 @@ public:                                                                 \
    {                                                                    \
       this->assign(value) ;                                             \
       return *this ;                                                    \
-   }                                                                    \
-                                                                        \
-   friend std::ostream &operator<<(std::ostream &os, const Arg &v)      \
-   {                                                                    \
-      const char *delim = "" ;                                          \
-      for (typename ancestor::const_iterator i = v.begin(), e = v.end() ; \
-           i != e ; ++i, delim = " ")                                   \
-         os << delim << *i ;                                            \
-      return os ;                                                       \
    }                                                                    \
 }
 
@@ -837,7 +889,7 @@ private:
    valmap_type _valmap ;
 
 protected:
-   void reset()
+   void reset() override
    {
       ancestor::reset() ;
       type v (default_value()) ;
@@ -912,21 +964,22 @@ class ArgIter : public CmdLineArgIter {
 public:
    typedef InputIterator iterator ;
 
-   ArgIter() : _begin(), _end() {}
-
+   ArgIter() = default ;
    ArgIter(iterator b, iterator e) : _begin(b), _end(e) {}
 
    const char *operator()()
    {
-      if (_begin == _end)
-         return NULL ;
-      const char * const result = detail::cstr(*_begin) ;
-      ++_begin ;
+      const char *result = nullptr ;
+      if (_begin != _end)
+      {
+         result = detail::cstr(*_begin) ;
+         ++_begin ;
+      }
       return result ;
    }
 private:
-   iterator _begin ;
-   iterator _end ;
+   iterator _begin = {} ;
+   iterator _end = {} ;
 } ;
 
 /******************************************************************************/
@@ -981,11 +1034,6 @@ inline bool is_given(const CmdArg &arg)
    return !!(arg.flags() & CmdArg::GIVEN) ;
 }
 
-template<typename T>
-inline std::ostream &operator<<(std::ostream &os, const Arg<T> &v)
-{
-   return os << (T)v ;
-}
 } // end of namespace cmdl
 
 #endif /* __CMDLINE_CMDEXT_H */

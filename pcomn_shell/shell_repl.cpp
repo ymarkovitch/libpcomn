@@ -14,6 +14,7 @@
 #include <pcomn_except.h>
 #include <pcomn_safeptr.h>
 #include <pcomn_string.h>
+#include <pcomn_sys.h>
 
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -33,13 +34,19 @@ namespace sh {
 
 namespace { struct quit_shell{} ; }
 
+static inline bool is_probably_interactive()
+{
+    const unsigned mode = sys::filestat(fileno(stdin)).st_mode ;
+    return S_ISCHR(mode) || S_ISFIFO(mode) ;
+}
+
 /*******************************************************************************
  CmdContext
 *******************************************************************************/
 CmdContext::CmdContext(const char *cmdname, const char *description, const char *version_format) :
 
     _description(PCOMN_ENSURE_ARG(description)),
-    _isatty(isatty(fileno(stdin))),
+    _interactive(is_probably_interactive()),
     _print_version(version_format ? version_format : ""),
     _cmdline(path::posix::split(PCOMN_ENSURE_ARG(cmdname)).second.begin())
 {

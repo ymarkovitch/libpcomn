@@ -681,12 +681,24 @@ public:
    enum { NO_PROCESSING = 0, AUTO_PROCESSING = 1 } ;
 
    unsigned
-   parse(CmdLineArgIter &arg_iter, arglogger logger, void *data = NULL, int  processing =AUTO_PROCESSING) ;
+   parse(CmdLineArgIter &arg_iter, arglogger logger, void *data = nullptr, int  processing =AUTO_PROCESSING) ;
+
+   unsigned
+   parse(CmdLineArgIter &&arg_iter, arglogger logger, void *data = nullptr, int  processing =AUTO_PROCESSING)
+   {
+      return parse(static_cast<CmdLineArgIter &>(arg_iter), logger, data, processing) ;
+   }
 
    unsigned
    parse(CmdLineArgIter &arg_iter, int processing =AUTO_PROCESSING)
    {
-      return parse(arg_iter, NULL, NULL, processing) ;
+      return parse(arg_iter, nullptr, nullptr, processing) ;
+   }
+
+   unsigned
+   parse(CmdLineArgIter &&arg_iter, int processing =AUTO_PROCESSING)
+   {
+      return parse(arg_iter, nullptr, nullptr, processing) ;
    }
 
       // Perform the necessary pre-processing.

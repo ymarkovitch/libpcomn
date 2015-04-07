@@ -170,25 +170,22 @@ filebasename(const char * filename)
 
 //--------------------------------------------------------------- class CmdLine
 
-#define CMDLINE_INIT_MEMBERS()                  \
-     cmd_parse_state(cmd_START_STATE),          \
-     cmd_state(cmd_START_STATE),                \
-     cmd_flags(DEFAULT_CMDFLAGS),               \
-     cmd_status(CmdLine::NO_ERROR),             \
-     cmd_nargs_parsed(0),                       \
-     cmd_usage_level(VERBOSE_USAGE),            \
-     cmd_name(NULL),                            \
-     cmd_description(""),                       \
-     cmd_fulldesc(""),                          \
-     cmd_matched_arg(NULL),                     \
-     cmd_args(NULL),                            \
-     cmd_unknown_arg(NULL),                     \
-     cmd_err(NULL),                             \
-     cmd_quit_handler(NULL)
-
   // Contructor with a command-name
 CmdLine::CmdLine(const char * cmdname) :
-   CMDLINE_INIT_MEMBERS()
+   cmd_parse_state(cmd_START_STATE),
+   cmd_state(cmd_START_STATE),
+   cmd_flags(DEFAULT_CMDFLAGS),
+   cmd_status(CmdLine::NO_ERROR),
+   cmd_nargs_parsed(0),
+   cmd_usage_level(VERBOSE_USAGE),
+   cmd_name(NULL),
+   cmd_description(""),
+   cmd_fulldesc(""),
+   cmd_matched_arg(NULL),
+   cmd_args(NULL),
+   cmd_unknown_arg(NULL),
+   cmd_err(NULL),
+   cmd_quit_handler(NULL)
 {
    name(cmdname);
    ::init_args(cmd_args);
@@ -196,11 +193,8 @@ CmdLine::CmdLine(const char * cmdname) :
 
    // Constructor with a name and CmdArgs
 CmdLine::CmdLine(const char * cmdname, CmdArg * cmdarg1 ...) :
-   CMDLINE_INIT_MEMBERS()
+   CmdLine(cmdname)
 {
-   name(cmdname);
-   ::init_args(cmd_args);
-
    CmdArgListListIter  iter(cmd_args);
    CmdArgList * arg_list = iter();
 
@@ -215,10 +209,9 @@ CmdLine::CmdLine(const char * cmdname, CmdArg * cmdarg1 ...) :
 
    // Constructor with CmdArgs
 CmdLine::CmdLine(CmdArg * cmdarg1 ...) :
-   CMDLINE_INIT_MEMBERS()
+   CmdLine((const char *)nullptr)
 {
-   if (cmdarg1 == NULL)  return;
-   ::init_args(cmd_args);
+   if (!cmdarg1)  return;
 
    CmdArgListListIter  iter(cmd_args);
    CmdArgList * arg_list = iter();

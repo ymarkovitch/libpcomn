@@ -239,7 +239,7 @@ class IndividualCommand : public Command {
 public:
     /// Create a command with a specified handler and descritpion
     explicit IndividualCommand(const handler_fn &handler = handler_fn(),
-                               const std::string &description = std::string(),
+                               const std::string &description = {},
                                unsigned mode_flags = 0) :
         ancestor(description, mode_flags),
         _handler(handler)
@@ -247,7 +247,7 @@ public:
 
     explicit IndividualCommand(const handler_fn &handler = handler_fn(),
                                unsigned mode_flags = 0) :
-        ancestor(std::string(), mode_flags),
+        ancestor({}, mode_flags),
         _handler(handler)
     {}
 

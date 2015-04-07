@@ -49,8 +49,9 @@ public:
 
     /// Check whether the command started in interactive mode
     ///
-    /// Interactive mode assumes the command started in foregraund and stdin is a tty.
-    virtual bool is_interactive() const { return _isatty ; }
+    /// Interactive mode assumes the command started in foreground and stdin is a tty or
+    /// a pipe.
+    virtual bool is_interactive() const { return _interactive ; }
 
     void initlog(int syslog_facility) ;
 
@@ -80,7 +81,7 @@ protected:
 private:
     const std::string   _cmdpath ;
     const std::string   _description ;
-    const bool          _isatty ;
+    const bool          _interactive ;
 
     ArgVersion          _print_version ;
     CmdLine             _cmdline ;

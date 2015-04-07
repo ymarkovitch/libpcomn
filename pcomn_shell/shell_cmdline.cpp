@@ -106,8 +106,8 @@ void CommandSuite::print_subcommands(std::ostream &os) const
     static const unsigned INDENT = 2 ;
 
     os << "\nAvailable subcommands:\n" ;
-    for (cmd_map::const_iterator i = _commands.begin(), e = _commands.end() ; i != e ; ++i)
-        os << std::setw(INDENT) << "" << i->first << "\n" ;
+    for (const cmd_map::value_type &cmd: _commands)
+        os << std::setw(INDENT) << "" << cmd.first << "\n" ;
 }
 
 void CommandSuite::print_description(std::ostream &os) const
