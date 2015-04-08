@@ -631,34 +631,26 @@ CmdLine::parse_arg(const char * arg)
 std::ostream &
 CmdLine::arg_error(const char * error_str, const CmdArg * cmdarg) const
 {
-   int  plus = (cmd_flags & ALLOW_PLUS) ;  // Can we use "+"?
+   const bool plus = (cmd_flags & ALLOW_PLUS) && (cmdarg->flags() & CmdArg::GIVEN) ;  // Can we use "+"?
 
    std::ostream & os = error() << error_str << char(' ') ;
 
-   if (cmdarg->flags() & CmdArg::GIVEN) {
-       if (cmdarg->flags() & CmdArg::KEYWORD) {
-          os << ((cmd_flags & KWDS_ONLY) ? OptionPrefix()
-                                         : KeywordPrefix(plus))
-             << cmdarg->keyword_name() << " option" ;
-       } else if (cmdarg->flags() & CmdArg::OPTION) {
-          os << OptionPrefix() << (char)cmdarg->char_name() << " option" ;
-       } else {
-          os << cmdarg->value_name() << " argument" ;
-       }
-   } else {
-       if (cmdarg->syntax() & CmdArg::isPOS) {
-          os << cmdarg->value_name() << " argument" ;
-       } else {
-          if (cmd_flags & KWDS_ONLY) {
-             os << OptionPrefix() << cmdarg->keyword_name() << " option" ;
-          } else {
-             os << OptionPrefix() << (char)cmdarg->char_name() << " option" ;
-          }
-       }
-   }
+   static const auto
+     print_argname = [](std::ostream &os, const CmdArg *arg, bool only_kwds, bool allow_plus)
+     {
+       if (!arg->char_name() || (arg->flags() & CmdArg::KEYWORD))
+         os << (only_kwds ? OptionPrefix() : KeywordPrefix(allow_plus)) << arg->keyword_name() ;
+       else
+         os << OptionPrefix() << (char)arg->char_name() << " option" ;
+       os << " option" ;
+     } ;
+
+   if ((cmdarg->flags() & (CmdArg::KEYWORD | CmdArg::OPTION)) || !(cmdarg->syntax() & CmdArg::isPOS))
+     print_argname(os, cmdarg, cmd_flags & KWDS_ONLY, plus) ;
+   else
+     os << cmdarg->value_name() << " argument" ;
    return  os;
 }
-
 
 //-------
 // ^FUNCTION: CmdLine::fmt_arg - format an argument for usage messages

@@ -23,11 +23,13 @@ class CmdExtTests : public CppUnit::TestFixture {
 
     void Test_Scalar_Args() ;
     void Test_List_Args() ;
+    void Test_Pair_Args() ;
 
     CPPUNIT_TEST_SUITE(CmdExtTests) ;
 
     CPPUNIT_TEST(Test_Scalar_Args) ;
     CPPUNIT_TEST(Test_List_Args) ;
+    CPPUNIT_TEST(Test_Pair_Args) ;
 
     CPPUNIT_TEST_SUITE_END() ;
 } ;
@@ -91,10 +93,22 @@ void CmdExtTests::Test_List_Args()
 
     CPPUNIT_LOG_EQ(cmd03.parse(CmdStrTokIter("--oi=4,3")), CmdLine::BAD_VALUE) ;
 
-    Arg<int_vector> commavec {'\0', ',', "ci", "INT", ""} ;
+    Arg<int_vector> commavec {'\0', separator(','), "ci", "INT", ""} ;
     cmd03.append(commavec) ;
     CPPUNIT_LOG_EQ(cmd03.parse(CmdStrTokIter("--ci=8,5 --ci=9")), 0) ;
     CPPUNIT_LOG_EQ(commavec.value(), (int_vector{8, 5, 9})) ;
+
+    Arg<int_vector> arrowvec {'\0', separator("->"), "ca", "INT", ""} ;
+    cmd03.append(arrowvec) ;
+    CPPUNIT_LOG_EQ(cmd03.parse(CmdStrTokIter("--ca=1,15,2")), CmdLine::BAD_VALUE) ;
+    CPPUNIT_LOG_EQ(cmd03.parse(CmdStrTokIter("--ca=1")), 0) ;
+    CPPUNIT_LOG_EQ(arrowvec.value(), (int_vector{1})) ;
+    CPPUNIT_LOG_EQ(cmd03.parse(CmdStrTokIter("--ca=1->15->2")), 0) ;
+    CPPUNIT_LOG_EQ(arrowvec.value(), (int_vector{1, 15, 2})) ;
+}
+
+void CmdExtTests::Test_Pair_Args()
+{
 }
 
 int main(int argc, char *argv[])
