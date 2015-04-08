@@ -131,7 +131,10 @@
    } while(false)
 
 #define CMDL_ARGTYPE_TRAITS_INSTANCE(type)                              \
-   namespace cmdl { template<> struct argtype_traits<type > : argtype_handler<type > {} ; }
+   namespace cmdl {                                                     \
+   template<> struct argtype_traits<type> : argtype_handler<type> {     \
+   protected: using argtype_handler<type>::argtype_handler ;            \
+   } ; }
 
 /*******************************************************************************
  namespace cmdl
@@ -260,30 +263,30 @@ protected:
 /*******************************************************************************
 
 *******************************************************************************/
-template<typename T, typename B = CmdArg>
-struct argtype_handler : scalar_argument<T, B> {
+template<typename T, typename B = scalar_argument<T, CmdArg> >
+struct argtype_handler : B {
 private:
-   typedef scalar_argument<T, B> ancestor ;
+   typedef B ancestor ;
 public:
    using typename ancestor::type ;
+
 protected:
    bool validate(type &v, CmdLine &c) override { return ancestor::validate(v, c) ; }
    /// Intentionally unimplemented
    bool compile(const char *&arg, CmdLine &) override ;
-   /// Inherit constructors
+
    using ancestor::ancestor ;
 } ;
 
-/******************************************************************************/
-/** "Subargument" parser
-*******************************************************************************/
 template<typename T>
-struct item_compiler : argtype_traits<T> {
-   item_compiler() : argtype_traits<T>(T(), "", nullptr, CmdArg::isPOS) {}
+struct interval : std::pair<T, T> {
+   using std::pair<T, T>::pair ;
 
-   bool compile(const char *&arg, CmdLine &cmdline) override
+   template<typename A>
+   interval &operator=(A &&a)
    {
-      return argtype_traits<T>::compile(arg, cmdline) ;
+      std::pair<T, T>::operator=(std::forward<A>(a)) ;
+      return *this ;
    }
 } ;
 
@@ -377,6 +380,19 @@ public:
    {
       this->assign(value) ;
       return *this ;
+   }
+} ;
+
+/******************************************************************************/
+/** "Subargument" parser
+*******************************************************************************/
+template<typename T>
+struct item_compiler : Arg<T> {
+   item_compiler() : Arg<T>("", "") {}
+
+   bool compile(const char *&arg, CmdLine &cmdline) override
+   {
+      return Arg<T>::compile(arg, cmdline) ;
    }
 } ;
 
@@ -501,6 +517,59 @@ struct argbool_compiler : CmdArgBoolCompiler {
    {}
 } ;
 
+/*******************************************************************************
+
+*******************************************************************************/
+template<unsigned ForceFlagsOn = 0, unsigned ForceFlagsOff = 0>
+class seq_arg : public CmdArg {
+   typedef CmdArg ancestor ;
+public:
+   seq_arg(char optchar,
+           const char *keyword, const char *value_name,
+           const char *description,
+           unsigned flags,
+           separator sep) :
+      ancestor(optchar, keyword, value_name, description, force_flags(flags)),
+      _separator(sep)
+   {}
+
+   seq_arg(char optchar,
+           const char *keyword, const char *value_name,
+           const char *description,
+           unsigned flags) :
+      seq_arg(optchar, keyword, value_name, description, flags, separator()) {}
+
+   seq_arg(char optchar,
+           const char *keyword, const char *value_name,
+           const char *description,
+           separator sep) :
+      seq_arg(optchar, keyword, value_name, description, CmdArg::isVALREQ, sep) {}
+
+   seq_arg(char optchar,
+           const char *keyword, const char *value_name,
+           const char *description) :
+      seq_arg(optchar, keyword, value_name, description, separator()) {}
+
+   seq_arg(const char *value_name, const char *description, unsigned flags) :
+      ancestor(value_name, description, force_flags(CmdArg::isPOS | flags)) {}
+
+   seq_arg(const char *value_name, const char *description) :
+      seq_arg(value_name, description, 0) {}
+
+   const separator &sep() const { return _separator ; }
+
+protected:
+   static constexpr unsigned force_flags(unsigned flags)
+   {
+      return (flags | ForceFlagsOn) &~ ForceFlagsOff ;
+   }
+
+private:
+   separator _separator ;
+
+   virtual bool compile(const char *&arg, CmdLine &cmdline) = 0 ;
+} ;
+
 /******************************************************************************/
 /** Base class for all sequence arguments
 
@@ -508,8 +577,8 @@ struct argbool_compiler : CmdArgBoolCompiler {
             scalar_argument<S::value_type> must constitute a valid class
 *******************************************************************************/
 template<typename T>
-class list_argument : public CmdArg {
-   typedef CmdArg ancestor ;
+class list_argument : public seq_arg<CmdArg::isLIST> {
+   typedef seq_arg<CmdArg::isLIST> ancestor ;
 public:
    typedef T                           container_type ;
    typedef T                           type ;
@@ -517,24 +586,8 @@ public:
    typedef typename T::const_iterator  const_iterator ;
    typedef const_iterator              iterator ;
 
-   list_argument(char optchar, separator sep,
-                 const char *keyword, const char *value_name,
-                 const char *description,
-                 unsigned    flags) :
-      ancestor(optchar, keyword, value_name, description, CmdArg::isLIST | flags),
-      _separator(sep)
-   {}
-
-   list_argument(char optchar, separator sep,
-                 const char *keyword, const char *value_name,
-                 const char *description) :
-      list_argument(optchar, sep, keyword, value_name, description, CmdArg::isVALREQ) {}
-
-   list_argument(const char *value_name, const char *description, unsigned flags) :
-      ancestor(value_name, description, CmdArg::isLIST | CmdArg::isPOS | flags) {}
-
-   list_argument(const char *value_name, const char *description) :
-      list_argument(value_name, description, CmdArg::isPOSVALREQ) {}
+   /// Derive constructors
+   using ancestor::ancestor ;
 
    type &value() { return _container ; }
    const type &value() const { return _container ; }
@@ -545,26 +598,15 @@ public:
    size_t size() const { return value().size() ; }
    bool empty() const { return value().empty() ; }
 
-   friend std::ostream &operator<<(std::ostream &os, const list_argument &v)
-   {
-      const char *delim = "" ;
-      for (const auto &value: v)
-      {
-         os << delim << value ;
-         delim = " " ;
-      }
-      return os ;
-   }
-
 protected:
-   void assign(const type &value) { _container = value ; }
-
    int operator() (const char *&arg, CmdLine &cmdline) override
    {
       return compile(arg, cmdline) && validate(value(), cmdline) ? 0 : -1 ;
    }
 
    virtual bool validate(type &, CmdLine &) { return true ; }
+
+   void assign(const type &value) { _container = value ; }
 
    void reset() override
    {
@@ -574,12 +616,11 @@ protected:
       swap(_container, dummy) ;
    }
 
+   bool compile(const char *&arg, CmdLine &cmdline) override ;
+
 private:
    container_type             _container ;
    item_compiler<value_type>  _compiler ;
-   separator                  _separator ;
-
-   bool compile(const char *&arg, CmdLine &cmdline) ;
 } ;
 
 template<typename T>
@@ -594,7 +635,7 @@ bool list_argument<T>::compile(const char *&arg, CmdLine &cmdline)
    {
       const char *current_arg ;
 
-      finish = _separator.find_in(finish, end) ;
+      finish = this->sep().find_in(finish, end) ;
       if (!*finish)
          current_arg = arg ;
       else
@@ -608,22 +649,36 @@ bool list_argument<T>::compile(const char *&arg, CmdLine &cmdline)
             current_arg = bufvec.data() ;
          }
          *((char *)memcpy(const_cast<char *>(current_arg), arg, argsize)  + argsize) = 0 ;
-         finish += _separator.size() ;
+         finish += this->sep().size() ;
       }
 
       if (!_compiler.compile(current_arg, cmdline))
          return false ;
-      _container.insert(_container.end(), _compiler.value()) ;
+      _container.insert(_container.end(), std::move(_compiler.value())) ;
    }
    return true ;
 }
+
+template<typename T>
+std::ostream &operator<<(std::ostream &os, const list_argument<T> &v)
+{
+   const char * const s = v.sep().size() ? v.sep().c_str() : " " ;
+   const char *delim = "" ;
+   for (const auto &value: v)
+   {
+      os << delim << value ;
+      delim = s ;
+   }
+   return os ;
+}
+
 } // end of namespace cmdl::detail
 
 /*******************************************************************************
  argtype_traits<T> for integral types
 *******************************************************************************/
 #define CMDL_DEFINE_INTTRAITS(type)                                     \
-   template<> struct argtype_traits<type > : detail::argint_traits<type > \
+   template<> struct argtype_traits<type> : detail::argint_traits<type> \
    { using detail::argint_traits<type>::argint_traits ; }
 
 CMDL_DEFINE_INTTRAITS(signed char) ;
@@ -794,7 +849,7 @@ private:
          CMDL_LOG_CMDERROR(cmdline, "invalid pair format.") ;
          return false ;
       }
-      result = compiler.value() ;
+      result = std::move(compiler.value()) ;
       return true ;
    }
 } ;
@@ -835,18 +890,6 @@ class Arg<stemplate<T> > : public detail::list_argument<stemplate<T> > { \
    typedef detail::list_argument<stemplate<T> > ancestor ;               \
 public:                                                                 \
    using ancestor::ancestor ;                                           \
-                                                                        \
-   Arg(char optchar,                                                    \
-       const char *keyword, const char *value_name,                     \
-       const char *description,                                         \
-       unsigned flags) :                                                \
-      Arg(optchar, separator(), keyword, value_name, description, flags) \
-   {}                                                                   \
-                                                                        \
-   Arg(char optchar, const char *keyword, const char *value_name,       \
-       const char *description) :                                       \
-      Arg(optchar, keyword, value_name, description, CmdArg::isVALREQ)  \
-   {}                                                                   \
                                                                         \
    Arg &operator=(const typename ancestor::type &value)                 \
    {                                                                    \
@@ -994,52 +1037,90 @@ public:
 
  The separator ".." is default, it is possible to specify an arbitrary separator.
 *******************************************************************************/
-/*
 template<typename T>
-struct ArgInterval : scalar_argument<std::pair<T, T> > {
-   protected:
-      item_compiler<T> _value_compiler ;
+class Arg<interval<T> > : public detail::seq_arg<0, CmdArg::isLIST> {
+   typedef detail::seq_arg<0, CmdArg::isLIST> ancestor ;
+public:
+   typedef std::pair<T,T> type ;
 
-      template<typename... Args>
-      basetype(Args &&...args) : ancestor(std::forward<Args>(args)...) {}
+   using ancestor::ancestor ;
 
-      bool compile(const char *&arg, CmdLine &cmdline) override
-      {
-         if (!arg)
-            return true ;
-         if (!*arg)
-         {
-            CMDL_LOG_CMDERROR(cmdline, "empty pair argument specified.") ;
-            return false ;
-         }
+   type &value() { return _value ; }
+   const type &value() const { return _value ; }
+   operator type() const { return value() ; }
 
-         const char *delim = arg + strcspn(arg, ":=") ;
-         _delim.first = *delim ? *delim : ':' ;
-         if ((delim != arg &&
-              !compile_half(_key_compiler, std::string(arg, delim).c_str(), cmdline, this->_value.first)) ||
+   const separator &sep() const
+   {
+      return ancestor::sep().front() ? ancestor::sep() : _default_sep ;
+   }
 
-             (*delim && *++delim &&
-              !compile_half(_value_compiler, delim, cmdline, this->_value.second)))
-            return false ;
+   friend std::ostream &operator<<(std::ostream &os, const Arg &v)
+   {
+      return os << v.value() ;
+   }
 
-         arg = NULL ;
+protected:
+   int operator() (const char *&arg, CmdLine &cmdline) override
+   {
+      return compile(arg, cmdline) && validate(value(), cmdline) ? 0 : -1 ;
+   }
 
+   virtual bool validate(type &, CmdLine &) { return true ; }
+
+   bool compile(const char *&arg, CmdLine &cmdline) override
+   {
+      if (!arg)
          return true ;
-      }
 
-      char *valstr(char *buf, size_t size, CmdArg::ValStr what_value) const override
+      char buf[1024] ;
+      std::vector<char> bufvec ;
+
+      const char *current_arg = buf ;
+      const char * const first_end = this->sep().find_in(arg) ;
+      const size_t first_size = first_end - arg ;
+
+      if (first_size >= sizeof buf)
       {
-         if ((!buf || !size)
-             || (what_value == CmdArg::VALSTR_DEFNOZERO && this->default_value() == type()))
-            return NULL ;
-
-         buf_ostream os (buf, size) ;
-         const type &ref = (what_value == CmdArg::VALSTR_ARGVAL) ? this->value() : this->default_value() ;
-         os << ref.first << _delim.first << ref.second << std::ends ;
-         return buf ;
+         bufvec.resize(first_size + 1) ;
+         current_arg = bufvec.data() ;
       }
+      *((char *)memcpy(const_cast<char *>(current_arg), arg, first_size)  + first_size) = 0 ;
+
+      if (!_item_compiler.compile(current_arg, cmdline))
+         return false ;
+
+      value().first = std::move(_item_compiler.value()) ;
+      current_arg = first_end + this->sep().size() ;
+
+      if (*first_end)
+      {
+         if (!_item_compiler.compile(current_arg, cmdline))
+            return false ;
+         value().second = std::move(_item_compiler.value()) ;
+      }
+      else
+         value().second = value().first ;
+
+      arg = nullptr ;
+      return true ;
+   }
+
+   void reset() override
+   {
+      ancestor::reset() ;
+      _value = {} ;
+   }
+
+private:
+   type             _value ;
+   item_compiler<T> _item_compiler ;
+
+   static const separator _default_sep ;
 } ;
-*/
+
+template<typename T>
+const separator Arg<interval<T> >::_default_sep {".."} ;
+
 /******************************************************************************/
 /** Command-line iterator over STL iterator
 *******************************************************************************/

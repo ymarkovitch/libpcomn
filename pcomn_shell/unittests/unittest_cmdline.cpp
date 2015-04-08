@@ -67,7 +67,7 @@ void CmdExtTests::Test_List_Args()
 
     CmdLine cmd01 ("cmd01") ;
 
-    cmd01.append(astrvec) ;
+    cmd01.append(astrvec).flags(CmdLine::NO_ABORT) ;
     CPPUNIT_LOG_EQ(cmd01.parse(CmdStrTokIter("ab cd ef")), 0) ;
     CPPUNIT_LOG_EXPRESSION(astrvec) ;
     CPPUNIT_LOG_EQ(astrvec.value(), (string_vector{"ab", "cd", "ef"})) ;
@@ -93,12 +93,12 @@ void CmdExtTests::Test_List_Args()
 
     CPPUNIT_LOG_EQ(cmd03.parse(CmdStrTokIter("--oi=4,3")), CmdLine::BAD_VALUE) ;
 
-    Arg<int_vector> commavec {'\0', separator(','), "ci", "INT", ""} ;
+    Arg<int_vector> commavec {'\0', "ci", "INT", "", separator(',')} ;
     cmd03.append(commavec) ;
     CPPUNIT_LOG_EQ(cmd03.parse(CmdStrTokIter("--ci=8,5 --ci=9")), 0) ;
     CPPUNIT_LOG_EQ(commavec.value(), (int_vector{8, 5, 9})) ;
 
-    Arg<int_vector> arrowvec {'\0', separator("->"), "ca", "INT", ""} ;
+    Arg<int_vector> arrowvec {'\0', "ca", "INT", "", separator("->")} ;
     cmd03.append(arrowvec) ;
     CPPUNIT_LOG_EQ(cmd03.parse(CmdStrTokIter("--ca=1,15,2")), CmdLine::BAD_VALUE) ;
     CPPUNIT_LOG_EQ(cmd03.parse(CmdStrTokIter("--ca=1")), 0) ;
@@ -109,6 +109,37 @@ void CmdExtTests::Test_List_Args()
 
 void CmdExtTests::Test_Pair_Args()
 {
+    using namespace cmdl ;
+    typedef unipair<int> int_pair ;
+    typedef unipair<std::string> string_pair ;
+    typedef std::vector<interval<int> > intpair_vector ;
+
+    Arg<interval<int> > intopt ('i', "int", "INTEGER", "") ;
+    Arg<interval<int> > intarg ("INT", "", CmdArg::isVALOPT) ;
+
+    Arg<interval<std::string> > stropt ('s', "str", "STRING", "", separator(':')) ;
+
+    CmdLine cmd01 ("cmd01") ;
+
+    cmd01
+        .append(intopt)
+        .append(intarg)
+        .append(stropt)
+        .flags(CmdLine::NO_ABORT) ;
+
+    CPPUNIT_LOG_EQ(cmd01.parse(CmdStrTokIter("1..2")), 0) ;
+    CPPUNIT_LOG_EXPRESSION(intarg) ;
+    CPPUNIT_LOG_EQUAL(intarg.value(), int_pair(1, 2)) ;
+
+    CPPUNIT_LOG_EQ(cmd01.parse(CmdStrTokIter("3")), 0) ;
+    CPPUNIT_LOG_EXPRESSION(intarg) ;
+    CPPUNIT_LOG_EQUAL(intarg.value(), int_pair(3, 3)) ;
+
+    Arg<intpair_vector> optintvec {'\0', "oi", "INT", "", separator(',')} ;
+    cmd01.append(optintvec) ;
+    CPPUNIT_LOG_EQ(cmd01.parse(CmdStrTokIter("--oi=1..2,10")), 0) ;
+    CPPUNIT_LOG_EXPRESSION(optintvec) ;
+    CPPUNIT_LOG_EQUAL(optintvec.value(), (intpair_vector{{1, 2}, {10, 10}})) ;
 }
 
 int main(int argc, char *argv[])
