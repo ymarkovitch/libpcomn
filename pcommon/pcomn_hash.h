@@ -298,7 +298,8 @@ PCOMN_HASH_INT_FN(const void *) ;
 
 inline size_t hasher(double value)
 {
-   return hash_64(*reinterpret_cast<const uint64_t *>(&value)) ;
+   const uint64_t *p_ui64 = reinterpret_cast<const uint64_t *>(&value) ;
+   return hash_64(*p_ui64) ;
 }
 
 inline size_t hasher(float value) { return hasher((double)value) ; }

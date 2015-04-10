@@ -162,7 +162,7 @@ template<typename... A>
 inline std::tuple<decay_argtype_t<const A> ...>
 const_tie(A&& ...args)
 {
-   return std::tie(pcomn::decay(std::forward<A>(args))...) ;
+   return std::tie(pcomn::decay(args)...) ;
 }
 
 /*******************************************************************************
