@@ -214,6 +214,15 @@ using noref_result_of_t = typename noref_result_of<T>::type ;
 template<typename T>
 using valtype_t = std::remove_cv_t<std::remove_reference_t<T> > ;
 
+template<typename T, typename... A>
+struct rebind___t {
+      template<template<typename...> class Template, typename... Args>
+      static Template<T, A...> eval(Template<Args...> *) ;
+} ;
+
+template<typename C, typename T, typename... A>
+using rebind_t = decltype(rebind___t<T, A...>::eval(std::declval<C *>())) ;
+
 /*******************************************************************************
                      union max_align
 *******************************************************************************/
