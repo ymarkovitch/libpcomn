@@ -67,6 +67,7 @@
 #include <list>
 #include <stdexcept>
 #include <type_traits>
+#include <initializer_list>
 #include <limits>
 
 #include <stdlib.h>
@@ -141,6 +142,8 @@
 *******************************************************************************/
 namespace cmdl {
 
+const unsigned ARGSYNTAX_FLAGS = 0xffff ;
+
 /******************************************************************************/
 /** Generic argument type traits, used as a base class for argument classes
 *******************************************************************************/
@@ -190,7 +193,7 @@ struct buf_ostream : private std::basic_streambuf<char>, public std::ostream {
 *******************************************************************************/
 template<typename T, typename B = CmdArg>
 struct scalar_argument : B {
-   typedef T type ;
+   typedef T      type ;
 
    // FIXME: should be virtual CmdArg::print()
 
@@ -404,6 +407,15 @@ namespace detail {
 inline const char *cstr(const char *s) { return s ; }
 inline const char *cstr(const std::string &s) { return s.c_str() ; }
 
+template<typename T, typename... A>
+struct rebind___c {
+      template<template<typename...> class Template, typename... Args>
+      static Template<T, A...> eval(Template<Args...> *) ;
+} ;
+
+template<typename C, typename T, typename... A>
+using rebind_container = decltype(rebind___c<T, A...>::eval(std::declval<C *>())) ;
+
 /*******************************************************************************
  Base class for integer argument traits (of different integral types)
 *******************************************************************************/
@@ -573,18 +585,18 @@ private:
 /******************************************************************************/
 /** Base class for all sequence arguments
 
- @param T   Container type, e.g. std::list<int>; there must be S::value_type defined and
-            scalar_argument<S::value_type> must constitute a valid class
+ @param Container Container type, e.g. std::list<int>; there must be S::value_type
+        defined and scalar_argument<S::value_type> must constitute a valid class
 *******************************************************************************/
-template<typename T>
+template<typename Container>
 class list_argument : public seq_arg<CmdArg::isLIST> {
    typedef seq_arg<CmdArg::isLIST> ancestor ;
+   typedef item_compiler<typename Container::value_type> compiler_type ;
 public:
-   typedef T                           container_type ;
-   typedef T                           type ;
-   typedef typename T::value_type      value_type ;
-   typedef typename T::const_iterator  const_iterator ;
-   typedef const_iterator              iterator ;
+   typedef rebind_container<Container, typename compiler_type::type> type ;
+   typedef typename type::value_type      value_type ;
+   typedef typename type::const_iterator  const_iterator ;
+   typedef const_iterator                 iterator ;
 
    /// Derive constructors
    using ancestor::ancestor ;
@@ -612,15 +624,14 @@ protected:
    {
       using namespace std ;
       ancestor::reset() ;
-      container_type dummy ;
-      swap(_container, dummy) ;
+      _container.clear() ;
    }
 
    bool compile(const char *&arg, CmdLine &cmdline) override ;
 
 private:
-   container_type             _container ;
-   item_compiler<value_type>  _compiler ;
+   type           _container ;
+   compiler_type  _compiler ;
 } ;
 
 template<typename T>
@@ -769,19 +780,37 @@ protected:
 /*******************************************************************************
  argtype_traits<std::string>
 *******************************************************************************/
-template<> struct argtype_traits<std::string> : scalar_argument<std::string> {
+template<> class argtype_traits<std::string> : public scalar_argument<std::string> {
+   typedef scalar_argument<std::string> ancestor ;
+public:
+   enum : unsigned {
+      isLOWER = 0x00010000,
+      isUPPER = 0x00020000
+   } ;
 protected:
    /// Inherit constructors
-   using scalar_argument<std::string>::scalar_argument ;
+   using ancestor::ancestor ;
 
-   bool compile(const char *&arg, CmdLine &)
+   bool compile(const char *&arg, CmdLine &) override
    {
       if (arg)
       {
          _value = arg ;
+         if (syntax() & (isLOWER|isUPPER))
+            std::transform(_value.data(), _value.data() + _value.size(), &*_value.begin(),
+                           (syntax() & isLOWER) ? tolower : toupper) ;
          arg = nullptr ;
       }
       return true ;
+   }
+
+   void reset() override
+   {
+      ancestor::reset() ;
+      if (default_value().empty())
+         value().clear() ;
+      else
+         assign(default_value()) ;
    }
 } ;
 
@@ -922,7 +951,6 @@ public:
            unsigned     flags = CmdArg::isVALREQ) :
       ancestor(default_value.first, optchar, keyword, value_name, description, flags),
       _default_value(default_value.second),
-      _value(),
       _valmap(&default_value, &default_value + 1)
    {}
 
@@ -932,7 +960,6 @@ public:
            unsigned     flags = CmdArg::isVALREQ) :
       ancestor(default_value.first, value_name, description, flags),
       _default_value(default_value.second),
-      _value(),
       _valmap(&default_value, &default_value + 1)
    {}
 
@@ -954,7 +981,7 @@ private:
    typedef std::map<std::string, type> valmap_type ;
 
    type        _default_value ;
-   type        _value ;
+   type        _value {} ;
    valmap_type _valmap ;
 
 protected:
@@ -966,7 +993,7 @@ protected:
       swap(_value, v) ;
    }
 
-   bool compile(const char *&arg, CmdLine &cmdl)
+   bool compile(const char *&arg, CmdLine &cmdl) override
    {
       if (!ancestor::compile(arg, cmdl))
          return false ;
@@ -1052,6 +1079,11 @@ public:
    const separator &sep() const
    {
       return ancestor::sep().front() ? ancestor::sep() : _default_sep ;
+   }
+
+   item_compiler<T> &compiler()
+   {
+      return const_cast<item_compiler<T> &>(_item_compiler) ;
    }
 
    friend std::ostream &operator<<(std::ostream &os, const Arg &v)
@@ -1197,6 +1229,21 @@ unsigned parse_cmdline(int argc, const char * const *argv,
 inline bool is_given(const CmdArg &arg)
 {
    return !!(arg.flags() & CmdArg::GIVEN) ;
+}
+
+inline bool any_given(std::initializer_list<const CmdArg *> args)
+{
+   return std::any_of(args.begin(), args.end(), [](const CmdArg *a) { return a && is_given(*a) ; } ) ;
+}
+
+inline bool none_given(std::initializer_list<const CmdArg *> args)
+{
+   return !any_given(args) ;
+}
+
+inline bool all_given(std::initializer_list<const CmdArg *> args)
+{
+   return std::all_of(args.begin(), args.end(), [](const CmdArg *a) { return a && is_given(*a) ; } ) ;
 }
 
 } // end of namespace cmdl
