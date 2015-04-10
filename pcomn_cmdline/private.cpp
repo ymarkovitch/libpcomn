@@ -122,8 +122,8 @@ CmdLine::handle_arg(CmdArg * cmdarg, const char * & arg)
       if (cmdarg == cmd_matched_arg)  cmd_parse_state = cmd_START_STATE ;
    }
 
-   // if this is a list - optional values may follow the one given
-   if ((cmdarg->syntax() & CmdArg::isLIST) && (arg != save_arg)) {
+   // if this is a positional list argument - optional values may follow the one given
+   if ((cmdarg->syntax() & (CmdArg::isLIST | CmdArg::isPOS)) == (CmdArg::isLIST | CmdArg::isPOS) && (arg != save_arg)) {
       cmd_matched_arg = cmdarg ;
       cmd_parse_state = cmd_WANT_VAL ;
    }
