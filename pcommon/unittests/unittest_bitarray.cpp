@@ -93,6 +93,10 @@ void BitArrayTests::Test_Constructors()
    CPPUNIT_LOG_EQ(b65_02.set(63).count(), 2) ;
    CPPUNIT_LOG_EQ(string_cast(b65_02), std::string(63, '0') + "11") ;
 
+   bitarray b65_03 (std::move(b65_02)) ;
+   CPPUNIT_LOG_EQ(string_cast(b65_03), std::string(63, '0') + "11") ;
+   CPPUNIT_LOG_EQ(string_cast(b65_02), "") ;
+
    bitarray b127_01 (127) ;
    CPPUNIT_LOG_EQ(b127_01.size(), 127) ;
 

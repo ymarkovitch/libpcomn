@@ -915,6 +915,11 @@ inline ostream &operator<<(ostream &os, const type_index &v)
 {
    return os << PCOMN_DEMANGLE(v.name()) ;
 }
+
+inline ostream &operator<<(ostream &os, nullptr_t)
+{
+   return os << "NULL" ;
+}
 } // end of namespace std
 
 #endif /* __PCOMN_UTILS_H */

@@ -310,8 +310,8 @@ inline append_iterator<Container> appender(Container &container)
 /******************************************************************************/
 /** Output iterator that turns assignment into calling a functor.
 
- Output iterator, constructed from a functor. Assigning a value to such
- iterator calls that functor, passing it a value
+ Output iterator, constructed from a functor. Assigning a value to it calls the functor,
+ passing it a value
 
  Use the calliter() function to create call_iterator.
 *******************************************************************************/

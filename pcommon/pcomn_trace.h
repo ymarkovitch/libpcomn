@@ -700,13 +700,13 @@ struct ofncall_ {
       {}
 
       template<typename T>
-      const ofncall_ &operator<<(const T &arg) const
+      const ofncall_ &operator<<(T &&arg) const
       {
          if (!_pcount++)
             _os << _name << '(' ;
          else
             _os << ", " ;
-         _os << arg ;
+         _os << std::forward<T>(arg) ;
          return *this ;
       }
 
@@ -782,6 +782,7 @@ using diag::EndArgs ;
 /// ostream, considering the function name if the name of the member function, which
 /// scope we now in (i.e. __FUNCTION__).
 /// @param ARGS Sequence of arguments, delimited by operator <<.
+
 #define SCOPEMEMFNOUT(ARGS)   MEMFNOUT(__FUNCTION__, ARGS)
 
 
