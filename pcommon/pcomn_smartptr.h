@@ -221,20 +221,16 @@ class shared_intrusive_ptr {
          shared_intrusive_ptr(src.get())
       {}
 
-      shared_intrusive_ptr(shared_intrusive_ptr &&src) :
-         _object(src._object)
+      shared_intrusive_ptr(shared_intrusive_ptr &&src) : _object(src._object)
       { src._object = nullptr ; }
 
-      template<typename U>
-      shared_intrusive_ptr(const shared_intrusive_ptr<U> &src,
-                           instance_if_t<std::is_convertible<U*, element_type*>::value> = {}) :
+      template<typename U, typename = instance_if_t<std::is_convertible<U*, element_type*>::value> >
+      shared_intrusive_ptr(const shared_intrusive_ptr<U> &src) :
          shared_intrusive_ptr(src.get())
       {}
 
-      template<class U>
-      shared_intrusive_ptr(shared_intrusive_ptr<U> &&src,
-                           instance_if_t<std::is_convertible<U*, element_type*>::value> = {}) :
-         _object(src._object)
+      template<typename U, typename = instance_if_t<std::is_convertible<U*, element_type*>::value> >
+      shared_intrusive_ptr(shared_intrusive_ptr<U> &&src) : _object(src._object)
       { src._object = nullptr ; }
 
       ~shared_intrusive_ptr() { dec_ref() ; }
@@ -266,7 +262,7 @@ class shared_intrusive_ptr {
          return *this ;
       }
 
-      template<class U>
+      template<typename U, typename = instance_if_t<std::is_convertible<U*, element_type*>::value>>
       shared_intrusive_ptr &operator=(const shared_intrusive_ptr<U> &other)
       {
          assign_element(other.get()) ;
@@ -400,14 +396,12 @@ template<typename T>
 class shared_ref {
       typedef typename std::remove_cv<T>::type mutable_type ;
 
-      template<typename... Args, typename = decltype(mutable_type(std::declval<Args>()...))>
+      template<typename... Args, typename = decltype(new mutable_type(std::declval<Args>()...))>
       static std::true_type test_constructible(int) ;
       template<typename...>
       static std::false_type test_constructible(...) ;
-      template<typename... Args>
-      using constructible = instance_if_t<decltype(shared_ref::test_constructible<Args...>(0))::value> ;
-
    public:
+
       typedef T type ;
       typedef T element_type ;
       typedef element_type &reference ;
@@ -419,9 +413,8 @@ class shared_ref {
 
       shared_ref(const shared_ref &other) = default ;
 
-      template<typename R>
-      shared_ref(const shared_ref<R> &other,
-                 instance_if_t<std::is_convertible<R*, element_type*>::value> = {}) :
+      template<typename R, typename = instance_if_t<std::is_convertible<R*, element_type*>::value> >
+      shared_ref(const shared_ref<R> &other) :
          _ptr(other.ptr())
       {}
 
@@ -431,13 +424,16 @@ class shared_ref {
                        "Referenced type is not default constructible") ;
       }
 
-      template<typename A1>
-      explicit shared_ref(A1 &&p1, constructible<A1> = {}) :
+      template<typename A1, typename = decltype(new mutable_type(std::declval<A1>()))>
+      explicit shared_ref(A1 &&p1) :
          _ptr(new mutable_type(p1)) {}
 
-      template<typename A1, typename A2, typename...Args>
-      shared_ref(A1 &&p1, A2 &&p2, Args &&...args, constructible<A1, A2, Args...> = {}) :
-         _ptr(new mutable_type(std::forward<A1>(p1), std::forward<A2>(p2), std::forward<Args>(args)...)) {}
+      template<typename A1, typename A2, typename...Args,
+               typename = decltype(new mutable_type(std::declval<A1>(), std::declval<A2>(), std::declval<Args>()...))>
+
+      shared_ref(A1 &&p1, A2 &&p2, Args &&...args) :
+         _ptr(new mutable_type(std::forward<A1>(p1), std::forward<A2>(p2), std::forward<Args>(args)...))
+      {}
 
       explicit shared_ref(const smartptr_type &ptr) :
          _ptr(PCOMN_ENSURE_ARG(ptr))

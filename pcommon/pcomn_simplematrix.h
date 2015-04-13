@@ -43,8 +43,8 @@ class simple_slice {
 
       constexpr simple_slice() : _start(), _finish() {}
 
-      template<typename U>
-      simple_slice(const simple_slice<U> &src, instance_if_t<std::is_same<T, std::add_const_t<U> >::value> = {}) :
+      template<typename U, typename = instance_if_t<std::is_same<T, std::add_const_t<U> >::value> >
+      simple_slice(const simple_slice<U> &src) :
          _start(const_cast<T *>(src.begin())), _finish(const_cast<T *>(src.end()))
       {}
 
@@ -657,8 +657,8 @@ class matrix_slice {
                _pos(pos)
             {}
 
-            template<bool other>
-            byrow_iterator(const byrow_iterator<other> &src, instance_if_t<((int)other < (int)c)> = {}) :
+            template<bool other, typename = instance_if_t<((int)other < (int)c)> >
+            byrow_iterator(const byrow_iterator<other> &src) :
                _matrix(src._matrix),
                _pos(src._pos)
             {}
