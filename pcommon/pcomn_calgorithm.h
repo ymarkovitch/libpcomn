@@ -147,6 +147,13 @@ truncate_container(C &&container, const container_iterator_t<C> &pos)
    return std::forward<C>(container) ;
 }
 
+template<typename C>
+inline C &&extend_container(C &&container, size_t extra)
+{
+   container.resize(container.size() + extra) ;
+   return std::forward<C>(container) ;
+}
+
 /*******************************************************************************
  Sort a container
 *******************************************************************************/

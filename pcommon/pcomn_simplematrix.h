@@ -621,10 +621,8 @@ class simple_column {
       int      _step ;
 } ;
 
-
-/*******************************************************************************
-                     template<class T>
-                     class matrix_slice
+/******************************************************************************/
+/** A matrix over a contiguous memory range, does not own its memory
 *******************************************************************************/
 template<typename T>
 class matrix_slice {
@@ -706,13 +704,16 @@ class matrix_slice {
 
       matrix_slice() = default ;
 
-      matrix_slice(item_type *init, size_t rows, size_t cols) :
+      matrix_slice(item_type *data, size_t rows, size_t cols) :
          _rows(rows),
          _cols(cols),
-         _data(init)
+         _data(data)
       {
-         NOXCHECK(init || empty()) ;
+         NOXCHECK(_cols || !_rows) ;
+         NOXCHECK(data || empty()) ;
       }
+
+      matrix_slice(item_type *data, size_t cols, std::initializer_list<std::initializer_list<T> > init) ;
 
       matrix_slice(const matrix_slice<std::remove_const_t<item_type> > &other) :
          _rows(other.rows()),
@@ -723,7 +724,7 @@ class matrix_slice {
       size_t size() const { return _rows ; }
       size_t rows() const { return _rows ; }
       size_t columns() const { return _cols ; }
-      bool empty() const { return !(_rows + _cols) ; }
+      bool empty() const { return !_rows ; }
 
       unipair<size_t> dim() const { return {_rows, _cols} ; }
 
@@ -772,12 +773,74 @@ class matrix_slice {
 
 
 /*******************************************************************************
-                     template<class T>
-                     class simple_matrix
+ matrix_slice
 *******************************************************************************/
 template<typename T>
-class simple_matrix : public matrix_slice<T> {
+matrix_slice<T>::matrix_slice(item_type *data, size_t cols, std::initializer_list<std::initializer_list<T> > init) :
+   matrix_slice(data, init.size(), cols)
+{
+   unsigned rownum = 0 ;
+   for (const auto &r: init)
+   {
+      ensure_eq<std::invalid_argument>
+         (r.size(), cols, "Item count mismatch in the initializer of a matrix row") ;
+      std::copy(r.begin(), r.end(), row(rownum).begin()) ;
+      ++rownum ;
+   }
+}
+
+/*******************************************************************************
+ matrix_internal_storage
+*******************************************************************************/
+template<typename T, bool resizable>
+struct matrix_internal_storage {
+   protected:
+      static void delete_data(T *data)
+      {
+         delete [] data ;
+      }
+      static T *new_data(size_t rows, size_t cols)
+      {
+         size_t sz = rows * cols ;
+         return sz ? new T[sz] : nullptr ;
+      }
+      void resize_data(size_t, size_t) ;
+} ;
+
+template<typename T>
+struct matrix_internal_storage<T, true> {
+   protected:
+      static void delete_data(T *) {}
+      T *new_data(size_t rows, size_t cols) ;
+      T *resize_data(size_t rows, size_t cols)
+      {
+         _data.resize(rows * cols) ;
+         return _data.size() ? _data.data() : nullptr ;
+      }
+   private:
+      std::vector<T> _data ;
+} ;
+
+template<typename T>
+T *matrix_internal_storage<T, true>::new_data(size_t rows, size_t cols)
+{
+   _data.clear() ;
+   _data.shrink_to_fit() ;
+   if (const size_t sz = rows * cols)
+   {
+      _data.resize(sz) ;
+      return _data.data() ;
+   }
+   return nullptr ;
+}
+
+/******************************************************************************/
+/** A memory-owning matrix over a contiguous memory range
+*******************************************************************************/
+template<typename T, bool resizable = false>
+class simple_matrix : matrix_internal_storage<T, resizable>, public matrix_slice<T>  {
       typedef matrix_slice<T> ancestor ;
+      typedef matrix_internal_storage<T, resizable> storage ;
    public:
       using typename ancestor::item_type ;
       using typename ancestor::const_item_type ;
@@ -801,32 +864,39 @@ class simple_matrix : public matrix_slice<T> {
       {}
 
       simple_matrix(size_t rows, size_t cols) :
-         ancestor(_new_data(rows, cols), rows, cols)
+         ancestor(storage::new_data(rows, cols), rows, cols)
       {}
 
       simple_matrix(size_t rows, size_t cols, const T &init) :
-         ancestor(_new_data(rows, cols), rows, cols)
+         ancestor(storage::new_data(rows, cols), rows, cols)
       {
          this->fill(init) ;
       }
 
       simple_matrix(size_t cols, std::initializer_list<std::initializer_list<T> > init) ;
 
-      ~simple_matrix()
-      {
-         delete [] this->data() ;
-      }
+      ~simple_matrix() { storage::delete_data(this->data()) ; }
 
       simple_matrix &reset(size_t rows, size_t cols)
       {
-         delete [] ancestor::reset(_new_data(rows, cols), rows, cols) ;
+         storage::delete_data(ancestor::reset(storage::new_data(rows, cols), rows, cols)) ;
+         return *this ;
+      }
+
+      template<typename = instance_if_t<resizable> >
+      simple_matrix &resize(size_t rows)
+      {
+         ancestor::reset(storage::resize_data(rows, this->columns()), rows, this->columns()) ;
          return *this ;
       }
 
       void swap(simple_matrix &other)
       {
          if (&other != this)
+         {
             pcomn_swap(static_cast<ancestor &>(other), *static_cast<ancestor *>(this)) ;
+            pcomn_swap(static_cast<storage &>(other), *static_cast<storage *>(this)) ;
+         }
       }
 
       /// Copy assignment (O(n))
@@ -853,39 +923,28 @@ class simple_matrix : public matrix_slice<T> {
       }
 
    private:
-      static T *_new_data(size_t rows, size_t cols)
-      {
-         size_t sz = rows * cols ;
-         return sz ? new T[sz] : nullptr ;
-      }
-
       simple_matrix(const_item_type *other_data, size_t rows, size_t cols, std::true_type) ;
 } ;
 
-PCOMN_DEFINE_SWAP(simple_matrix<T>, template<typename T>) ;
+
+PCOMN_DEFINE_SWAP(simple_matrix<P_PASS(T, r)>, template<typename T, bool r>) ;
 
 /*******************************************************************************
  simple_matrix
 *******************************************************************************/
-template<typename T>
-simple_matrix<T>::simple_matrix(const_item_type *src_data, size_t rows, size_t cols, std::true_type) :
-   ancestor(_new_data(rows, cols), rows, cols)
+template<typename T, bool r>
+simple_matrix<T, r>::simple_matrix(const_item_type *src_data, size_t rows, size_t cols, std::true_type) :
+   ancestor(storage::new_data(rows, cols), rows, cols)
 {
    std::copy(src_data, src_data + rows * cols, this->data()) ;
 }
 
-template<typename T>
-simple_matrix<T>::simple_matrix(size_t cols, std::initializer_list<std::initializer_list<T> > init) :
-   ancestor(_new_data(init.size(), cols), init.size(), cols)
+template<typename T, bool r>
+simple_matrix<T, r>::simple_matrix(size_t cols, std::initializer_list<std::initializer_list<T> > init)
+   try : ancestor(storage::new_data(init.size(), cols), cols, init) {}
+catch(...)
 {
-   unsigned rownum = 0 ;
-   for (const auto &r: init)
-   {
-      ensure_eq<std::invalid_argument>
-         (r.size(), cols, "Item count mismatch in the initializer of a matrix row") ;
-      std::copy(r.begin(), r.end(), this->row(rownum).begin()) ;
-      ++rownum ;
-   }
+   storage::delete_data(this->data()) ;
 }
 
 /*******************************************************************************

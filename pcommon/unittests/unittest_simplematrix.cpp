@@ -275,6 +275,58 @@ void SimpleSliceTests::Test_Simple_Matrix_Construct()
    CPPUNIT_LOG_EXPRESSION(matrix4_0x0) ;
    CPPUNIT_LOG_EXPRESSION(matrix3_4x3) ;
    CPPUNIT_LOG_EQUAL(matrix3_4x3, matrix3_4x3) ;
+
+   CPPUNIT_LOG_LINE("\n************* Test resizable matrix")  ;
+   typedef simple_matrix<std::string, true> string_rmatrix ;
+
+   string_rmatrix rmatrix0_3x2 (mslice0) ;
+
+   string_rmatrix rmatrix1_3x2 (mslice1_3x2) ;
+   string_rmatrix rmatrix2_3x2 (1, 4, "Hello!") ;
+
+   CPPUNIT_LOG_EQ(rmatrix0_3x2.dim(), unipair<size_t>(0, 0)) ;
+   CPPUNIT_LOG_ASSERT(rmatrix0_3x2.empty()) ;
+
+   CPPUNIT_LOG_EQ(rmatrix1_3x2.dim(), unipair<size_t>(3, 2)) ;
+
+   CPPUNIT_LOG_EQ(rmatrix1_3x2[0], (string_vector{"1", "2"})) ;
+   CPPUNIT_LOG_EQ(rmatrix1_3x2[1], (string_vector{"3", "4"})) ;
+   CPPUNIT_LOG_EQ(rmatrix1_3x2[2], (string_vector{"5", "6"})) ;
+
+   CPPUNIT_LOG_ASSERT(rmatrix0_3x2.empty()) ;
+   CPPUNIT_LOG_RUN(rmatrix0_3x2 = rmatrix1_3x2) ;
+   CPPUNIT_LOG_EQ(rmatrix1_3x2.dim(), unipair<size_t>(3, 2)) ;
+   CPPUNIT_LOG_EQ(rmatrix0_3x2.dim(), unipair<size_t>(3, 2)) ;
+
+   CPPUNIT_LOG_EQ(rmatrix1_3x2[0], (string_vector{"1", "2"})) ;
+   CPPUNIT_LOG_EQ(rmatrix1_3x2[2], (string_vector{"5", "6"})) ;
+
+   CPPUNIT_LOG_EQ(rmatrix0_3x2[0], (string_vector{"1", "2"})) ;
+   CPPUNIT_LOG_EQ(rmatrix0_3x2[2], (string_vector{"5", "6"})) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_EQ(rmatrix2_3x2.dim(), unipair<size_t>(1, 4)) ;
+   CPPUNIT_LOG_EQ(rmatrix2_3x2[0], (string_vector(4, "Hello!"))) ;
+
+   CPPUNIT_LOG_EQ((rmatrix2_3x2 = std::move(rmatrix1_3x2)).dim(), unipair<size_t>(3, 2)) ;
+   CPPUNIT_LOG_EQ(rmatrix1_3x2.dim(), unipair<size_t>(0, 0)) ;
+   CPPUNIT_LOG_ASSERT(rmatrix1_3x2.empty()) ;
+
+   CPPUNIT_LOG_EQ(rmatrix2_3x2[0], (string_vector{"1", "2"})) ;
+   CPPUNIT_LOG_EQ(rmatrix2_3x2[2], (string_vector{"5", "6"})) ;
+   CPPUNIT_LOG_EQ(rmatrix2_3x2.dim(), unipair<size_t>(3, 2)) ;
+
+   CPPUNIT_LOG_RUN(rmatrix2_3x2.resize(5)) ;
+   CPPUNIT_LOG_EQ(rmatrix2_3x2.dim(), unipair<size_t>(5, 2)) ;
+   CPPUNIT_LOG_EQ(rmatrix2_3x2[0], (string_vector{"1", "2"})) ;
+   CPPUNIT_LOG_EQ(rmatrix2_3x2[2], (string_vector{"5", "6"})) ;
+   CPPUNIT_LOG_EQ(rmatrix2_3x2[3], (string_vector{"", ""})) ;
+   CPPUNIT_LOG_EQ(rmatrix2_3x2[4], (string_vector{"", ""})) ;
+
+   CPPUNIT_LOG_RUN(rmatrix2_3x2.resize(2)) ;
+   CPPUNIT_LOG_EQ(rmatrix2_3x2.dim(), unipair<size_t>(2, 2)) ;
+   CPPUNIT_LOG_EQ(rmatrix2_3x2[0], (string_vector{"1", "2"})) ;
+   CPPUNIT_LOG_EQ(rmatrix2_3x2[1], (string_vector{"3", "4"})) ;
 }
 
 int main(int argc, char *argv[])
