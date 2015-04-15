@@ -2,5 +2,5 @@
 libpcomn
 ========
 
-My helper multiplatform libraries for everything. Well, *relatively* multiplatform -
-Windows and Linux 64-bit.
+A helper multiplatform libraries for everything. Well, *relatively* multiplatform -
+Linux and Windows 64-bit.
