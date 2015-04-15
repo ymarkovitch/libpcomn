@@ -17,6 +17,7 @@
 #include <pcomn_meta.h>
 #include <pcomn_function.h>
 #include <pcomn_iterator.h>
+#include <pcomn_hash.h>
 
 #include <algorithm>
 #include <vector>
@@ -27,9 +28,9 @@
 
 namespace pcomn {
 
-/*******************************************************************************
-                     template<class T>
-                     class simple_slice
+/******************************************************************************/
+/** Non-owning reference to a part (range) of a contiguous memory array,
+ "unowning subvector"
 *******************************************************************************/
 template<typename T>
 class simple_slice {
@@ -726,6 +727,7 @@ class matrix_slice {
       size_t columns() const { return _cols ; }
       bool empty() const { return !_rows ; }
 
+      /// Get both matrix dimensions {rows, columns}
       unipair<size_t> dim() const { return {_rows, _cols} ; }
 
       row_type       row(int ndx)       { return {_data + _cols * ndx, columns()} ; }
@@ -983,6 +985,12 @@ PCOMN_DEFINE_SWAP(static_vector<P_PASS(T, maxsize)>, template<typename T, size_t
 PCOMN_DEFINE_SWAP(simple_slice<T>, template<typename T>) ;
 PCOMN_DEFINE_SWAP(simple_vector<T>, template<typename T>) ;
 PCOMN_DEFINE_SWAP(simple_ivector<T *>, template<typename T>) ;
+
+/******************************************************************************/
+/** simple_slice hash functor
+*******************************************************************************/
+template<typename T>
+struct hash_fn<simple_slice<T> > : hash_fn_seq<T> {} ;
 
 /*******************************************************************************
  Slice equality comparison

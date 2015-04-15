@@ -205,8 +205,7 @@ struct collection_iterator : collection_iterator_tag<RandomAccessContainer> {
  operator++() is called).
 *******************************************************************************/
 template<typename Counter = size_t>
-struct count_iterator :
-         std::iterator<std::forward_iterator_tag, Counter, ptrdiff_t, void, Counter> {
+struct count_iterator : std::iterator<std::random_access_iterator_tag, Counter, ptrdiff_t, void, Counter> {
 
       constexpr count_iterator() : _count() {}
       explicit constexpr count_iterator(Counter init_count) : _count(init_count) {}
@@ -219,19 +218,42 @@ struct count_iterator :
          ++_count ;
          return *this ;
       }
-      PCOMN_DEFINE_POSTCREMENT(count_iterator, ++) ;
-
-      friend bool operator==(const count_iterator &lhs, const count_iterator &rhs)
+      count_iterator &operator--()
       {
-         return lhs._count == rhs._count ;
+         --_count ;
+         return *this ;
       }
-      friend bool operator!=(const count_iterator &lhs, const count_iterator &rhs)
+      count_iterator &operator+=(ptrdiff_t diff)
       {
-         return !(lhs == rhs) ;
+         _count += diff ;
+         return *this ;
+      }
+      count_iterator &operator-=(ptrdiff_t diff)
+      {
+         _count -= diff ;
+         return *this ;
+      }
+
+      PCOMN_DEFINE_POSTCREMENT_METHODS(count_iterator) ;
+      PCOMN_DEFINE_NONASSOC_ADDOP_METHODS(count_iterator, ptrdiff_t) ;
+
+      friend ptrdiff_t operator-(const count_iterator &x, const count_iterator &y)
+      {
+         return x._count - y._count ;
+      }
+      friend bool operator==(const count_iterator &x, const count_iterator &y)
+      {
+         return x._count == y._count ;
+      }
+      friend bool operator<(const count_iterator &x, const count_iterator &y)
+      {
+         return x._count < y._count ;
       }
    private:
       Counter _count ;
 } ;
+
+PCOMN_DEFINE_RELOP_FUNCTIONS(template<typename T>, count_iterator<T>) ;
 
 /******************************************************************************/
 /** An output iterator which counts how far it is advanced (how many times

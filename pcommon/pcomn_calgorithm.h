@@ -101,6 +101,13 @@ range_size(C &&c)
    return std::distance(std::begin(std::forward<C>(c)), std::end(std::forward<C>(c))) ;
 }
 
+template<typename T, typename = instance_if_t<std::is_arithmetic<T>::value> >
+inline decltype(std::declval<T>() - std::declval<T>())
+range_size(const unipair<T> &c)
+{
+   return c.second - c.first ;
+}
+
 /******************************************************************************/
 /** Clear a container containing pointers: delete all pointed values and clear
  the container itself.

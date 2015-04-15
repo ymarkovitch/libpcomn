@@ -724,7 +724,7 @@ struct assertion_traits<std::map<K, T> > : assertion_traits_sequence<std::map<K,
    template<typename T>                                                 \
    struct assertion_traits<sequence<T> > : assertion_traits_sequence<sequence<T> > {}
 
-#define _CPPUNIT_ASSERTION_TRAITS_MATRIX(matrix)                    \
+#define _CPPUNIT_ASSERTION_TRAITS_MATRIX(matrix)                        \
    template<typename T>                                                 \
    struct assertion_traits<matrix<T> > : assertion_traits_matrix<matrix<T> > {}
 
@@ -735,7 +735,9 @@ _CPPUNIT_ASSERTION_TRAITS_SEQUENCE(std::set) ;
 _CPPUNIT_ASSERTION_TRAITS_SEQUENCE(std::multiset) ;
 
 _CPPUNIT_ASSERTION_TRAITS_MATRIX(pcomn::matrix_slice) ;
-_CPPUNIT_ASSERTION_TRAITS_MATRIX(pcomn::simple_matrix) ;
+
+template<typename T, bool r>
+struct assertion_traits<pcomn::simple_matrix<T, r> > : assertion_traits_matrix<pcomn::simple_matrix<T, r> > {} ;
 
 #undef _CPPUNIT_ASSERTION_TRAITS_SEQUENCE
 #undef _CPPUNIT_ASSERTION_TRAITS_MATRIX

@@ -113,9 +113,9 @@ void ClosedHashTests::Test_Hash_Functions()
    CPPUNIT_LOG(std::endl) ;
    CPPUNIT_LOG_EQUAL(pcomn::hash_fn_seq<int>()(CPPUNIT_CONTAINER(std::vector<int>, (1)(2)(3))),
                      pcomn::Hash().append_data(1).append_data(2).append_data(3).value()) ;
-   CPPUNIT_LOG_NOT_EQUAL((pcomn::hash_fn_seq<int, pcomn::hash_fn_raw>()(CPPUNIT_CONTAINER(std::vector<int>, (1)(2)(3)))),
+   CPPUNIT_LOG_NOT_EQUAL((pcomn::hash_fn_seq<int, pcomn::hash_fn_raw<int> >()(CPPUNIT_CONTAINER(std::vector<int>, (1)(2)(3)))),
                          pcomn::Hash().append_data(1).append_data(2).append_data(3).value()) ;
-   CPPUNIT_LOG_EQUAL((pcomn::hash_fn_seq<int, pcomn::hash_fn_raw>()(CPPUNIT_CONTAINER(std::vector<int>, (1)(2)(3)))),
+   CPPUNIT_LOG_EQUAL((pcomn::hash_fn_seq<int, pcomn::hash_fn_raw<int> >()(CPPUNIT_CONTAINER(std::vector<int>, (1)(2)(3)))),
                      pcomn::Hash().append(1).append(2).append(3).value()) ;
 }
 

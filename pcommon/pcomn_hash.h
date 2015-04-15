@@ -327,35 +327,30 @@ struct hash_identity : public std::unary_function<T, size_t> {
 *******************************************************************************/
 template<class T> struct hash_fn ;
 template<class T> struct hash_fn_raw ;
-template<class T, template<typename> class> struct hash_fn_seq ;
 
 /******************************************************************************/
 /** Hash accumulator: "reduces" a sequence of hash value to single hash value.
  Useful for hashing structures and sequences (i.e. complex objects).
  The algorith is from Python's tuplehash.
 *******************************************************************************/
-class Hash {
-   public:
-      Hash() :
-         _accumulator(0x345678L),
-         _count(0)
-      {}
+struct Hash {
 
-      explicit Hash(uint64_t hash) :
-         _accumulator((uint64_t)0x31E9D059168ULL ^ hash),
+      constexpr Hash() = default ;
+
+      explicit constexpr Hash(uint64_t initial_hash) :
+         _accumulator((uint64_t)0x31E9D059168ULL ^ initial_hash),
          _count(1)
       {}
 
       template<typename InputIterator>
-      Hash(const InputIterator &b, const InputIterator &e) :
-         _accumulator(0x345678L),
-         _count(0)
+      Hash(const InputIterator &b, const InputIterator &e) : Hash()
       {
          append_data(b, e) ;
       }
 
-      uint64_t value() const { return _accumulator ^ _count ; }
-      operator uint64_t() const { return value() ; }
+      constexpr uint64_t value() const { return _accumulator ^ _count ; }
+      constexpr operator uint64_t() const { return value() ; }
+
       Hash &append(uint64_t hash)
       {
          _accumulator = (1000003 * _accumulator) ^ hash ;
@@ -373,12 +368,12 @@ class Hash {
          return *this ;
       }
 
-      template<class T>
-      Hash &operator +=(const T &data) { return append_data(data) ; }
+      template<typename T>
+      Hash &operator+=(const T &data) { return append_data(data) ; }
 
    private:
-      uint64_t _accumulator ;
-      uint64_t _count ;
+      uint64_t _accumulator = 0x345678L ;
+      uint64_t _count       = 0 ;
 } ;
 
 /******************************************************************************/
@@ -683,6 +678,15 @@ struct hash_fn : std::unary_function<T, size_t> {
 template<typename T>
 struct hash_fn<const T> : hash_fn<T> {} ;
 
+template<typename T>
+struct hash_fn<T &> : hash_fn<T> {} ;
+
+/******************************************************************************/
+/** Hash functor for std::reference_wrapper<T> is the same as for T itself
+*******************************************************************************/
+template<typename T>
+struct hash_fn<std::reference_wrapper<T> > : hash_fn<T> {} ;
+
 /******************************************************************************/
 /** Hashing functor, which uses pcomn::hash_fn<> for hashing non-integral values, and
  pcomn::hash_identity<> for hashing integral values.
@@ -695,20 +699,20 @@ struct hash_fn_raw : hash_fn<T> {} ;
 /******************************************************************************/
 /** Hashing functor for any sequence
 *******************************************************************************/
-template<class T, template<typename> class HashFunctor = hash_fn>
-struct hash_fn_seq : HashFunctor<T> {
-      template<class S>
-      size_t operator() (const S &sequence) const
+template<typename T, typename H = hash_fn<T> >
+struct hash_fn_seq : H {
+      template<typename  S>
+      size_t operator()(const S &sequence) const
       {
-         return (*this)(sequence.begin(), sequence.end()) ;
+         return (*this)(std::begin(sequence), std::end(sequence)) ;
       }
 
-      template<class InputIterator>
-      size_t operator() (const InputIterator &b, const InputIterator &e) const
+      template<typename InputIterator>
+      size_t operator()(InputIterator b, InputIterator e) const
       {
          Hash accu ;
-         for (InputIterator i (b) ; i != e ; ++i)
-            accu.append(HashFunctor<T>::operator()(*i)) ;
+         for ( ; b != e ; ++b)
+            accu.append(H::operator()(*b)) ;
          return accu ;
       }
 } ;

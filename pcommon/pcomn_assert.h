@@ -50,7 +50,7 @@
 #define NOXPRECONDITIONX(p,s)   ((void)0)
 #define NOXCHECKX(p,s)          ((void)0)
 #define PARANOID_NOXCHECKX(p,s) ((void)0)
-#define NOXVERIFY(p)            ((void)(p))
+#define NOXVERIFY(p)            ((bool)(p))
 #define NOXDBG(...)
 
 #define PCOMN_DEBUG_FAIL(msg) ((void)0)

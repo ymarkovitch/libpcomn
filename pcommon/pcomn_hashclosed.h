@@ -855,12 +855,6 @@ void closed_hashtable<V, X, H, P>::expand(size_type reserve_count)
       other_container._dyn.clear() ;
 }
 
-/******************************************************************************/
-/** Hash functor for std::reference_wrapper<T> is the same as for T itself
-*******************************************************************************/
-template<typename T>
-struct hash_fn<std::reference_wrapper<T> > : hash_fn<T> {} ;
-
 /*******************************************************************************
 
 *******************************************************************************/
