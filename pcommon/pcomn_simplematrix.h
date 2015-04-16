@@ -407,6 +407,8 @@ class static_vector {
          NOXCHECK(sta == fin) ;
       }
 
+      void clear() { _size = 0 ; }
+
       void swap(static_vector &vec)
       {
          size_t len = std::max(size(), vec.size()) ;
@@ -885,7 +887,6 @@ class simple_matrix : matrix_internal_storage<T, resizable>, public matrix_slice
          return *this ;
       }
 
-      template<typename = instance_if_t<resizable> >
       simple_matrix &resize(size_t rows)
       {
          ancestor::reset(storage::resize_data(rows, this->columns()), rows, this->columns()) ;
@@ -968,6 +969,12 @@ template <typename T, size_t maxsize>
 inline simple_slice<const T> make_simple_slice(const static_vector<T, maxsize> &v)
 {
    return v(0) ;
+}
+
+template<typename T>
+inline constexpr simple_slice<const T> make_simple_slice(std::initializer_list<T> v)
+{
+   return {v.begin(), v.end()} ;
 }
 
 template<typename T, typename U, typename V>

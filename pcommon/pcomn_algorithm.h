@@ -78,19 +78,21 @@ std::pair<InputIterator, OutputIterator> bound_copy_if
  Member extractors
 *******************************************************************************/
 #define PCOMN_MEMBER_EXTRACTOR(member)                                  \
-   template<typename T, typename R = decltype(std::declval<const typename std::remove_pointer<T>::type>().member())> \
-   struct extract_##member : public std::unary_function<T, R> {         \
+   template<typename T, typename R = decltype(std::declval<const std::remove_pointer_t<T>>().member())> \
+   struct extract_##member : std::unary_function<T, R> {                \
       R operator() (const T &t) const { return t.member() ; }           \
    } ;                                                                  \
                                                                         \
+   template<typename T>                                                 \
+   inline extract_##member<T> member##_extractor(const T &) { return {} ; } \
+                                                                        \
    template<typename T, typename R>                                     \
-   struct extract_##member<T *, R> : public std::unary_function<const T *, R> { \
+   struct extract_##member<T *, R> : std::unary_function<const T *, R> { \
       R operator() (const T *t) const                                   \
-         {                                                              \
-            return !t                                                   \
-               ? pcomn::default_constructed<typename std::remove_cv<typename std::remove_reference<R>::type>::type>::value \
-               : t->member() ;                                          \
-         }                                                              \
+      {                                                                 \
+         using namespace pcomn ;                                        \
+         return t ? t->member() : default_constructed<valtype_t<R> >::value ; \
+      }                                                                 \
    }
 
 PCOMN_MEMBER_EXTRACTOR(name) ;
@@ -98,6 +100,7 @@ PCOMN_MEMBER_EXTRACTOR(key) ;
 PCOMN_MEMBER_EXTRACTOR(code) ;
 PCOMN_MEMBER_EXTRACTOR(id) ;
 PCOMN_MEMBER_EXTRACTOR(hash) ;
+PCOMN_MEMBER_EXTRACTOR(size) ;
 
 template<typename T, typename V, template<typename, typename> class X>
 struct less_by : public std::binary_function<T, T, bool> {
