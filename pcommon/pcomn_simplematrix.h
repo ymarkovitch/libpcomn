@@ -173,7 +173,9 @@ class simple_vector {
 
       simple_vector &operator=(const simple_vector
                                <std::conditional_t<std::is_const<value_type>::value, mutable_value_type, const_value_type> > &src)
-      { return assign((const const_slice &)src) ; }
+      {
+         return assign((const const_slice &)src) ;
+      }
 
       simple_vector &operator=(const const_slice &src) { return assign(src) ; }
       simple_vector &operator=(const mutable_slice &src) { return assign(src) ; }
