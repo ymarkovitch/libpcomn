@@ -12,6 +12,7 @@
  CREATION DATE:   10 Apr 1998
 *******************************************************************************/
 #include <pcomn_function.h>
+#include <pcomn_iterator.h>
 
 #include <algorithm>
 #include <utility>
@@ -103,7 +104,7 @@ PCOMN_MEMBER_EXTRACTOR(hash) ;
 PCOMN_MEMBER_EXTRACTOR(size) ;
 
 template<typename T, typename V, template<typename, typename> class X>
-struct less_by : public std::binary_function<T, T, bool> {
+struct less_by : std::binary_function<T, T, bool> {
       bool operator() (const T &left, const T &right) const
       {
          return _xtract(left) < _xtract(right) ;
@@ -112,6 +113,81 @@ struct less_by : public std::binary_function<T, T, bool> {
       X<T, V> _xtract ;
 } ;
 
+
+/******************************************************************************/
+/** Function object for performing comparison of keys by keyed values in a container
+*******************************************************************************/
+template<typename Container, typename Compare = std::less<typename Container::value_type> >
+struct before_by_key : Compare {
+
+      explicit before_by_key(const Container &container) :
+         Compare(), _container(container) {}
+
+      before_by_key(const Container &container, const Compare &comp) :
+         Compare(comp), _container(container) {}
+
+      template<typename Key>
+      bool operator()(const Key &x, const Key &y) const
+      {
+         return (*static_cast<const Compare *>(this))(_container[x], _container[y]) ;
+      }
+   private:
+      Container _container ;
+} ;
+
+template<typename Container>
+inline before_by_key<Container>
+make_before_by_key(Container &&container)
+{
+   return before_by_key<Container>(std::forward<Container>(container)) ;
+}
+
+template<typename Container, typename Compare>
+inline before_by_key<Container, Compare>
+make_before_by_key(Container &&container, Compare &&comp)
+{
+   return {std::forward<Container>(container), std::forward<Compare>(comp)} ;
+}
+
+/******************************************************************************/
+/** Function object for performing comparison of indices by indexes values
+*******************************************************************************/
+template<typename RandomAccessIter,
+         typename Compare = std::less<iterator_value_t<RandomAccessIter> > >
+struct before_by_ndx : Compare {
+
+      explicit before_by_ndx(RandomAccessIter iter) :
+         Compare(), _iter(iter) {}
+
+      before_by_ndx(RandomAccessIter iter, const Compare &comp) :
+         Compare(comp), _iter(iter) {}
+
+      template<typename Index>
+      bool operator()(const Index &x, const Index &y) const
+      {
+         return (*static_cast<const Compare *>(this))(*(_iter + x), *(_iter + y)) ;
+      }
+   private:
+      RandomAccessIter _iter ;
+} ;
+
+template<typename RandomAccessIter>
+inline before_by_ndx<RandomAccessIter>
+make_before_by_ndx(RandomAccessIter &&iter)
+{
+   return before_by_ndx<RandomAccessIter>(std::forward<RandomAccessIter>(iter)) ;
+}
+
+template<typename RandomAccessIter, typename Compare>
+inline before_by_ndx<RandomAccessIter, Compare>
+make_before_by_ndx(RandomAccessIter &&iter, Compare &&comp)
+{
+   return {std::forward<RandomAccessIter>(iter), std::forward<Compare>(comp)} ;
+}
+
+/*******************************************************************************
+ Algorithms
+*******************************************************************************/
 /// Indicate whether some value is contained in a sequence.
 /// If an equal to @a value is contained in a sequence defined by
 /// @a begin and @a end iterators, returns 'true', otherwise 'false'.
