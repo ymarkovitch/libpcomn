@@ -18,6 +18,7 @@
 
 #include <new>
 #include <iomanip>
+#include <utility>
 
 #include <stdlib.h>
 #include <string.h>
@@ -27,8 +28,8 @@
 
 #ifdef PCOMN_PL_WIN32
 #include <windows.h> // OutputDebugString support
-#define stderr_fileno() (fileno(stderr))
-#define stdout_fileno() (fileno(stdout))
+static inline int stderr_fileno() { return fileno(stderr) ; }
+static inline int stdout_fileno() { return fileno(stdout) ; }
 static inline int get_last_error() { return GetLastError() ; }
 static inline void set_last_error(int err) { SetLastError(err) ; }
 #else
@@ -37,8 +38,8 @@ static inline void set_last_error(int err) { SetLastError(err) ; }
 #include <limits.h>
 #include <syslog.h>
 #include <errno.h>
-#define stderr_fileno() (STDERR_FILENO)
-#define stdout_fileno() (STDOUT_FILENO)
+static inline constexpr int stderr_fileno() { return STDERR_FILENO ; }
+static inline constexpr int stdout_fileno() { return STDOUT_FILENO ; }
 static inline int get_last_error() { return errno ; }
 static inline void set_last_error(int err) { errno = err ; }
 #endif
@@ -269,10 +270,20 @@ void register_syslog_writer(syslog_writer writer, void *data)
    ctx::UNLOCK() ;
 }
 
-void register_syslog(int fd)
+static inline constexpr void *fdlog_data(int fd, LogLevel level)
+{
+   return (void *)((uintptr_t)fd | ((level & 0xfU) << 28)) ;
+}
+
+static inline constexpr std::pair<int, LogLevel> fdlog_args(void *data)
+{
+   return {(uintptr_t)data & 0xfffffffU, (LogLevel)(((uintptr_t)data & 0xf0000000U) >> 28)} ;
+}
+
+void register_syslog(int fd, LogLevel level)
 {
    if (fd >= 0)
-      register_syslog_writer(output_fdlog_msg, (void *)(intptr_t)fd) ;
+      register_syslog_writer(output_fdlog_msg, fdlog_data(fd, level)) ;
    else
    {
       struct local { static void nolog(void *, LogLevel, const char *, ...) {} } ;
@@ -388,12 +399,19 @@ static void output_syslog_msg(void *, LogLevel level, const char *fmt, ...)
    va_end(args) ;
 }
 
-static void output_fdlog_msg(void *data, LogLevel /*level*/, const char *fmt, ...)
+static void output_fdlog_msg(void *data, LogLevel level, const char *fmt, ...)
 {
    va_list args ;
    va_start(args, fmt) ;
 
-   const int fd = (intptr_t)data ;
+   const auto fd_and_level = fdlog_args(data) ;
+
+   if (fd_and_level.second < level)
+   {
+      va_end(args) ;
+      return ;
+   }
+
    char msgbuf[DIAG_MAXMESSAGE] ;
    *msgbuf = 0 ;
 
@@ -403,7 +421,7 @@ static void output_fdlog_msg(void *data, LogLevel /*level*/, const char *fmt, ..
    const size_t sz = strlen(msgbuf) ;
    msgbuf[sz] = '\n' ;
    msgbuf[sz+1] = '\0' ;
-   ::write(fd, msgbuf, sz+1) ;
+   ::write(fd_and_level.first, msgbuf, sz+1) ;
 
    va_end(args) ;
 }

@@ -55,7 +55,7 @@ enum DiagMode {
 } ;
 
 /// Log levels
-enum LogLevel {
+enum LogLevel : unsigned {
    LOGL_ALERT,
    LOGL_ERROR,
    LOGL_WARNING,
@@ -259,7 +259,7 @@ _PCOMNEXP void register_dbglog_writer(dbglog_writer writer, void *data = NULL) ;
 
 _PCOMNEXP void register_syslog_writer(syslog_writer writer, void *data= NULL) ;
 
-_PCOMNEXP void register_syslog(int fd) ;
+_PCOMNEXP void register_syslog(int fd, LogLevel level = LOGL_WARNING) ;
 
 }   // end of diag namespace
 
