@@ -499,6 +499,14 @@ std::function<R(Args...)> make_function(R (*fn)(Args...))
    return {fn} ;
 }
 
+template<typename, typename>
+struct is_callable : bool_constant<false> {} ;
+
+template<typename T, typename R, typename...Args>
+struct is_callable<T, R(Args...)> :
+         bool_constant<(!is_same_unqualified<T, nullptr_t>::value &&
+                        std::is_constructible<std::function<R(Args...)>, T>::value)> {} ;
+
 } // end of namespace pcomn
 
 #endif /* __PCOMN_FUNCTION_H */
