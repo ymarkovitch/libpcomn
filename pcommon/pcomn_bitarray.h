@@ -186,10 +186,10 @@ class bitarray_base {
       }
 
       void flip() ;
-      void flip(size_t pos)
+      bool flip(size_t pos)
       {
          NOXCHECK(pos < size()) ;
-         mutable_elem(pos) ^= bitmask(pos) ;
+         return !!((mutable_elem(pos) ^= bitmask(pos)) & bitmask(pos)) ;
       }
 
       bool equal(const bitarray_base &other) const
@@ -524,10 +524,9 @@ class bitarray : private bitarray_base<unsigned long> {
          return *this ;
       }
 
-      bitarray &flip(size_t pos)
+      bool flip(size_t pos)
       {
-         ancestor::flip(pos) ;
-         return *this ;
+         return ancestor::flip(pos) ;
       }
 
       // element access
