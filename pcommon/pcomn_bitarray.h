@@ -159,11 +159,10 @@ class bitarray_base {
       void and_assign(const bitarray_base &source) ;
       void or_assign(const bitarray_base &source) ;
       void xor_assign(const bitarray_base &source) ;
+      void andnot_assign(const bitarray_base &source) ;
 
       void shift_left(int pos) ;
       void shift_right(int pos) ;
-
-      void mask(const bitarray_base &source) ;
 
       void reset() { memset(mbits(), 0, _elements.size()) ; }
 
@@ -474,6 +473,12 @@ class bitarray : private bitarray_base<unsigned long> {
          return *this ;
       }
 
+      bitarray &operator-=(const bitarray &source)
+      {
+         andnot_assign(source) ;
+         return *this ;
+      }
+
       bitarray &operator<<=(int pos)
       {
          shift_left(pos) ;
@@ -488,7 +493,7 @@ class bitarray : private bitarray_base<unsigned long> {
 
       bitarray &mask(const bitarray &source)
       {
-         ancestor::mask(source) ;
+         ancestor::andnot_assign(source) ;
          return *this ;
       }
 
@@ -586,28 +591,26 @@ else                                            \
    l = &rhs ;                                   \
    r = &lhs ;                                   \
 }                                               \
-bitarray tmp(*l) ;                              \
-return tmp.op(*r) ;
+return std::move(bitarray(*l).operator op(*r)) ;
 
 inline bitarray operator&(const bitarray &left, const bitarray &right)
 {
-   PCOMN_BIN_BITOP(operator&=, left, right) ;
+   PCOMN_BIN_BITOP(&=, left, right) ;
 }
 
 inline bitarray operator|(const bitarray &left, const bitarray &right)
 {
-   PCOMN_BIN_BITOP(operator|=, left, right) ;
+   PCOMN_BIN_BITOP(|=, left, right) ;
 }
 
 inline bitarray operator^(const bitarray &left, const bitarray &right)
 {
-   PCOMN_BIN_BITOP(operator^=, left, right) ;
+   PCOMN_BIN_BITOP(^=, left, right) ;
 }
 
-inline bitarray mask(const bitarray &left, const bitarray &right)
+inline bitarray operator-(const bitarray &left, const bitarray &right)
 {
-   bitarray tmp (left) ;
-   return tmp.mask(right) ;
+   return std::move(bitarray(left) -= right) ;
 }
 
 #undef PCOMN_BIN_BITOP
@@ -624,7 +627,7 @@ void bitarray_base<Element>::flip()
 
    element_type *data = mbits() ;
    for (element_type * const end = data + n ; data != end ; ++data)
-      *data = ~*data ;
+      *data ^= ~element_type() ;
 
    *--data &= tailmask() ;
 }
@@ -642,11 +645,15 @@ size_t bitarray_base<Element>::count(bool bitval) const
 template<typename Element>
 void bitarray_base<Element>::and_assign(const bitarray_base<Element> &source)
 {
-   int minsize = std::min(_size, source._size) ;
-   int full = minsize / BITS_PER_ELEMENT ;
-   int elem = std::min(nelements(), source.nelements()) ;
-   element_type *data = mbits() ;
    const element_type *source_data = source.cbits() ;
+   if (cbits() == source_data)
+      return ;
+
+   const int minsize = std::min(_size, source._size) ;
+   const int full = minsize / BITS_PER_ELEMENT ;
+   const int elem = std::min(nelements(), source.nelements()) ;
+
+   element_type *data = mbits() ;
    for (int i = 0 ; i < full ; ++i)
       data[i] &= source_data[i] ;
    if (full < elem)
@@ -656,11 +663,15 @@ void bitarray_base<Element>::and_assign(const bitarray_base<Element> &source)
 template<typename Element>
 void bitarray_base<Element>::or_assign(const bitarray_base<Element> &source)
 {
-   int minsize = std::min(_size, source._size) ;
-   int full = minsize / BITS_PER_ELEMENT ;
-   int elem = std::min(nelements(), source.nelements()) ;
-   element_type *data = mbits() ;
    const element_type *source_data = source.cbits() ;
+   if (cbits() == source_data)
+      return ;
+
+   const int minsize = std::min(_size, source._size) ;
+   const int full = minsize / BITS_PER_ELEMENT ;
+   const int elem = std::min(nelements(), source.nelements()) ;
+
+   element_type *data = mbits() ;
    for (int i = 0 ; i < full ; ++i)
       data[i] |= source_data[i] ;
    if (full < elem)
@@ -679,6 +690,21 @@ void bitarray_base<Element>::xor_assign(const bitarray_base<Element> &source)
       data[i] ^= source_data[i] ;
    if (full < elem)
       data[full] ^= source_data[full] & ~(~0 << (minsize % BITS_PER_ELEMENT)) ;
+}
+
+template<typename Element>
+void bitarray_base<Element>::andnot_assign(const bitarray_base<Element> &source)
+{
+   const int minsize = std::min(_size, source._size) ;
+   const int full = minsize / BITS_PER_ELEMENT ;
+   const int elem = std::min(nelements(), source.nelements()) ;
+
+   element_type *data = mbits() ;
+   const element_type *source_data = source.cbits() ;
+   for (int i = 0 ; i < full ; ++i)
+      data[i] &= ~source_data[i] ;
+   if (full < elem)
+      data[full] &= ~(source_data[full] & ~(~0 << (minsize % BITS_PER_ELEMENT))) ;
 }
 
 template<typename Element>
@@ -703,20 +729,6 @@ void bitarray_base<Element>::shift_right(int pos)
       set(i, test(i + pos)) ;
    while(i < _size)
       set(i++, false) ;
-}
-
-template<typename Element>
-void bitarray_base<Element>::mask(const bitarray_base<Element> &source)
-{
-   const int minsize = std::min(_size, source._size) ;
-   const int full = minsize / BITS_PER_ELEMENT ;
-   int elem = std::min(nelements(), source.nelements()) ;
-   element_type *data = mbits() ;
-   const element_type *source_data = source.cbits() ;
-   for (int i = 0 ; i < full ; ++i)
-      data[i] &= ~source_data[i] ;
-   if (full < elem)
-      data[full] &= ~(source_data[full] & ~(~0 << (minsize % BITS_PER_ELEMENT))) ;
 }
 
 template<typename Element>
