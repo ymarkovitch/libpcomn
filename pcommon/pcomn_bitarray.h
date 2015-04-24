@@ -460,12 +460,17 @@ class bitarray : private bitarray_base<unsigned long> {
 
       constexpr bitarray() = default ;
 
-      // Constructor.
-      // Parameters:
-      //    sz       -  the size of array (i.e. the number of bits).
-      //    initval  -  the initial value of all array items.
-      //
-      explicit bitarray(size_t sz, bool initval = false) : ancestor(sz, initval) {}
+      /// Create bitarray of specified size
+      ///
+      /// @param sz  The size of array (bit count).
+      ///
+      explicit bitarray(size_t sz) : ancestor(sz, false) {}
+
+      /// Create bitarray of specified size filled with specified bit
+      /// @param sz        The size of array (bit count)
+      /// @param initval   Initial value of all bits
+      ///
+      bitarray(size_t sz, bool initval) : ancestor(sz, initval) {}
 
       /// Constructor restores the bit array previously saved by mem()
       ///
