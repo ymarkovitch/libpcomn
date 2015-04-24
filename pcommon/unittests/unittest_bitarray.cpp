@@ -84,7 +84,8 @@ void BitArrayTests::Test_Constructors()
    CPPUNIT_LOG_EQ(b65_01.count(), 65) ;
    CPPUNIT_LOG_EQ(b65_02.count(), 0) ;
 
-   CPPUNIT_LOG_EQ(b65_02.flip(64).count(), 1) ;
+   CPPUNIT_LOG_ASSERT(b65_02.flip(64)) ;
+   CPPUNIT_LOG_EQ(b65_02.count(), 1) ;
    CPPUNIT_LOG_ASSERT(b65_02.any()) ;
    CPPUNIT_LOG_IS_FALSE(b65_02.all()) ;
    CPPUNIT_LOG_IS_FALSE(b65_02.none()) ;

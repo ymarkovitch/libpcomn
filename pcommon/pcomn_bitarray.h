@@ -48,12 +48,18 @@ namespace pcomn {
                      class bitarray_base
 *******************************************************************************/
 template<typename Element = unsigned long>
-class bitarray_base {
-   public:
-      /// Get the count of 1 or 0 bit in the array
-      size_t count(bool bitval = true) const ;
+struct bitarray_base {
+
       /// Get the size of array (in bits)
       size_t size() const { return _size ; }
+
+      /// Get the count of 1 or 0 bit in the array
+      size_t count(bool bitval = true) const
+      {
+         if (_count == ~0UL)
+            _count = count_ones() ;
+         return bitval ? _count : _size - _count ;
+      }
 
       bool test(size_t pos) const
       {
@@ -89,10 +95,12 @@ class bitarray_base {
       /// Marshall the array of bits into the external platform-independent
       /// representation
       ///
-      /// @param memento The buffer where to save the array; if NULL, the function
+      /// @param memento The buffer where to save the array; if NULL, the function does
+      /// not copy anything and returns required storage size
+      ///
       /// @return        Required size of buffer (in bytes)
       ///
-      size_t mem(char *memento = NULL) const ;
+      size_t mem(void *memento = nullptr) const ;
 
    protected:
       // The type of element of an array in which we store bits.
@@ -103,7 +111,7 @@ class bitarray_base {
       /// Bit count per storage element
       static constexpr const size_t BITS_PER_ELEMENT = CHAR_BIT*sizeof(element_type) ;
 
-      constexpr bitarray_base() : _size(0) {}
+      constexpr bitarray_base() : _count(0) {}
 
       // Constructor.
       // Parameters:
@@ -115,13 +123,15 @@ class bitarray_base {
          initval ? set() : reset() ;
       }
 
-      // Constructor. Restores the bit array previously saved by mem()
-      // Parameters:
-      //    memento  -  the external buffer to restore the array from. It is supposed the array
-      //                was previously saved into this buffer through bitarray::mem() call
-      //    size     -  the bit array size (in bits, NOT in bytes)
-      //
-      bitarray_base(const char *memento, size_t sz) : bitarray_base(sz, nullptr)
+      /// Constructor restores the bit array previously saved by mem()
+      ///
+      /// @param  memento  The external buffer to restore the array from.
+      /// @param  size     The bit array size (in @em bits, @em not in bytes)
+      ///
+      /// It is supposed the source bitarryr array was previously saved into @a memento
+      /// through bitarray::mem() call
+      ///
+      bitarray_base(const void *memento, size_t sz) : bitarray_base(sz, nullptr)
       {
          if (sz)
             memcpy(memset(mbits(), 0, _elements.size()), memento, mem()) ;
@@ -136,9 +146,10 @@ class bitarray_base {
 
       bitarray_base(bitarray_base &&other) :
          _size(other._size),
+         _count(other._count),
          _elements(std::move(other._elements))
       {
-         other._size = 0 ;
+         other._count = other._size = 0 ;
       }
 
       ~bitarray_base() = default ;
@@ -150,7 +161,8 @@ class bitarray_base {
          if (&other != this)
          {
             _size = other._size ;
-            other._size = 0 ;
+            _count = other._count ;
+            other._count = other._size = 0 ;
             _elements = std::move(other._elements) ;
          }
          return *this ;
@@ -164,7 +176,11 @@ class bitarray_base {
       void shift_left(int pos) ;
       void shift_right(int pos) ;
 
-      void reset() { memset(mbits(), 0, _elements.size()) ; }
+      void reset()
+      {
+         memset(mbits(), 0, _elements.size()) ;
+         _count = 0 ;
+      }
 
       void set()
       {
@@ -173,6 +189,7 @@ class bitarray_base {
             element_type * const data = mbits() ;
             memset(data, -1, itemcount * sizeof data) ;
             data[itemcount - 1] &= tailmask() ;
+            _count = size() ;
          }
       }
 
@@ -229,19 +246,30 @@ class bitarray_base {
       void swap(bitarray_base &other) noexcept
       {
          std::swap(other._size, _size) ;
+         std::swap(other._count, _count) ;
          _elements.swap(other._elements) ;
       }
 
    private:
-      size_t                                 _size ;
+      size_t                                 _size  = 0UL ;
+      mutable size_t                         _count ;
       typed_buffer<element_type, cow_buffer> _elements ;
 
    private:
       bitarray_base(size_t sz, nullptr_t) :
-         _size(sz), _elements((sz + (BITS_PER_ELEMENT - 1))/BITS_PER_ELEMENT) {}
+         _size(sz),
+         _count(0),
+         _elements((sz + (BITS_PER_ELEMENT - 1))/BITS_PER_ELEMENT)
+      {}
 
       size_t nelements() const { return _elements.nitems() ; }
-      element_type *mbits() { return _elements.get() ; }
+      size_t count_ones() const ;
+
+      element_type *mbits()
+      {
+         _count = ~0UL ;
+         return _elements.get() ;
+      }
       const element_type *cbits() const { return _elements ; }
 
       element_type &mutable_elem(size_t bitpos) { return mbits()[elemndx(bitpos)] ; }
@@ -261,7 +289,10 @@ class bitarray_base {
             element_type * const data = mbits() ;
             for (size_t pos = 0 ; pos < size() ; ++pos, ++start)
                if (*start)
+               {
                   data[elemndx(pos)] |= bitmask(pos) ;
+                  ++_count ;
+               }
          }
       }
 
@@ -436,13 +467,15 @@ class bitarray : private bitarray_base<unsigned long> {
       //
       explicit bitarray(size_t sz, bool initval = false) : ancestor(sz, initval) {}
 
-      // Constructor. Restores the bit array previously saved by mem()
-      // Parameters:
-      //    memento  -  the external buffer to restore the array from. It is supposed the array
-      //                was previously saved into this buffer through bitarray::mem() call
-      //    size     -  the bit array size (in bits, NOT in bytes)
-      //
-      bitarray(const char *memento, size_t sz) : ancestor(memento, sz) {}
+      /// Constructor restores the bit array previously saved by mem()
+      ///
+      /// @param  memento  The external buffer to restore the array from.
+      /// @param  size     The bit array size (in @em bits, @em not in bytes)
+      ///
+      /// It is supposed the source bitarryr array was previously saved into @a memento
+      /// through bitarray::mem() call
+      ///
+      bitarray(void *memento, size_t sz) : ancestor(memento, sz) {}
 
       template<typename InputIterator>
       bitarray(InputIterator start, std::enable_if_t<is_iterator<InputIterator>::value, InputIterator> finish) :
@@ -529,10 +562,7 @@ class bitarray : private bitarray_base<unsigned long> {
          return *this ;
       }
 
-      bool flip(size_t pos)
-      {
-         return ancestor::flip(pos) ;
-      }
+      bool flip(size_t pos) { return ancestor::flip(pos) ; }
 
       // element access
       //
@@ -633,13 +663,13 @@ void bitarray_base<Element>::flip()
 }
 
 template<typename Element>
-size_t bitarray_base<Element>::count(bool bitval) const
+size_t bitarray_base<Element>::count_ones() const
 {
    size_t cnt = 0 ;
    for (const element_type *data = cbits(), *end = data + nelements() ; data != end ; ++data)
       cnt += bitop::bitcount(*data) ;
 
-   return bitval ? cnt : _size - cnt ;
+   return cnt ;
 }
 
 template<typename Element>
@@ -732,19 +762,19 @@ void bitarray_base<Element>::shift_right(int pos)
 }
 
 template<typename Element>
-size_t bitarray_base<Element>::mem(char *memento) const
+size_t bitarray_base<Element>::mem(void *memento) const
 {
    const size_t memsize = (size() + 7) / 8 ;
-   if (memento)
+   if (char * const out = static_cast<char *>(memento))
    {
       const element_type * const data = cbits() ;
 #ifndef PCOMN_CPU_BIG_ENDIAN
-      memcpy(memento, data, memsize) ;
+      memcpy(out, data, memsize) ;
 #else
       for (size_t i = 0 ; i < memsize ; ++i)
       {
          const char *item = reinterpret_cast<const char *>(data + i / sizeof(element_type)) ;
-         memento[i] = item[sizeof(element_type) - 1 - i % sizeof(element_type)] ;
+         out[i] = item[sizeof(element_type) - 1 - i % sizeof(element_type)] ;
       }
 #endif
    }
