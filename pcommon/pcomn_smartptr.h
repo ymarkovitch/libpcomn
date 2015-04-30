@@ -471,6 +471,12 @@ class shared_ref {
          return get()(std::forward<Args>(args)...) ;
       }
 
+      template<typename A>
+      auto operator[](A &&a) const -> decltype(this->get()[std::forward<A>(a)])
+      {
+         return get()[std::forward<A>(a)] ;
+      }
+
       int instances() const { return _ptr.use_count() ; }
       long use_count() const { return _ptr.use_count() ; }
 
