@@ -334,7 +334,8 @@ class static_vector {
          std::fill(mutable_data(), mutable_data() + size, init) ;
       }
 
-      static_vector(const T *start, const T *finish) :
+      template<typename I>
+      static_vector(I start, std::enable_if_t<is_iterator<I, std::random_access_iterator_tag>::value, I> finish) :
          static_vector(finish - start)
       {
          std::copy(start, finish, mutable_data()) ;

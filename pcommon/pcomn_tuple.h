@@ -32,6 +32,10 @@ using tuple_element_t = typename tuple_element<I, Tuple>::type ;
 
 namespace pcomn {
 
+/// Convenience typdef, like unipair
+template<typename A, typename B, typename C>
+using triple = std::tuple<A, B, C> ;
+
 /******************************************************************************/
 /** Visit every item of any object compatible with std::get<n> function (this
  includes at least std::tuple, std::pair, and std::array).
