@@ -34,7 +34,8 @@ typedef struct bdate
       constexpr bdate(uint16_t y, uint8_t m, uint8_t d = 1) :
          year(y), mon(m), day(d)
       {}
-      explicit constexpr bdate(uint16_t y = 1) : bdate(y, 1) {}
+      explicit constexpr bdate(uint16_t y) : bdate(y, 1) {}
+      explicit constexpr bdate() : bdate(1) {}
 
       explicit constexpr operator uint32_t() const
       {
@@ -64,7 +65,8 @@ typedef struct btime
       constexpr btime(uint8_t hr, uint8_t m, uint8_t s = 0, uint8_t hs = 0) :
          hour(hr), min(m), sec(s), hundr(hs)
       {}
-      constexpr explicit btime(uint8_t hr = 0) : btime(hr, 0) {}
+      constexpr explicit btime(uint8_t hr) : btime(hr, 0) {}
+      constexpr btime() : btime(0) {}
 
       explicit constexpr operator uint32_t() const
       {

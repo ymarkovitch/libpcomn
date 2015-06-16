@@ -298,15 +298,21 @@ using unipair = std::pair<T, T> ;
  Note this contrived trait class is not a complete equivalent of the standard
  one: it does not consider move constructor/assignment.
 *******************************************************************************/
-#if PCOMN_WORKAROUND(__GNUC_VER__, < 500)
+#if PCOMN_WORKAROUND(__GNUC_VER__, < 600)
 namespace std {
+#if PCOMN_WORKAROUND(__GNUC_VER__, < 500)
 template<typename T, typename U>
-struct has_trivial_copy_assign<std::pair<T, U> > :
-         pcomn::ct_and<std::has_trivial_copy_assign<T>, std::has_trivial_copy_assign<U> > {} ;
+struct has_trivial_copy_assign<pair<T, U> > :
+         pcomn::ct_and<has_trivial_copy_assign<T>, has_trivial_copy_assign<U> > {} ;
 
 template<typename T>
 struct is_trivially_copyable :
-         pcomn::ct_and<std::has_trivial_copy_constructor<T>, std::has_trivial_copy_assign<T> > {} ;
+         pcomn::ct_and<has_trivial_copy_constructor<T>, has_trivial_copy_assign<T> > {} ;
+#else
+template<typename T, typename U>
+struct is_trivially_copyable<pair<T, U> > :
+         pcomn::ct_and<is_trivially_copyable<T>, is_trivially_copyable<U> > {} ;
+#endif
 }
 #endif // PCOMN_WORKAROUND(__GNUC_VER__, < 500)
 

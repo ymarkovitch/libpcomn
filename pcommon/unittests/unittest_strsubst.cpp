@@ -52,7 +52,9 @@ class StrSubstTests : public CppUnit::TestFixture {
 *******************************************************************************/
 void StrSubstTests::Test_Literal_Substitutions()
 {
-   tpl::substitution_map smap ;
+   using namespace tpl ;
+
+   substitution_map smap ;
    std::string Bye ("Bye") ;
    unsigned long long Big = 18446744073709551615ULL ;
    CPPUNIT_LOG_RUN(smap
@@ -65,38 +67,40 @@ void StrSubstTests::Test_Literal_Substitutions()
                    ("foo_big", Big)) ;
 
    std::string result ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, strslice(), result), std::string()) ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, "$$foo_bye, world!", result), std::string("$foo_bye, world!")) ;
+   CPPUNIT_LOG_EQUAL(subst(smap, strslice(), result), std::string()) ;
+   CPPUNIT_LOG_EQUAL(subst(smap, "$$foo_bye, world!", result), std::string("$foo_bye, world!")) ;
    result.clear() ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, "$", result), std::string("$")) ;
+   CPPUNIT_LOG_EQUAL(subst(smap, "$", result), std::string("$")) ;
    result.clear() ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, "$$", result), std::string("$")) ;
+   CPPUNIT_LOG_EQUAL(subst(smap, "$$", result), std::string("$")) ;
    result.clear() ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, "$$_", result), std::string("$_")) ;
+   CPPUNIT_LOG_EQUAL(subst(smap, "$$_", result), std::string("$_")) ;
 
    result.clear() ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, "Answer to the Ultimate Question of Life, the Universe and Everything is $TheAnswer", result),
+   CPPUNIT_LOG_EQUAL(subst(smap, "Answer to the Ultimate Question of Life, the Universe and Everything is $TheAnswer", result),
                      std::string("Answer to the Ultimate Question of Life, the Universe and Everything is 42")) ;
 
    result.clear() ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, "$foo_bye, baby!", result), std::string("Bye, baby!")) ;
+   CPPUNIT_LOG_EQUAL(subst(smap, "$foo_bye, baby!", result), std::string("Bye, baby!")) ;
    result.clear() ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, "${foo_str}world!", result), std::string("Hello, world!")) ;
+   CPPUNIT_LOG_EQUAL(subst(smap, "${foo_str}world!", result), std::string("Hello, world!")) ;
    result.clear() ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, "${foo_str}", result), std::string("Hello, ")) ;
+   CPPUNIT_LOG_EQUAL(subst(smap, "${foo_str}", result), std::string("Hello, ")) ;
    result.clear() ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, "The Big is ${foo_big}ULL, $$foo_int==$foo_int, and $unknown==$$unknown", result),
+   CPPUNIT_LOG_EQUAL(subst(smap, "The Big is ${foo_big}ULL, $$foo_int==$foo_int, and $unknown==$$unknown", result),
                      std::string("The Big is 18446744073709551615ULL, $foo_int==20, and $unknown==$unknown")) ;
    result.clear() ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, "${foo_char}eference to ${foo_char}eturn: $foo_charvalue", result),
+   CPPUNIT_LOG_EQUAL(subst(smap, "${foo_char}eference to ${foo_char}eturn: $foo_charvalue", result),
                      std::string("Reference to Return: $foo_charvalue")) ;
    result.clear() ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, "$foo_str$WORLD!", result), std::string("Hello, world!")) ;
+   CPPUNIT_LOG_EQUAL(subst(smap, "$foo_str$WORLD!", result), std::string("Hello, world!")) ;
 }
 
 void StrSubstTests::Test_Reference_Substitutions()
 {
-   tpl::substitution_map smap ;
+   using namespace tpl ;
+
+   substitution_map smap ;
    strslice greeting ("Hello") ;
    std::string object ("world") ;
    unsigned answer (42) ;
@@ -107,30 +111,32 @@ void StrSubstTests::Test_Reference_Substitutions()
    static const char Template[] = "$GREETING, $OBJECT! The answer is $ANSWER..." ;
 
    std::string result ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, Template, result), std::string("Hello, world! The answer is 42...")) ;
+   CPPUNIT_LOG_EQUAL(subst(smap, Template, result), std::string("Hello, world! The answer is 42...")) ;
    CPPUNIT_LOG_RUN(greeting = "Bye") ;
    result.clear() ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, Template, result), std::string("Hello, world! The answer is 42...")) ;
+   CPPUNIT_LOG_EQUAL(subst(smap, Template, result), std::string("Hello, world! The answer is 42...")) ;
 
    CPPUNIT_LOG(std::endl) ;
    CPPUNIT_LOG_RUN(smap("GREETING", std::cref(greeting))) ;
    result.clear() ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, Template, result), std::string("Bye, world! The answer is 42...")) ;
+   CPPUNIT_LOG_EQUAL(subst(smap, Template, result), std::string("Bye, world! The answer is 42...")) ;
 
    result.clear() ;
    CPPUNIT_LOG_RUN(greeting = "Hello") ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, Template, result), std::string("Hello, world! The answer is 42...")) ;
+   CPPUNIT_LOG_EQUAL(subst(smap, Template, result), std::string("Hello, world! The answer is 42...")) ;
    CPPUNIT_LOG_RUN(smap("ANSWER", std::ref(answer))) ;
    result.clear() ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, Template, result), std::string("Hello, world! The answer is 42...")) ;
+   CPPUNIT_LOG_EQUAL(subst(smap, Template, result), std::string("Hello, world! The answer is 42...")) ;
    result.clear() ;
    CPPUNIT_LOG_RUN(answer = 14) ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, Template, result), std::string("Hello, world! The answer is 14...")) ;
+   CPPUNIT_LOG_EQUAL(subst(smap, Template, result), std::string("Hello, world! The answer is 14...")) ;
 }
 
 void StrSubstTests::Test_Functor_Substitutions()
 {
-   tpl::substitution_map smap ;
+   using namespace tpl ;
+
+   substitution_map smap ;
    strslice greeting ("Hello") ;
    std::string object ("world") ;
    unsigned answer (0) ;
@@ -146,17 +152,19 @@ void StrSubstTests::Test_Functor_Substitutions()
    static const char Template[] = "$GREETING, $OBJECT! The answer is $ANSWER..." ;
 
    std::string result ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, Template, result), std::string("Hello, world! The answer is 1...")) ;
+   CPPUNIT_LOG_EQUAL(subst(smap, Template, result), std::string("Hello, world! The answer is 1...")) ;
    result.clear() ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, Template, result), std::string("Hello, world! The answer is 2...")) ;
+   CPPUNIT_LOG_EQUAL(subst(smap, Template, result), std::string("Hello, world! The answer is 2...")) ;
    result.clear() ;
    CPPUNIT_LOG_RUN(object = "baby") ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, Template, result), std::string("Hello, baby! The answer is 3...")) ;
+   CPPUNIT_LOG_EQUAL(subst(smap, Template, result), std::string("Hello, baby! The answer is 3...")) ;
 }
 
 void StrSubstTests::Test_Template_Sources()
 {
-   tpl::substitution_map smap ;
+   using namespace tpl ;
+
+   substitution_map smap ;
    strslice greeting ("Hello") ;
    std::string object ("world") ;
    unsigned answer (42) ;
@@ -169,16 +177,16 @@ void StrSubstTests::Test_Template_Sources()
 
    std::string result ;
    strslice Slice (Template) ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, Slice.begin(), Slice.end(), result), std::string("Hello, world! The answer is 42...")) ;
+   CPPUNIT_LOG_EQUAL(subst(smap, Slice.begin(), Slice.end(), result), std::string("Hello, world! The answer is 42...")) ;
 
    std::istringstream Stream (Template) ;
    result.clear() ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, Stream, result), std::string("Hello, world! The answer is 42...")) ;
+   CPPUNIT_LOG_EQUAL(subst(smap, Stream, result), std::string("Hello, world! The answer is 42...")) ;
 
    result.clear() ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, Template, result), std::string("Hello, world! The answer is 42...")) ;
+   CPPUNIT_LOG_EQUAL(subst(smap, Template, result), std::string("Hello, world! The answer is 42...")) ;
    result.clear() ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, std::string(Template), result), std::string("Hello, world! The answer is 42...")) ;
+   CPPUNIT_LOG_EQUAL(subst(smap, std::string(Template), result), std::string("Hello, world! The answer is 42...")) ;
 
    const std::string FILE_name (CPPUNIT_AT_PROGDIR("Test_Template_Sources.TEMPLATE.txt")) ;
 
@@ -191,18 +199,20 @@ void StrSubstTests::Test_Template_Sources()
    CPPUNIT_LOG_RUN(File.reset(fopen(FILE_name.c_str(), "r"))) ;
    CPPUNIT_LOG_ASSERT(File) ;
    result.clear() ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, File.get(), result), std::string("Hello, world! The answer is 42...")) ;
+   CPPUNIT_LOG_EQUAL(subst(smap, File.get(), result), std::string("Hello, world! The answer is 42...")) ;
 
    CPPUNIT_LOG(std::endl) ;
    File.reset() ;
    binary_ifdstream ifdstream (PCOMN_ENSURE_POSIX(open(FILE_name.c_str(), O_RDONLY), "open")) ;
    result.clear() ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, ifdstream, result), std::string("Hello, world! The answer is 42...")) ;
+   CPPUNIT_LOG_EQUAL(subst(smap, ifdstream, result), std::string("Hello, world! The answer is 42...")) ;
 }
 
 void StrSubstTests::Test_Substitution_Output()
 {
-   tpl::substitution_map smap ;
+   using namespace tpl ;
+
+   substitution_map smap ;
    strslice greeting ("Hello") ;
    std::string object ("world") ;
    unsigned answer (42) ;
@@ -217,27 +227,29 @@ void StrSubstTests::Test_Substitution_Output()
    const std::string FILE_name (CPPUNIT_AT_PROGDIR("Test_Substitution_Output.FILE.txt")) ;
    FILE_safehandle File (fopen(FILE_name.c_str(), "w")) ;
 
-   CPPUNIT_LOG_RUN(tpl::subst(smap, Template, File)) ;
+   CPPUNIT_LOG_RUN(subst(smap, Template, File)) ;
    File.reset() ;
    CPPUNIT_LOG_EQUAL(unit::full_file(FILE_name), std::string("Hello, world! The answer is 42...")) ;
    File.reset(fopen(FILE_name.c_str(), "w")) ;
-   // Cannot pass File.get() directly to tpl::subst, lvalue reference required (note that
+   // Cannot pass File.get() directly to subst, lvalue reference required (note that
    // a constant _is_ allowed).
    FILE * const FPtr = File ;
-   CPPUNIT_LOG_RUN(tpl::subst(smap, Template, FPtr)) ;
+   CPPUNIT_LOG_RUN(subst(smap, Template, FPtr)) ;
    File.reset() ;
    CPPUNIT_LOG_EQUAL(unit::full_file(FILE_name), std::string("Hello, world! The answer is 42...")) ;
 
    CPPUNIT_LOG(std::endl) ;
    binary_ofdstream ofdstream (PCOMN_ENSURE_POSIX(open(FILE_name.c_str(), O_WRONLY|O_TRUNC|O_CREAT, 0666), "open")) ;
    result.clear() ;
-   CPPUNIT_LOG_RUN(tpl::subst(smap, Template, ofdstream)) ;
+   CPPUNIT_LOG_RUN(subst(smap, Template, ofdstream)) ;
    CPPUNIT_LOG_EQUAL(unit::full_file(FILE_name), std::string("Hello, world! The answer is 42...")) ;
 }
 
 void StrSubstTests::Test_Removing_Comments()
 {
-   tpl::substitution_map smap ;
+   using namespace tpl ;
+
+   substitution_map smap ;
    std::string Bye ("Bye") ;
    unsigned long long Big = 18446744073709551615ULL ;
    CPPUNIT_LOG_RUN(smap
@@ -250,39 +262,39 @@ void StrSubstTests::Test_Removing_Comments()
                    ("foo_big", Big)) ;
 
    std::string result ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, strslice(), result), std::string()) ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, "$$foo_bye, world!", result), std::string("$foo_bye, world!")) ;
+   CPPUNIT_LOG_EQUAL(subst(smap, strslice(), result), std::string()) ;
+   CPPUNIT_LOG_EQUAL(subst(smap, "$$foo_bye, world!", result), std::string("$foo_bye, world!")) ;
    result.clear() ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, "$", result), std::string("$")) ;
+   CPPUNIT_LOG_EQUAL(subst(smap, "$", result), std::string("$")) ;
    result.clear() ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, "$$", result), std::string("$")) ;
+   CPPUNIT_LOG_EQUAL(subst(smap, "$$", result), std::string("$")) ;
    result.clear() ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, "$$_", result), std::string("$_")) ;
+   CPPUNIT_LOG_EQUAL(subst(smap, "$$_", result), std::string("$_")) ;
    result.clear() ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, "$**$", result), std::string("")) ;
+   CPPUNIT_LOG_EQUAL(subst(smap, "$**$", result), std::string("")) ;
    result.clear() ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, "$*", result), std::string("")) ;
+   CPPUNIT_LOG_EQUAL(subst(smap, "$*", result), std::string("")) ;
    result.clear() ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, "*$", result), std::string("*$")) ;
+   CPPUNIT_LOG_EQUAL(subst(smap, "*$", result), std::string("*$")) ;
 
    result.clear() ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, "Answer to the Ultimate Question of $$Life, $ *$the Universe and Everything is $TheAnswer$* not closed comment will be removed too!", result),
+   CPPUNIT_LOG_EQUAL(subst(smap, "Answer to the Ultimate Question of $$Life, $ *$the Universe and Everything is $TheAnswer$* not closed comment will be removed too!", result),
                      std::string("Answer to the Ultimate Question of $Life, $ *$the Universe and Everything is 42")) ;
 
    result.clear() ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, "$foo_bye, baby!", result), std::string("Bye, baby!")) ;
+   CPPUNIT_LOG_EQUAL(subst(smap, "$foo_bye, baby!", result), std::string("Bye, baby!")) ;
    result.clear() ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, "${foo_str}world!", result), std::string("Hello, world!")) ;
+   CPPUNIT_LOG_EQUAL(subst(smap, "${foo_str}world!", result), std::string("Hello, world!")) ;
    result.clear() ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, "${foo_str}", result), std::string("Hello, ")) ;
+   CPPUNIT_LOG_EQUAL(subst(smap, "${foo_str}", result), std::string("Hello, ")) ;
    result.clear() ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, "The $**$Big $* comments should be removed *$is $*rm*$${foo_big}ULL, $$foo_int==$foo_int, and $unknown==$$unknown", result),
+   CPPUNIT_LOG_EQUAL(subst(smap, "The $**$Big $* comments should be removed *$is $*rm*$${foo_big}ULL, $$foo_int==$foo_int, and $unknown==$$unknown", result),
                      std::string("The Big is 18446744073709551615ULL, $foo_int==20, and $unknown==$unknown")) ;
    result.clear() ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, "${foo_char}eference to ${foo_char}eturn: $*********nothing should be breaked*$$foo_charvalue", result),
+   CPPUNIT_LOG_EQUAL(subst(smap, "${foo_char}eference to ${foo_char}eturn: $*********nothing should be breaked*$$foo_charvalue", result),
                      std::string("Reference to Return: $foo_charvalue")) ;
    result.clear() ;
-   CPPUNIT_LOG_EQUAL(tpl::subst(smap, "$foo_str$WORLD$*!@#$%^\n()*$!", result), std::string("Hello, world!")) ;
+   CPPUNIT_LOG_EQUAL(subst(smap, "$foo_str$WORLD$*!@#$%^\n()*$!", result), std::string("Hello, world!")) ;
 }
 
 /*******************************************************************************

@@ -27,8 +27,8 @@ const int DWIDTH = 6 ;
 
 #define PCOMN_CHECK_TESTSEQ_BOUNDS(buf, begin, end, width)              \
    PCOMN_THROW_MSG_IF                                                   \
-   (begin < end && (snprintf(buf, (width + 1), "%d", end - 1) > (width) || \
-                    snprintf(buf, (width + 1), "%*d", (width), begin) > (width)), \
+   (begin < end && (snprintf(buf, (width + 1), "%d", end - 1) > (long long)(width) || \
+                    snprintf(buf, (width + 1), "%*d", (width), begin) > (long long)(width)), \
     std::invalid_argument,                                              \
     "%d or %d is out of range: cannot print it into a field of width %d", begin, end, (width))
 

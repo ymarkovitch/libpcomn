@@ -177,7 +177,7 @@ class _PCOMNEXP implimit_error : public std::logic_error {
 class _PCOMNEXP environment_error : public std::runtime_error {
       typedef std::runtime_error ancestor ;
    public:
-      environment_error() : ancestor({}) {}
+      environment_error() : ancestor("") {}
 
       explicit environment_error(const std::string &msg) : environment_error()
       {

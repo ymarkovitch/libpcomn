@@ -423,10 +423,10 @@ class closed_hashtable {
             basic_state() = default ;
 
             basic_state(const hasher &h, const key_equal &keq = {}, const key_extract &kex = {}) :
-               _hasher(_hasher), _key_eq(keq), _key_get(kex) {}
+               _hasher(h), _key_eq(keq), _key_get(kex) {}
 
             basic_state(const hasher &h, const key_equal &keq, const key_extract &kex, float max_load) :
-               _hasher(_hasher), _key_eq(keq), _key_get(kex),
+               _hasher(h), _key_eq(keq), _key_get(kex),
                // Set max load factor bounds to float values exactly representable in
                // binary
                _max_load_factor(max_load <= 0 ? PCOMN_CLOSED_HASH_LOAD_FACTOR : midval<float>(0.125, 0.875, max_load))
