@@ -173,9 +173,6 @@ struct bitarray_base {
       void xor_assign(const bitarray_base &source) ;
       void andnot_assign(const bitarray_base &source) ;
 
-      void shift_left(int pos) ;
-      void shift_right(int pos) ;
-
       void reset()
       {
          memset(mbits(), 0, _elements.size()) ;
@@ -517,18 +514,6 @@ class bitarray : private bitarray_base<unsigned long> {
          return *this ;
       }
 
-      bitarray &operator<<=(int pos)
-      {
-         shift_left(pos) ;
-         return *this ;
-      }
-
-      bitarray &operator>>=(int pos)
-      {
-         shift_right(pos) ;
-         return *this ;
-      }
-
       bitarray &mask(const bitarray &source)
       {
          ancestor::andnot_assign(source) ;
@@ -580,19 +565,6 @@ class bitarray : private bitarray_base<unsigned long> {
       /// Indicate if all the bits in this array are '0'
       bool none() const { return !any() ; }
 
-      bitarray operator<<(int pos) const
-      {
-         bitarray tmp(*this) ;
-         tmp <<= pos ;
-         return tmp ;
-      }
-
-      bitarray operator>>(int pos) const
-      {
-         bitarray tmp(*this) ;
-         tmp >>= pos ;
-         return tmp ;
-      }
 
       void swap(bitarray &other)
       {
@@ -740,30 +712,6 @@ void bitarray_base<Element>::andnot_assign(const bitarray_base<Element> &source)
       data[i] &= ~source_data[i] ;
    if (full < elem)
       data[full] &= ~(source_data[full] & ~(~0 << (minsize % BITS_PER_ELEMENT))) ;
-}
-
-template<typename Element>
-void bitarray_base<Element>::shift_left(int pos)
-{
-   if (!pos)
-      return ;
-   long i ;
-   for (i = _size - 1 ; i >= pos ; --i)
-      set(i, test(i - pos)) ;
-   while(i)
-      set(i--, false) ;
-}
-
-template<typename Element>
-void bitarray_base<Element>::shift_right(int pos)
-{
-   if (!pos)
-      return ;
-   long i ;
-   for (i = 0 ; i < _size - pos ; ++i)
-      set(i, test(i + pos)) ;
-   while(i < _size)
-      set(i++, false) ;
 }
 
 template<typename Element>
