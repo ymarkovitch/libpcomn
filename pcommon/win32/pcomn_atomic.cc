@@ -38,14 +38,7 @@ inline atomic_t xchg(atomic_t *value, atomic_t new_value)
    return InterlockedExchange(value, new_value) ;
 }
 
-inline bool cas_internal(atomic_t *value, atomic_t old_value, atomic_t new_value)
-{
-   return InterlockedCompareExchangePointer
-      ((PVOID *)value, (PVOID)new_value, (PVOID)old_value) == (PVOID)old_value ;
-}
-
 } // end of namespace pcomn::atomic_op
-
 } // end of namespace pcomn
 
 #endif /* __PCOMN_ATOMIC_CC */

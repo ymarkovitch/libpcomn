@@ -132,8 +132,8 @@ struct bit_traits ;
 template<>
 struct bit_traits<8> {
 
-   typedef int8   stype ;
-   typedef uint8  utype ;
+   typedef int8_t  stype ;
+   typedef uint8_t utype ;
 
    template<typename I>
    static unsigned bitcount(I value)

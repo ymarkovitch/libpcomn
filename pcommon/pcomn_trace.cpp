@@ -26,7 +26,7 @@
 
 #include <pccritsect.h>
 
-#ifdef PCOMN_PL_WIN32
+#ifdef PCOMN_PL_WINDOWS
 #include <windows.h> // OutputDebugString support
 static inline int stderr_fileno() { return fileno(stderr) ; }
 static inline int stdout_fileno() { return fileno(stdout) ; }

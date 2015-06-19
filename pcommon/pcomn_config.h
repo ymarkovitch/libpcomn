@@ -1,4 +1,4 @@
-/*-*- mode: c; tab-width: 3; indent-tabs-mode: nil; c-file-style: "ellemtel" -*-*/
+/*-*- mode:c++; tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel" -*-*/
 #ifndef __PCOMN_CONFIG_H
 #define __PCOMN_CONFIG_H
 /*******************************************************************************
@@ -155,10 +155,17 @@
 #  define PCOMN_CDECL
 #endif
 
+#define GCC_MAKE_PRAGMA(text)
+#define MS_MAKE_PRAGMA(text)
+
 #ifdef PCOMN_COMPILER_GNU
+/*******************************************************************************
+ GCC
+*******************************************************************************/
 #define PCOMN_PRETTY_FUNCTION __PRETTY_FUNCTION__
 #define PCOMN_ATTR_PRINTF(format_pos, param_pos) __attribute__((format(printf, format_pos, param_pos)))
 #define PCOMN_ALIGNED(a) __attribute__((aligned (a)))
+#undef GCC_MAKE_PRAGMA
 #define GCC_MAKE_PRAGMA(text) _Pragma(#text)
 
 #ifdef __noreturn
@@ -176,34 +183,47 @@
 #endif
 #define __noinline __attribute__((__noinline__))
 
+#elif defined(PCOMN_COMPILER_MS)
+/*******************************************************************************
+ Microsoft
+*******************************************************************************/
+#define PCOMN_PRETTY_FUNCTION __FUNCTION__
+#define PCOMN_ATTR_PRINTF(format_pos, param_pos)
+#define PCOMN_ALIGNED(a) __declspec(align(a))
+#undef MS_MAKE_PRAGMA
+#define MS_MAKE_PRAGMA(arg, ...) __pragma(arg, ##__VA_ARGS__)
+
+#ifdef __noreturn
+#undef __noreturn
+#endif
+#define __noreturn __declspec(noreturn)
+
+#ifdef __noinline
+#undef __noinline
+#endif
+#define __noinline __declspec(noinline)
+
+#ifdef __deprecated
+#undef __deprecated
+#endif
+#define __deprecated __declspec(deprecated)
+
 #else
+/*******************************************************************************
+ Others
+*******************************************************************************/
 #define PCOMN_PRETTY_FUNCTION __FUNCTION__
 #define PCOMN_ATTR_PRINTF(format_pos, param_pos)
 #define PCOMN_ALIGNED(a)
-#define GCC_MAKE_PRAGMA(text)
 
 #ifndef __noreturn
-#ifdef PCOMN_COMPILER_MS
-#define __noreturn __declspec(noreturn)
-#else
 #define __noreturn
 #endif
-#endif
-
 #ifndef __deprecated
-#ifdef PCOMN_COMPILER_MS
-#define __deprecated __declspec(deprecated)
-#else
 #define __deprecated
 #endif
-#endif
-
 #ifndef __noinline
-#ifdef PCOMN_COMPILER_MS
-#define __noinline __declspec(noinline)
-#else
 #define __noinline
-#endif
 #endif
 
 #endif

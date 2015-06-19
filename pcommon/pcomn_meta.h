@@ -33,7 +33,7 @@
 /*******************************************************************************
  C++14 definitions for C++11 compiler
 *******************************************************************************/
-#if __cplusplus <= 201103
+#ifndef PCOMN_STL_CXX14
 
 namespace std {
 
@@ -74,7 +74,7 @@ using underlying_type_t = typename underlying_type<T>::type ;
 
 }
 
-#endif /* __cplusplus > 201103 */
+#endif /* PCOMN_STL_CXX14 */
 
 namespace pcomn {
 
@@ -262,7 +262,7 @@ const size_t max_alignment = std::alignment_of<max_align>::value ;
    }                                                                    \
                                                                         \
    template<typename T>                                                 \
-   using has_##type = decltype(detail::has_##type##_test<T>(0))
+   struct has_##type : decltype(detail::has_##type##_test<T>(0)) {}
 
 /*******************************************************************************
  Define member type metatests for std:: member typedefs

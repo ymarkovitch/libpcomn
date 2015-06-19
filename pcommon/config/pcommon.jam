@@ -25,10 +25,14 @@ module {
     if [ MATCH i.(86).* : $(uname) ]
       { CPUX86 = x86 ; }
   }
+  else if $(OS) = NT
+  {
+    OSBITS = [ MATCH .*(64).* : [ os.environ PROCESSOR_ARCHITECTURE ] ] ;
+  }
 
   OSBITS ?= 32 ;
 
-  ECHO Building for $(OS), $(OSBITS) bits $(CPUX86)" architecture" ;
+  ECHO Building for $(OS), $(OSBITS) bits architecture ;
 
   LF =
 "
@@ -306,6 +310,11 @@ feature.feature variant-tag : debug release : incidental ;
 
 feature.feature demo : off on : propagated ;
 
+################################################################################
+#
+# GCC extended falgs/options
+#
+################################################################################
 module gcc {
   import toolset ;
 
@@ -337,6 +346,21 @@ module gcc {
   toolset.flags gcc.compile.c++ OPTIONS <c++98>on  : --std=gnu++03 ;
 
   toolset.flags gcc.compile OPTIONS : -Werror=return-type -Werror=return-local-addr ;
+}
+
+################################################################################
+#
+# MSVC extended flags/options
+#
+################################################################################
+module msvc {
+  import toolset ;
+
+  toolset.flags msvc.compile CFLAGS <extra-warnings>on : -W4 ;
+  toolset.flags msvc.compile CFLAGS : -we4003 -we4172 ;
+
+  # Turn on strict C++ conformance
+  toolset.flags msvc.compile C++FLAGS : /Zc:strictStrings /Zc:inline /Zc:rvalueCast ;
 }
 
 ################################################################################

@@ -48,6 +48,9 @@
 #include <_pregex.h>
 #include <pcomn_assert.h>
 
+// size_t -> int assignment
+MS_IGNORE_WARNING(4244 4267)
+
 /*
  * The "internal use only" fields in regexp.h are present to pass info from
  * compile to execute that permits the execute phase to run lots faster on

@@ -21,14 +21,14 @@
 /*******************************************************************************
  C++14 definitions for C++11 compiler
 *******************************************************************************/
-#if __cplusplus <= 201103
+#ifnde PCOMN_STL_CXX14
 
 namespace std {
 template<std::size_t I, class Tuple>
 using tuple_element_t = typename tuple_element<I, Tuple>::type ;
 }
 
-#endif /* __cplusplus > 201103 */
+#endif /* PCOMN_STL_CXX14 */
 
 namespace pcomn {
 
@@ -130,6 +130,7 @@ void tuple_zip(F &&visitor, Tuples &&...sequences)
    applier::apply(std::forward<F>(visitor), std::forward<Tuples>(sequences)...) ;
 } ;
 
+GCC_DIAGNOSTIC_PUSH()
 // Prevent compiler from emitting a warning about return type having a const qualifier:
 // we actually need such qualifier for valid template instantiation while decaying pointers
 GCC_IGNORE_WARNING(ignored-qualifiers)
@@ -143,7 +144,7 @@ inline T * const decay(T (&value)[n]) { return value + 0 ; }
 template<typename T>
 inline T &decay(const std::reference_wrapper<T> &value) { return value ; }
 
-GCC_RESTORE_WARNING(ignored-qualifiers)
+GCC_DIAGNOSTIC_POP()
 
 template<typename T>
 struct decay_argtype { typedef T &type ; } ;

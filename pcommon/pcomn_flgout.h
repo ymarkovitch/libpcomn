@@ -176,7 +176,7 @@ std::ostream &print_enum(std::ostream &os, Enum value)
 }
 
 template<typename Enum>
-inline auto oenum(Enum value) ->PCOMN_MAKE_OMANIP(print_enum<Enum>, value) ;
+inline auto oenum(Enum value) PCOMN_MAKE_OMANIP(print_enum<Enum>, value) ;
 
 } // end of namespace pcomn
 

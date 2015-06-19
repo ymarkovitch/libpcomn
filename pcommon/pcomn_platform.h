@@ -123,6 +123,21 @@
 #ifdef PCOMN_COMPILER_C99
 #undef PCOMN_COMPILER_C99
 #endif
+#ifdef PCOMN_COMPILER_CXX11
+#undef PCOMN_COMPILER_CXX11
+#endif
+#ifdef PCOMN_STL_CXX11
+#undef PCOMN_STL_CXX11
+#endif
+#ifdef PCOMN_COMPILER_CXX14
+#undef PCOMN_COMPILER_CXX14
+#endif
+#ifdef PCOMN_STL_CXX14
+#undef PCOMN_STL_CXX14
+#endif
+#ifdef PCOMN_COMPILER_CXX17
+#undef PCOMN_COMPILER_CXX17
+#endif
 #ifdef PCOMN_COMPILER
 #undef PCOMN_COMPILER
 #endif
@@ -205,8 +220,12 @@
 #  endif
 #endif
 
-#  define GCC_IGNORE_WARNING(warn) GCC_MAKE_PRAGMA(GCC diagnostic ignored "-W"#warn)
-#  define GCC_RESTORE_WARNING(warn) GCC_MAKE_PRAGMA(GCC diagnostic warning "-W"#warn)
+/*******************************************************************************
+ Warning control
+*******************************************************************************/
+// GCC warning control
+#define GCC_IGNORE_WARNING(warn) GCC_MAKE_PRAGMA(GCC diagnostic ignored "-W"#warn)
+#define GCC_ENABLE_WARNING(warn) GCC_MAKE_PRAGMA(GCC diagnostic warning "-W"#warn)
 
 #if PCOMN_WORKAROUND(__GNUC_VER__, >= 460)
 #  define GCC_DIAGNOSTIC_PUSH() GCC_MAKE_PRAGMA(GCC diagnostic push)
@@ -215,6 +234,14 @@
 #  define GCC_DIAGNOSTIC_PUSH()
 #  define GCC_DIAGNOSTIC_POP()
 #endif
+
+// MS warning control
+#define MS_IGNORE_WARNING(warnlist) MS_MAKE_PRAGMA(warning(disable : warnlist))
+#define MS_ENABLE_WARNING(warnlist) MS_MAKE_PRAGMA(warning(default : warnlist))
+
+#define MS_DIAGNOSTIC_PUSH() MS_MAKE_PRAGMA(warning(push))
+#define MS_DIAGNOSTIC_POP()  MS_MAKE_PRAGMA(warning(pop))
+
 /*******************************************************************************
  Borland C++
 *******************************************************************************/
@@ -258,10 +285,6 @@
 *******************************************************************************/
 #elif defined (_MSC_VER)
 
-#  if (_MSC_VER < 1310)
-#     error Versions of MSVC++ below 7.1 (AKA VS.NET 2003) are not supported.
-#  endif
-
 #  define PCOMN_COMPILER      MS
 #  define PCOMN_COMPILER_NAME "MSVC++"
 #  define PCOMN_COMPILER_MS   1
@@ -292,10 +315,6 @@
 *******************************************************************************/
 #elif defined (__GNUC__)
 #  define __GNUC_VER__ (__GNUC__*100+__GNUC_MINOR__*10+__GNUC_PATCHLEVEL__)
-
-#  if (__GNUC_VER__ < 430)
-#     error GNU C/C++ __GNUC__.__GNUC_MINOR__ detected. Versions of GNU C/C++ below 4.3 are not supported.
-#  endif
 
 #  define PCOMN_COMPILER      GNU
 #  define PCOMN_COMPILER_NAME "GCC"
@@ -346,12 +365,36 @@
 #endif
 
 /*******************************************************************************
+ MSVC++ does not define a correct __cplusplus macro value, so we explicitly
+ test for MSVC version (1900 is Visual Studio 2015 compiler)
+*******************************************************************************/
+#if defined(__cplusplus)
+#  if __cplusplus >= 201103L || (defined(_MSC_VER) && _MSC_VER >= 1900)
+#     define PCOMN_COMPILER_CXX11 1
+#     define PCOMN_STL_CXX11      1
+#     if (defined(_MSC_VER) && _MSC_VER >= 1900)
+#        define PCOMN_STL_CXX14   1
+#     endif
+#  endif
+#  if __cplusplus >= 201402L
+#     define PCOMN_COMPILER_CXX14 1
+#     define PCOMN_STL_CXX14      1
+#  endif
+#endif
+
+/*******************************************************************************
  Only C++11 or better is supported.
  Note MSVC++ does not define a correct __cplusplus macro value, so we explicitly
  test for MSVC version (1800 is Visual Studio 2013 compiler)
 *******************************************************************************/
-#if defined(__cplusplus) && __cplusplus < 201103L && (!defined(_MSC_VER) || _MSC_VER < 1800)
+#if defined(__cplusplus) && !defined(PCOMN_COMPILER_CXX11)
 #  error A compiler supporting C++11 standard is required to compile
+#endif
+
+#if PCOMN_COMPILER_GNU && __GNUC_VER__ < 480
+#  error GNU C/C++ __GNUC__.__GNUC_MINOR__ detected. Versions of GNU C/C++ below 4.8 are not supported.
+#elif PCOMN_COMPILER_MS && _MSC_VER < 1900
+#  error Microsoft C/C++ _MSC_VER detected. Versions of MSVC below 19.00 (Visual Studio 2015) are not supported.
 #endif
 
 /******************************************************************************/
@@ -378,52 +421,19 @@
 #endif
 
 #include <sys/types.h>
-
-#ifndef PCOMN_COMPILER_MS
-/*
- * For some reason (I guess why), MS has no of the most POSIX/C99 headers,
- * including stdint.h
- */
 #include <stdint.h>
-
 
 /** Represents file-offset value.
  */
 typedef off_t  fileoff_t ;
 typedef size_t filesize_t ;
 
-#else
-
-#include <stddef.h>
-/*
- * System types for MS compilers (with explicit sizes)
- */
-typedef signed char     int8_t ;
-typedef unsigned char   uint8_t ;
-typedef short           int16_t ;
-typedef unsigned short  uint16_t ;
-typedef int             int32_t ;
-typedef unsigned        uint32_t ;
-typedef __int64         int64_t ;
-typedef unsigned  __int64 uint64_t ;
-typedef int64_t         intmax_t ;
-typedef uint64_t        uintmax_t ;
-
-/** Represents 64-bit file-offset value.
-    While both 32- and 64-bit MS Windows have 64-bit filesystem, the file-offset
-    type off_t is 32-bit.
- */
-typedef int64_t   fileoff_t ;
-typedef uint64_t  filesize_t ;
-
-#endif
-
 typedef int16_t   int16_le ;
 typedef uint16_t  uint16_le ;
 typedef int32_t   int32_le ;
 typedef uint32_t  uint32_le ;
-typedef int64_t    int64_le ;
-typedef uint64_t   uint64_le ;
+typedef int64_t   int64_le ;
+typedef uint64_t  uint64_le ;
 
 typedef int16_t   int16_be ;
 typedef uint16_t  uint16_be ;
@@ -477,17 +487,6 @@ typedef signed char        schar_t ;
 typedef unsigned char      uchar_t ;
 typedef unsigned char      byte_t ;
 
-/* re-typedef stdint.h types */
-typedef int8_t  int8 ;
-typedef int16_t int16 ;
-typedef int32_t int32 ;
-typedef int64_t int64 ;
-
-typedef uint8_t  uint8 ;
-typedef uint16_t uint16 ;
-typedef uint32_t uint32 ;
-typedef uint64_t uint64 ;
-
 typedef long long int            longlong_t ;
 typedef unsigned long long int   ulonglong_t ;
 
@@ -520,10 +519,10 @@ const bool cpu_little_endian = false ;
 const bool cpu_big_endian = !cpu_little_endian ;
 
 template<size_t type_size> struct uint_type {} ;
-template<> struct uint_type<1> { typedef uint8 type ; } ;
-template<> struct uint_type<2> { typedef uint16 type ; } ;
-template<> struct uint_type<4> { typedef uint32 type ; } ;
-template<> struct uint_type<8> { typedef uint64 type ; } ;
+template<> struct uint_type<1> { typedef uint8_t  type ; } ;
+template<> struct uint_type<2> { typedef uint16_t type ; } ;
+template<> struct uint_type<4> { typedef uint32_t type ; } ;
+template<> struct uint_type<8> { typedef uint64_t type ; } ;
 
 template<size_t type_size> struct _endiannes_inverter ;
 
@@ -558,7 +557,7 @@ inline uint_type<2>::type builtin_swap_bytes(uint_type<2>::type v)
 #ifdef PCOMN_COMPILER_GNU
       __builtin_bswap16(v)
 #else
-      __byteswap_ushort(v)
+      _byteswap_ushort(v)
 #endif
       ;
 }
@@ -569,7 +568,7 @@ inline uint_type<4>::type builtin_swap_bytes(uint_type<4>::type v)
 #ifdef PCOMN_COMPILER_GNU
       __builtin_bswap32(v)
 #else
-      __byteswap_ulong(v)
+      _byteswap_ulong(v)
 #endif
       ;
 }
@@ -580,7 +579,7 @@ inline uint_type<8>::type builtin_swap_bytes(uint_type<8>::type v)
 #ifdef PCOMN_COMPILER_GNU
       __builtin_bswap64(v)
 #else
-      __byteswap_uint64(v)
+      _byteswap_uint64(v)
 #endif
       ;
 }
@@ -686,19 +685,7 @@ inline void __put_byte(ScalarType *data, size_t byte_num, unsigned char byte)
 #ifndef PCOMN_COMPILER
 #  error
    "Unknown or unsupported C/C++ compiler. "    \
-   "The following compilers are supported: GCC 4.8.1 and higher; MSVC++ 18.10 and higher."
-#endif
-
-#if PCOMN_WORKAROUND(_MSC_VER, >= 1300)
-#define snprintf _snprintf
-#endif
-
-#if PCOMN_WORKAROUND(_MSC_VER, < 1800)
-#define alignas(num) __declspec(align(num))
-#endif
-
-#if PCOMN_WORKAROUND(__GNUC_VER__, < 480)
-#define alignas(num) __attribute__((aligned(num)))
+   "The following compilers are supported: GCC 4.8.1 and higher; MSVC++ 19.00 and higher."
 #endif
 
 /*******************************************************************************

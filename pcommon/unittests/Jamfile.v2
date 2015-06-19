@@ -18,10 +18,10 @@ lib zlib   : : <name>z <link>shared ;
 project
   : requirements
 
-  <library>$(PROJROOT)//pcommon
-  <library>$(TESTPATH)//cppunit
-  <library>$(TESTPATH)//crypto
-  <library>$(TESTPATH)//zlib
+  #<library>$(PROJROOT)//pcommon
+  #<library>$(TESTPATH)//cppunit
+  #<library>$(TESTPATH)//crypto
+  #<library>$(TESTPATH)//zlib
 
   <include>$(VENDORPATH)/include
 

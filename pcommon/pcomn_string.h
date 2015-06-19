@@ -23,7 +23,6 @@
 #include <pcomn_hash.h>
 #include <pcomn_meta.h>
 #include <pcomn_algorithm.h>
-#include <pcomn_aprintf.h>
 
 #include <array>
 
@@ -646,62 +645,25 @@ inline typename ::pcomn::string_traits<S>::hash_type hasher(const S &str)
 /*******************************************************************************
  Unsafe format functions for std::string
 *******************************************************************************/
-template<bool dummy = false>
-class _formatted_str : private ap_vformatter_buff {
-      std::string _data ;
-      static int _astrprintf_flush(ap_vformatter_buff *vbuff) ;
-   public:
-      _formatted_str(const char *format, va_list parm) ;
-      const std::string &str() const { return _data ; }
-
-} ;
-
-template<bool dummy>
-int _formatted_str<dummy>::_astrprintf_flush(ap_vformatter_buff *vbuff)
-{
-   /* If the buffer fills we double the target string's size.
-    * It's the best strategy in the terms of space/time trade-off.
-    * All in all, we will shrink the string to the right size after it gets formed.
-    */
-   int cursize = ((_formatted_str *)vbuff)->_data.size() ;
-   int curpos = vbuff->curpos - ((_formatted_str *)vbuff)->_data.c_str() ;
-   int newsize = cursize ? cursize * 2 : 2 ;
-
-   ((_formatted_str *)vbuff)->_data.resize(newsize) ;
-
-   // We shouldn't use begin()/end() iterators here to assign new values to vbuff->curpos/endpos,
-   // because standard doesn't guarantee that string::iterator is a pointer. (It is indeed NOT
-   // a pointer in some debug STL version)
-   char *new_begin = const_cast<char *>(((_formatted_str *)vbuff)->_data.c_str()) ;
-   vbuff->endpos = new_begin + newsize ;
-   vbuff->curpos = new_begin + curpos ;
-   // We always succeed. If there is not enough memory, runtime should throw bad_alloc
-   return 0 ;
-}
-
-template<bool dummy>
-_formatted_str<dummy>::_formatted_str(const char *format, va_list parm)
-{
-   // Make buffer empty first - maybe, the result is empty
-   // so don't allocate any space in advance.
-   curpos = endpos = const_cast<char *>(_data.c_str()) ;
-   int len = ap_vformatter(_astrprintf_flush, this, format, parm) ;
-   if (len >= 0)
-      _data.resize(len) ;
-}
+std::string strprintf(const char *format, ...) PCOMN_ATTR_PRINTF(1, 2) ;
 
 inline std::string strvprintf(const char *format, va_list parm)
 {
-    return _formatted_str<>(format, parm).str() ;
-}
+   const size_t initsize = 7 ;
+   std::string result ('A', 7) ;
+   const size_t actual_size = snprintf(&*result.begin(), initsize + 1, format, parms) ;
+   result.resize(actual_size) ;
+   if (actual_size > initsize)
+      snprintf(&*result.begin(), actual_size + 1, format, parms) ;
 
-std::string strprintf(const char *format, ...) PCOMN_ATTR_PRINTF(1, 2) ;
+   return std::move(result) ;
+}
 
 inline std::string strprintf(const char *format, ...)
 {
    va_list parm ;
    va_start(parm, format) ;
-   _formatted_str<> result (format, parm) ;
+   strvprintf(format, parm) ;
    va_end(parm) ;
 
    return result.str() ;

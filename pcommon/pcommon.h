@@ -18,10 +18,6 @@
 #include <stdarg.h>
 #include <stdlib.h>
 
-#if defined(__cplusplus) && __cplusplus <= 199711
-#error C++11 compiler is required for compilation
-#endif
-
 /*******************************************************************************
  Typedefs for different flag set types
 *******************************************************************************/

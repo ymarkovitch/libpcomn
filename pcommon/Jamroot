@@ -43,12 +43,10 @@ project pcommon
 
 # Our main target
 lib pcommon :
-  [ obj aprintf : pcomn_aprintf.c : <extern-c-nothrow>off ]
-  [ obj regex   : regex.c         : <extern-c-nothrow>off ]
+  [ obj regex : regex.c : <extern-c-nothrow>off ]
 
   pcomn_crc32.c
   pcomn_hash.c
-  pcomn_nrthreadmutex.c
   pcomn_version.c
   pudate.c
 

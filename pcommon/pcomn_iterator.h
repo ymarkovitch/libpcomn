@@ -48,7 +48,7 @@ test_icategory(typename icategory<T>::iterator_category const volatile *) ;
 /// type trait to check if the type is an iterator of at least specified category
 ///
 template<typename T, typename C = std::input_iterator_tag>
-using is_iterator = decltype(detail::test_icategory<T, C>(0)) ;
+struct is_iterator : decltype(detail::test_icategory<T, C>(0)) {} ;
 
 /*******************************************************************************
  Convenience typedefs for various iterator traits
@@ -758,7 +758,7 @@ inline enable_if_t<pcomn::is_iterator<I>::value, I> begin(const pair<I, I> &rang
 }
 
 template<typename I>
-inline enable_if_t<pcomn::is_iterator<I>::value, I> end(const pair<I, I> &range)
+inline typename enable_if_t<pcomn::is_iterator<I>::value, I> end(const pair<I, I> &range)
 {
    return range.second ;
 }
