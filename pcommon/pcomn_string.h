@@ -83,7 +83,9 @@ struct ctype_traits<char> {
 template<>
 struct ctype_traits<wchar_t> {
       typedef wchar_t char_type ;
-      typedef unsigned wchar_t uchar_type ;
+      typedef std::conditional_t<!std::is_signed<wchar_t>::value, wchar_t,
+                                 std::conditional_t<(sizeof(wchar_t) < sizeof(unsigned)), unsigned short, unsigned> >
+      uchar_type ;
 
       static char_type tolower(char_type c) { return std::towlower(c) ; }
       static char_type toupper(char_type c) { return std::towupper(c) ; }
@@ -647,14 +649,14 @@ inline typename ::pcomn::string_traits<S>::hash_type hasher(const S &str)
 *******************************************************************************/
 std::string strprintf(const char *format, ...) PCOMN_ATTR_PRINTF(1, 2) ;
 
-inline std::string strvprintf(const char *format, va_list parm)
+inline std::string strvprintf(const char *format, va_list args)
 {
    const size_t initsize = 7 ;
    std::string result ('A', 7) ;
-   const size_t actual_size = snprintf(&*result.begin(), initsize + 1, format, parms) ;
+   const size_t actual_size = snprintf(&*result.begin(), initsize + 1, format, args) ;
    result.resize(actual_size) ;
    if (actual_size > initsize)
-      snprintf(&*result.begin(), actual_size + 1, format, parms) ;
+      snprintf(&*result.begin(), actual_size + 1, format, args) ;
 
    return std::move(result) ;
 }
@@ -663,10 +665,10 @@ inline std::string strprintf(const char *format, ...)
 {
    va_list parm ;
    va_start(parm, format) ;
-   strvprintf(format, parm) ;
+   std::string result (strvprintf(format, parm)) ;
    va_end(parm) ;
 
-   return result.str() ;
+   return std::move(result) ;
 }
 
 /*******************************************************************************

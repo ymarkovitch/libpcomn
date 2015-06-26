@@ -14,7 +14,7 @@
 #include <pcommon.h>
 #include <time.h>
 
-#if   defined(PCOMN_PL_WIN32)
+#if   defined(PCOMN_PL_WINDOWS)
 #  include <windows.h>
 #elif defined(PCOMN_PL_OS400)
 #  include <ledate.h>
@@ -133,7 +133,7 @@ class PCpuStopwatch : public PStopwatch {
  PRealStopwatch
 *******************************************************************************/
 inline PRealStopwatch::PRealStopwatch() :
-#if defined(PCOMN_PL_WIN32)
+#if defined(PCOMN_PL_WINDOWS)
    ancestor (1000)
 #else
    ancestor(1000000)
@@ -148,7 +148,7 @@ inline double PRealStopwatch::current() const
    _FEEDBACK fb ;
    CEEUTC(&d, &s, &fb) ;
    return s ;
-#elif defined(PCOMN_PL_WIN32)
+#elif defined(PCOMN_PL_WINDOWS)
    return GetTickCount() ;
 #else
    timeval t = {0, 0} ;

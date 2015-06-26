@@ -16,6 +16,7 @@
  Hash functions and functors, MD5 hash, CRC32 calculations.
 *******************************************************************************/
 #include <pcommon.h>
+#include <pcomn_assert.h>
 
 #include <wchar.h>
 
@@ -207,7 +208,7 @@ inline uint32_t wang_hash64to32(uint64_t x)
   x = x ^ (x >> 11) ;
   x = x + (x << 6) ;
   x = x ^ (x >> 22) ;
-  return x ;
+  return (uint32_t)x ;
 }
 
 inline uint32_t hash_64(uint64_t x, std::integral_constant<size_t, 4>)
@@ -390,14 +391,17 @@ struct crypthash : T {
 /******************************************************************************/
 /** 128-bit aligned binary big-endian POD data
 *******************************************************************************/
-struct binary128_t {
+struct alignas(16) binary128_t {
+
+      constexpr binary128_t() : _idata() {}
+
       /// Check helper
       explicit constexpr operator bool() const { return !!(_idata[0] | _idata[1]) ; }
 
-      unsigned char *data() { return reinterpret_cast<unsigned char *>(&_cdata) ; }
-      constexpr const unsigned char *data() const { return reinterpret_cast<const unsigned char *>(&_cdata) ; }
+      unsigned char *data() { return reinterpret_cast<unsigned char *>(&_idata) ; }
+      constexpr const unsigned char *data() const { return reinterpret_cast<const unsigned char *>(&_idata) ; }
 
-      static constexpr size_t size() { return sizeof _cdata ; }
+      static constexpr size_t size() { return sizeof _idata ; }
 
       _PCOMNEXP std::string to_string() const ;
       _PCOMNEXP char *to_strbuf(char *buf) const ;
@@ -429,7 +433,7 @@ struct binary128_t {
       {
          init() ;
          if (!hexstr) return ;
-         for (const char *c = hexstr, *e = c + 2 * sizeof _cdata ; c != e ;)
+         for (const char *c = hexstr, *e = c + 2 * sizeof *this ; c != e ;)
             if (!isxdigit(*c++)) return ;
 
          sscanf(hexstr, "%16Lx%16Lx", _idata + 0, _idata + 1) ;
@@ -438,11 +442,10 @@ struct binary128_t {
       }
 
    private:
-      union {
-            std::aligned_storage<16, 16>::type  _cdata ;
-            unsigned long long                  _idata[2] ;
-      } ;
+      uint64_t _idata[2] ;
 } ;
+
+PCOMN_STATIC_CHECK(sizeof(binary128_t) == 16) ;
 
 // Define !=, >, <=, >= for binary128_t
 PCOMN_DEFINE_RELOP_FUNCTIONS(, binary128_t) ;
@@ -457,16 +460,18 @@ struct md5hash_pod_t : binary128_t {} ;
 *******************************************************************************/
 struct sha1hash_pod_t {
 
+      constexpr sha1hash_pod_t() : _idata() {}
+
       /// Check helper.
       explicit constexpr operator bool() const
       {
          return _idata[0] || _idata[1] || _idata[2] || _idata[3] || _idata[4] ;
       }
 
-      unsigned char *data() { return _cdata ; }
-      const unsigned char *data() const { return _cdata ; }
+      unsigned char *data() { return reinterpret_cast<unsigned char *>(_idata) ; }
+      const unsigned char *data() const { return reinterpret_cast<const unsigned char *>(_idata) ; }
 
-      static size_t size() { return sizeof _cdata ; }
+      static size_t size() { return sizeof _idata ; }
 
       _PCOMNEXP std::string to_string() const ;
 
@@ -477,17 +482,17 @@ struct sha1hash_pod_t {
 
       friend bool operator==(const sha1hash_pod_t &l, const sha1hash_pod_t &r)
       {
-         return !memcmp(l._cdata, r._cdata, sizeof l._cdata) ;
+         return !memcmp(l._idata, r._idata, sizeof l._idata) ;
       }
 
       friend bool operator<(const sha1hash_pod_t &l, const sha1hash_pod_t &r)
       {
-         return memcmp(l._cdata, r._cdata, sizeof l._cdata) < 0 ;
+         return memcmp(l._idata, r._idata, sizeof l._idata) < 0 ;
       }
 
       size_t hash() const
       {
-         return ((unsigned long long)_idata[3] << 32) | (unsigned long long)_idata[4] ;
+         return ((uint64_t)_idata[3] << 32) | (uint64_t)_idata[4] ;
       }
 
    protected:
@@ -496,7 +501,7 @@ struct sha1hash_pod_t {
       {
          init() ;
          if (!hashstr) return ;
-         for (const char *c = hashstr, *e = c + 2 * sizeof _cdata ; c != e ;)
+         for (const char *c = hashstr, *e = c + 2 * sizeof *this ; c != e ;)
             if (!isxdigit(*c++)) return ;
 
          sscanf(hashstr, "%8x%8x%8x%8x%8x", _idata + 0, _idata + 1, _idata + 2, _idata + 3, _idata + 4) ;
@@ -508,11 +513,10 @@ struct sha1hash_pod_t {
       }
 
    private:
-      union {
-            unsigned char  _cdata[20] ;
-            unsigned       _idata[5] ;
-      } ;
+      uint32_t _idata[5] ;
 } ;
+
+PCOMN_STATIC_CHECK(sizeof(sha1hash_pod_t) == 20) ;
 
 // Define !=, >, <=, >= for sha1hash_pod_t
 PCOMN_DEFINE_RELOP_FUNCTIONS(, sha1hash_pod_t) ;

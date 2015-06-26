@@ -160,8 +160,8 @@ struct MAC {
       ///
       _PCOMNEXP char *to_strbuf(char *buf) const ;
 
-      friend constexpr bool operator==(const MAC &x, const MAC &y) { return x._idata == y._idata ; }
-      friend constexpr bool operator<(const MAC &x, const MAC &y)
+      friend bool operator==(const MAC &x, const MAC &y) { return x._idata == y._idata ; }
+      friend bool operator<(const MAC &x, const MAC &y)
       {
          return value_from_big_endian(x._idata) < value_from_big_endian(y._idata) ;
       }

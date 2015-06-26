@@ -292,7 +292,7 @@ feature.feature pic : off on : propagated ;
 # Custom optimization mode: speed w/o most dangerous optiomizations (like strict aliasing)
 feature.extend optimization : safespeed ;
 # C++11/C++98 compilation
-feature.feature c++98 : off on : incidental ;
+feature.feature c++std : 11 14 98 : incidental ;
 
 ################################################################################
 # Build verbosity
@@ -342,8 +342,9 @@ module gcc {
   toolset.flags gcc.compile OPTIONS <optimization>safespeed : -O2 -fno-strict-aliasing -fwrapv ;
 
   # C++98 or C++11 (default is C++11)
-  toolset.flags gcc.compile.c++ OPTIONS <c++98>off : --std=gnu++11 ;
-  toolset.flags gcc.compile.c++ OPTIONS <c++98>on  : --std=gnu++03 ;
+  toolset.flags gcc.compile.c++ OPTIONS <c++std>11 : --std=gnu++11 ;
+  toolset.flags gcc.compile.c++ OPTIONS <c++std>98 : --std=gnu++03 ;
+  toolset.flags gcc.compile.c++ OPTIONS <c++std>14 : --std=gnu++14 ;
 
   toolset.flags gcc.compile OPTIONS : -Werror=return-type -Werror=return-local-addr ;
 }
@@ -361,6 +362,20 @@ module msvc {
 
   # Turn on strict C++ conformance
   toolset.flags msvc.compile C++FLAGS : /Zc:strictStrings /Zc:inline /Zc:rvalueCast ;
+}
+
+################################################################################
+#
+# Intel compiler extended flags/options
+#
+################################################################################
+module intel-win {
+  import toolset ;
+
+  toolset.flags intel-win.compile.c++ OPTIONS <c++std>11 : -Qstd=c++11 ;
+  toolset.flags intel-win.compile.c++ OPTIONS <c++std>14 : -Qstd=c++14 ;
+
+  toolset.flags intel-win.compile OPTIONS <extra-warnings>on : -W5 ;
 }
 
 ################################################################################

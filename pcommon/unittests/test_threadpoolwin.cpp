@@ -94,7 +94,7 @@ class CRCTask : public PTask {
          TRACEP("The task " << this << " is processing " << _file) ;
          char buf[2048] ;
          int sz ;
-         uint32 crc = 0 ;
+         uint32_t crc = 0 ;
          while((sz = read(f, buf, sizeof buf)) > 0)
             crc = calc_crc32(crc, (const byte_t *)buf, sz) ;
          close(f) ;

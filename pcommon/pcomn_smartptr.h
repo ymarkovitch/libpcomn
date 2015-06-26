@@ -101,7 +101,7 @@ struct refcount_basic_policy {
 *******************************************************************************/
 class PRefBase {
    protected:
-      virtual ~PRefBase() = default ;
+      virtual ~PRefBase() {}
       static void self_destroy(PRefBase *object) { delete object ; }
 } ;
 
@@ -130,7 +130,7 @@ class PTRefCounter : public PRefBase, public PTActiveCounter<0, ThreadPolicy> {
       PTRefCounter (const PTRefCounter &) : ancestor() {}
 
       /// Destructor does nothing, declared for inheritance protection and debugging purposes.
-      ~PTRefCounter() {}
+      ~PTRefCounter() = default ;
 
       /// Deletes "this" (itself); overrides pure virtual PTActiveCounter::dec_action().
       atomic_t dec_action(atomic_t threshold) override

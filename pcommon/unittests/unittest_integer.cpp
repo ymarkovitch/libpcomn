@@ -49,14 +49,14 @@ class IntegerTests : public CppUnit::TestFixture {
 *******************************************************************************/
 void IntegerTests::Test_Bitsize()
 {
-   CPPUNIT_LOG_EQUAL(pcomn::int_traits<pcomn::int8>::bitsize, 8U) ;
-   CPPUNIT_LOG_EQUAL(pcomn::int_traits<pcomn::uint8>::bitsize, 8U) ;
-   CPPUNIT_LOG_EQUAL(pcomn::int_traits<pcomn::int16>::bitsize, 16U) ;
-   CPPUNIT_LOG_EQUAL(pcomn::int_traits<pcomn::uint16>::bitsize, 16U) ;
-   CPPUNIT_LOG_EQUAL(pcomn::int_traits<pcomn::int32>::bitsize, 32U) ;
-   CPPUNIT_LOG_EQUAL(pcomn::int_traits<pcomn::uint32>::bitsize, 32U) ;
-   CPPUNIT_LOG_EQUAL(pcomn::int_traits<pcomn::int64>::bitsize, 64U) ;
-   CPPUNIT_LOG_EQUAL(pcomn::int_traits<pcomn::uint64>::bitsize, 64U) ;
+   CPPUNIT_LOG_EQUAL(pcomn::int_traits<int8_t>::bitsize, 8U) ;
+   CPPUNIT_LOG_EQUAL(pcomn::int_traits<uint8_t>::bitsize, 8U) ;
+   CPPUNIT_LOG_EQUAL(pcomn::int_traits<int16_t>::bitsize, 16U) ;
+   CPPUNIT_LOG_EQUAL(pcomn::int_traits<uint16_t>::bitsize, 16U) ;
+   CPPUNIT_LOG_EQUAL(pcomn::int_traits<int32_t>::bitsize, 32U) ;
+   CPPUNIT_LOG_EQUAL(pcomn::int_traits<uint32_t>::bitsize, 32U) ;
+   CPPUNIT_LOG_EQUAL(pcomn::int_traits<int64_t>::bitsize, 64U) ;
+   CPPUNIT_LOG_EQUAL(pcomn::int_traits<uint64_t>::bitsize, 64U) ;
 }
 
 void IntegerTests::Test_SignTraits()
@@ -71,7 +71,7 @@ void IntegerTests::Test_SignTraits()
    TEST_SIGNED_TRAITS(short, unsigned short) ;
    TEST_SIGNED_TRAITS(int, unsigned) ;
    TEST_SIGNED_TRAITS(long, unsigned long) ;
-   TEST_SIGNED_TRAITS(pcomn::int64, pcomn::uint64) ;
+   TEST_SIGNED_TRAITS(int64_t, uint64_t) ;
    TEST_SIGNED_TRAITS(long long, unsigned long long) ;
 
    CPPUNIT_LOG_IS_TRUE((std::is_same<signed char, pcomn::int_traits<char>::stype>::value)) ;
@@ -82,32 +82,32 @@ void IntegerTests::Test_SignTraits()
 
 void IntegerTests::Test_Bitcount()
 {
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<pcomn::int8>(0)), 0U) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<pcomn::uint8>(0)), 0U) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<pcomn::int16>(0)), 0U) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<pcomn::uint16>(0)), 0U) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<pcomn::int32>(0)), 0U) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<pcomn::uint32>(0)), 0U) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<pcomn::int64>(0)), 0U) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<pcomn::uint64>(0)), 0U) ;
+   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<int8_t>(0)), 0U) ;
+   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<uint8_t>(0)), 0U) ;
+   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<int16_t>(0)), 0U) ;
+   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<uint16_t>(0)), 0U) ;
+   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<int32_t>(0)), 0U) ;
+   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<uint32_t>(0)), 0U) ;
+   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<int64_t>(0)), 0U) ;
+   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<uint64_t>(0)), 0U) ;
 
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<pcomn::int8>(-1)), 8U) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<pcomn::uint8>(-1)), 8U) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<pcomn::int16>(-1)), 16U) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<pcomn::uint16>(-1)), 16U) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<pcomn::int32>(-1)), 32U) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<pcomn::uint32>(-1)), 32U) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<pcomn::int64>(-1)), 64U) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<pcomn::uint64>((pcomn::int64)-1)), 64U) ;
+   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<int8_t>(-1)), 8U) ;
+   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<uint8_t>(-1)), 8U) ;
+   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<int16_t>(-1)), 16U) ;
+   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<uint16_t>(-1)), 16U) ;
+   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<int32_t>(-1)), 32U) ;
+   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<uint32_t>(-1)), 32U) ;
+   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<int64_t>(-1)), 64U) ;
+   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<uint64_t>((int64_t)-1)), 64U) ;
 
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<pcomn::int8>(0x41)), 2U) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<pcomn::int8>(-1)), 8U) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<pcomn::uint8>(0x41)), 2U) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<pcomn::uint8>(0x43)), 3U) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<pcomn::uint8>(0x80)), 1U) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<pcomn::int32>(0xF1)), 5U) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<pcomn::int64>(0xF1)), 5U) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<pcomn::int32>(0x10000001)), 2U) ;
+   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<int8_t>(0x41)), 2U) ;
+   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<int8_t>(-1)), 8U) ;
+   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<uint8_t>(0x41)), 2U) ;
+   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<uint8_t>(0x43)), 3U) ;
+   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<uint8_t>(0x80)), 1U) ;
+   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<int32_t>(0xF1)), 5U) ;
+   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<int64_t>(0xF1)), 5U) ;
+   CPPUNIT_LOG_EQUAL(pcomn::bitop::bitcount(static_cast<int32_t>(0x10000001)), 2U) ;
 }
 
 void IntegerTests::Test_Bitcount_CompileTime()
@@ -121,7 +121,7 @@ void IntegerTests::Test_Bitcount_CompileTime()
 void IntegerTests::Test_Clrrnzb()
 {
    CPPUNIT_LOG_EQUAL(pcomn::bitop::clrrnzb(0xF0), 0xE0) ;
-   CPPUNIT_LOG_EQUAL(pcomn::bitop::clrrnzb((pcomn::uint32)0x80000000), (pcomn::uint32)0) ;
+   CPPUNIT_LOG_EQUAL(pcomn::bitop::clrrnzb((uint32_t)0x80000000), (uint32_t)0) ;
    CPPUNIT_LOG_EQUAL(pcomn::bitop::clrrnzb(0), 0) ;
    CPPUNIT_LOG_EQUAL(pcomn::bitop::clrrnzb(1), 0) ;
    CPPUNIT_LOG_EQUAL(pcomn::bitop::clrrnzb((signed char)3), (signed char)2) ;
@@ -140,26 +140,26 @@ void IntegerTests::Test_Getrnzb()
 void IntegerTests::Test_NzbitIterator()
 {
    using namespace pcomn ;
-   CPPUNIT_LOG_IS_TRUE(bitop::nzbit_iterator<int32>() == bitop::nzbit_iterator<int32>()) ;
-   CPPUNIT_LOG_IS_FALSE(bitop::nzbit_iterator<int32>() != bitop::nzbit_iterator<int32>()) ;
-   CPPUNIT_LOG_IS_TRUE(bitop::nzbit_iterator<int32>(0x20005) ==
-                       bitop::nzbit_iterator<int32>(0x20005)) ;
-   CPPUNIT_LOG_IS_FALSE(bitop::nzbit_iterator<int32>(0x20005) !=
-                        bitop::nzbit_iterator<int32>(0x20005)) ;
-   CPPUNIT_LOG_IS_TRUE(bitop::nzbit_iterator<int32>(0x20005) !=
-                       bitop::nzbit_iterator<int32>()) ;
-   CPPUNIT_LOG_IS_TRUE(bitop::nzbit_iterator<int32>(0x20005) ==
-                       bitop::make_nzbit_iterator((int32)0x20005)) ;
+   CPPUNIT_LOG_IS_TRUE(bitop::nzbit_iterator<int32_t>() == bitop::nzbit_iterator<int32_t>()) ;
+   CPPUNIT_LOG_IS_FALSE(bitop::nzbit_iterator<int32_t>() != bitop::nzbit_iterator<int32_t>()) ;
+   CPPUNIT_LOG_IS_TRUE(bitop::nzbit_iterator<int32_t>(0x20005) ==
+                       bitop::nzbit_iterator<int32_t>(0x20005)) ;
+   CPPUNIT_LOG_IS_FALSE(bitop::nzbit_iterator<int32_t>(0x20005) !=
+                        bitop::nzbit_iterator<int32_t>(0x20005)) ;
+   CPPUNIT_LOG_IS_TRUE(bitop::nzbit_iterator<int32_t>(0x20005) !=
+                       bitop::nzbit_iterator<int32_t>()) ;
+   CPPUNIT_LOG_IS_TRUE(bitop::nzbit_iterator<int32_t>(0x20005) ==
+                       bitop::make_nzbit_iterator((int32_t)0x20005)) ;
 
-   bitop::nzbit_iterator<int32> iter(0x20005) ;
-   bitop::nzbit_iterator<int32> end ;
+   bitop::nzbit_iterator<int32_t> iter(0x20005) ;
+   bitop::nzbit_iterator<int32_t> end ;
    CPPUNIT_LOG_IS_FALSE(iter == end) ;
-   CPPUNIT_LOG_EQUAL(*iter, (int32)1) ;
-   CPPUNIT_LOG_EQUAL(*++iter, (int32)4) ;
+   CPPUNIT_LOG_EQUAL(*iter, (int32_t)1) ;
+   CPPUNIT_LOG_EQUAL(*++iter, (int32_t)4) ;
    CPPUNIT_LOG_IS_FALSE(iter == end) ;
-   CPPUNIT_LOG_ASSERT(*iter++ == (int32)4) ;
+   CPPUNIT_LOG_ASSERT(*iter++ == (int32_t)4) ;
    CPPUNIT_LOG_IS_FALSE(iter == end) ;
-   CPPUNIT_LOG_ASSERT(*iter == (int32)0x20000) ;
+   CPPUNIT_LOG_ASSERT(*iter == (int32_t)0x20000) ;
    CPPUNIT_LOG_IS_TRUE(++iter == end) ;
    CPPUNIT_LOG_IS_TRUE(iter == end) ;
 }
@@ -174,18 +174,18 @@ enum TestEnum : uint8_t {
 void IntegerTests::Test_NzbitPosIterator()
 {
    using namespace pcomn ;
-   CPPUNIT_LOG_IS_TRUE(bitop::nzbitpos_iterator<int32>() == bitop::nzbitpos_iterator<int32>()) ;
-   CPPUNIT_LOG_IS_FALSE(bitop::nzbitpos_iterator<int32>() != bitop::nzbitpos_iterator<int32>()) ;
-   CPPUNIT_LOG_IS_TRUE(bitop::nzbitpos_iterator<int32>() == bitop::nzbitpos_iterator<int32>(0)) ;
-   CPPUNIT_LOG_IS_TRUE(bitop::nzbitpos_iterator<int32>(0x20005) ==
-                       bitop::nzbitpos_iterator<int32>(0x20005)) ;
-   CPPUNIT_LOG_IS_FALSE(bitop::nzbitpos_iterator<int32>(0x20005) !=
-                        bitop::nzbitpos_iterator<int32>(0x20005)) ;
-   CPPUNIT_LOG_IS_TRUE(bitop::nzbitpos_iterator<int32>(0x20005) !=
-                       bitop::nzbitpos_iterator<int32>()) ;
+   CPPUNIT_LOG_IS_TRUE(bitop::nzbitpos_iterator<int32_t>() == bitop::nzbitpos_iterator<int32_t>()) ;
+   CPPUNIT_LOG_IS_FALSE(bitop::nzbitpos_iterator<int32_t>() != bitop::nzbitpos_iterator<int32_t>()) ;
+   CPPUNIT_LOG_IS_TRUE(bitop::nzbitpos_iterator<int32_t>() == bitop::nzbitpos_iterator<int32_t>(0)) ;
+   CPPUNIT_LOG_IS_TRUE(bitop::nzbitpos_iterator<int32_t>(0x20005) ==
+                       bitop::nzbitpos_iterator<int32_t>(0x20005)) ;
+   CPPUNIT_LOG_IS_FALSE(bitop::nzbitpos_iterator<int32_t>(0x20005) !=
+                        bitop::nzbitpos_iterator<int32_t>(0x20005)) ;
+   CPPUNIT_LOG_IS_TRUE(bitop::nzbitpos_iterator<int32_t>(0x20005) !=
+                       bitop::nzbitpos_iterator<int32_t>()) ;
 
-   bitop::nzbitpos_iterator<int32> iter(0x20005) ;
-   bitop::nzbitpos_iterator<int32> end ;
+   bitop::nzbitpos_iterator<int32_t> iter(0x20005) ;
+   bitop::nzbitpos_iterator<int32_t> end ;
    CPPUNIT_LOG_IS_FALSE(iter == end) ;
    CPPUNIT_LOG_EQUAL(*iter, 0) ;
    CPPUNIT_LOG_EQUAL(*++iter, 2) ;

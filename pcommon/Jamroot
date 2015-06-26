@@ -21,6 +21,7 @@ import pcommon ;
 constant      ROOTNAME  : pcommon ;
 constant      PROJROOT  : /$(ROOTNAME) ;
 constant      OS        : [ os.name ] ;
+constant      VENDOR_PREFIX  : [ modules.peek : VENDOR_PREFIX ] ;
 
 ################################################################################
 # Project
@@ -29,6 +30,8 @@ project pcommon
   : requirements
 
   <include>.
+  <include>$(VENDOR_PREFIX)/include
+
   <toolset>gcc:<cxxflags>-Woverloaded-virtual
   <toolset>gcc:<cflags>-fvisibility=hidden
 
@@ -36,12 +39,43 @@ project pcommon
   <toolset>gcc:<cflags>-march=core2
   <toolset>gcc:<cflags>-msse4.1
 
+  <toolset>intel-win:<cxxflags>-Qms2
+  <toolset>intel-win:<cflags>-QxSSE4.1
+  <toolset>intel-win:<cflags>-arch:SSE4.1
+
+  # If VENDOR_PREFIX environment variable is not defined,
+  # the line below simply disappears
+  <library-path>$(VENDOR_PREFIX)/lib
+
   : default-build debug <link>static <threading>multi
 
   : source-location . [ iif [ os.on-unix ] : unix : win32 ]
+
   ;
 
-# Our main target
+
+################################################################################
+# Per-platform sources
+################################################################################
+alias pcommon-unix-sources :
+  pcomn_crypthash.cpp
+  pcomn_shutil.cpp
+
+  : <toolset>gcc
+  ;
+
+alias pcommon-unix-sources :
+  : <os>NT
+  ;
+
+alias pcommon-win-sources :
+  ;
+
+################################################################################
+#
+# Main target: libpcommon
+#
+################################################################################
 lib pcommon :
   [ obj regex : regex.c : <extern-c-nothrow>off ]
 
@@ -55,7 +89,6 @@ lib pcommon :
 
   pcomn_binascii.cpp
   pcomn_cfgparser.cpp
-  pcomn_crypthash.cpp
   pcomn_diag.cpp
   pcomn_exec.cpp
   pcomn_fileutils.cpp
@@ -73,7 +106,6 @@ lib pcommon :
   pcomn_rawstream.cpp
   pcomn_regex.cpp
   pcomn_scheduler.cpp
-  pcomn_shutil.cpp
   pcomn_strsubst.cpp
   pcomn_sys.cpp
   pcomn_textio.cpp
@@ -85,4 +117,8 @@ lib pcommon :
   pcomn_ziowrap.c
   pcomn_zstream.cpp
 
+  # Per-platform sources
+  # The aliases below are nonempty only for corresponding platforms
+  pcommon-unix-sources
+  pcommon-win-sources
   ;

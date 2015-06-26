@@ -13,9 +13,7 @@
 
  CREATION DATE:   26 Jun 1998
 *******************************************************************************/
-#ifndef __PCOMN_PLATFORM_H
 #include <pcomn_platform.h>
-#endif /* PCOMN_PLATFORM.H */
 
 #ifdef PCOMN_PL_WINDOWS
 /* PCOMN_PL_WINDOWS */
@@ -66,6 +64,10 @@
 #     define S_IWOTH _S_IWRITE
 #  endif
 
+#  ifndef O_ACCMODE
+#     define O_ACCMODE (O_RDONLY|O_WRONLY|O_RDWR)
+#  endif
+
 #ifdef __cplusplus
 /// ftruncate quasi for Windows.
 inline int ftruncate(int fd, long newsize) { return _chsize(fd, newsize) ; }
@@ -73,15 +75,7 @@ inline int ftruncate(int fd, long newsize) { return _chsize(fd, newsize) ; }
 #  define ftruncate(file, size) (_chsize((file), (size)))
 #endif
 
-
-/* MS doesn't define ssize_t */
-#ifdef PCOMN_COMPILER_MS
-#ifdef PCOMN_PL_WIN64
-typedef int64_t ssize_t ;
-#else
-typedef int ssize_t ;
-#endif
-#endif
+#define getpid() (_getpid())
 
 #else /* end of PCOMN_PL_WINDOWS */
 /* PCOMN_PL_UNIX */

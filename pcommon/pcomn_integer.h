@@ -105,7 +105,7 @@ inline typename if_signed_int<T, T>::type iabs(T v)
    return std::abs(v) ;
 }
 
-#ifdef PCOMN_PL_WIN32
+#ifdef PCOMN_PL_WINDOWS
 
 template<>
 inline int64_t iabs(int64_t v)
@@ -166,8 +166,8 @@ struct bit_traits<8> {
 
 template<> struct bit_traits<16> {
 
-   typedef int16  stype ;
-   typedef uint16 utype ;
+   typedef int16_t  stype ;
+   typedef uint16_t utype ;
 
    template<typename I>
    static unsigned bitcount(I value)
@@ -238,8 +238,8 @@ template<> struct bit_traits<32> {
 
 template<> struct bit_traits<64> {
 
-   typedef int64  stype ;
-   typedef uint64 utype ;
+   typedef int64_t  stype ;
+   typedef uint64_t utype ;
 
    template<typename I>
    static unsigned bitcount(I value)
@@ -460,7 +460,7 @@ class nzbitpos_iterator : public std::iterator<std::forward_iterator_tag, V> {
 *******************************************************************************/
 /// Get the rightmost nonzero bit at compile-time.
 template<unsigned x>
-struct ct_getrnzb : public std::integral_constant<unsigned, x & -x> {} ;
+struct ct_getrnzb : public std::integral_constant<unsigned, x & -(int)x> {} ;
 
 /// Clear the rightmost nonzero bit at compile-time.
 template<unsigned x>
@@ -490,7 +490,7 @@ struct ct_bitcount : std::integral_constant
 
 /// Get a position of the rightmost nonzero bit at compile-time.
 template<unsigned x>
-struct ct_rnzbpos : std::integral_constant<int, (int)ct_bitcount<~(-(x & -x))>::value - 1> {} ;
+struct ct_rnzbpos : std::integral_constant<int, (int)ct_bitcount<~(-(int)(x & -(int)x))>::value - 1> {} ;
 
 template<typename U, U i>
 struct ct_lnzbpos_value ;

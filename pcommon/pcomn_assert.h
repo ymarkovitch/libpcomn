@@ -104,6 +104,7 @@ PCOMN_CFUNC _CRTIMP void __cdecl _assert(const char *, const char *, unsigned) ;
 #include <wtypes.h>
 #include <stdio.h>
 #include <signal.h>
+#include <stdint.h>
 
 #ifndef __cplusplus
 DECLSPEC_IMPORT FARPROC WINAPI GetConsoleWindow() ;
@@ -118,7 +119,7 @@ __noreturn __noinline void __pcomn_assert_fail__(const char *fmt, const char *ms
 {
    // This is a hack: there is no good and simple way to know in MSVC whether
    // the application is console or windows.
-   if ((int)GetStdHandle(STD_ERROR_HANDLE) > 0)
+   if ((intptr_t)GetStdHandle(STD_ERROR_HANDLE) > 0)
    {
       ::fputc('\n', stderr) ;
       ::fprintf(stderr, fmt, msg, file, static_cast<unsigned>(line)) ;

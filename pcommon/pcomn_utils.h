@@ -28,6 +28,7 @@
 #include <typeinfo>
 #include <memory>
 #include <typeindex>
+#include <algorithm>
 
 #include <stddef.h>
 
@@ -767,7 +768,7 @@ class omemstream : private std::basic_streambuf<char>, public std::ostream {
       omemstream() : ancestor(static_cast<streambuf_type *>(this)) {}
 
       /// Start with an existing string buffer
-      /// @param initstr A string slic to copy as a starting buffer.
+      /// @param initstr A string slice to copy as a starting buffer.
       ///
       explicit omemstream(const basic_strslice<char> &initstr) ;
 
@@ -803,7 +804,7 @@ class omemstream : private std::basic_streambuf<char>, public std::ostream {
       {
          char * const pstart = const_cast<char *>(_data.data()) ;
          setp(pstart, pstart + _data.capacity()) ;
-         pbump(_data.size()) ;
+         pbump((unsigned)_data.size()) ;
          setg(pstart, pstart, pstart) ;
       }
       void reset_buf()

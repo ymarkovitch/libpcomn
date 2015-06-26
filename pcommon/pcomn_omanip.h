@@ -38,12 +38,12 @@ auto make_omanip(F &&fn, Args &&...args)
  Note the MSVC++ does allow C++14 constructs in C++11 code, but frequently
  unable to compile pretty valid C++11 constructs!
 *******************************************************************************/
-#ifndef PCOMN_COMPILER_MS
-#  define PCOMN_DERIVE_OMANIP(basecall) ->decltype(basecall) { return basecall ; }
-#  define PCOMN_MAKE_OMANIP(...) ->decltype(pcomn::make_omanip(__VA_ARGS__)) { return pcomn::make_omanip(__VA_ARGS__) ; }
-#else
+#if defined(PCOMN_COMPILER_CXX14) || PCOMN_WORKAROUND(_MSC_VER, >=1900)
 #  define PCOMN_DERIVE_OMANIP(basecall) { return basecall ; }
 #  define PCOMN_MAKE_OMANIP(...) { return pcomn::make_omanip(__VA_ARGS__) ; }
+#else
+#  define PCOMN_DERIVE_OMANIP(basecall) ->decltype(basecall) { return basecall ; }
+#  define PCOMN_MAKE_OMANIP(...) ->decltype(pcomn::make_omanip(__VA_ARGS__)) { return pcomn::make_omanip(__VA_ARGS__) ; }
 #endif
 
 /******************************************************************************/
@@ -213,8 +213,7 @@ inline char *hrsize(unsigned long long sz, char *buf)
 }
 
 namespace detail {
-template<typename T>
-std::ostream &print_hrsize(std::ostream &os, const T &sz)
+inline std::ostream &print_hrsize(std::ostream &os, unsigned long long sz)
 {
    char buf[64] ;
    return os << hrsize(sz, buf) ;
@@ -229,11 +228,11 @@ std::ostream &print_quoted_string(std::ostream &os, const T &str)
 
 template<typename T>
 inline auto ohrsize(const T &sz)
-   PCOMN_MAKE_OMANIP(detail::print_hrsize<unsigned long long>, (unsigned long long)(sz)) ;
+   PCOMN_MAKE_OMANIP(&detail::print_hrsize, (unsigned long long)(sz)) ;
 
 template<typename T>
 inline auto ostrq(const T &str)
-   PCOMN_MAKE_OMANIP(detail::print_quoted_string<T>, std::cref(str)) ;
+   PCOMN_MAKE_OMANIP((&detail::print_quoted_string<T>), std::cref(str)) ;
 
 } // end of namespace pcomn
 

@@ -308,6 +308,9 @@
 #     define PCOMN_MD_GUI     1
 #  endif
 
+// ALWAYS IGNORE stupid "forcing value to bool 'true' or 'false' (performance warning)"
+#pragma warning(disable : 4800)
+
 /*******************************************************************************
  GNU compiler collection.
 *******************************************************************************/
@@ -369,10 +372,10 @@
  test for MSVC version (1900 is Visual Studio 2015 compiler)
 *******************************************************************************/
 #if defined(__cplusplus)
-#  if __cplusplus >= 201103L || (defined(_MSC_VER) && _MSC_VER >= 1900)
+#  if __cplusplus >= 201103L || (defined(_MSC_VER) && (_MSC_VER >= 1900 || defined(__INTEL_CXX11_MODE__)))
 #     define PCOMN_COMPILER_CXX11 1
 #     define PCOMN_STL_CXX11      1
-#     if (defined(_MSC_VER) && _MSC_VER >= 1900)
+#     if (defined(_MSC_VER) && _MSC_VER >= 1800)
 #        define PCOMN_STL_CXX14   1
 #     endif
 #  endif
@@ -393,7 +396,7 @@
 
 #if PCOMN_COMPILER_GNU && __GNUC_VER__ < 480
 #  error GNU C/C++ __GNUC__.__GNUC_MINOR__ detected. Versions of GNU C/C++ below 4.8 are not supported.
-#elif PCOMN_COMPILER_MS && _MSC_VER < 1900
+#elif PCOMN_COMPILER_MS && (_MSC_VER < 1900 && !defined(__INTEL_CXX11_MODE__))
 #  error Microsoft C/C++ _MSC_VER detected. Versions of MSVC below 19.00 (Visual Studio 2015) are not supported.
 #endif
 
@@ -422,6 +425,10 @@
 
 #include <sys/types.h>
 #include <stdint.h>
+
+#ifdef PCOMN_PL_WIN64
+typedef __int64 ssize_t ;
+#endif
 
 /** Represents file-offset value.
  */

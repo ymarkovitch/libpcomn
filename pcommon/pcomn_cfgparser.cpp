@@ -20,6 +20,8 @@
 #include <pcomn_utils.h>
 #include <pcomn_assert.h>
 #include <pcomn_sys.h>
+#include <pcomn_except.h>
+
 #include <pcstring.h>
 
 #include <set>

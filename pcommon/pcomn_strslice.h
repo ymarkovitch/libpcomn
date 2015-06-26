@@ -786,8 +786,9 @@ quote(const S &s, typename string_traits<S>::char_type q)
 /*******************************************************************************
  omemstream
 *******************************************************************************/
-inline omemstream::omemstream(const strslice &initstr) : _data(initstr)
+inline omemstream::omemstream(const strslice &initstr) : omemstream()
 {
+   _data = (std::string)initstr ;
    init_buf() ;
 }
 

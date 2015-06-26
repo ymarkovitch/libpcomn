@@ -252,7 +252,7 @@ ThreadPool::Worker *ThreadPool::_get_new_worker()
 /*******************************************************************************
  ThreadPool::Worker
 *******************************************************************************/
-#if defined(PCOMN_PL_WIN32) && defined(__BORLANDC__)
+#if defined(PCOMN_PL_WINDOWS) && defined(__BORLANDC__)
 #  define THREAD_TRY __try {
 #  define THREAD_EXCEPT(code) } __except(1) { code ; }
 #else

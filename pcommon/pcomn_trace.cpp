@@ -14,6 +14,7 @@
 #include <pcomn_atomic.h>
 #include <pcomn_algorithm.h>
 #include <pcomn_utils.h>
+#include <pcomn_unistd.h>
 #include <pcstring.h>
 
 #include <new>
@@ -27,12 +28,39 @@
 #include <pccritsect.h>
 
 #ifdef PCOMN_PL_WINDOWS
-#include <windows.h> // OutputDebugString support
+/*******************************************************************************
+ Windows
+*******************************************************************************/
+#include <windows.h> // OutputDebugString, GetFileInformationByHandle
 static inline int stderr_fileno() { return fileno(stderr) ; }
 static inline int stdout_fileno() { return fileno(stdout) ; }
 static inline int get_last_error() { return GetLastError() ; }
 static inline void set_last_error(int err) { SetLastError(err) ; }
+
+static bool check_diag_fd(int fd)
+{
+   BY_HANDLE_FILE_INFORMATION finfo = {} ;
+
+   const DWORD BAD_ATTRS = FILE_ATTRIBUTE_READONLY
+      | FILE_ATTRIBUTE_INTEGRITY_STREAM | FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_OFFLINE
+      | FILE_ATTRIBUTE_SYSTEM ;
+
+   if (!GetFileInformationByHandle((HANDLE)_get_osfhandle(fd), &finfo))
+      perror("Failure while setting diagnostics trace stream") ;
+   else if (finfo.dwFileAttributes & BAD_ATTRS)
+   {
+      static const char errtxt[] = "Failure while setting diagnostics log: file descriptor does not allow writing.\n" ;
+      ::write(stderr_fileno(), errtxt, sizeof errtxt - 1) ;
+   }
+   else
+      return true ;
+   return false ;
+}
+
 #else
+/*******************************************************************************
+ Unix
+*******************************************************************************/
 #include <fcntl.h>
 #include <unistd.h>
 #include <limits.h>
@@ -42,6 +70,22 @@ static inline constexpr int stderr_fileno() { return STDERR_FILENO ; }
 static inline constexpr int stdout_fileno() { return STDOUT_FILENO ; }
 static inline int get_last_error() { return errno ; }
 static inline void set_last_error(int err) { errno = err ; }
+
+static bool check_diag_fd(int fd)
+{
+   const int flags = fcntl(fd, F_GETFL) ;
+   if (flags == -1)
+      perror("Failure while setting diagnostics trace stream") ;
+   else if ((flags & O_ACCMODE) != O_WRONLY && (flags & O_ACCMODE) != O_RDWR)
+   {
+      static const char errtxt[] = "Failure while setting diagnostics log: file descriptor does not allow writing.\n" ;
+      ::write(stderr_fileno(), errtxt, sizeof errtxt - 1) ;
+   }
+   else
+      return true ;
+   return false ;
+}
+
 #endif
 
 namespace diag {
@@ -187,7 +231,7 @@ struct trace_context {
       {
          static CRITICAL_SECTION mutex ;
          static CRITICAL_SECTION *result = (InitializeCriticalSection(&mutex), &mutex) ;
-         return result ;
+         return mutex ;
       }
 
       #else
@@ -275,7 +319,7 @@ static inline constexpr void *fdlog_data(int fd, LogLevel level)
    return (void *)((uintptr_t)fd | ((level & 0xfU) << 28)) ;
 }
 
-static inline constexpr std::pair<int, LogLevel> fdlog_args(void *data)
+static inline std::pair<int, LogLevel> fdlog_args(void *data)
 {
    return {(uintptr_t)data & 0xfffffffU, (LogLevel)(((uintptr_t)data & 0xf0000000U) >> 28)} ;
 }
@@ -294,7 +338,7 @@ void register_syslog(int fd, LogLevel level)
 /*******************************************************************************
  Debug output
 *******************************************************************************/
-#ifdef PCOMN_PL_WIN32
+#ifdef PCOMN_PL_WINDOWS
 static void output_debug_msg(void *, const char *msg)
 {
    char nmsg[DIAG_MAXMESSAGE] ;
@@ -373,8 +417,8 @@ static char *threadidtostr(char *buf)
       sprintf(buf, "0x%4.4X", (unsigned)pcomn::thread_id()) ;
 #else
       sprintf(buf, "%10u", (unsigned)pcomn::thread_id()) ;
-   }
 #endif
+   }
 
    return buf ;
 }
@@ -387,7 +431,7 @@ static void output_syslog_msg(void *, LogLevel level, const char *fmt, ...)
    va_list args ;
    va_start(args, fmt) ;
 
-#ifdef PCOMN_PL_WIN32
+#ifdef PCOMN_PL_WINDOWS
    char msgbuf[DIAG_MAXMESSAGE] = "" ;
 
    vsnprintf(msgbuf, sizeof msgbuf, fmt, args) ;
@@ -462,18 +506,9 @@ void PDiagBase::setlog(int fd, bool owned)
          return ;
    }
    else if (fd < 0)
-
       UNLOCK_RETURN ;
 
-   const int flags = fcntl(fd, F_GETFL) ;
-   if (flags == -1)
-      perror("Failure while setting diagnostics trace stream") ;
-   else if ((flags & O_ACCMODE) != O_WRONLY && (flags & O_ACCMODE) != O_RDWR)
-   {
-      static const char errtxt[] = "Failure while setting diagnostics log: file descriptor does not allow writing.\n" ;
-      ::write(stderr_fileno(), errtxt, sizeof errtxt - 1) ;
-   }
-   else
+   if (check_diag_fd(fd))
    {
       ctx::log_fd = fd ;
       ctx::log_owned = owned ;

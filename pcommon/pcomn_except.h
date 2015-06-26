@@ -198,6 +198,34 @@ class _PCOMNEXP environment_error : public std::runtime_error {
 /** Indicates OS/system library call error.
 *******************************************************************************/
 class _PCOMNEXP system_error : public virtual environment_error {
+      #ifdef PCOMN_PL_UNIX
+      struct errcode {
+            errcode(int posix_code, int platform_specific) :
+               _code(posix_code ? posix_code : platform_specific)
+            {}
+            int posix_code() const { return _code ; }
+            int platform_code() const { return _code ; }
+            __noinline static int lasterr() { return errno ; }
+            static const char *errmsg(int code) { return strerror(code) ; }
+
+            const int _code ;
+      } ;
+      #else
+      struct errcode {
+            errcode(int posix_code, int platform_code) :
+               _platform_code(platform_code),
+               _posix_code(posix_code)
+            {}
+            int posix_code() const { return _posix_code ; }
+            int platform_code() const { return _platform_code ; }
+            static _PCOMNEXP int lasterr() ;
+            static _PCOMNEXP std::string errmsg(int code) ;
+
+            const int _platform_code ;
+            const int _posix_code ;
+      } ;
+      #endif
+
    public:
       enum PlatformSpecific { platform_specific } ;
 
@@ -256,34 +284,6 @@ class _PCOMNEXP system_error : public virtual environment_error {
       syserrmsg(int code) { return errcode::errmsg(code) ; }
 
    private:
-      #ifdef PCOMN_PL_UNIX
-      struct errcode {
-            errcode(int posix_code, int platform_specific) :
-               _code(posix_code ? posix_code : platform_specific)
-            {}
-            int posix_code() const { return _code ; }
-            int platform_code() const { return _code ; }
-            __noinline static int lasterr() { return errno ; }
-            static const char *errmsg(int code) { return strerror(code) ; }
-
-            const int _code ;
-      } ;
-      #else
-      struct errcode {
-            errcode(int posix_code, int platform_code) :
-               _platform_code(platform_code),
-               _posix_code(posix_code)
-            {}
-            int posix_code() const { return _posix_code ; }
-            int platform_code() const { return _platform_code ; }
-            static _PCOMNEXP int lasterr() ;
-            static _PCOMNEXP std::string errmsg(int code) ;
-
-            const int _platform_code ;
-            const int _posix_code ;
-      } ;
-      #endif
-
       errcode _errcode ;
 } ;
 

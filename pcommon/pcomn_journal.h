@@ -873,5 +873,4 @@ inline std::ostream &operator<<(std::ostream &os, pcomn::jrn::Journallable::Stat
 {
    return os << pcomn::oenum(s) ;
 }
-
 #endif /* __PCOMN_JOURNAL_H */

@@ -192,9 +192,6 @@ template<typename T>
 using clvref_t = lvref_t<typename std::add_const<T>::type> ;
 
 template<typename T>
-using clvref_t = lvref_t<typename std::add_const<T>::type> ;
-
-template<typename T>
 using parmtype_t = typename std::conditional<(std::is_arithmetic<T>::value || std::is_pointer<T>::value), T, clvref_t<T> >::type ;
 
 template<typename T>
