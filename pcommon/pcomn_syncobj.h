@@ -19,6 +19,9 @@
 #include <pcomn_assert.h>
 
 #include <mutex>
+#if PCOMN_STL_CXX14
+#include <shared_mutex>
+#endif
 #include <type_traits>
 
 #include PCOMN_PLATFORM_HEADER(pcomn_native_syncobj.h)
@@ -88,6 +91,10 @@ class event_mutex {
       NativeThreadLock _native_lock ;
 } ;
 
+/*******************************************************************************
+ C++14 Standard Library has shared_mutex and shared_lock
+*******************************************************************************/
+#if (!PCOMN_STL_CXX14)
 /******************************************************************************/
 /** Read-write mutex on top of a native (platform) read-write mutex for those platforms
  that have such native mutex (e.g. POSIX Threads).
@@ -209,6 +216,8 @@ class shared_lock {
          }
       }
 } ;
+
+#endif // PCOMN_STL_CXX14
 
 } // end of namespace pcomn
 
