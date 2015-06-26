@@ -37,14 +37,10 @@
 
 namespace pcomn {
 
-class NativeCondVar ;
-
 class NativeBasicMutex {
       PCOMN_NONCOPYABLE(NativeBasicMutex) ;
       PCOMN_NONASSIGNABLE(NativeBasicMutex) ;
    public:
-      friend class NativeCondVar ;
-
       void lock()
       {
          const int result = pthread_mutex_lock(&_lock) ;
@@ -124,68 +120,6 @@ typedef NativeThreadLock NativeNonrecursiveMutex ;
 #else
 #error PCommon synchronization objects are currently supported only for Linux and Windows.
 #endif
-
-#define PCOMN_HAS_NATIVE_RECURSIVE_LOCK 1
-/******************************************************************************/
-/** Recursive lock for POSIX Threads.
-*******************************************************************************/
-class NativeRecursiveMutex : public NativeBasicMutex {
-      typedef NativeBasicMutex ancestor ;
-
-      static const pthread_mutex_t &initializer()
-      {
-         // Nonstandard extension. Will use pthread_mutex_init on nonGlibc platforms.
-         static const pthread_mutex_t initializer_data = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP ;
-         return initializer_data ;
-      }
-
-   public:
-      NativeRecursiveMutex() :
-         ancestor(initializer())
-      {}
-} ;
-
-#define PCOMN_HAS_NATIVE_CONDVAR 1
-/******************************************************************************/
-/** Condition variable for POSIX Threads.
-*******************************************************************************/
-class NativeCondVar {
-      PCOMN_NONCOPYABLE(NativeCondVar) ;
-      PCOMN_NONASSIGNABLE(NativeCondVar) ;
-   public:
-      NativeCondVar()
-      {
-         static const pthread_cond_t initializer = PTHREAD_COND_INITIALIZER ;
-         _condvar = initializer ;
-      }
-
-      ~NativeCondVar()
-      {
-         #ifdef __PCOMN_DEBUG
-         const int destroy_errcode =
-         #endif
-            pthread_cond_destroy(&_condvar) ;
-         NOXCHECK(!destroy_errcode) ;
-      }
-
-      void wait(NativeNonrecursiveMutex &mutex)
-      {
-         PCOMN_ENSURE_ENOERR(pthread_cond_wait(&_condvar, &mutex._lock), "pthread_cond_wait") ;
-      }
-
-      void notify()
-      {
-         PCOMN_ENSURE_ENOERR(pthread_cond_signal(&_condvar), "pthread_cond_signal") ;
-      }
-
-      void notify_all()
-      {
-         PCOMN_ENSURE_ENOERR(pthread_cond_broadcast(&_condvar), "pthread_cond_broadcast") ;
-      }
-
-   private:
-      pthread_cond_t _condvar ;
-} ;
 
 #define PCOMN_HAS_NATIVE_RWMUTEX 1
 /******************************************************************************/
