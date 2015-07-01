@@ -666,6 +666,34 @@ inline const T &vcref(const T &value)
    return value ;
 }
 
+/*******************************************************************************
+/**
+*******************************************************************************/
+template<size_t n, size_t alignment = 1>
+struct auto_buffer final {
+
+      explicit auto_buffer(size_t sz) :
+         _data(sz <= sizeof(_buf)
+               ? reinterpret_cast<char *>(&_buf)
+               : (*reinterpret_cast<char **>(&_buf) = new char[sz]))
+      {}
+
+      ~auto_buffer()
+      {
+         if ((void *)_data != &_buf)
+            delete [] _data ;
+      }
+
+      char *get() const { return _data ; }
+
+   private:
+      std::aligned_storage_t<n, ct_max<size_t, alignment, alignof(char *)>::value> _buf ;
+      char * const _data ;
+
+      PCOMN_NONCOPYABLE(auto_buffer) ;
+      PCOMN_NONASSIGNABLE(auto_buffer) ;
+} ;
+
 /******************************************************************************/
 /** Output stream with "embedded" stream buffer (i.e. the memory buffer is a C array -
  the member of of the class).
