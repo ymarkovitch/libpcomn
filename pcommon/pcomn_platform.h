@@ -97,6 +97,9 @@
 #ifdef PCOMN_PL_UNIX32
 #undef PCOMN_PL_UNIX32
 #endif
+#ifdef PCOMN_PL_POSIX
+#undef PCOMN_PL_POSIX
+#endif
 
 #ifdef PCOMN_PL_32BIT
 #undef PCOMN_PL_32BIT
@@ -137,6 +140,9 @@
 #endif
 #ifdef PCOMN_COMPILER_CXX17
 #undef PCOMN_COMPILER_CXX17
+#endif
+#ifdef PCOMN_RTL_MS
+#undef PCOMN_RTL_MS
 #endif
 #ifdef PCOMN_COMPILER
 #undef PCOMN_COMPILER
@@ -375,6 +381,7 @@
 #  if __cplusplus >= 201103L || (defined(_MSC_VER) && (_MSC_VER >= 1900 || defined(__INTEL_CXX11_MODE__)))
 #     define PCOMN_COMPILER_CXX11 1
 #     define PCOMN_STL_CXX11      1
+#     define PCOMN_RTL_MS         1
 #     if (defined(_MSC_VER) && _MSC_VER >= 1800)
 #        define PCOMN_STL_CXX14   1
 #     endif
@@ -390,14 +397,21 @@
  Note MSVC++ does not define a correct __cplusplus macro value, so we explicitly
  test for MSVC version (1800 is Visual Studio 2013 compiler)
 *******************************************************************************/
+#if PCOMN_COMPILER_GNU && __GNUC_VER__ < 480
+#  error GNU C/C++ __GNUC__.__GNUC_MINOR__ detected. Versions of GNU C/C++ below 4.8 are not supported.
+#elif PCOMN_COMPILER_MS && (__cplusplus  && _MSC_VER < 1900 && !defined(__INTEL_CXX11_MODE__))
+#  error Microsoft C/C++ _MSC_VER detected. Versions of MSVC below 19.00 (Visual Studio 2015) are not supported.
+#endif
+
 #if defined(__cplusplus) && !defined(PCOMN_COMPILER_CXX11)
 #  error A compiler supporting C++11 standard is required to compile
 #endif
 
-#if PCOMN_COMPILER_GNU && __GNUC_VER__ < 480
-#  error GNU C/C++ __GNUC__.__GNUC_MINOR__ detected. Versions of GNU C/C++ below 4.8 are not supported.
-#elif PCOMN_COMPILER_MS && (_MSC_VER < 1900 && !defined(__INTEL_CXX11_MODE__))
-#  error Microsoft C/C++ _MSC_VER detected. Versions of MSVC below 19.00 (Visual Studio 2015) are not supported.
+/*******************************************************************************
+ POSIX environment
+*******************************************************************************/
+#if defined(PCOMN_PL_UNIX) || defined(PCOMN_COMPILER_GNU)
+#  define PCOMN_PL_POSIX 1
 #endif
 
 /******************************************************************************/
@@ -699,10 +713,10 @@ inline void __put_byte(ScalarType *data, size_t byte_num, unsigned char byte)
  PCOMN_PLATFORM_HEADER is a macro to include pcommon headers from platform-dependent
  subdirectories (unix, win32)
 *******************************************************************************/
-#if defined(PCOMN_PL_WINDOWS)
-#define PCOMN_PLATFORM_HEADER(header) P_STRINGIFY(win32/header)
-#elif defined(PCOMN_PL_UNIX)
+#if defined(PCOMN_PL_POSIX)
 #define PCOMN_PLATFORM_HEADER(header) P_STRINGIFY(unix/header)
+#elif defined(PCOMN_PL_WINDOWS)
+#define PCOMN_PLATFORM_HEADER(header) P_STRINGIFY(win32/header)
 #else
 #define PCOMN_PLATFORM_HEADER(header) "pcomn_unsupported.h"
 #endif
