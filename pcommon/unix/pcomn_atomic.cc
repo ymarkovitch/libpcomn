@@ -17,11 +17,8 @@
 
 #include <cstddef>
 
-
 namespace pcomn {
 namespace atomic_op {
-
-template<typename T, bool is_integer> struct implementor ;
 
 template<typename T>
 struct implementor<T, true> {

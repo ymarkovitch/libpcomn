@@ -31,14 +31,23 @@ inline std::ostream &operator<<(std::ostream &os, NoOut) { return os ; }
 template<typename> struct omanip ;
 
 template<typename F, typename... Args>
-auto make_omanip(F &&fn, Args &&...args)
-   -> omanip<decltype(std::bind(std::forward<F>(fn), std::placeholders::_1, std::forward<Args>(args)...))> ;
+inline auto make_omanip(F &&fn, Args &&...args)
+#if !defined(PCOMN_COMPILER_CXX14) && !PCOMN_WORKAROUND(_MSC_VER, >=1900)
+   -> omanip<decltype(std::bind(std::forward<F>(fn), std::placeholders::_1, std::forward<Args>(args)...))>
+#endif
+{
+   using namespace std ;
+
+   typedef valtype_t<decltype(bind(forward<F>(fn), placeholders::_1, forward<Args>(args)...))> manip ;
+   return omanip<manip>(manip(bind(forward<F>(fn), placeholders::_1, forward<Args>(args)...))) ;
+}
+
 
 /*******************************************************************************
  Note the MSVC++ does allow C++14 constructs in C++11 code, but frequently
  unable to compile pretty valid C++11 constructs!
 *******************************************************************************/
-#if defined(PCOMN_COMPILER_CXX14) || PCOMN_WORKAROUND(_MSC_VER, >=1900)
+#if defined(PCOMN_COMPILER_CXX14) || PCOMN_WORKAROUND(_MSC_VER, >=1800)
 #  define PCOMN_DERIVE_OMANIP(basecall) { return basecall ; }
 #  define PCOMN_MAKE_OMANIP(...) { return pcomn::make_omanip(__VA_ARGS__) ; }
 #else
@@ -63,27 +72,13 @@ struct omanip final {
       std::ostream &operator()(std::ostream &os) const { return _fn(os) ; }
 
       template<typename F, typename... Args>
-      friend auto make_omanip(F &&fn, Args &&...args)
-         -> omanip<decltype(std::bind(std::forward<F>(fn), std::placeholders::_1, std::forward<Args>(args)...))> ;
+      friend auto make_omanip(F &&fn, Args &&...args) ;
 
    private:
       mutable Bind _fn ;
 
       omanip(Bind &&f) : _fn(std::move(f)) {}
 } ;
-
-template<typename F, typename... Args>
-inline auto make_omanip(F &&fn, Args &&...args)
-   -> omanip<decltype(std::bind(std::forward<F>(fn), std::placeholders::_1, std::forward<Args>(args)...))>
-{
-   return std::bind(std::forward<F>(fn), std::placeholders::_1, std::forward<Args>(args)...) ;
-}
-
-template<typename F>
-inline std::ostream &operator<<(std::ostream &os, const omanip<F> &manip)
-{
-   return manip(os) ;
-}
 
 /*******************************************************************************
  Printing algorithms
@@ -234,6 +229,15 @@ template<typename T>
 inline auto ostrq(const T &str)
    PCOMN_MAKE_OMANIP((&detail::print_quoted_string<T>), std::cref(str)) ;
 
+/******************************************************************************/
+/** Apply pcomn::omanip<F> manipulator object to an output stream
+*******************************************************************************/
+template<typename F>
+inline std::ostream &operator<<(std::ostream &os, const omanip<F> &manip)
+{
+   return manip(os) ;
+}
 } // end of namespace pcomn
+
 
 #endif /* __PCOMN_OMANIP_H */

@@ -23,7 +23,7 @@
 
 #include <iostream>
 
-#if   defined(PCOMN_PL_UNIX)
+#if defined(PCOMN_PL_UNIX)
 #include <pthread.h>
 namespace pcomn {
 typedef pthread_t thread_handle_t ;
@@ -35,7 +35,6 @@ namespace pcomn {
 typedef HANDLE    thread_handle_t ;
 typedef unsigned  thread_id_t ;
 }
-#include <win32/pcomn_tss.h>
 #else
 #error This platform is not supported by pcomn_thread.
 #endif

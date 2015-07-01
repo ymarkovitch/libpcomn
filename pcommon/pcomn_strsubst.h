@@ -265,7 +265,7 @@ class substitution_map {
             {
                return ::operator new (sz + name.size() + value.size() + 1) ;
             }
-            static void operator delete(void *p, size_t, const strslice &, const strslice &) { ::operator delete (p) ; }
+            static void operator delete(void *p, const strslice &, const strslice &) { ::operator delete (p) ; }
             static void operator delete(void *p, size_t) { ::operator delete (p) ; }
 
          private:

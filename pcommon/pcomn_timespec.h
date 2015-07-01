@@ -17,7 +17,38 @@
 #include <pcstring.h>
 #include <pcomn_assert.h>
 
+#if !defined(PCOMN_RTL_MS)
+/*******************************************************************************
+ POSIX runtime
+*******************************************************************************/
 #include <sys/time.h>
+
+inline timeval pcomn_gettimeofday()
+{
+   struct timeval tv ;
+   gettimeofday(&tv, NULL) ;
+   return tv ;
+}
+#else
+/*******************************************************************************
+ Microsoft runtime
+*******************************************************************************/
+#include <time.h>
+#include <sys/types.h>
+#include <sys/timeb.h>
+
+#define localtime_r(struct_tm, time_t_time) (localtime_s((time_t_time), (struct_tm)))
+#define gmtime_r(struct_tm, time_t_time)    (gmtime_s((time_t_time), (struct_tm)))
+
+inline timeval pcomn_gettimeofday()
+{
+   __timeb64 t {} ;
+   _ftime64(&t) ;
+   struct timeval tv = { (long)t.time, (long)t.millitm * 1000L } ;
+   return tv ;
+}
+#endif
+
 #include <stdio.h>
 
 #include <limits>
@@ -121,9 +152,7 @@ class time_point {
 
       static time_point now()
       {
-         struct timeval tv ;
-         gettimeofday(&tv, NULL) ;
-         return time_point(tv) ;
+         return time_point(pcomn_gettimeofday()) ;
       }
 
       explicit operator bool() const { return _value != time_point()._value ; }
@@ -162,7 +191,7 @@ class time_point {
       struct timeval as_timeval() const
       {
          NOXCHECK(*this) ;
-         const struct timeval result = { _value/Ts, _value%Ts } ;
+         const struct timeval result = { (long)(_value/Ts), (long)(_value%Ts) } ;
          return result ;
       }
 
@@ -296,8 +325,7 @@ inline usectime_t time_coarse(unsigned precision)
       return time(NULL) * Ts ;
 
    // FIXME: time_coarse stub
-   timeval t = {0, 0} ;
-   gettimeofday(&t, NULL) ;
+   const timeval t = pcomn_gettimeofday() ;
    static const int64_t usec_div[] = { 100000, 10000, 1000, 100, 10 } ;
    const int64_t d = precision >= 6 ? 1 : usec_div[precision - 1] ;
    return t.tv_sec * Ts + t.tv_usec / d * d ;

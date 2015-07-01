@@ -14,6 +14,10 @@
 #include <pcomn_unistd.h>
 #include <pcstring.h>
 
+#ifndef PCOMN_PL_POSIX
+#define readlink(x, y, z) (((void)(x), (void)(y), (void)(z), (-1)))
+#endif
+
 namespace pcomn {
 namespace path {
 namespace posix {

@@ -8,19 +8,13 @@
 # PROGRAMMED BY:  Yakov Markovitch
 # CREATION DATE:  2 Nov 2006
 #------------------------------------------------------------------------------
-path-constant TESTPATH    : . ;
-
-lib cppunit : : <link>shared ;
-lib crypto  : : <link>shared ;
-lib zlib    : : <name>z <link>shared ;
-
 project
   : requirements
 
-  #<library>$(PROJROOT)//pcommon
-  #<library>$(TESTPATH)//cppunit
+  <library>$(PROJROOT)//pcommon
+  <library>$(PROJROOT)//cppunit
   #<library>$(TESTPATH)//crypto
-  <library>$(TESTPATH)//zlib
+  <library>$(PROJROOT)//zlib
 
   <include>$(VENDOR_PREFIX)/include
 

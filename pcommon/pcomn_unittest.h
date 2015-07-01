@@ -24,6 +24,7 @@
 #include <pcomn_function.h>
 #include <pcomn_safeptr.h>
 #include <pcomn_handle.h>
+#include <pcomn_unistd.h>
 
 #include <cppunit/ui/text/TestRunner.h>
 #include <cppunit/TestResult.h>
@@ -45,13 +46,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
-
-// For getcwd()
-#ifdef PCOMN_PL_WINDOWS
-#include <direct.h>
-#else
-#include <unistd.h>
-#endif
 
 #define CPPUNIT_PROGDIR (::pcomn::unit::TestEnvironment::progdir())
 #define CPPUNIT_TESTDIR (::pcomn::unit::TestEnvironment::testdir())

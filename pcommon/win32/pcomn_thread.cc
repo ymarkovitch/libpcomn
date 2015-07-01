@@ -16,6 +16,7 @@
 
 namespace pcomn {
 
+
 /*******************************************************************************
  pcomn::thread_id
 *******************************************************************************/
@@ -37,20 +38,20 @@ thread_id thread_id::mainThread()
 *******************************************************************************/
 typedef std::lock_guard<std::recursive_mutex> PGuard ;
 
-static unsigned __stdcall _pcomn_thread_proc(void *) ;
+static unsigned __stdcall pcomn_thread_proc__(void *) ;
 
 void BasicThread::create_thread()
 {
    NOXCHECK(!is_created()) ;
 
-   _handle = (thread_handle_t)_beginthreadex(NULL, _stack_size, _pcomn_thread_proc, this, CREATE_SUSPENDED, &_id) ;
+   _handle = (thread_handle_t)_beginthreadex(NULL, _stack_size, pcomn_thread_proc__, this, CREATE_SUSPENDED, &_id) ;
    if (!_handle)
       throw pcomn::system_error(pcomn::system_error::platform_specific) ;
 
    if (_priority != PtyNormal)
       // Maybe we shouldn't ignore errors at this point, but for the moment
       // it's too complex to process, so I decided not to fill my head with it. Later.
-      if (!_set_priority(_priority))
+      if (!set_priority(_priority))
          _priority = PtyNormal ;
 }
 
@@ -99,14 +100,28 @@ bool BasicThread::maybe_suspend()
    return true ;
 }
 
-static unsigned __stdcall _pcomn_thread_proc(void *context)
+static unsigned __stdcall pcomn_thread_proc__(void *context)
 {
-   return (unsigned)pcomn_thread_proc(context) ;
+   return (unsigned)(uintptr_t)pcomn_thread_proc(context) ;
 }
 
 /*******************************************************************************
  PThreadSuspender
 *******************************************************************************/
+class _PCOMNEXP PThreadSuspender {
+   public:
+      PThreadSuspender() : _identity(), _handle() {}
+      ~PThreadSuspender() ;
+
+      virtual void *identity() ;
+      virtual void suspend() ;
+      virtual bool resume(void *) ;
+
+   private:
+      thread_id_t     _identity ;
+      thread_handle_t _handle ;
+} ;
+
 PThreadSuspender::~PThreadSuspender()
 {
    if (_handle)

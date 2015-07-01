@@ -687,7 +687,7 @@ inline auto otptr(const T *ptr) PCOMN_MAKE_OMANIP(tptr_printer<T>::print, ptr) ;
 template<typename P>
 inline auto oderef(const P &ptr) PCOMN_MAKE_OMANIP(print_dereferenced<P>, std::cref(ptr)) ;
 
-//inline auto ofile(FILE *file) PCOMN_MAKE_OMANIP(print_file, file) ;
+inline auto ofile(FILE *file) PCOMN_MAKE_OMANIP(&print_file, file) ;
 
 enum EndArgs { endargs } ;
 

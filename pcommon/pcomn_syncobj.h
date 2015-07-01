@@ -18,10 +18,17 @@
 #include <pcomn_platform.h>
 #include <pcomn_assert.h>
 
+#if PCOMN_STL_CXX14 && !PCOMN_WORKAROUND(_MSC_FULL_VER, <= 190022816)
+#  define PCOMN_HAS_SHARED_MUTEX 1
+#endif
+
 #include <mutex>
-#if PCOMN_STL_CXX14
+#include <atomic>
+
+#if PCOMN_HAS_SHARED_MUTEX
 #include <shared_mutex>
 #endif
+
 #include <type_traits>
 
 #include PCOMN_PLATFORM_HEADER(pcomn_native_syncobj.h)
@@ -62,39 +69,56 @@ class event_mutex {
       PCOMN_NONCOPYABLE(event_mutex) ;
       PCOMN_NONASSIGNABLE(event_mutex) ;
    public:
-      explicit event_mutex() :
-         _native_lock()
-      {}
+      explicit event_mutex() : _native_lock(), _acquired{} {}
 
-      explicit event_mutex(bool acquired) :
-         _native_lock()
+      explicit event_mutex(bool acquire) : event_mutex()
       {
-         if (acquired)
-            _native_lock.lock() ;
+         if (acquire)
+            lock() ;
       }
+
+      ~event_mutex() { NOXCHECK(!_acquired) ; }
 
       /// Acquire lock.
       /// If the lock is held by @em any thread (including itself), wait for it to be
       /// released.
-      void lock() { _native_lock.lock() ; }
+      void lock()
+      {
+         _native_lock.lock() ;
+         _acquired = true ;
+      }
 
       /// Try to acquire lock.
       /// This call never blocks.
       /// @return true, if this thread has successfully acquired the lock; false, if the
       /// lock is already held by any thread, including itself.
-      bool try_lock() { return _native_lock.try_lock() ; }
+      bool try_lock()
+      {
+         if (!_acquired && _native_lock.try_lock())
+         {
+            _acquired = true ;
+            return true ;
+         }
+         return false ;
+      }
 
       /// Release the lock.
-      void unlock() { _native_lock.unlock()  ; }
+      void unlock()
+      {
+         NOXCHECK(_acquired) ;
+         _native_lock.unlock()  ;
+         _acquired = false ;
+      }
 
    private:
       NativeThreadLock _native_lock ;
+      std::atomic<int> _acquired ;
 } ;
 
 /*******************************************************************************
  C++14 Standard Library has shared_mutex and shared_lock
 *******************************************************************************/
-#if (!PCOMN_STL_CXX14)
+#if !PCOMN_HAS_SHARED_MUTEX
 /******************************************************************************/
 /** Read-write mutex on top of a native (platform) read-write mutex for those platforms
  that have such native mutex (e.g. POSIX Threads).
@@ -217,7 +241,7 @@ class shared_lock {
       }
 } ;
 
-#endif // PCOMN_STL_CXX14
+#endif // PCOMN_HAS_SHARED_MUTEX
 
 } // end of namespace pcomn
 

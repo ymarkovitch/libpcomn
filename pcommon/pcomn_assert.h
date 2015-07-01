@@ -107,13 +107,11 @@ PCOMN_CFUNC _CRTIMP void __cdecl _assert(const char *, const char *, unsigned) ;
 #include <stdint.h>
 
 #ifndef __cplusplus
-DECLSPEC_IMPORT FARPROC WINAPI GetConsoleWindow() ;
 #  define __pcomn_assert_fail__(fmt, msg, file, line)                   \
    ((intptr_t)GetStdHandle(STD_ERROR_HANDLE) > 0 &&                          \
     (fputc('\n', stderr) && fprintf(stderr, (char *)(fmt), (char *)(msg), (char *)(file), (line)) > 0 && \
      (_flushall(), raise(SIGABRT), exit(3), 1)) || (_assert((char *)(msg), (char *)(file), (line)), 1))
 #else /* __cplusplus */
-extern "C" { DECLSPEC_IMPORT FARPROC WINAPI GetConsoleWindow() ; }
 template<typename N>
 __noreturn __noinline void __pcomn_assert_fail__(const char *fmt, const char *msg, const char *file, N line)
 {

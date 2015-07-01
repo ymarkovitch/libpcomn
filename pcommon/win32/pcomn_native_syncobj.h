@@ -13,22 +13,17 @@
 #include <pcommon.h>
 #include <pcomn_assert.h>
 #include <pcomn_except.h>
-#include <pcomn_meta.h>
-#include <algorithm>
+#include <pcomn_unistd.h>
+
 #ifndef PCOMN_PL_WINDOWS
 #error This header supports only Windows
 #endif
 
 #include "pcomn_sys.h"
+#include "pcomn_w32util.h"
 
 #include <windows.h>
-
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/file.h>
-#include <fcntl.h>
 #include <limits.h>
-#include <unistd.h>
 
 namespace pcomn {
 
@@ -42,8 +37,6 @@ class NativeThreadLock final {
 
    public:
       constexpr NativeThreadLock() : _lock(SRWLOCK_INIT) {}
-
-      ~NativeThreadLock() { ReleaseSRWLockExclusive(&_lock) ; }
 
       void lock() { AcquireSRWLockExclusive(&_lock) ; }
 
@@ -60,6 +53,36 @@ class NativeThreadLock final {
 
 typedef NativeThreadLock NativeNonrecursiveMutex ;
 
+#define PCOMN_HAS_NATIVE_RWMUTEX 1
+/******************************************************************************/
+/** Read-write mutex on  POSIX Threads.
+*******************************************************************************/
+class NativeRWMutex {
+      PCOMN_NONCOPYABLE(NativeRWMutex) ;
+      PCOMN_NONASSIGNABLE(NativeRWMutex) ;
+   public:
+      constexpr NativeRWMutex() : _lock(SRWLOCK_INIT) {}
+
+      void lock() { AcquireSRWLockExclusive(&_lock) ; }
+      bool try_lock() { return TryAcquireSRWLockExclusive(&_lock) ; }
+      bool unlock()
+      {
+         ReleaseSRWLockExclusive(&_lock) ;
+         return true ;
+      }
+
+      void lock_shared()     { AcquireSRWLockShared(&_lock) ; }
+      bool try_lock_shared() { return TryAcquireSRWLockShared(&_lock) ; }
+      bool unlock_shared()
+      {
+         ReleaseSRWLockShared(&_lock) ;
+         return true ;
+      }
+
+   private:
+      SRWLOCK _lock ;
+} ;
+
 /******************************************************************************/
 /** File lock; provides read-write mutex logic
 *******************************************************************************/
@@ -68,19 +91,17 @@ class NativeFileMutex {
    public:
       NativeFileMutex(int fd, bool owned) :
          _fh(get_oshandle(fd)),
-         _fd(owned ? fd : (fd | ((unsigned)INT_MAX + 1))),
-      {}
+         _fd(owned ? fd : (fd | ((unsigned)INT_MAX + 1)))
+      {
+         _locksz = 0 ;
+      }
 
       explicit NativeFileMutex(const char *filename, int flags = O_CREAT|O_RDONLY, int mode = 0600) :
-         NativeFileMutex(PCOMN_ENSURE_ARG(filename), true)
+         NativeFileMutex(openfile(PCOMN_ENSURE_ARG(filename), flags, mode), true)
       {}
 
       explicit NativeFileMutex(const std::string &filename, int flags = O_CREAT|O_RDONLY, int mode = 0600) :
          NativeFileMutex(filename.c_str(), flags, mode)
-      {}
-
-      NativeFileMutex(const NativeFileMutex &other, int flags) :
-         _fd(reopenfile(other.fd(), flags))
       {}
 
       ~NativeFileMutex()
@@ -91,26 +112,36 @@ class NativeFileMutex {
       int fd() const { return _fd & ~((unsigned)INT_MAX + 1) ; }
       bool owned() const { return !(_fd & ((unsigned)INT_MAX + 1)) ; }
 
-      void lock() { NOXVERIFY(acquire_lock(LOCK_EX)) ; }
-      bool try_lock() { return acquire_lock(LOCK_EX|LOCK_NB) ; }
+      void lock() { NOXVERIFY(acquire_lock(false, true)) ; }
+      bool try_lock() { return acquire_lock(true, true) ; }
+
       bool unlock()
       {
-         // Release should never _ever_ throw exceptions, it is very likely be called
+         NOXCHECK(_locksz) ;
+
+         // Release must never _ever_ throw exceptions, it is very likely be called
          // from destructors.
-         int err ;
-         while((err = posix_errno(flock(fd(), LOCK_UN))) == EINTR) ;
-         NOXCHECKX(!err, strerror(err)) ;
-         return !err ;
+         OVERLAPPED dummy = OVERLAPPED() ;
+         const bool result = UnlockFileEx(_fh, 0, _locksz_lh[0], _locksz_lh[1], &dummy) ;
+         if (result)
+            _locksz = 0 ;
+         NOXCHECKX(result, sys_error_text(GetLastError()).c_str()) ;
+         return result ;
       }
 
-      void lock_shared() { NOXVERIFY(acquire_lock(LOCK_SH)) ; }
-      bool try_lock_shared() { return acquire_lock(LOCK_SH|LOCK_NB) ; }
+      void lock_shared() { NOXVERIFY(acquire_lock(false, false)) ; }
+      bool try_lock_shared() { return acquire_lock(true, false) ; }
       bool unlock_shared() { return unlock() ; }
 
    private:
       const HANDLE   _fh ;
       const int      _fd ;
+      union {
+            DWORD _locksz_lh[2] ;
+            DWORD64 _locksz ;
+      } ;
 
+   private:
       static HANDLE get_oshandle(int fd)
       {
          PCOMN_ASSERT_ARG(fd >= 0) ;
@@ -119,22 +150,28 @@ class NativeFileMutex {
          return native_file_handle ;
       }
 
-      bool acquire_lock(bool nonblocking, bool exclusive) const
+      bool acquire_lock(bool nonblocking, bool exclusive)
       {
-         DWORD size_lower, size_upper;
-
-         const off_t sz = std::max<off_t>(PCOMN_ENSURE_POSIX(filesize(fd()), "filesize"), 1) ;
+         const off_t sz = std::max<off_t>(PCOMN_ENSURE_POSIX(sys::filesize(fd()), "filesize"), 1) ;
          OVERLAPPED dummy = OVERLAPPED() ;
          const DWORD flags =
             (-(int)nonblocking &  LOCKFILE_FAIL_IMMEDIATELY) |
             (-(int)exclusive   &  LOCKFILE_EXCLUSIVE_LOCK) ;
 
-         if (LockFileEx(_fh, flags, 0, , , &dummy))
-            return true ;
+         DWORD size_lower = sz ;
+         DWORD size_upper = ((DWORD64)sz >> 32) & 0x0FFFFFFFF ;
 
-         const DWORD err = GetLastError() ;
-         if (err == ERROR_LOCK_VIOLATION && nonblocking)
-            return false ;
+         if (LockFileEx(_fh, flags, 0, size_lower, size_upper, &dummy))
+         {
+            _locksz_lh[0] = size_lower ;
+            _locksz_lh[1] = size_upper ;
+            return true ;
+         }
+
+         ensure<pcomn::system_error>(nonblocking && GetLastError() == ERROR_LOCK_VIOLATION,
+                                     system_error::platform_specific) ;
+
+         return false ;
       }
 
       static int openfile(const char *name, int flags, int mode)

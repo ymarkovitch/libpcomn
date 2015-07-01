@@ -32,8 +32,6 @@
  Windows
 *******************************************************************************/
 #include <windows.h> // OutputDebugString, GetFileInformationByHandle
-static inline int stderr_fileno() { return fileno(stderr) ; }
-static inline int stdout_fileno() { return fileno(stdout) ; }
 static inline int get_last_error() { return GetLastError() ; }
 static inline void set_last_error(int err) { SetLastError(err) ; }
 
@@ -50,7 +48,7 @@ static bool check_diag_fd(int fd)
    else if (finfo.dwFileAttributes & BAD_ATTRS)
    {
       static const char errtxt[] = "Failure while setting diagnostics log: file descriptor does not allow writing.\n" ;
-      ::write(stderr_fileno(), errtxt, sizeof errtxt - 1) ;
+      ::write(STDERR_FILENO, errtxt, sizeof errtxt - 1) ;
    }
    else
       return true ;
@@ -66,8 +64,6 @@ static bool check_diag_fd(int fd)
 #include <limits.h>
 #include <syslog.h>
 #include <errno.h>
-static inline constexpr int stderr_fileno() { return STDERR_FILENO ; }
-static inline constexpr int stdout_fileno() { return STDOUT_FILENO ; }
 static inline int get_last_error() { return errno ; }
 static inline void set_last_error(int err) { errno = err ; }
 
@@ -79,7 +75,7 @@ static bool check_diag_fd(int fd)
    else if ((flags & O_ACCMODE) != O_WRONLY && (flags & O_ACCMODE) != O_RDWR)
    {
       static const char errtxt[] = "Failure while setting diagnostics log: file descriptor does not allow writing.\n" ;
-      ::write(stderr_fileno(), errtxt, sizeof errtxt - 1) ;
+      ::write(STDERR_FILENO, errtxt, sizeof errtxt - 1) ;
    }
    else
       return true ;
@@ -378,7 +374,7 @@ static const int *open_debug_msg_log()
    if (dbglog_fd < 0)
    {
       if (dbglog_fd < 0)
-         dbglog_fd = stderr_fileno() ;
+         dbglog_fd = STDERR_FILENO ;
    }
 
    return &dbglog_fd ;
@@ -477,7 +473,7 @@ static void output_fdlog_msg(void *data, LogLevel level, const char *fmt, ...)
 
 void PDiagBase::setlog(int fd)
 {
-   setlog(fd, fd != stderr_fileno() && fd != stdout_fileno()) ;
+   setlog(fd, fd != STDERR_FILENO && fd != STDOUT_FILENO) ;
 }
 
 void PDiagBase::setlog(int fd, bool owned)
@@ -513,9 +509,9 @@ void PDiagBase::setlog(int fd, bool owned)
       ctx::log_fd = fd ;
       ctx::log_owned = owned ;
 
-      if (ctx::log_fd == stderr_fileno())
+      if (ctx::log_fd == STDERR_FILENO)
          strcpy(ctx::log_name, "stderr") ;
-      else if (ctx::log_fd == stdout_fileno())
+      else if (ctx::log_fd == STDOUT_FILENO)
          strcpy(ctx::log_name, "stdout") ;
    }
 
@@ -537,10 +533,10 @@ void PDiagBase::setlog(const char *logname)
       setlog(-1) ;
 
    else if (!stricmp(logname, "stdout"))
-      setlog(stdout_fileno()) ;
+      setlog(STDOUT_FILENO) ;
 
    else if (!stricmp(logname, "stderr") || !stricmp(logname, "stdlog"))
-      setlog(stderr_fileno()) ;
+      setlog(STDERR_FILENO) ;
 
    else
    {

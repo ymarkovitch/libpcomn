@@ -39,9 +39,10 @@ project pcommon
   <toolset>gcc:<cflags>-march=core2
   <toolset>gcc:<cflags>-msse4.1
 
-  <toolset>intel-win:<cxxflags>-Qms2
   <toolset>intel-win:<cflags>-QxSSE4.1
   <toolset>intel-win:<cflags>-arch:SSE4.1
+
+  <os>NT:<define>_WIN32_WINNT=0x0600
 
   # If VENDOR_PREFIX environment variable is not defined,
   # the line below simply disappears
@@ -53,13 +54,29 @@ project pcommon
 
   ;
 
+################################################################################
+# External (vendor) libraries, mostly for unittests
+################################################################################
+lib cppunit crypto : : <link>shared ;
+
+lib cppunit : : <os>NT <link>static ;
+lib cppunit : : <os>NT <link>static <variant>debug <name>cppunitd ;
+
+lib zlib : : <name>z <link>shared ;
+lib zlib : : <os>NT:<link>static ;
 
 ################################################################################
 # Per-platform sources
 ################################################################################
 alias pcommon-unix-sources :
   pcomn_crypthash.cpp
+  pcomn_exec.cpp
   pcomn_shutil.cpp
+  pcomn_scheduler.cpp
+  pcomn_journal.cpp
+  pcomn_journstorage.cpp
+  pcomn_journfile.cpp
+  pcomn_journmmap.cpp
 
   : <toolset>gcc
   ;
@@ -69,6 +86,10 @@ alias pcommon-unix-sources :
   ;
 
 alias pcommon-win-sources :
+  ;
+
+alias pcommon-win-sources :
+  : <os>NT
   ;
 
 ################################################################################
@@ -90,22 +111,15 @@ lib pcommon :
   pcomn_binascii.cpp
   pcomn_cfgparser.cpp
   pcomn_diag.cpp
-  pcomn_exec.cpp
   pcomn_fileutils.cpp
   pcomn_incdlist.cpp
   pcomn_iostream.cpp
-
-  pcomn_journal.cpp
-  pcomn_journstorage.cpp
-  pcomn_journfile.cpp
-  pcomn_journmmap.cpp
 
   pcomn_mmap.cpp
   pcomn_path.cpp
   pcomn_qualname.cpp
   pcomn_rawstream.cpp
   pcomn_regex.cpp
-  pcomn_scheduler.cpp
   pcomn_strsubst.cpp
   pcomn_sys.cpp
   pcomn_textio.cpp

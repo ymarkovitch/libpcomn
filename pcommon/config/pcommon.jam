@@ -372,6 +372,8 @@ module msvc {
 module intel-win {
   import toolset ;
 
+  toolset.flags intel-win.compile.c++ C++FLAGS : -Qms0 ;
+
   toolset.flags intel-win.compile.c++ OPTIONS <c++std>11 : -Qstd=c++11 ;
   toolset.flags intel-win.compile.c++ OPTIONS <c++std>14 : -Qstd=c++14 ;
 

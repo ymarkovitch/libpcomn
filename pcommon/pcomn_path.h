@@ -146,7 +146,7 @@ ssize_t realpath(const char *name, char *result, size_t bufsize) ;
 
 } // end of namespace pcomn::path::posix
 
-#ifdef PCOMN_PL_UNIX
+#if defined(PCOMN_PL_POSIX)
 using posix::split ;
 using posix::joinpath ;
 using posix::abspath ;
@@ -162,26 +162,6 @@ using posix::basename ;
 using posix::dirname ;
 using posix::splitext ;
 
-/// @cond
-namespace detail {
-template<size_t n>
-struct dynabuf {
-      dynabuf(size_t sz) :
-         _data(_buf)
-      {
-         if (sz > n)
-            _guard.reset(_data = new char[sz]) ;
-      }
-
-      char *get() const { return _data ; }
-   private:
-      char                    _buf[n] ;
-      std::unique_ptr<char[]> _guard ;
-      char *                  _data ;
-} ;
-}
-/// @endcond
-
 /// @overload
 template<typename R, typename S>
 std::enable_if_t<is_compatible_strings<R, S>::value, R>
@@ -195,7 +175,7 @@ template<typename R>
 typename enable_if_strchar<R, char, R>::type
 abspath(const basic_strslice<char> &path)
 {
-   detail::dynabuf<PATH_MAX + 1> buf (path.size() + 1) ;
+   auto_buffer<PATH_MAX + 1> buf (path.size() + 1) ;
    return abspath<R>(strslicecpy(buf.get(), path, path.size() + 1)) ;
 }
 
@@ -212,7 +192,7 @@ template<typename R>
 typename enable_if_strchar<R, char, R>::type
 normpath(const basic_strslice<char> &path)
 {
-   detail::dynabuf<PATH_MAX + 1> buf (path.size() + 1) ;
+   auto_buffer<PATH_MAX + 1> buf (path.size() + 1) ;
    return normpath<R>(strslicecpy(buf.get(), path, path.size() + 1)) ;
 }
 
@@ -229,7 +209,7 @@ template<typename R>
 typename enable_if_strchar<R, char, R>::type
 realpath(const basic_strslice<char> &path)
 {
-   detail::dynabuf<PATH_MAX + 1> buf (path.size() + 1) ;
+   auto_buffer<PATH_MAX + 1> buf (path.size() + 1) ;
    return realpath<R>(strslicecpy(buf.get(), path, path.size() + 1)) ;
 }
 

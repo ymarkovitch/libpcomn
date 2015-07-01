@@ -30,6 +30,9 @@ typedef uint32_t  uatomic32_t ;
 typedef PCOMN_ALIGNED(8) int64_t    atomic64_t ;
 typedef PCOMN_ALIGNED(8) uint64_t   uatomic64_t ;
 
+namespace atomic_op {
+template<typename T, bool is_integer> struct implementor ;
+}
 } // end of namespace pcomn
 
 #include PCOMN_PLATFORM_HEADER(pcomn_atomic.cc)

@@ -21,7 +21,7 @@
 /*******************************************************************************
  C++14 definitions for C++11 compiler
 *******************************************************************************/
-#ifnde PCOMN_STL_CXX14
+#ifndef PCOMN_STL_CXX14
 
 namespace std {
 template<std::size_t I, class Tuple>

@@ -23,6 +23,9 @@
 #  include <share.h>
 #  include <sys/stat.h>
 #  include <stdlib.h>
+#  include <stdio.h>
+#  include <process.h>
+#  include <direct.h>
 
 #  ifndef O_SHARE_RDONLY
 #     define O_SHARE_RDONLY   SH_DENYWR
@@ -68,6 +71,10 @@
 #     define O_ACCMODE (O_RDONLY|O_WRONLY|O_RDWR)
 #  endif
 
+#  ifndef PATH_MAX
+#     define PATH_MAX _MAX_PATH
+#  endif
+
 #ifdef __cplusplus
 /// ftruncate quasi for Windows.
 inline int ftruncate(int fd, long newsize) { return _chsize(fd, newsize) ; }
@@ -75,7 +82,9 @@ inline int ftruncate(int fd, long newsize) { return _chsize(fd, newsize) ; }
 #  define ftruncate(file, size) (_chsize((file), (size)))
 #endif
 
-#define getpid() (_getpid())
+#define STDERR_FILENO (fileno(stderr))
+#define STDOUT_FILENO (fileno(stdout))
+#define STDIN_FILENO  (fileno(stdin))
 
 #else /* end of PCOMN_PL_WINDOWS */
 /* PCOMN_PL_UNIX */
