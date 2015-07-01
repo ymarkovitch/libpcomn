@@ -228,12 +228,8 @@
 
 #endif
 
-#ifdef __cplusplus
-#  define  ___inline_ inline
-#elif defined(PCOMN_COMPILER_GNU)
+#ifdef PCOMN_COMPILER_GNU
 #  define  __inline __inline__
-#else
-#  define  __inline
 #endif
 
 #ifdef __cplusplus
