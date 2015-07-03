@@ -35,6 +35,9 @@ typedef CmdFifoList<CmdArg>     CmdArgList ;
 typedef CmdFifoListIter<CmdArg> CmdArgListIter ;
 typedef CmdFifoList<CmdArgList> CmdArgListList ;
 
+typedef CmdFifoListIter<CmdArgList> CmdArgListListIter ;
+typedef CmdFifoList<CmdArgListList> CmdArgListListList ;
+
 //-----------------------------------------------------------------------------
 
    // A CmdArg is an abstract command-line argument.

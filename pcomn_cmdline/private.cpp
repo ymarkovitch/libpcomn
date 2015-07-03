@@ -37,20 +37,9 @@ extern "C" {
 
 }
 
-#ifndef GNU_READLINE
-# ifdef unix
-#  include <malloc.h>
-# else
-   extern "C" void * malloc(size_t);
-   extern "C" void   free(void *);
-# endif
-#endif
-
-
 #include "cmdline.h"
 #include "states.h"
-#include "arglist.h"
-
+#include "fifolist.h"
 
 #ifdef vms
 #  define  getenv  getsym

@@ -25,17 +25,6 @@
 
 #include "cmdline.h"
 
-   // Record the version-identifier for this configuration of the project.
-   //
-   // My source-code management system lets me use a symbolic-name
-   // to identify a given configuration of the project. From this
-   // symbolic-name I can easily find out the exact version of each
-   // file that makes up this version of the project.
-   //
-static const char ident[] =
-   "@(#)SMS  task: cmdline-1.04" ;
-
-
    // Release and patchlevel information
 #define  CMDLINE_RELEASE     1
 #define  CMDLINE_PATCHLEVEL  4

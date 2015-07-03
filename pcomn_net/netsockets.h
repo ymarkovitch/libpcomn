@@ -23,13 +23,27 @@
 
 #include <iostream>
 
-#include <netinet/in.h>
+#ifdef PCOMN_PL_POSIX
+/*******************************************************************************
+ Unix
+*******************************************************************************/
+
 #include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/sendfile.h>
 #include <sys/stat.h>
 #include <poll.h>
+
+#else
+/*******************************************************************************
+ Winsock
+*******************************************************************************/
+
+#include <winsock2.h>
+#include <ws2tcpip.h>
+
+#endif
 
 namespace pcomn {
 namespace net {

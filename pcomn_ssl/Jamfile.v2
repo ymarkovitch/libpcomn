@@ -8,6 +8,8 @@
 #
 # CREATION DATE:  14 May 2014
 #------------------------------------------------------------------------------
+lib ssl : : <link>shared ;
+
 project
   : requirements
   <library>$(PROJROOT)//pcommon
@@ -16,7 +18,7 @@ project
   : usage-requirements
   <library>$(PROJROOT)//pcommon
   <library>$(PROJROOT)//crypto
-  <library>$(PROJROOT)//ssl
+  <library>ssl
   ;
 
 lib pcomn_ssl :

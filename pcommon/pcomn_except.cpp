@@ -14,12 +14,12 @@
 
 namespace pcomn {
 
-int errcode::lasterr()
+int system_error::errcode::lasterr()
 {
    return GetLastError() ;
 }
 
-std::string errcode::errmsg(int code)
+std::string system_error::errcode::errmsg(int code)
 {
    return sys_error_text(code) ;
 }

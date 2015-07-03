@@ -219,8 +219,8 @@ using valtype_t = std::remove_cv_t<std::remove_reference_t<T> > ;
 
 template<typename T, typename... A>
 struct rebind___t {
-      template<template<typename...> class Template, typename... Args>
-      static Template<T, A...> eval(Template<Args...> *) ;
+      template<template<typename...> class Template, typename A1, typename... Args>
+      static Template<T, Args..., A...> eval(Template<A1, Args...> *) ;
 } ;
 
 template<typename C, typename T, typename... A>

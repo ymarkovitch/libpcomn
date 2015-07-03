@@ -22,7 +22,13 @@
 
 #include <string>
 
+#ifdef PCOMN_PL_POSIX
 #include <netinet/in.h>
+#else
+#include <winsock2.h>
+typedef uint32_t in_addr_t ;
+#endif
+
 #include <sys/types.h>
 
 #include <unordered_map>
@@ -115,7 +121,12 @@ public:
     /// Get an IP address as a 32-bit unsigned number in the host byte order.
     constexpr uint32_t ipaddr() { return _addr ; }
 
-    in_addr inaddr() const { return in_addr { htonl(_addr) } ; }
+    in_addr inaddr() const
+    {
+        in_addr result ;
+        *(uint32_t *)&result = htonl(_addr) ;
+        return result ;
+    }
     operator struct in_addr() const { return inaddr() ; }
 
     constexpr inet_address next() { return inet_address(ipaddr() + 1) ; }
@@ -254,11 +265,8 @@ private:
     }
     void init()
     {
-        memset(&_sockaddr, 0, sizeof _sockaddr) ;
+        _sockaddr = sockaddr_in{} ;
         _sockaddr.sin_family = AF_INET ;
-        #ifndef  __linux
-        _sockaddr.sin_len = sizeof _sockaddr ;
-        #endif
     }
     void init(const in_addr &addr, uint16_t port)
     {

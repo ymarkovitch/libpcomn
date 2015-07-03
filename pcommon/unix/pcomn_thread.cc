@@ -60,11 +60,6 @@ thread_id thread_id::mainThread()
 /*******************************************************************************
  BasicThread
 *******************************************************************************/
-bool BasicThread::is_current() const
-{
-   return handle() == pthread_self() ;
-}
-
 void BasicThread::create_thread()
 {
    NOXCHECK(!is_created()) ;

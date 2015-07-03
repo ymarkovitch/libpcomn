@@ -170,7 +170,10 @@ class _PCOMNEXP BasicThread : public virtual Runnable {
 
       bool is_created() const { return !!id() ; }
       bool is_completed() const { return state() >= SCompleted ; }
-      bool is_current() const ;
+      bool is_current() const
+      {
+         return id() == thread_id() ;
+      }
 
       thread_handle_t handle() const { return _handle ; }
       thread_id_t id() const { return _id ; }

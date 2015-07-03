@@ -42,8 +42,7 @@ path-constant SHAREPATH : . ;
 path-constant VENDOR_LIBPATH  : vendor/lib ;
 path-constant VENDOR_INCPATH  : vendor/include ;
 
-constant BUILD_HOST   :    [ pcommon.build-host ] ;
-constant BUILD_NIX_TIME  : [ pcommon.build-nix-time ] ;
+constant BUILD_HOST : [ pcommon.build-host ] ;
 
 constant LF : [ modules.peek : LF ] ;
 
@@ -108,15 +107,13 @@ IMPORT $(__name__)
 ################################################################################
 # Vendor libraries
 ################################################################################
-lib cppunit   : : <link>shared ;
-lib dl        : : <link>shared ;
-lib editline  : : <name>edit ;
-lib ncurses   : : <link>shared ;
-lib readline  : : <link>shared : : <library>ncurses ;
-lib crypto    : : <link>shared ;
-lib ssl       : : <link>shared ;
-lib re2       : : <link>static <search>$(VENDOR_LIBPATH) ;
-lib lua       : : <name>luajit-5.1 <link>shared : : <include>/usr/include/luajit-2.0 ;
+lib cppunit : : <link>shared ;
+lib cppunit : : <os>NT <link>static ;
+lib cppunit : : <os>NT <link>static <variant>debug <name>cppunitd ;
+
+lib ncurses : : <link>shared ;
+lib crypto  : : <link>shared ;
+lib re2     : : <link>static <search>$(VENDOR_LIBPATH) ;
 
 ################################################################################
 # Project
@@ -149,7 +146,6 @@ project libpcomn
   <cxxflags>-fno-implement-inlines ]
 
   <define>BUILD_HOST="\"$(BUILD_HOST)\""
-  <define>BUILD_NIX_TIME="$(BUILD_NIX_TIME)"
 
   : default-build debug <link>static <threading>multi
   ;

@@ -20,7 +20,7 @@
 
 #include "cmdline.h"
 #include "states.h"
-#include "arglist.h"
+#include "fifolist.h"
 
 #ifdef vms
 #  define  getenv  getsym

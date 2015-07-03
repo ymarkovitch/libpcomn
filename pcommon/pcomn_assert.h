@@ -168,14 +168,9 @@ extern "C" {
 #endif
 DECLSPEC_IMPORT BOOL WINAPI IsDebuggerPresent() ;
 DECLSPEC_IMPORT void WINAPI DebugBreak(void) ;
-DECLSPEC_IMPORT int WINAPI MessageBoxA(HWND hWnd, LPCSTR lpText, LPCSTR lpCaption, UINT uType) ;
 #ifdef __cplusplus
 }
 #endif
-
-#define NOXDEBUGWAIT(envvar, msg) \
-(getenv(#envvar) &&               \
- MessageBoxA(NULL, (msg), "Waiting for debugger at line " P_STRINGIFY_INDIRECT(__LINE__) ", " __FILE__, 0))
 
 #elif defined(PCOMN_PL_LINUX) && defined(PCOMN_PL_X86)
 #include <stdlib.h>
@@ -183,12 +178,9 @@ DECLSPEC_IMPORT int WINAPI MessageBoxA(HWND hWnd, LPCSTR lpText, LPCSTR lpCaptio
 #define IsDebuggerPresent() (!!getenv("PCOMN_DEBUGGING"))
 static inline void DebugBreak() { __asm__("int3") ; }
 
-#  define NOXDEBUGWAIT(envvar, msg)
-
 #else
 
 #  define __pcomn_debug_fail__(fmt, msg, file, line) __pcomn_assert_fail__((fmt), (msg), (file), (line))
-#  define NOXDEBUGWAIT(envvar, msg)
 
 #endif /* End of __PCOMN_DEBUG && PCOMN_PL_WINDOWS */
 

@@ -13,7 +13,7 @@ project
 
   <library>$(PROJROOT)//pcommon
   <library>$(PROJROOT)//cppunit
-  #<library>$(TESTPATH)//crypto
+  <library>$(PROJROOT)//crypto
   <library>$(PROJROOT)//zlib
 
   <include>$(VENDOR_PREFIX)/include

@@ -43,6 +43,7 @@ project pcommon
   <toolset>intel-win:<cflags>-arch:SSE4.1
 
   <os>NT:<define>_WIN32_WINNT=0x0600
+  <os>NT:<define>WIN32_LEAN_AND_MEAN=1
 
   # If VENDOR_PREFIX environment variable is not defined,
   # the line below simply disappears
@@ -57,13 +58,18 @@ project pcommon
 ################################################################################
 # External (vendor) libraries, mostly for unittests
 ################################################################################
-lib cppunit crypto : : <link>shared ;
+lib crypto : : <os>UNIX <link>shared ;
+alias crypto : : <os>NT ;
 
+lib cppunit : : <link>shared ;
 lib cppunit : : <os>NT <link>static ;
 lib cppunit : : <os>NT <link>static <variant>debug <name>cppunitd ;
 
 lib zlib : : <name>z <link>shared ;
 lib zlib : : <os>NT:<link>static ;
+
+lib user32   : : <os>NT ;
+alias user32 : : <os>UNIX ;
 
 ################################################################################
 # Per-platform sources
@@ -89,6 +95,8 @@ alias pcommon-win-sources :
   ;
 
 alias pcommon-win-sources :
+  pcomn_except.cpp
+  pcomn_w32util.cpp
   : <os>NT
   ;
 
@@ -135,4 +143,13 @@ lib pcommon :
   # The aliases below are nonempty only for corresponding platforms
   pcommon-unix-sources
   pcommon-win-sources
+
+  : # Requirements
+  : # Default build
+
+  : # Usage requirements
+  <library>$(PROJROOT)//user32
+  <os>NT:<define>WIN32_LEAN_AND_MEAN=1
+  <os>NT:<define>_WIN32_WINNT=0x0600
+
   ;

@@ -27,14 +27,9 @@
 #ifndef _fifolist_h
 #define _fifolist_h
 
-#ifndef  name2
-# if defined(__STDC__) || defined(__ANSI_CPP__)
+#ifndef name2
 #  define  name2(x,y) x##y
-# else
-#  define  name2(x,y) x/**/y
-# endif
 #endif
-
 
    // GenericFifoList - a FIFO linked list of void * pointers
    //

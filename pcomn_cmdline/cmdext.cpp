@@ -14,7 +14,11 @@
 #ifdef __noinline
 #undef __noinline
 #endif
+#ifdef _MSC_VER
+#define __noinline __declspec(noinline)
+#else
 #define __noinline __attribute__((__noinline__))
+#endif
 
 namespace cmdl {
 

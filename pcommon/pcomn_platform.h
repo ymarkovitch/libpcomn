@@ -176,6 +176,8 @@
 #elif defined(_WIN64) || defined(_WIN32) || defined(__WIN64__) || defined(__WIN32__) || defined(__TOS_WIN__)
 #  define PCOMN_PL_WINDOWS 1
 #  define PCOMN_PL_MS      1 /* Alias for PCOMN_PL_WINDOWS */
+#  define WIN32_LEAN_AND_MEAN 1 /* Don't include too much in windows.h. Without this,
+                                 * there are problems wit winsocket2.h */
 
 #elif defined(OS2) || defined(_OS2) || defined(__OS2__) || defined(__TOS_OS2__)
 #  define PCOMN_PL_OS2     1

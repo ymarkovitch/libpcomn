@@ -9,18 +9,42 @@
  CREATION DATE:   27 Jan 2008
 *******************************************************************************/
 #include <pcomn_net/netaddr.h>
+
+#include <pcomn_unistd.h>
 #include <pcomn_utils.h>
 #include <pcomn_meta.h>
 #include <pcomn_atomic.h>
+#include <pcomn_string.h>
 
-#include <netinet/in.h>
+#ifdef PCOMN_PL_POSIX
+/*******************************************************************************
+ UNIX
+*******************************************************************************/
+
 #include <net/if.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <sys/ioctl.h>
 #include <netdb.h>
-#include <unistd.h>
+
+#else
+/*******************************************************************************
+ Winsocks
+*******************************************************************************/
+
+#include <win32/pcomn_w32util.h>
+
+#include <winsock2.h>
+#include <ws2tcpip.h>
+
+static const unsigned IFNAMSIZ = 256 ;
+
+inline std::string hstrerror(long sockerr) { return pcomn::sys_error_text(sockerr) ; }
+
+#pragma comment(lib, "Ws2_32.lib")
+
+#endif
 
 namespace pcomn {
 namespace net {
@@ -61,7 +85,7 @@ uint32_t inet_address::from_string(const strslice &addrstr, unsigned flags)
     {
         if (addrstr.size() < maxdot
             && std::count(addrstr.begin(), addrstr.end(), '.') == 3
-            && inet_aton(strbuf, &addr))
+            && inet_pton(AF_INET, strbuf, &addr) > 0)
 
             return ntohl(addr.s_addr) ;
 
@@ -74,6 +98,8 @@ uint32_t inet_address::from_string(const strslice &addrstr, unsigned flags)
 
     if (flags & USE_IFACE)
     {
+        // This works only for UNIX-like environment
+        #ifdef PCOMN_PL_POSIX
         if (addrstr.size() < IFNAMSIZ)
         {
             static int sockd = -1 ;
@@ -91,6 +117,8 @@ uint32_t inet_address::from_string(const strslice &addrstr, unsigned flags)
             if (ioctl(sockd, SIOCGIFADDR, &request) != -1)
                 return ntohl(reinterpret_cast<sockaddr_in *>(&request.ifr_addr)->sin_addr.s_addr) ;
         }
+        #endif
+
         if (flags & IGNORE_HOSTNAME)
         {
             PCOMN_THROW_MSG_IF(usexc, inaddr_error,
@@ -106,9 +134,9 @@ uint32_t inet_address::from_string(const strslice &addrstr, unsigned flags)
 
     if (usexc)
     {
-        const int err = h_errno ;
+        const long err = h_errno ;
         errno = EINVAL ;
-        PCOMN_THROWF(inaddr_error, "Cannot resolve hostname '%s'. %s", strbuf, hstrerror(err)) ;
+        PCOMN_THROWF(inaddr_error, "Cannot resolve hostname '%s'. %s", strbuf, str::cstr(hstrerror(err))) ;
     }
     return 0 ;
 }

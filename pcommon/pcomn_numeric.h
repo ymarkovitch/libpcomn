@@ -30,7 +30,7 @@ inline void iota(ForwardIterator first, ForwardIterator last, Tp value)
 const unsigned UPRIME_MIN = 3u ;
 const unsigned UPRIME_MAX = 4294967291u ;
 
-template<Instantiate = {}>
+template<Instantiate = Instantiate{}>
 struct doubling_primes {
 
       static unsigned lbound(unsigned num)

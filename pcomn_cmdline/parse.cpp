@@ -24,8 +24,8 @@
 
 #include "exits.h"
 #include "states.h"
-#include "arglist.h"
 #include "cmdline.h"
+#include "fifolist.h"
 
 
 //-------

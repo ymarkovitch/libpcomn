@@ -17,8 +17,25 @@ project
   <library>$(PROJROOT)//pcommon
 ;
 
+alias pcommon-net-unix-sources :
+  netsockets.cpp
+  ;
+
+alias pcommon-net-unix-sources :
+  : <os>NT
+  ;
+
+alias pcommon-net-win-sources :
+  ;
+
+alias pcommon-net-win-sources :
+  : <os>NT
+  ;
+
 lib pcomn_net :
   netaddr.cpp
-  netsockets.cpp
+
+  pcommon-net-unix-sources
+  pcommon-net-win-sources
   : <link>static
   ;

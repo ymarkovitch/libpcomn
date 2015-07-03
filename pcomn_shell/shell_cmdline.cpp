@@ -25,8 +25,6 @@
 #include <string.h>
 #include <stdio.h>
 
-#include <sysexits.h>
-
 namespace pcomn {
 namespace sh {
 

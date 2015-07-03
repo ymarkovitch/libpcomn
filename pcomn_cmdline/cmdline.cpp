@@ -30,7 +30,7 @@
 
 #include "cmdline.h"
 #include "cmdargs.h"
-#include "arglist.h"
+#include "fifolist.h"
 #include "states.h"
 
 #define  va_CmdArgP(ap)  va_arg(ap, CmdArg *)

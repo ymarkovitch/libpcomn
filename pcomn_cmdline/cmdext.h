@@ -213,7 +213,7 @@ private:
    const type _default_value ;
 
    typedef B ancestor ;
-protected:
+public:
    scalar_argument(type &&default_value, char optchar, const char *keyword,
                    const char *value_name, const char *description,
                    unsigned flags) :
@@ -236,6 +236,7 @@ protected:
       scalar_argument(default_value, value_name, description, CmdArg::isPOSVALREQ)
    {}
 
+protected:
    void assign(const type &value) { _value = value ; }
 
    void reset() override
@@ -409,8 +410,8 @@ inline const char *cstr(const std::string &s) { return s.c_str() ; }
 
 template<typename T, typename... A>
 struct rebind___c {
-      template<template<typename...> class Template, typename... Args>
-      static Template<T, A...> eval(Template<Args...> *) ;
+   template<template<typename...> class Template, typename U, typename... Args>
+   static Template<T, Args...> eval(Template<U, Args...> *) ;
 } ;
 
 template<typename C, typename T, typename... A>
@@ -425,10 +426,10 @@ struct argint_traits : scalar_argument<T> {
    typedef scalar_argument<T> ancestor ;
 
    using typename ancestor::type ;
-protected:
    /// Inherit constructors
    using ancestor::ancestor ;
 
+protected:
    bool compile(const char *&arg, CmdLine &) override ;
 
 private:
