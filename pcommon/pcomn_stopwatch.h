@@ -166,7 +166,7 @@ inline PCpuStopwatch::PCpuStopwatch() :
    ancestor(10000000)
 {}
 
-inline PStopwatch::double PCpuStopwatch::current() const
+inline double PCpuStopwatch::current() const
 {
    int64_t creationTime ;
    int64_t exitTime ;

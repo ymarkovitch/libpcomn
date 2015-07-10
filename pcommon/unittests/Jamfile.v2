@@ -73,7 +73,6 @@ if ! [ adhoc-targets ]
   unittest unittest_strnum ;
   unittest unittest_strsubst ;
   unittest unittest_sync ;
-  unittest unittest_synccomplex ;
   unittest unittest_sys ;
   unittest unittest_textio ;
   unittest unittest_timespec ;
@@ -85,6 +84,11 @@ if ! [ adhoc-targets ]
   unittest unittest_journal_files ;
   unittest unittest_journal ;
 
+  if [ os.name ] != NT
+  {
+    unittest unittest_filesys ;
+    unittest unittest_synccomplex ;
+  }
   #if [ os.name ] = LINUX
   #{
   #  unittest unittest_xattr ;

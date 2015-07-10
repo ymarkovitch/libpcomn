@@ -59,7 +59,7 @@ struct TestRangeProvider  {
          const Int from = _next ;
          const Int to = from + _step ;
          // Introduce a race condition
-         usleep((int)(10 * (rand() / (RAND_MAX + 0.0)))) ;
+         msleep((int)(3 * (rand() / (RAND_MAX + 0.0)))) ;
          _next = to ;
 
          return result_type(from, to) ;
@@ -107,7 +107,7 @@ class IdDispenserThread : public pcomn::BasicThread {
             _result.push_back(_dispenser.allocate_id()) ;
             const unsigned r = rand_r(&seed) ;
             if ((r & 0x70) == 0x70)
-               usleep(r & 3) ;
+               msleep(r & 2) ;
          }
 
          return 0 ;

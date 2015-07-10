@@ -239,5 +239,37 @@ ssize_t realpath(const char *name, char *result, size_t bufsize)
 }
 
 } // end of namespace pcomn::path::posix
+
+/*******************************************************************************
+ Win32 paths
+*******************************************************************************/
+#ifdef PCOMN_PL_MS
+namespace windows {
+static inline char *normalize_separators(char *path_begin, char *path_end)
+{
+   std::replace(path_begin,
+                path_end = std::unique(path_begin, path_end,
+                                       [](char x, char y) { return y == '/' && (x == '/' || x == '\\') ; }),
+                '/', '\\') ;
+   return path_end ;
+}
+
+size_t abspath(const char *name, char *result, size_t bufsize)
+{
+   if (!name || !*name || !result && bufsize)
+      return 0 ;
+
+   const size_t nmsz = strlen(name) ;
+   auto_buffer<PATH_MAX + 1> normalized (nmsz + 1) ;
+   *normalize_separators(strcpy(normalized.get(), name), normalized.get() + nmsz) = 0 ;
+
+   return _fullpath(result, normalized.get(), bufsize) ? strlen(result) : 0 ;
+}
+} // end of namespace pcomn::path::windows
+#endif
+/*******************************************************************************
+ End of win32 paths
+*******************************************************************************/
+
 } // end of namespace pcomn::path
 } // end of namespace pcomn

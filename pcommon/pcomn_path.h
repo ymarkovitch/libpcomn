@@ -16,6 +16,7 @@
 *******************************************************************************/
 #include <pcomn_string.h>
 #include <pcomn_strslice.h>
+#include <pcomn_unistd.h>
 
 #include <memory>
 
@@ -147,6 +148,7 @@ ssize_t realpath(const char *name, char *result, size_t bufsize) ;
 } // end of namespace pcomn::path::posix
 
 #if defined(PCOMN_PL_POSIX)
+
 using posix::split ;
 using posix::joinpath ;
 using posix::abspath ;
@@ -156,6 +158,13 @@ using posix::is_rooted ;
 using posix::is_absolute ;
 using posix::is_pathname_separator ;
 using posix::is_basename ;
+
+#elif defined(PCOMN_PL_MS)
+
+namespace windows {
+size_t abspath(const char *name, char *result, size_t bufsize) ;
+} // end of namespace pcomn::path::windows
+using windows::abspath ;
 #endif
 
 using posix::basename ;

@@ -26,6 +26,7 @@
 #  include <stdio.h>
 #  include <process.h>
 #  include <direct.h>
+#  include <windows.h>
 
 #  ifndef O_SHARE_RDONLY
 #     define O_SHARE_RDONLY   SH_DENYWR
@@ -75,12 +76,19 @@
 #     define PATH_MAX _MAX_PATH
 #  endif
 
-#ifdef __cplusplus
 /// ftruncate quasi for Windows.
-inline int ftruncate(int fd, long newsize) { return _chsize(fd, newsize) ; }
-#else
-#  define ftruncate(file, size) (_chsize((file), (size)))
-#endif
+__inline int ftruncate(int fd, long newsize) { return _chsize(fd, newsize) ; }
+
+__inline void msleep(unsigned msec) { Sleep(msec) ; }
+
+__inline errno_t setenv(const char *name, const char *value, int overwrite)
+{
+   return (overwrite || !getenv(name)) ? _putenv_s(name, value ? value : "") : 0 ;
+}
+
+__inline errno_t unsetenv(const char *name) { return setenv(name, NULL, 1) ; }
+
+#define rand_r(seedp) ((*(seedp)) = rand())
 
 #define STDERR_FILENO (fileno(stderr))
 #define STDOUT_FILENO (fileno(stdout))
@@ -131,6 +139,11 @@ inline int ftruncate(int fd, long newsize) { return _chsize(fd, newsize) ; }
 #     define S_IWRITE S_IWUSR
 #  endif
 
+#ifdef __cplusplus
+inline void msleep(unsigned msec) { usleep(msec*1000) ; }
+#else
+#  define msleep(msec) ((usleep((msec)*1000)))
+#endif
 
 #endif /* end of PCOMN_PL_UNIX */
 

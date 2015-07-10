@@ -17,6 +17,8 @@
 #include <pcstring.h>
 #include <pcomn_assert.h>
 
+#include <algorithm>
+
 #if !defined(PCOMN_RTL_MS)
 /*******************************************************************************
  POSIX runtime
@@ -36,6 +38,7 @@ inline timeval pcomn_gettimeofday()
 #include <time.h>
 #include <sys/types.h>
 #include <sys/timeb.h>
+#include <winsock2.h>
 
 #define localtime_r(struct_tm, time_t_time) (localtime_s((time_t_time), (struct_tm)))
 #define gmtime_r(struct_tm, time_t_time)    (gmtime_s((time_t_time), (struct_tm)))

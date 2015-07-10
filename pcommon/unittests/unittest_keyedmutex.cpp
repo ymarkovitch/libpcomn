@@ -171,7 +171,7 @@ void slow_increment(pcomn::PTKeyedMutex<unsigned*> &mutex, unsigned *target, uns
       {
          std::lock_guard<pcomn::PTKeyedMutex<unsigned *> > lock (mutex, *s) ;
          unsigned v = **s ;
-         usleep((int)(5 * (rand_r(&seed) / (RAND_MAX + 1.0)))) ;
+         msleep((int)(3 * (rand_r(&seed) / (RAND_MAX + 1.0)))) ;
          **s = v + 1 ;
       }
 }
@@ -196,7 +196,7 @@ void KeyedMutexTests::Test_KeyedMutex_Run()
    } Tester ;
 
    {
-      const unsigned Count = 50000 ;
+      const unsigned Count = 200 ;
       const unsigned Threads = 1 ;
 
       buffer_type Buffer ;

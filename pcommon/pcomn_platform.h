@@ -175,7 +175,6 @@
 
 #elif defined(_WIN64) || defined(_WIN32) || defined(__WIN64__) || defined(__WIN32__) || defined(__TOS_WIN__)
 #  define PCOMN_PL_WINDOWS 1
-#  define PCOMN_PL_MS      1 /* Alias for PCOMN_PL_WINDOWS */
 #  define WIN32_LEAN_AND_MEAN 1 /* Don't include too much in windows.h. Without this,
                                  * there are problems wit winsocket2.h */
 
@@ -414,6 +413,10 @@
 *******************************************************************************/
 #if defined(PCOMN_PL_UNIX) || defined(PCOMN_COMPILER_GNU)
 #  define PCOMN_PL_POSIX 1
+#endif
+
+#if defined(PCOMN_PL_WINDOWS) && !defined(PCOMN_PL_POSIX)
+#  define PCOMN_PL_MS 1 /* Pure Windows */
 #endif
 
 /******************************************************************************/

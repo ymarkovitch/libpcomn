@@ -24,7 +24,7 @@
 #include <pcomn_function.h>
 #include <pcomn_safeptr.h>
 #include <pcomn_handle.h>
-#include <pcomn_unistd.h>
+#include <pcomn_sys.h>
 
 #include <cppunit/ui/text/TestRunner.h>
 #include <cppunit/TestResult.h>
@@ -99,7 +99,7 @@ std::string test_environment<n>::join_path(const std::string &dir, const strslic
       return dir ;
    if (path.front() == PCOMN_PATH_NATIVE_DELIM)
       return std::string(path) ;
-   return (dir + "/").append(path.begin(), path.end()) ;
+   return (dir + PCOMN_PATH_NATIVE_DELIM).append(path.begin(), path.end()) ;
 }
 
 template<nullptr_t n>
@@ -153,6 +153,19 @@ std::string test_environment<n>::resolve_test_path(const CppUnit::Test &tests, c
 template<nullptr_t n>
 int test_environment<n>::prepare_test_environment(int argc, char ** const argv, const char *diag_profile, const char *title)
 {
+   #if PCOMN_PL_MS
+   if (!IsDebuggerPresent())
+   {
+      // Prevent Windows from showing dialog boxes on abort
+      _set_abort_behavior(0, _CALL_REPORTFAULT);
+      _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
+      _CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_FILE);
+      _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
+      _CrtSetReportFile(_CRT_ERROR, _CRTDBG_FILE_STDERR);
+      SetErrorMode(SEM_FAILCRITICALERRORS|SEM_NOGPFAULTERRORBOX) ;
+   }
+   #endif
+
    if (diag_profile && *diag_profile)
       DIAG_INITTRACE(diag_profile) ;
 
@@ -492,6 +505,19 @@ class TestFixture : public CppUnit::TestFixture {
       mutable std::unique_ptr<std::ofstream> _out ;
 
       void ensure_datadir() const ;
+
+      #ifndef PCOMN_PL_MS
+      static bool mkdir_with_parents(const std::string &path)
+      {
+         return !system(("mkdir -p " + path).c_str()) ;
+      }
+      #else
+      static bool mkdir_with_parents(const std::string &path)
+      {
+         const auto s = pcomn::sys::filestat(path.c_str()) ;
+         return (s.st_mode & S_IFMT) == S_IFDIR || !s && !system(("md " + path).c_str()) ;
+      }
+      #endif
 } ;
 
 template<const char *private_dirname>
@@ -499,7 +525,7 @@ __noinline void TestFixture<private_dirname>::ensure_datadir() const
 {
    if (_datadir_ready)
       return ;
-   CPPUNIT_ASSERT(!system(("mkdir -p " + _datadir).c_str())) ;
+   CPPUNIT_ASSERT(mkdir_with_parents(_datadir)) ;
    _datadir_ready = true ;
 }
 
@@ -530,7 +556,7 @@ typename TestFixture<private_dirname>::locked_out TestFixture<private_dirname>::
       if (!_out)
       {
          // Ensure $CPPUNIT_PROGDIR/data is here
-         CPPUNIT_ASSERT(_datadir_ready || !system(("mkdir -p " + _data_basedir).c_str())) ;
+         CPPUNIT_ASSERT(_datadir_ready || mkdir_with_parents(_data_basedir)) ;
          std::unique_ptr<std::ofstream> new_stream (new std::ofstream(data_file().c_str())) ;
          PCOMN_THROW_IF(!*new_stream, environment_error, "Cannot open " P_STRSLICEQF " for writing", P_STRSLICEV(data_file())) ;
          _out = std::move(new_stream) ;

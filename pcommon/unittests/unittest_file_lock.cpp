@@ -63,7 +63,7 @@ void NativeFileLockTests::Test_Exclusive_File_Lock()
                   fd = ::open(test.at_data_dir("seq100.lst").c_str(), O_APPEND|O_WRONLY) ;
                   if (fd < 0 && errno != ENOENT)
                      PCOMN_THROW_SYSERROR("open") ;
-                  usleep(300000) ;
+                  msleep(300) ;
                }
                if (fd < 0)
                {
@@ -73,7 +73,7 @@ void NativeFileLockTests::Test_Exclusive_File_Lock()
                CPPUNIT_LOG("-------- OK" << std::endl) ;
 
                pcomn::binary_ofdstream stream (fd, true) ;
-               usleep(500000) ;
+               msleep(500) ;
                CPPUNIT_LOG("-------- Creating mutex" << std::endl) ;
                pcomn::NativeFileMutex mutex (fd, false) ;
 
@@ -90,7 +90,7 @@ void NativeFileLockTests::Test_Exclusive_File_Lock()
                {
                   snprintf(buf, sizeof buf, "%*d\n", n - 1, begin++)  ;
                   stream.write(buf, n) ;
-                  usleep(50000) ;
+                  msleep(50) ;
                }
 
                CPPUNIT_LOG_ASSERT(mutex.unlock()) ;
@@ -133,7 +133,7 @@ void NativeFileLockTests::Test_Exclusive_File_Lock()
    {
       snprintf(buf, sizeof buf, "%*d\n", n - 1, begin++)  ;
       stream.write(buf, n) ;
-      usleep(50000) ;
+      msleep(50) ;
    }
 
    CPPUNIT_LOG("******** Unlocking mutex" << std::endl) ;
@@ -142,7 +142,7 @@ void NativeFileLockTests::Test_Exclusive_File_Lock()
 
    for (int i = 20 ; i-- ;)
    {
-      usleep(500000) ;
+      msleep(50) ;
       if (!mx.try_lock_shared())
          CPPUNIT_LOG("******** Cannot acquire reader..." << std::endl) ;
       else

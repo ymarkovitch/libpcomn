@@ -682,33 +682,37 @@ local rule launch-test ( testrule : target : args * : input-files * : requiremen
 {
   local PCOMN_TESTDIR = [ current-project-location-abspath ] ;
   local launcher ;
+  local A="\&" ;
 
-  if [ os.name ] = NT
+  if [ os.name ] != NT
   {
-    launcher =
-      "cdrun ()"
-      "( cd `dirname $1` >/dev/null;"
-        "RUNTEST=./${1##*/};"
-        "shift;"
-        "export PCOMN_TESTDIR=$(PCOMN_TESTDIR);"
-        "flock -w 7200 $PCOMN_TESTDIR -c \"$RUNTEST $@\");"
-
-     "cdrun" ;
+     launcher =
+     "cdrun () (
+        cd `dirname $1` >/dev/null;
+        RUNTEST=./${1##*/};
+        shift;
+        export PCOMN_TESTDIR=$(PCOMN_TESTDIR);
+        flock -w 7200 $PCOMN_TESTDIR -c \"$RUNTEST $@\"
+      )
+      cdrun" ;
    }
    else
    {
-     launcher =
-       "powershell -noprofile -nologo -command"
-       "\"&"
-       "{"
-         "cd $(split-path $args[0]);"
-         "$env:PCOMN_TESTDIR = $testdir = '$(PCOMN_TESTDIR)';"
-         # Lock the global lock named after the test directory
-         "$lock = new-object Threading.Mutex($false, $testdir + '/unittests');"
-         "try {$lock.WaitOne() >null} catch [Threading.AbandonedMutexException]{};"
-         # Run the command line
-         "& $(split-path -leaf $args[0]) @($args[0]=$null;$args)"
+     launcher = [ string.join
+       "powershell -noprofile -nologo -command \"& {"
+           "$ErrorActionPreference='Stop';"
+           "cd (split-path $args[0]);"
+           "$testcmd = './' + (split-path -leaf $args[0]);"
+           "$testargs = @($args[0]=$null;$args);"
+           "$env:PCOMN_TESTDIR = $testdir = '$(PCOMN_TESTDIR)';"
+           # Lock the global lock named after the test directory
+           "$lock = new-object Threading.Mutex($false, [string]($testdir + '/unittests'));"
+           "try {$lock.WaitOne() >$null} catch [Threading.AbandonedMutexException]{};"
+           # Run the command line
+           "& $testcmd $testargs;"
+           "exit $LastExitCode;"
        "}\""
+       ] ;
   }
 
   if [ modules.peek : BUILD_ONLY ]
@@ -726,7 +730,7 @@ local rule launch-test ( testrule : target : args * : input-files * : requiremen
     # Only compile and run unittest
     SEMAPHORE on
       [ $(testrule) $(target:S=.cpp) : $(args) : $(input-files)
-      : <testing.launcher>$(launcher:J=" ") <define>PCOMN_TESTDIR=$(PCOMN_TESTDIR) $(requirements) ]
+      : <testing.launcher>$(launcher) <define>PCOMN_TESTDIR=$(PCOMN_TESTDIR) $(requirements) ]
 
       = pcomn.unittest ;
   }

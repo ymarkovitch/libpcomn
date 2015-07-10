@@ -11,9 +11,10 @@
  PROGRAMMED BY:   Yakov Markovitch
  CREATION DATE:   14 Feb 2000
 *******************************************************************************/
-#include <windows.h>
 #include <pcommon.h>
 #include <string>
+
+#include <windows.h>
 
 namespace pcomn {
 
