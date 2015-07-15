@@ -651,12 +651,15 @@ std::string strprintf(const char *format, ...) PCOMN_ATTR_PRINTF(1, 2) ;
 
 inline std::string strvprintf(const char *format, va_list args)
 {
+   va_list tmp ;
+   va_copy(tmp, args) ;
    const size_t initsize = 7 ;
    std::string result ('A', 7) ;
-   const size_t actual_size = snprintf(&*result.begin(), initsize + 1, format, args) ;
+   const size_t actual_size = vsnprintf(&*result.begin(), initsize + 1, format, tmp) ;
    result.resize(actual_size) ;
+   va_end(tmp) ;
    if (actual_size > initsize)
-      snprintf(&*result.begin(), actual_size + 1, format, args) ;
+      vsnprintf(&*result.begin(), actual_size + 1, format, args) ;
 
    return std::move(result) ;
 }
