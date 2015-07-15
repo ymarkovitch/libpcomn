@@ -429,28 +429,69 @@ inline rbinder2nd<Op> rbind2nd(const Op &op, const Arg &arg)
  make_function
  bind_thisptr
 *******************************************************************************/
-template<typename R, typename T, typename... Args>
-std::function<R(Args...)> bind_thisptr(R (T::*memfn)(), T *thisptr, Args&& ...args)
+template<typename R, typename T>
+std::function<R()> bind_thisptr(R (T::*memfn)(), T *thisptr)
 {
-   return {std::bind(memfn, thisptr, std::forward<Args>(args)...)} ;
+   return {std::bind(memfn, thisptr)} ;
 }
-template<typename R, typename T, typename... Args>
-std::function<R(Args...)> bind_thisptr(R (T::*memfn)() const, const T *thisptr, Args&& ...args)
+template<typename R, typename T>
+std::function<R()> bind_thisptr(R (T::*memfn)() const, const T *thisptr)
 {
-   return {std::bind(memfn, thisptr, std::forward<Args>(args)...)} ;
-}
-
-template<typename R, typename T, typename... Args>
-std::function<R(Args...)> bind_thisptr(R (T::element_type::*memfn)(), T thisptr, Args&& ...args)
-{
-   return {std::bind(memfn, thisptr, std::forward<Args>(args)...)} ;
+   return {std::bind(memfn, thisptr)} ;
 }
 
-template<typename R, typename T, typename... Args>
-std::function<R(Args...)> bind_thisptr(R (T::element_type::*memfn)() const, T thisptr, Args&& ...args)
+template<typename R, typename T>
+std::function<R()> bind_thisptr(R (T::element_type::*memfn)(), T thisptr)
 {
-   return {std::bind(memfn, thisptr, std::forward<Args>(args)...)} ;
+   return {std::bind(memfn, thisptr)} ;
 }
+
+template<typename R, typename T>
+std::function<R()> bind_thisptr(R (T::element_type::*memfn)() const, T thisptr)
+{
+   return {std::bind(memfn, thisptr)} ;
+}
+
+#define P_PLACEHOLDER_(num, ...)  std::placeholders::_##num
+#define P_PLACELIST_(nargs) P_FOR(nargs, P_PLACEHOLDER_)
+#define P_BIND_THISPTR_(argc)                                           \
+   template<typename R, typename C, typename T, P_TARGLIST(argc, typename)> \
+   std::enable_if_t<std::is_base_of<C, T>::value, std::function<R(P_TARGLIST(argc))> > \
+   bind_thisptr(R (C::*memfn)(P_TARGLIST(argc)), T *thisptr)            \
+   {                                                                    \
+      return {std::bind(memfn, thisptr, P_PLACELIST_(argc))} ;          \
+   }                                                                    \
+   template<typename R, typename C, typename T, P_TARGLIST(argc, typename)> \
+   std::enable_if_t<std::is_base_of<C, T>::value, std::function<R(P_TARGLIST(argc))> > \
+   bind_thisptr(R (C::*memfn)(P_TARGLIST(argc)) const, const T *thisptr) \
+   {                                                                    \
+      return {std::bind(memfn, thisptr, P_PLACELIST_(argc))} ;          \
+   }                                                                    \
+   template<typename R, typename T, P_TARGLIST(argc, typename)>         \
+   std::function<R(P_TARGLIST(argc))>                                   \
+   bind_thisptr(R (T::element_type::*memfn)(P_TARGLIST(argc)), T thisptr) \
+   {                                                                    \
+      return {std::bind(memfn, thisptr, P_PLACELIST_(argc))} ;          \
+   }                                                                    \
+   template<typename R, typename T, P_TARGLIST(argc, typename)>         \
+   std::function<R(P_TARGLIST(argc))>                                   \
+   bind_thisptr(R (T::element_type::*memfn)(P_TARGLIST(argc)) const, T thisptr) \
+   {                                                                    \
+      return {std::bind(memfn, thisptr, P_PLACELIST_(argc))} ;          \
+   }
+
+P_BIND_THISPTR_(1) ;
+P_BIND_THISPTR_(2) ;
+P_BIND_THISPTR_(3) ;
+P_BIND_THISPTR_(4) ;
+P_BIND_THISPTR_(5) ;
+P_BIND_THISPTR_(6) ;
+P_BIND_THISPTR_(7) ;
+P_BIND_THISPTR_(8) ;
+
+#undef P_PLACEHOLDER_
+#undef P_PLACELIST_
+#undef P_BIND_THISPTR_
 
 template<typename R, typename... Args>
 std::function<R(Args...)> make_function(R (*fn)(Args...))
