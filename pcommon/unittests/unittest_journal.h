@@ -32,7 +32,7 @@ class JournalFixture : public pcomn::unit::TestFixture<JOURNAL_FIXTURE> {
       void cleanupDirs()
       {
          ancestor::cleanupDirs() ;
-         _dirfd.reset(PCOMN_ENSURE_POSIX(pcomn::sys::opendir(dataDir().c_str()), "opendir")) ;
+         _dirfd.reset(PCOMN_ENSURE_POSIX(pcomn::sys::opendirfd(dataDir().c_str()), "opendir")) ;
       }
 
       void tearDown()

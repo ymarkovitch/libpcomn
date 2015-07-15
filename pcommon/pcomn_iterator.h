@@ -758,7 +758,7 @@ inline enable_if_t<pcomn::is_iterator<I>::value, I> begin(const pair<I, I> &rang
 }
 
 template<typename I>
-inline typename enable_if_t<pcomn::is_iterator<I>::value, I> end(const pair<I, I> &range)
+inline enable_if_t<pcomn::is_iterator<I>::value, I> end(const pair<I, I> &range)
 {
    return range.second ;
 }

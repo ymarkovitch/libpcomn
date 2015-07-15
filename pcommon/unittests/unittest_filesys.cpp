@@ -248,7 +248,7 @@ void FilesystemTests::Test_Filesystem_RealPath()
 int main(int argc, char *argv[])
 {
    pcomn::unit::TestRunner runner ;
-   runner.addTest(SysDirTests::suite()) ;
+   runner.addTest(FilesystemTests::suite()) ;
 
    return
       pcomn::unit::run_tests(runner, argc, argv,

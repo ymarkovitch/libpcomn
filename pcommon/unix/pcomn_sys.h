@@ -16,7 +16,6 @@
 *******************************************************************************/
 #include <pcomn_except.h>
 #include <pcomn_alloca.h>
-#include <pcomn_path.h>
 #include <pcomn_cstrptr.h>
 
 #include <sys/types.h>

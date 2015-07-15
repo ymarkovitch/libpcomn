@@ -703,7 +703,7 @@ class _PCOMNEXP MMapStorage : public Storage {
          TRACEPX(PCOMN_Journmmap, DBGL_MIDLEV,
                  "Opening directory '" << _dirname << "' for journal '" << name()) ;
          return
-            PCOMN_ENSURE_POSIX(sys::opendir(str::cstr(_dirname)), "open") ;
+            PCOMN_ENSURE_POSIX(sys::opendirfd(str::cstr(_dirname)), "open") ;
       }
 
       void sync_cpdir() { PCOMN_ENSURE_POSIX(sys::hardflush(dirfd()), "fsync") ; }

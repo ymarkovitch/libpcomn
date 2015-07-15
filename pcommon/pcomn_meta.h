@@ -72,6 +72,9 @@ using result_of_t = typename result_of<T>::type ;
 template<typename T>
 using underlying_type_t = typename underlying_type<T>::type ;
 
+template<size_t sz, size_t align>
+using aligned_storage_t = typename aligned_storage<sz, align>::type ;
+
 }
 
 #endif /* PCOMN_STL_CXX14 */

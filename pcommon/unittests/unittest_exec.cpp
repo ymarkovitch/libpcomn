@@ -51,7 +51,6 @@ void ExecTests::Test_ShellCmd()
    const std::string &echo_stderr = abspath<std::string>(CPPUNIT_AT_TESTDIR("echo_stderr.sh")) ;
    const std::string &echo_both = abspath<std::string>(CPPUNIT_AT_TESTDIR("echo_both.sh")) ;
    shellcmd_result result ;
-
    CPPUNIT_LOG_EQUAL(shellcmd(pcomn::strprintf("%s 0 'Hello, world!'", echo_stdout.c_str()), pcomn::DONT_RAISE_ERROR),
                      shellcmd_result(0, "Hello, world!\n")) ;
 

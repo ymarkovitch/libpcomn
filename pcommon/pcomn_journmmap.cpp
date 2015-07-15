@@ -611,7 +611,7 @@ bool MMapStorage::open_segdir(bool raise_on_error)
 
       // Try to open the segments directory. If failed, force the storage into read-only
       // mode.
-      _segdirfd.reset(sys::opendir(str::cstr(segpath))) ;
+      _segdirfd.reset(sys::opendirfd(str::cstr(segpath))) ;
    }
 
    if (_segdirfd.bad())

@@ -382,9 +382,9 @@
 #  if __cplusplus >= 201103L || (defined(_MSC_VER) && (_MSC_VER >= 1900 || defined(__INTEL_CXX11_MODE__)))
 #     define PCOMN_COMPILER_CXX11 1
 #     define PCOMN_STL_CXX11      1
-#     define PCOMN_RTL_MS         1
 #     if (defined(_MSC_VER) && _MSC_VER >= 1800)
 #        define PCOMN_STL_CXX14   1
+#        define PCOMN_RTL_MS      1
 #     endif
 #  endif
 #  if __cplusplus >= 201402L

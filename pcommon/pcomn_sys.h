@@ -19,6 +19,7 @@
 #include <pcomn_cstrptr.h>
 #include <pcomn_except.h>
 #include <pcomn_unistd.h>
+#include <pcomn_path.h>
 
 #include "platform/dirent.h"
 

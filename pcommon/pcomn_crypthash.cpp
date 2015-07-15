@@ -145,9 +145,9 @@ static inline V &calc_hash_file(F calc, int fd, size_t *size, RaiseError raise_e
 /*******************************************************************************
  binary128_t
 *******************************************************************************/
-std::string binary128_t::to_string() const { return b2a_hex(&_cdata, sizeof _cdata) ; }
+std::string binary128_t::to_string() const { return b2a_hex(data(), sizeof _idata) ; }
 
-char *binary128_t::to_strbuf(char *buf) const { return b2a_hex(&_cdata, sizeof _cdata, buf) ; }
+char *binary128_t::to_strbuf(char *buf) const { return b2a_hex(data(), sizeof _idata, buf) ; }
 
 /*******************************************************************************
  md5hash_t
@@ -173,7 +173,7 @@ md5hash_t md5hash_file(int fd, size_t *size, RaiseError raise_error)
 /*******************************************************************************
  sha1hash_t
 *******************************************************************************/
-std::string sha1hash_pod_t::to_string() const { return b2a_hex(_cdata, sizeof _cdata) ; }
+std::string sha1hash_pod_t::to_string() const { return b2a_hex(data(), sizeof _idata) ; }
 
 sha1hash_t sha1hash(const void *buf, size_t size)
 {

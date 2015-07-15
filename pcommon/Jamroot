@@ -21,7 +21,10 @@ import pcommon ;
 constant      ROOTNAME  : pcommon ;
 constant      PROJROOT  : /$(ROOTNAME) ;
 constant      OS        : [ os.name ] ;
-constant      VENDOR_PREFIX  : [ modules.peek : VENDOR_PREFIX ] ;
+if [ modules.peek : VENDOR_PREFIX ]
+{
+  constant VENDOR_PREFIX  : [ modules.peek : VENDOR_PREFIX ] ;
+}
 
 ################################################################################
 # Project
@@ -58,18 +61,18 @@ project pcommon
 ################################################################################
 # External (vendor) libraries, mostly for unittests
 ################################################################################
-lib crypto : : <os>UNIX <link>shared ;
+lib crypto   : : <os>LINUX:<link>shared ;
 alias crypto : : <os>NT ;
 
-lib cppunit : : <link>shared ;
-lib cppunit : : <os>NT <link>static ;
-lib cppunit : : <os>NT <link>static <variant>debug <name>cppunitd ;
+lib cppunit : : <os>LINUX <os>LINUX:<link>shared ;
+lib cppunit : : <os>NT <os>NT:<link>static ;
+lib cppunit : : <os>NT <os>NT:<link>static <variant>debug <name>cppunitd ;
 
-lib zlib : : <name>z <link>shared ;
+lib zlib : : <os>LINUX <name>z <os>LINUX:<link>shared ;
 lib zlib : : <os>NT:<link>static ;
 
 lib user32   : : <os>NT ;
-alias user32 : : <os>UNIX ;
+alias user32 : : <os>LINUX ;
 
 ################################################################################
 # Per-platform sources

@@ -59,7 +59,7 @@ struct TestRangeProvider  {
          const Int from = _next ;
          const Int to = from + _step ;
          // Introduce a race condition
-         msleep((int)(3 * (rand() / (RAND_MAX + 0.0)))) ;
+         msleep((int)(5 * (rand() / (RAND_MAX + 0.0)))) ;
          _next = to ;
 
          return result_type(from, to) ;
@@ -126,7 +126,7 @@ void IdentDispenserTests::Test_IdentDispenser_SingleThread()
    pcomn::PTIdentDispenser<AtomicInt, TestRangeProvider<int> >
       Dispenser (TestRangeProvider<int>(0, 1111)) ;
 
-   result_type Result (10000) ;
+   result_type Result (1000) ;
 
    for (typename result_type::iterator i = Result.begin(), e = Result.end() ; i != e ; ++i)
       *i = Dispenser.allocate_id() ;
@@ -146,9 +146,9 @@ void IdentDispenserTests::Test_IdentDispenser_MultiThread()
    const size_t setsize = 32 ;
    const size_t count =
 #ifdef __PCOMN_DEBUG
-      100000
+      10000
 #else
-      200000
+      20000
 #endif
       ;
 

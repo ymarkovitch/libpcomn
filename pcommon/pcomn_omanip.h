@@ -30,19 +30,6 @@ inline std::ostream &operator<<(std::ostream &os, NoOut) { return os ; }
 
 template<typename> struct omanip ;
 
-template<typename F, typename... Args>
-inline auto make_omanip(F &&fn, Args &&...args)
-#if !defined(PCOMN_COMPILER_CXX14) && !PCOMN_WORKAROUND(_MSC_VER, >=1900)
-   -> omanip<decltype(std::bind(std::forward<F>(fn), std::placeholders::_1, std::forward<Args>(args)...))>
-#endif
-{
-   using namespace std ;
-
-   typedef valtype_t<decltype(bind(forward<F>(fn), placeholders::_1, forward<Args>(args)...))> manip ;
-   return omanip<manip>(manip(bind(forward<F>(fn), placeholders::_1, forward<Args>(args)...))) ;
-}
-
-
 /*******************************************************************************
  Note the MSVC++ does allow C++14 constructs in C++11 code, but frequently
  unable to compile pretty valid C++11 constructs!
@@ -50,10 +37,23 @@ inline auto make_omanip(F &&fn, Args &&...args)
 #if defined(PCOMN_COMPILER_CXX14) || PCOMN_WORKAROUND(_MSC_VER, >=1800)
 #  define PCOMN_DERIVE_OMANIP(basecall) { return basecall ; }
 #  define PCOMN_MAKE_OMANIP(...) { return pcomn::make_omanip(__VA_ARGS__) ; }
+#  define PCOMN_MAKE_OMANIP_RETTYPE()
 #else
 #  define PCOMN_DERIVE_OMANIP(basecall) ->decltype(basecall) { return basecall ; }
 #  define PCOMN_MAKE_OMANIP(...) ->decltype(pcomn::make_omanip(__VA_ARGS__)) { return pcomn::make_omanip(__VA_ARGS__) ; }
+#  define PCOMN_MAKE_OMANIP_RETTYPE() -> omanip<decltype(std::bind(std::forward<F>(fn), std::placeholders::_1, std::forward<Args>(args)...))>
 #endif
+
+
+template<typename F, typename... Args>
+inline auto make_omanip(F &&fn, Args &&...args) PCOMN_MAKE_OMANIP_RETTYPE()
+{
+   using namespace std ;
+
+   typedef valtype_t<decltype(bind(forward<F>(fn), placeholders::_1, forward<Args>(args)...))> manip ;
+   return omanip<manip>(manip(bind(forward<F>(fn), placeholders::_1, forward<Args>(args)...))) ;
+}
+
 
 /******************************************************************************/
 /* Universal ostream manipulator
@@ -72,7 +72,7 @@ struct omanip final {
       std::ostream &operator()(std::ostream &os) const { return _fn(os) ; }
 
       template<typename F, typename... Args>
-      friend auto make_omanip(F &&fn, Args &&...args) ;
+      friend auto make_omanip(F &&fn, Args &&...args) PCOMN_MAKE_OMANIP_RETTYPE() ;
 
    private:
       mutable Bind _fn ;

@@ -460,7 +460,7 @@ class nzbitpos_iterator : public std::iterator<std::forward_iterator_tag, V> {
 *******************************************************************************/
 /// Get the rightmost nonzero bit at compile-time.
 template<unsigned x>
-struct ct_getrnzb : public std::integral_constant<unsigned, x & -(int)x> {} ;
+struct ct_getrnzb : public std::integral_constant<unsigned, x & -(long)x> {} ;
 
 /// Clear the rightmost nonzero bit at compile-time.
 template<unsigned x>

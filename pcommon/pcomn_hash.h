@@ -436,7 +436,7 @@ struct alignas(16) binary128_t {
          for (const char *c = hexstr, *e = c + 2 * sizeof *this ; c != e ;)
             if (!isxdigit(*c++)) return ;
 
-         sscanf(hexstr, "%16Lx%16Lx", _idata + 0, _idata + 1) ;
+         sscanf(hexstr, "%16Lx%16Lx", (ulonglong_t *)_idata + 0, (ulonglong_t *)_idata + 1) ;
          to_big_endian(_idata[0]) ;
          to_big_endian(_idata[1]) ;
       }
