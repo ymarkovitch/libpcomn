@@ -46,14 +46,32 @@ void SysDirTests::Test_Opendir()
    CPPUNIT_LOG_EQUAL(CPPUNIT_SORTED(content), CPPUNIT_STRVECTOR((".")(".."))) ;
    swap_clear(content) ;
 
-   CPPUNIT_LOG_ASSERT(sys::opendir(str::cstr(dataDir() + "/foo"), sys::ODIR_CLOSE_DIR, appender(content), DONT_RAISE_ERROR) < 0) ;
+   /****************************************************************************
+    Linux-only (open a directory as a file descriptor)
+   ****************************************************************************/
+   #if defined(PCOMN_PL_LINUX)
+   CPPUNIT_LOG_ASSERT(sys::opendirfd(str::cstr(dataDir() + "/foo"), sys::ODIR_CLOSE_DIR, appender(content), DONT_RAISE_ERROR) < 0) ;
+   CPPUNIT_LOG_EQUAL(content, CPPUNIT_STRVECTOR()) ;
+   CPPUNIT_LOG_EXCEPTION(sys::opendirfd(str::cstr(dataDir() + "/foo"), sys::ODIR_CLOSE_DIR, appender(content), RAISE_ERROR), system_error) ;
+   CPPUNIT_LOG_EQUAL(content, CPPUNIT_STRVECTOR()) ;
+   // Test defaults: must be DONT_RAISE_ERROR
+   CPPUNIT_LOG_ASSERT(sys::opendirfd(str::cstr(dataDir() + "/foo"), sys::ODIR_CLOSE_DIR, appender(content)) < 0) ;
+   CPPUNIT_LOG_EQUAL(content, CPPUNIT_STRVECTOR()) ;
+   CPPUNIT_LOG_ASSERT(sys::opendirfd(str::cstr(dataDir() + "/foo"), 0, appender(content)) < 0) ;
+   CPPUNIT_LOG_EQUAL(content, CPPUNIT_STRVECTOR()) ;
+   #endif
+
+   /****************************************************************************
+    Both linux and windows
+   ****************************************************************************/
+   CPPUNIT_LOG_IS_NULL(sys::opendir(str::cstr(dataDir() + "/foo"), sys::ODIR_CLOSE_DIR, appender(content), DONT_RAISE_ERROR)) ;
    CPPUNIT_LOG_EQUAL(content, CPPUNIT_STRVECTOR()) ;
    CPPUNIT_LOG_EXCEPTION(sys::opendir(str::cstr(dataDir() + "/foo"), sys::ODIR_CLOSE_DIR, appender(content), RAISE_ERROR), system_error) ;
    CPPUNIT_LOG_EQUAL(content, CPPUNIT_STRVECTOR()) ;
    // Test defaults: must be DONT_RAISE_ERROR
-   CPPUNIT_LOG_ASSERT(sys::opendir(str::cstr(dataDir() + "/foo"), sys::ODIR_CLOSE_DIR, appender(content)) < 0) ;
+   CPPUNIT_LOG_IS_NULL(sys::opendir(str::cstr(dataDir() + "/foo"), sys::ODIR_CLOSE_DIR, appender(content))) ;
    CPPUNIT_LOG_EQUAL(content, CPPUNIT_STRVECTOR()) ;
-   CPPUNIT_LOG_ASSERT(sys::opendir(str::cstr(dataDir() + "/foo"), 0, appender(content)) < 0) ;
+   CPPUNIT_LOG_IS_NULL(sys::opendir(str::cstr(dataDir() + "/foo"), 0, appender(content))) ;
    CPPUNIT_LOG_EQUAL(content, CPPUNIT_STRVECTOR()) ;
 
    CPPUNIT_LOG(std::endl) ;

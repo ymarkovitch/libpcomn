@@ -59,7 +59,7 @@ void NativeFileLockTests::Test_Exclusive_File_Lock()
                int fd = -1 ;
                for (int i = 10 ; i-- && fd < 0 ;)
                {
-                  CPPUNIT_LOG("-------- Attempting to open file " << test.at_data_dir("seq100.lst") << "..." << std::endl) ;
+                  CPPUNIT_LOG("CHILD: -------- Attempting to open file " << test.at_data_dir("seq100.lst") << "..." << std::endl) ;
                   fd = ::open(test.at_data_dir("seq100.lst").c_str(), O_APPEND|O_WRONLY) ;
                   if (fd < 0 && errno != ENOENT)
                      PCOMN_THROW_SYSERROR("open") ;
@@ -67,19 +67,19 @@ void NativeFileLockTests::Test_Exclusive_File_Lock()
                }
                if (fd < 0)
                {
-                  CPPUNIT_LOG("-------- FAILURE" << std::endl) ;
+                  CPPUNIT_LOG("CHILD: -------- FAILURE" << std::endl) ;
                   exit(3) ;
                }
-               CPPUNIT_LOG("-------- OK" << std::endl) ;
+               CPPUNIT_LOG("CHILD: -------- OK" << std::endl) ;
 
                pcomn::binary_ofdstream stream (fd, true) ;
                msleep(500) ;
-               CPPUNIT_LOG("-------- Creating mutex" << std::endl) ;
+               CPPUNIT_LOG("CHILD: -------- Creating mutex" << std::endl) ;
                pcomn::NativeFileMutex mutex (fd, false) ;
 
                CPPUNIT_LOG_EQUAL(mutex.fd(), fd) ;
                CPPUNIT_LOG_IS_FALSE(mutex.owned()) ;
-               CPPUNIT_LOG("-------- Locking mutex" << std::endl) ;
+               CPPUNIT_LOG("CHILD: -------- Locking mutex" << std::endl) ;
 
                mutex.lock() ;
 
@@ -99,7 +99,7 @@ void NativeFileLockTests::Test_Exclusive_File_Lock()
                checked_read_seqn_file<8>(test.at_data_dir("seq100.lst"), 0, 50) ;
                CPPUNIT_LOG_ASSERT(mutex.unlock()) ;
 
-               CPPUNIT_LOG("-------- Exiting" << std::endl) ;
+               CPPUNIT_LOG("CHILD: -------- Exiting" << std::endl) ;
                exit(0) ;
             }
             catch (const std::exception &x)
@@ -142,7 +142,7 @@ void NativeFileLockTests::Test_Exclusive_File_Lock()
 
    for (int i = 20 ; i-- ;)
    {
-      msleep(50) ;
+      msleep(200) ;
       if (!mx.try_lock_shared())
          CPPUNIT_LOG("******** Cannot acquire reader..." << std::endl) ;
       else
