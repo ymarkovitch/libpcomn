@@ -165,9 +165,9 @@ void SimpleSliceTests::Test_Simple_Vector_Construct()
 
    CPPUNIT_LOG(std::endl) ;
 
-   int_slice IntSlice1 {IntArrayVec}  ;
-   cint_slice CIntSlice1 {IntArrayVec} ;
-   cint_slice CIntSlice2 {CIntArrayVec} ;
+   int_slice IntSlice1 (IntArrayVec)  ;
+   cint_slice CIntSlice1 (IntArrayVec) ;
+   cint_slice CIntSlice2 (CIntArrayVec) ;
 
    auto f1 = [](const simple_slice<const int> &){} ;
    auto f2 = [](simple_slice<int>) {} ;

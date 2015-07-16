@@ -43,6 +43,7 @@ class simple_slice {
       typedef reference const_reference ;
 
       constexpr simple_slice() : _start(), _finish() {}
+      constexpr simple_slice(const simple_slice &src) : _start(src._start), _finish(src._finish) {}
 
       template<typename U, typename = instance_if_t<std::is_same<T, std::add_const_t<U> >::value> >
       simple_slice(const simple_slice<U> &src) :
