@@ -107,9 +107,9 @@ IMPORT $(__name__)
 ################################################################################
 # Vendor libraries
 ################################################################################
-lib cppunit : : <link>shared ;
-lib cppunit : : <os>NT <link>static ;
-lib cppunit : : <os>NT <link>static <variant>debug <name>cppunitd ;
+lib cppunit : : <os>LINUX <os>LINUX:<link>shared ;
+lib cppunit : : <os>NT <os>NT:<link>static ;
+lib cppunit : : <os>NT <os>NT:<link>static <variant>debug <name>cppunitd ;
 
 lib ncurses : : <link>shared ;
 lib crypto  : : <link>shared ;
