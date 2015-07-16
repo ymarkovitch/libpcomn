@@ -95,10 +95,14 @@ DIR *listdir(const char *dirname, unsigned flags, OutputIterator &filenames, Rai
       if (!(path::posix::path_dots(entry->d_name) & flags))
          *filenames = entry->d_name ;
 
-   if (const int err = errno)
+   const int err = errno ;
+   if (err || (flags & ODIR_CLOSE_DIR))
    {
       ::closedir(d) ;
       errno = err ;
+      if (!err)
+         return not_a_pointer<DIR>::value ;
+
       PCOMN_CHECK_POSIX(-!!raise, "Cannot read directory '%s'", dirname) ;
       return NULL ;
    }
