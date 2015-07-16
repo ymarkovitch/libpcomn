@@ -157,6 +157,17 @@ static const RaiseError DONT_RAISE_ERROR (false) ;
 static const RaiseError RAISE_ERROR      (true) ;
 
 
+/******************************************************************************/
+/** Not-a-pointer: something, which is both not NULL and is not a valid pointer
+*******************************************************************************/
+template<typename T = void>
+struct not_a_pointer { static constexpr T * const value = reinterpret_cast<T *>(~(intptr_t())) ; } ;
+
+template<typename T>
+constexpr T * const not_a_pointer<T>::value ;
+
+constexpr void * const NaP = not_a_pointer<>::value ;
+
 /*******************************************************************************
  Argument-checking exception-throw macros
 *******************************************************************************/
