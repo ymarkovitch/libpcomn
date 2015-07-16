@@ -108,7 +108,7 @@ struct uuid {
          #ifdef PCOMN_CPU_BIG_ENDIAN
          return value ;
          #else
-         return (value >> 8) | (value << 8) ;
+         return uint16_t((value >> 8) | (value << 8)) ;
          #endif
       }
 } ;
