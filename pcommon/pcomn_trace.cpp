@@ -317,7 +317,7 @@ static inline constexpr void *fdlog_data(int fd, LogLevel level)
 
 static inline std::pair<int, LogLevel> fdlog_args(void *data)
 {
-   return {(uintptr_t)data & 0xfffffffU, (LogLevel)(((uintptr_t)data & 0xf0000000U) >> 28)} ;
+   return {(unsigned)(uintptr_t)data & 0xfffffffU, (LogLevel)(((uintptr_t)data & 0xf0000000U) >> 28)} ;
 }
 
 void register_syslog(int fd, LogLevel level)
@@ -461,7 +461,7 @@ static void output_fdlog_msg(void *data, LogLevel level, const char *fmt, ...)
    const size_t sz = strlen(msgbuf) ;
    msgbuf[sz] = '\n' ;
    msgbuf[sz+1] = '\0' ;
-   ::write(fd_and_level.first, msgbuf, sz+1) ;
+   ::write(fd_and_level.first, msgbuf, (unsigned)sz+1) ;
 
    va_end(args) ;
 }
@@ -610,7 +610,7 @@ void PDiagBase::trace_message(const char *type,
    if(!(mode() & DisableDebuggerLog) && ctx::log_fd < 0)
       ctx::dbglog_write(ctx::dbglog_data, outstr) ;
    else if (ctx::log_fd >= 0)
-      ::write(ctx::log_fd, outstr, strlen(outstr)) ;
+      ::write(ctx::log_fd, outstr, (unsigned)strlen(outstr)) ;
 
    ctx::UNLOCK() ;
 

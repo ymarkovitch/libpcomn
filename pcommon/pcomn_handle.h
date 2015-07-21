@@ -135,12 +135,12 @@ inline constexpr DIR *handle_traits<dir_handle_tag>::invalid_handle()
 template<typename Handle>
 struct _handle_holder {
       /// Get the underlying handle.
-      constexpr Handle handle() { return _handle ; }
+      constexpr Handle handle() const { return _handle ; }
 
       /// Same as _handle_holder::handle, for compliancy with STL smart/auto pointers.
-      constexpr Handle get() { return _handle ; }
+      constexpr Handle get() const { return _handle ; }
 
-      constexpr operator Handle() { return handle() ; }
+      constexpr operator Handle() const { return handle() ; }
 
    protected:
       explicit constexpr _handle_holder(Handle h) : _handle(h) {}

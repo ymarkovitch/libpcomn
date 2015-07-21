@@ -21,6 +21,14 @@
 
 #define P_PASS(...) __VA_ARGS__
 
+#ifdef _MSC_VER
+#   define P_LPAREN (
+#   define P_RPAREN )
+#   define P_PASS_I(...) P_PASS P_LPAREN __VA_ARGS__ P_RPAREN
+#else
+#   define P_PASS_I(...) P_PASS(__VA_ARGS__)
+#endif
+
 /*
  * A comma for using in macro parameters to pass a parameter list as a single parameter
  */
@@ -94,7 +102,7 @@
 
 #define P_TPTRARGLIST(count, ...)  P_FOR(count, P_TPTRARG_, __VA_ARGS__)
 
-#define P_TPARMLIST(count, ...)     P_FOR(count, P_TPARAM_, __VA_ARGS__)
+#define P_TPARMLIST(count, ...)    P_FOR(count, P_TPARAM_, __VA_ARGS__)
 
 #define P_REF_ARGLIST(count, ...)  P_FOR(count, P_REFARG_, __VA_ARGS__)
 
@@ -102,7 +110,7 @@
 
 #define P_VAL_ARGLIST(count, ...)  P_FOR(count, P_VALARG_, __VA_ARGS__)
 
-#define P_PARMLIST(count, ...)    P_FOR(count, P_PARAM_, __VA_ARGS__)
+#define P_PARMLIST(count, ...)     P_FOR(count, P_PARAM_, __VA_ARGS__)
 
 /*******************************************************************************
  Private macros
@@ -119,21 +127,21 @@
 #define P_FOR_9_(macro, ...) P_FOR_8_(macro, __VA_ARGS__), macro(9, __VA_ARGS__)
 #define P_FOR_10_(macro, ...) P_FOR_9_(macro, __VA_ARGS__), macro(10, __VA_ARGS__)
 
-#define P_TARG_(num, ...)  __VA_ARGS__ P##num
+#define P_TARG_(num, ...)        P_PASS_I(__VA_ARGS__) P##num
 
-#define P_TREFARG_(num, ...)  __VA_ARGS__ P##num &
+#define P_TREFARG_(num, ...)  P_PASS_I(__VA_ARGS__) P##num &
 
-#define P_TPRARG_(num, ...)  __VA_ARGS__ P##num *
+#define P_TPRARG_(num, ...)   P_PASS_I(__VA_ARGS__) P##num *
 
-#define P_TPARAM_(num, ...)   __VA_ARGS__(P##num)
+#define P_TPARAM_(num, ...)   P_PASS_I(__VA_ARGS__)(P##num)
 
-#define P_VALARG_(num, ...)  __VA_ARGS__ P##num p##num
+#define P_VALARG_(num, ...)   P_PASS_I(__VA_ARGS__) P##num p##num
 
-#define P_REFARG_(num, ...)  __VA_ARGS__ P##num &p##num
+#define P_REFARG_(num, ...)   P_PASS_I(__VA_ARGS__) P##num &p##num
 
-#define P_PTRARG_(num, ...)  __VA_ARGS__ P##num *p##num
+#define P_PTRARG_(num, ...)   P_PASS_I(__VA_ARGS__) P##num *p##num
 
-#define P_PARAM_(num, ...)   __VA_ARGS__(p##num)
+#define P_PARAM_(num, ...)    P_PASS_I(__VA_ARGS__)(p##num)
 
 #define P_APPLY_0_(macro, ...)
 #define P_APPLY_1_(macro, a1) macro(a1)

@@ -79,20 +79,19 @@ std::pair<InputIterator, OutputIterator> bound_copy_if
  Member extractors
 *******************************************************************************/
 #define PCOMN_MEMBER_EXTRACTOR(member)                                  \
-   template<typename T, typename R = decltype(std::declval<const std::remove_pointer_t<T>>().member())> \
-   struct extract_##member : std::unary_function<T, R> {                \
-      R operator() (const T &t) const { return t.member() ; }           \
+   template<typename T>                                                 \
+   struct extract_##member {                                            \
+      decltype(declval<T>().member()) operator() (const T &t) const { return t.member() ; } \
    } ;                                                                  \
                                                                         \
    template<typename T>                                                 \
-   inline extract_##member<T> member##_extractor(const T &) { return {} ; } \
+   inline extract_##member<T> member##_extractor(const T &) { return {} ; }  \
                                                                         \
-   template<typename T, typename R>                                     \
-   struct extract_##member<T *, R> : std::unary_function<const T *, R> { \
-      R operator() (const T *t) const                                   \
+   template<typename T>                                                 \
+   struct extract_##member<T *>  {                                      \
+      decltype(declval<const T *>()->member()) operator() (const T *t) const \
       {                                                                 \
-         using namespace pcomn ;                                        \
-         return t ? t->member() : default_constructed<valtype_t<R> >::value ; \
+         return t ? t->member() : pcomn::default_constructed<pcomn::valtype_t<R> >::value ; \
       }                                                                 \
    }
 

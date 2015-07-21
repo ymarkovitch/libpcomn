@@ -72,7 +72,7 @@
 #define PARANOID_NOXCHECKX(condition, message) _NOXCHECKX((condition), message, Paranoid check)
 #endif
 
-#define NOXDBG(...) __VA_ARGS__
+#define NOXDBG(...) P_PASS_I(__VA_ARGS__)
 
 #define PCOMN_DEBUG_FAIL(msg) PCOMN_FAIL(msg)
 

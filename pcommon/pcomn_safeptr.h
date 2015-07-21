@@ -34,13 +34,13 @@ struct ptr_shim {
                          typename std::enable_if<std::is_convertible<decltype(&*p), T *>::value, Instantiate>::type = {}) :
          _ptr(&*p) {}
 
-      constexpr T *get() { return _ptr ; }
-      constexpr operator T *() { return get() ; }
+      constexpr T *get() const { return _ptr ; }
+      constexpr operator T *() const { return get() ; }
 
-      constexpr T &operator*() { return *get() ; }
-      constexpr T *operator->() { return get() ; }
+      constexpr T &operator*() const { return *get() ; }
+      constexpr T *operator->() const { return get() ; }
 
-      constexpr T &operator[](ptrdiff_t ndx) { return _ptr[ndx] ; }
+      constexpr T &operator[](ptrdiff_t ndx) const { return _ptr[ndx] ; }
 
    private:
       T *_ptr ;

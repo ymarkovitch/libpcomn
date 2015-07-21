@@ -427,16 +427,16 @@ class nzbitpos_iterator : public std::iterator<std::forward_iterator_tag, V> {
          return tmp ;
       }
 
-      constexpr bool operator==(const nzbitpos_iterator &rhs)
+      constexpr bool operator==(const nzbitpos_iterator &rhs) const
       {
          return _pos == rhs._pos ;
       }
-      constexpr bool operator!= (const nzbitpos_iterator &rhs)
+      constexpr bool operator!= (const nzbitpos_iterator &rhs) const
       {
          return !(*this == rhs) ;
       }
 
-      constexpr value_type operator*() { return static_cast<value_type>(_pos) ; }
+      constexpr value_type operator*() const { return static_cast<value_type>(_pos) ; }
 
    private:
       datatype _data ;
