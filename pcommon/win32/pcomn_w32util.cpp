@@ -45,7 +45,7 @@ char *sys_error_text(int err, char *buf, size_t size)
       *buf = buf[size-1] = '\0' ;
       if (!FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM, NULL, err,
                           MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
-                          buf, size-1, NULL))
+                          buf, DWORD(size-1), NULL))
          snprintf(buf, size, "System error code 0x%X. No error text found.", (unsigned)err) ;
    }
    return buf ;

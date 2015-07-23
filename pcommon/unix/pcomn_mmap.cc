@@ -42,7 +42,7 @@ intptr_t PMemMappedFile::_mmfile_t::get_handle(intptr_t file)
 *******************************************************************************/
 filesize_t PMemMapping::full_file_size() const
 {
-   return ensure_ge<system_error>(sys::filesize(handle()), (off_t)0) ;
+   return ensure_ge<system_error>(sys::filesize(handle()), (fileoff_t)0) ;
 }
 
 void *PMemMapping::map_file(filesize_t aligned_from, bigflag_t normalized_mode)

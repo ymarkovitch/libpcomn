@@ -405,7 +405,7 @@ class closed_hashtable {
       }
 
    private:
-      template<bool UseStaticBuckets, bool = true> union combined_buckets ;
+      template<bool UseStaticBuckets, nullptr_t> union combined_buckets ;
 
       /*************************************************************************
         Common state for both dynamic and static buckets.
@@ -530,7 +530,7 @@ class closed_hashtable {
       /*************************************************************************
         Specialization of combined_buckets for purely dynamically-allocated backets
       *************************************************************************/
-      template<bool dummy> union combined_buckets<false, dummy> {
+      template<nullptr_t dummy> union combined_buckets<false, dummy> {
             dynamic_buckets _dyn ;
 
             combined_buckets(size_type buckcount) { _dyn.reset(buckcount) ; }
@@ -575,7 +575,7 @@ class closed_hashtable {
         Specialization of combined_buckets for actual combination of static
         and dynamic buckets
       *************************************************************************/
-      template<bool dummy> union combined_buckets<true, dummy> {
+      template<nullptr_t dummy> union combined_buckets<true, dummy> {
             dynamic_buckets _dyn ;
             static_buckets  _stat ;
 
@@ -672,7 +672,7 @@ class closed_hashtable {
 
       // Use static buckets optimization only if there is a place for at least 4 buckets
       typedef
-      combined_buckets<(sizeof(dynamic_buckets)/sizeof(bucket_type) >= 4)> buckets_container ;
+      combined_buckets<(sizeof(dynamic_buckets)/sizeof(bucket_type) >= 4), nullptr> buckets_container ;
 
    private:
       basic_state       _basic_state ;

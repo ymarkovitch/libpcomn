@@ -24,11 +24,11 @@ PMemMappedFile::_mmfile_t::~_mmfile_t()
 
 intptr_t PMemMappedFile::_mmfile_t::get_handle(intptr_t file)
 {
-   const intptr_t hfile = file == -1
+   const intptr_t hfile = file == -1 || file > std::numeric_limits<int>::max()
 	   ? file
 	   : (file < 0
           ? (file && (~(uintptr_t()) >> 1))
-          : _get_osfhandle(file)) ;
+         : _get_osfhandle((int)file)) ;
 
    if (hfile == -1)
       throw system_error("Attempt to open memory mapping on a bad file handle", EBADF) ;

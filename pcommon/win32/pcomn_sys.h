@@ -26,17 +26,17 @@ namespace sys {
 /** Portable filesize function.
  @return The current file size, or -1 on error.
 *******************************************************************************/
-inline off_t filesize(int fd)
+inline fileoff_t filesize(int fd)
 {
    return _filelengthi64(fd) ;
 }
 
-inline off_t filesize(const char *name)
+inline fileoff_t filesize(const char *name)
 {
    FILE * const f = fopen(name, "r") ;
    if (!f)
       return -1 ;
-   const off_t result = _filelengthi64(fileno(f)) ;
+   const fileoff_t result = _filelengthi64(fileno(f)) ;
    fclose(f) ;
    return result ;
 }

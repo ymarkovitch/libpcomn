@@ -38,10 +38,10 @@ _PCOMNEXP size_t pagesize() ;
 
 /// Portable filesize function.
 /// @return The file size, or -1 on error.
-inline off_t filesize(int fd) ;
+inline fileoff_t filesize(int fd) ;
 
 /// @overload
-inline off_t filesize(const char *name) ;
+inline fileoff_t filesize(const char *name) ;
 
 inline Access fileaccess(const char *name, int mode = 0)
 {

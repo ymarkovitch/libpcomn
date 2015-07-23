@@ -176,9 +176,9 @@ class PMemMapping : public PMemMappedFile {
       /// that PMemMapping::data will point to the given offset (instead of the "real"
       /// beginning of a mapping, which is always at the page boundary).
       ///
-      /// @note Please note using off_t type for @a from and @a to instead of size_t. On some
+      /// @note Please note using fileoff_t type for @a from and @a to instead of size_t. On some
       /// 32-bit systems files can be 64-bit, thus file offsets can be out of size_t
-      /// limits. It is much safer to use off_t, which always reflects the actual file
+      /// limits. It is much safer to use fileoff_t, which always reflects the actual file
       /// offset type.
       PMemMapping(const PMemMappedFile &mmfile, filesize_t from, filesize_t to, bigflag_t mode = O_RDONLY) :
          ancestor(mmfile),

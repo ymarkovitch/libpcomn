@@ -72,7 +72,7 @@ struct fd_handle_tag {
 template<>
 inline bool handle_traits<fd_handle_tag>::close(atomic_t h)
 {
-   return ::close(h) == 0 ;
+   return ::close((int)h) == 0 ;
 }
 template<>
 inline bool handle_traits<fd_handle_tag>::is_valid(atomic_t h)

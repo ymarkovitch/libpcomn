@@ -40,7 +40,7 @@ size_t abspath(const char *name, char *result, size_t bufsize)
 
    char *pathbuf = P_ALLOCA(char, path_max) ;
 
-   if (!getcwd(pathbuf, path_max))
+   if (!getcwd(pathbuf, (unsigned)path_max))
       return 0 ;
    const size_t cwdsz = strlen(pathbuf) ;
 

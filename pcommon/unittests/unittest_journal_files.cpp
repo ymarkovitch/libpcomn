@@ -49,8 +49,8 @@ void JournalFilesTests::Test_JournalFile_Create()
    std::unique_ptr<pj::MMapStorage::SegmentFile> Segment ;
    CPPUNIT_LOG_RUN(Segment.reset(new pj::MMapStorage::SegmentFile(dirfd(), "hello_world.seg", 0, 0, 0600))) ;
    CPPUNIT_LOG_EQUAL(Segment->state(), ST_CREATED) ;
-   CPPUNIT_LOG_EQUAL(Segment->data_begin(), (off_t)0) ;
-   CPPUNIT_LOG_EQUAL(Segment->data_end(), (off_t)0) ;
+   CPPUNIT_LOG_EQUAL(Segment->data_begin(), (fileoff_t)0) ;
+   CPPUNIT_LOG_EQUAL(Segment->data_end(), (fileoff_t)0) ;
    CPPUNIT_LOG_IS_TRUE(Segment->close()) ;
    CPPUNIT_LOG_EQUAL(Segment->state(), ST_CLOSED) ;
    CPPUNIT_LOG_IS_FALSE(Segment->close()) ;
@@ -58,8 +58,8 @@ void JournalFilesTests::Test_JournalFile_Create()
    std::unique_ptr<pj::MMapStorage::CheckpointFile> Checkpoint ;
    CPPUNIT_LOG_RUN(Checkpoint.reset(new pj::MMapStorage::CheckpointFile(dirfd(), "hello_world.cp", 0, 0, 0600))) ;
    CPPUNIT_LOG_EQUAL(Checkpoint->state(), ST_CREATED) ;
-   CPPUNIT_LOG_EQUAL(Checkpoint->data_begin(), (off_t)0) ;
-   CPPUNIT_LOG_EQUAL(Checkpoint->data_end(), (off_t)0) ;
+   CPPUNIT_LOG_EQUAL(Checkpoint->data_begin(), (fileoff_t)0) ;
+   CPPUNIT_LOG_EQUAL(Checkpoint->data_end(), (fileoff_t)0) ;
    CPPUNIT_LOG_IS_TRUE(Checkpoint->close()) ;
    CPPUNIT_LOG_EQUAL(Checkpoint->state(), ST_CLOSED) ;
    CPPUNIT_LOG_IS_FALSE(Checkpoint->close()) ;

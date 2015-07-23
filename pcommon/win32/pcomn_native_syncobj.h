@@ -152,13 +152,13 @@ class NativeFileMutex {
 
       bool acquire_lock(bool nonblocking, bool exclusive)
       {
-         const off_t sz = std::max<off_t>(PCOMN_ENSURE_POSIX(sys::filesize(fd()), "filesize"), 1) ;
+         const fileoff_t sz = std::max<fileoff_t>(PCOMN_ENSURE_POSIX(sys::filesize(fd()), "filesize"), 1) ;
          OVERLAPPED dummy = OVERLAPPED() ;
          const DWORD flags =
             (-(int)nonblocking &  LOCKFILE_FAIL_IMMEDIATELY) |
             (-(int)exclusive   &  LOCKFILE_EXCLUSIVE_LOCK) ;
 
-         DWORD size_lower = sz ;
+         DWORD size_lower = (DWORD)sz ;
          DWORD size_upper = ((DWORD64)sz >> 32) & 0x0FFFFFFFF ;
 
          if (LockFileEx(_fh, flags, 0, size_lower, size_upper, &dummy))

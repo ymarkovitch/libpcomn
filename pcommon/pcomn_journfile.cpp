@@ -335,8 +335,8 @@ MMapStorage::CheckpointFile::CheckpointFile(int fd) :
 {
    TRACEPX(PCOMN_Journmmap, DBGL_MIDLEV, "Checking data consistency of " << *this) ;
 
-   const off_t fsz = filesize() ;
-   const off_t enddata = fsz - sizeof(CheckpointTail) - sizeof(magic_t) ;
+   const fileoff_t fsz = filesize() ;
+   const fileoff_t enddata = fsz - sizeof(CheckpointTail) - sizeof(magic_t) ;
 
    // Ensure file size sanity.
    // It should be aligned to 8 and allow for tail record
@@ -421,7 +421,7 @@ bool MMapStorage::CheckpointFile::commit()
    {
       // Pad file data with zeros to 8-bytes aligned size
       static const uint64_t zbytes = 0 ;
-      const off_t endrange = _data_end ;
+      const fileoff_t endrange = _data_end ;
       write_buffer(&zbytes, aligned_size(endrange) - endrange) ;
    }
    if (crc32_mode())

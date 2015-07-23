@@ -155,9 +155,9 @@ class _PCOMNEXP qualified_name {
 
       // length() -  get the length of string (printable) representation of the qualified name
       //
-      size_t level() const
+      unsigned level() const
       {
-         return _ndxes.length() - !!(_flags & HasNameLevel) ;
+         return unsigned(_ndxes.length() - !!(_flags & HasNameLevel)) ;
       }
 
       // demangle()  -  reconstruct qualified name as a string (source form)
@@ -190,7 +190,7 @@ class _PCOMNEXP qualified_name {
 
       void mangle(const std::string &, size_t offs, unsigned mode = 0) ;
       void check_mangled(const char *beg) ;
-      size_t check_part(const char *beg, int len) ;
+      size_t check_part(const char *beg, ssize_t len) ;
 } ;
 
 inline std::ostream &operator << (std::ostream &os, const qualified_name &qn)

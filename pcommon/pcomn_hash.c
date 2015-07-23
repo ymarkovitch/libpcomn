@@ -23,11 +23,11 @@
 #define BITS_IN_int     (sizeof(int) * CHAR_BIT)
 #define THREE_QUARTERS  ((int) ((BITS_IN_int * 3) / 4))
 #define ONE_EIGHTH      ((int) (BITS_IN_int / 8))
-#define HIGH_BITS       (~((unsigned int)(~0) >> ONE_EIGHTH))
+#define HIGH_BITS       (~((unsigned)(~0) >> ONE_EIGHTH))
 
-unsigned int hashPJWstr(const char *datum)
+unsigned hashPJWstr(const char *datum)
 {
-   unsigned int hash_value, i ;
+   unsigned hash_value, i ;
    for (hash_value = 0 ; *datum ; ++datum)
    {
       hash_value = (hash_value << ONE_EIGHTH) + *datum ;
@@ -39,9 +39,9 @@ unsigned int hashPJWstr(const char *datum)
    return hash_value ;
 }
 
-unsigned int hashPJWmem(const void *datum, size_t size)
+unsigned hashPJWmem(const void *datum, size_t size)
 {
-   unsigned int hash_value, i ;
+   unsigned hash_value, i ;
    const char *current = (const char *)datum ;
    const char * const end = current + size ;
    for (hash_value = 0 ; current != end ; ++current)
@@ -59,11 +59,11 @@ unsigned int hashPJWmem(const void *datum, size_t size)
  *
  * The hash algorithm used in the UNIX ELF format
  *  for object files. Accepts a pointer to a string to be hashed
- *  and returns an unsigned long.
+ *  and returns an uintptr_t.
  */
-unsigned long hashELFstr(const char *name)
+uintptr_t hashELFstr(const char *name)
 {
-   unsigned long h = 0, g ;
+   uintptr_t h = 0, g ;
    while (*name)
    {
       h = (h << 4) + *(const unsigned char *)name++ ;
@@ -74,9 +74,9 @@ unsigned long hashELFstr(const char *name)
    return h ;
 }
 
-unsigned long hashELFmem(const void *mem, size_t size)
+uintptr_t hashELFmem(const void *mem, size_t size)
 {
-   unsigned long h = 0, g ;
+   uintptr_t h = 0, g ;
    size_t count = 0 ;
    while (count < size)
    {

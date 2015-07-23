@@ -26,7 +26,7 @@ const char * qual_delim  = "::" ;
 /*******************************************************************************
  qualified_name
 *******************************************************************************/
-size_t qualified_name::check_part(const char *beg, int len)
+size_t qualified_name::check_part(const char *beg, ssize_t len)
 {
    NOXPRECONDITION(beg != NULL && len >= 0) ;
    size_t result = 0 ;
@@ -56,7 +56,7 @@ void qualified_name::check_mangled (const char *beg)
       case qual_pfx : // It's a qualified name or a qualifier, at least
          while (*b && *b != name_pfx)
          {
-            size_t l = strcspn (++b, pfx) ;
+            size_t l = strcspn(++b, pfx) ;
             if (check_part(b, l) != l)
                return ;
             _ndxes += (unsigned char)(l+1) ;
@@ -81,7 +81,7 @@ void qualified_name::check_mangled (const char *beg)
    }
 
    _name = beg ;
-   _namendx = b-beg ;
+   _namendx = unsigned(b - beg) ;
 }
 
 
@@ -110,7 +110,7 @@ void qualified_name::mangle(const std::string &nm, size_t offs, unsigned mode)
 
       const char *last = beg ;
       size_t namepos = 0 ; // The current name position
-      int partlen, nlen ;
+      ssize_t partlen, nlen ;
       bool was_delim = false ;
 
       do
@@ -166,7 +166,7 @@ void qualified_name::mangle(const std::string &nm, size_t offs, unsigned mode)
          }
 
          flags (Qualified, *_name.c_str() == qual_pfx) ;
-         _namendx = namepos+1 ;
+         _namendx = (unsigned)namepos + 1 ;
       }
    }
 

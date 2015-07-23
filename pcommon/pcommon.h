@@ -38,7 +38,6 @@ struct ___offsTest { char _c ; double _l ; } ;
 #ifdef __cplusplus
 #include <stdexcept>
 #include <system_error>
-#include <stdio.h>
 
 /*******************************************************************************
  Debug macros

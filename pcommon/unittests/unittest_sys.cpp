@@ -91,8 +91,8 @@ void SysDirTests::Test_Opendir()
       CPPUNIT_LOG_EQUAL(CPPUNIT_SORTED(content), CPPUNIT_STRVECTOR((".")("..")("bar")("quux"))) ;
       swap_clear(content) ;
       CPPUNIT_LOG_ASSERT(dfd.handle() >= 0) ;
-      CPPUNIT_LOG_EQUAL(sys::filesize(dfd.handle(), "bar"), (off_t)4) ;
-      CPPUNIT_LOG_EQUAL(sys::filesize(dfd.handle(), "quux"), (off_t)8) ;
+      CPPUNIT_LOG_EQUAL(sys::filesize(dfd.handle(), "bar"), (fileoff_t)4) ;
+      CPPUNIT_LOG_EQUAL(sys::filesize(dfd.handle(), "quux"), (fileoff_t)8) ;
    }
    #endif
 

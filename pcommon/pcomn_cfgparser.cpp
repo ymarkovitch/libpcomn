@@ -287,16 +287,16 @@ int cfgfile_get_intval(const char *filename, const char *section, const char *ke
       : defval ;
 }
 
-static bool substPart(FILE *file, const char *newstr, off_t range_begin, off_t range_end)
+static bool substPart(FILE *file, const char *newstr, fileoff_t range_begin, fileoff_t range_end)
 {
    NOXCHECK(range_begin >= 0 && range_end >= 0) ;
    NOXCHECK(range_begin <= range_end) ;
 
    setbuf(file, NULL) ;
-   const off_t fsz = sys::filesize(fileno(file)) ;
+   const fileoff_t fsz = sys::filesize(fileno(file)) ;
    ENSURE_FILEOP(fsz, false) ;
    const ssize_t slen = newstr ? strlen(newstr) : 0 ;
-   const off_t newfsz = fsz + (slen - (range_end - range_begin)) ;
+   const fileoff_t newfsz = fsz + (slen - (range_end - range_begin)) ;
    if (newfsz > fsz || !newfsz)
    {
       ENSURE_FILEOP(ftruncate(fileno(file), newfsz), false) ;
@@ -321,7 +321,7 @@ static bool substPart(FILE *file, const char *newstr, off_t range_begin, off_t r
 
 static bool delPart(FILE *file, fpos_t range_begin, fpos_t range_end)
 {
-   off_t begin, end ;
+   fileoff_t begin, end ;
    ENSURE_FILEOP(fsetpos(file, &range_end), false) ;
    ENSURE_FILEOP(end = ftell(file), false) ;
    ENSURE_FILEOP(fsetpos(file, &range_begin), false) ;
@@ -459,7 +459,7 @@ int cfgfile_write_value(const char *filename, const char *section, const char *k
             {
                // Requested key found, replace the old value with the new.
                ENSURE_FILEOP(fsetpos(file, &prevpos), 0) ;
-               const off_t start = ftell(file) ;
+               const fileoff_t start = ftell(file) ;
                ENSURE_FILEOP(start, 0) ;
                snprintf(linebuf, sizeof linebuf, "%s = %s", key, value) ;
                return
@@ -478,7 +478,7 @@ int cfgfile_write_value(const char *filename, const char *section, const char *k
    // There is a section but there is no such key in it.
    // Insert the key = value pair after the last value.
    ENSURE_FILEOP(fsetpos(file, &sectpos), 0) ;
-   const off_t start = ftell(file) ;
+   const fileoff_t start = ftell(file) ;
    ENSURE_FILEOP(start, 0) ;
    snprintf(linebuf, sizeof linebuf,
             "%s%s = %s%s", start && !isPrevLf(file) ? PCOMN_EOL_NATIVE : "", key, value,

@@ -41,8 +41,8 @@ _PCOMNEXP unsigned int hashPJWmem(const void *datum, size_t size) ;
  *
  * The hash algorithm used in the UNIX ELF format for object files.
  */
-_PCOMNEXP unsigned long hashELFstr(const char *name) ;
-_PCOMNEXP unsigned long hashELFmem(const void *mem, size_t size) ;
+_PCOMNEXP uintptr_t hashELFstr(const char *name) ;
+_PCOMNEXP uintptr_t hashELFmem(const void *mem, size_t size) ;
 
 _PCOMNEXP uint32_t calc_crc32(uint32_t crc, const void *buf, size_t len) ;
 
@@ -75,15 +75,15 @@ inline unsigned int hashPJW(const void *datum, size_t size)
 {
    return hashPJWmem(datum, size) ;
 }
-inline unsigned long hashELF(const char *str)
+inline uintptr_t hashELF(const char *str)
 {
    return hashELFstr(str) ;
 }
-inline unsigned long hashELF(const wchar_t *str)
+inline uintptr_t hashELF(const wchar_t *str)
 {
    return hashELFmem(str, wcslen(str) * sizeof(wchar_t)) ;
 }
-inline unsigned long hashELF(const void *mem, size_t size)
+inline uintptr_t hashELF(const void *mem, size_t size)
 {
    return hashELFmem(mem, size) ;
 }
@@ -436,7 +436,14 @@ struct alignas(16) binary128_t {
          for (const char *c = hexstr, *e = c + 2 * sizeof *this ; c != e ;)
             if (!isxdigit(*c++)) return ;
 
-         sscanf(hexstr, "%16Lx%16Lx", (ulonglong_t *)_idata + 0, (ulonglong_t *)_idata + 1) ;
+         constexpr const char *in_fmt =
+         #ifdef PCOMN_COMPILER_MS
+            "%16llx%16llx"
+         #else
+            "%16Lx%16Lx"
+         #endif
+             ;
+         sscanf(hexstr, in_fmt, (ulonglong_t *)_idata + 0, (ulonglong_t *)_idata + 1) ;
          to_big_endian(_idata[0]) ;
          to_big_endian(_idata[1]) ;
       }

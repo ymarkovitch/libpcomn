@@ -144,14 +144,14 @@ class _PCOMNEXP regex_matcher {
       last_submatch_ndx(const S &string_to_match) const
       {
          reg_match sexp[MAXNUMEXP] ;
-         return match(string_to_match, sexp) - sexp - 1 ;
+         return int(match(string_to_match, sexp) - sexp - 1) ;
       }
 
       /// @overload
       int last_submatch_ndx(const strslice &s) const
       {
          reg_match sexp[MAXNUMEXP] ;
-         return match(s, sexp) - sexp - 1 ;
+         return int(match(s, sexp) - sexp - 1) ;
       }
 
       /// Check if the character is a regex metachracter
@@ -205,7 +205,7 @@ class _PCOMNEXP regex_error : public std::invalid_argument {
 
       /// The position (starting with 0) in the regular expression where
       /// error is detected.
-      int position() const { return _pos ; }
+      ptrdiff_t position() const { return _pos ; }
 
    protected:
       /// The constructor.
@@ -219,7 +219,7 @@ class _PCOMNEXP regex_error : public std::invalid_argument {
    private:
       const std::string _expression ;
       const PRegError   _code ;
-      const int         _pos ;
+      const ptrdiff_t   _pos ;
       const std::string _invalid ;
 } ;
 

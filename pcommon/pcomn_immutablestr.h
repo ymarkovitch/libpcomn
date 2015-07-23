@@ -54,7 +54,7 @@ class mutable_strbuf ;
 *******************************************************************************/
 template<typename Char, class AtomicThreadingPolicy = ::pcomn::atomic_op::SingleThreaded>
 struct refcounted_strdata {
-      long     _refcount ;
+      intptr_t _refcount ;
       size_t   _size ;
       Char     _begin[1] ;
 
@@ -63,7 +63,7 @@ struct refcounted_strdata {
       typedef AtomicThreadingPolicy atomic_policy ;
 
       union alignment {
-            long     _1 ;
+            intptr_t _1 ;
             size_t   _2 ;
             Char     _3 ;
       } ;
@@ -251,7 +251,7 @@ class refcounted_storage : public Allocator {
       }
       const data_type &str_data() const { return const_cast<self_type *>(this)->str_data() ; }
 
-      static long incref(data_type &data)
+      static intptr_t incref(data_type &data)
       {
          // Please note that all zero-length strings are static by design
          // and never increfed/decrefed.

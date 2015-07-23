@@ -343,9 +343,9 @@ class _PCOMNEXP MMapStorage : public Storage {
 
             int64_t next_segment() const { return _seg_id + 1 ; }
 
-            off_t data_begin() const { return _data_begin ; }
+            fileoff_t data_begin() const { return _data_begin ; }
 
-            virtual off_t data_end() const { return filesize() ; }
+            virtual fileoff_t data_end() const { return filesize() ; }
 
             FileState state() const { return _state ; }
 
@@ -406,7 +406,7 @@ class _PCOMNEXP MMapStorage : public Storage {
 
             uint64_t uid() const { return _uid ; }
 
-            off_t filesize() const
+            fileoff_t filesize() const
             {
                return PCOMN_ENSURE_POSIX(sys::filesize(fd()), "fstat") ;
             }
@@ -474,7 +474,7 @@ class _PCOMNEXP MMapStorage : public Storage {
             int64_t        _seg_id ;
 
             magic_t        _user_magic ;
-            off_t          _data_begin ;
+            fileoff_t          _data_begin ;
 
             void probably_calc_crc32(const void *buf, size_t sz)
             {
@@ -521,12 +521,12 @@ class _PCOMNEXP MMapStorage : public Storage {
             /// @note Sets file position to the start of actual checkpoint data.
             explicit CheckpointFile(int fd) ;
 
-            off_t data_end() const { return _data_end ; }
+            fileoff_t data_end() const { return _data_end ; }
 
             bool commit() ;
 
          private:
-            off_t _data_end ;
+            fileoff_t _data_end ;
       } ;
 
       /************************************************************************/

@@ -23,6 +23,12 @@ ssize_t readfile(int fd, void *buf, size_t size, void **allocbuf)
    if (unlikely(!size))
       return 0 ;
 
+   if (size > std::numeric_limits<long>::max())
+   {
+      errno = E2BIG ;
+      return -1 ;
+   }
+
    char *actual_buf ;
 
    if (buf)
@@ -42,9 +48,9 @@ ssize_t readfile(int fd, void *buf, size_t size, void **allocbuf)
       return -1 ;
    }
 
-   ssize_t bufsize = size ;
-   ssize_t readcount = 0 ;
-   ssize_t lastcount = 0 ;
+   long bufsize = (long)size ;
+   long readcount = 0 ;
+   long lastcount = 0 ;
 
    char *data ;
    do {

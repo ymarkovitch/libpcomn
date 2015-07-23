@@ -25,7 +25,7 @@ typedef pcomn::raw_ios::pos_type pos_type ;
 
 static size_t file_size(int fd)
 {
-   return pcomn::ensure_ge<pcomn::system_error>(pcomn::sys::filesize(fd), (off_t)0) ;
+   return pcomn::ensure_ge<pcomn::system_error>(pcomn::sys::filesize(fd), (fileoff_t)0) ;
 }
 
 /*******************************************************************************

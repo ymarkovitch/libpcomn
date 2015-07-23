@@ -91,7 +91,7 @@ struct writer<int> {
    static ssize_t write(int fd, const Char *from, const Char *to)
    {
       NOXCHECK(from <= to) ;
-      return ::write(fd, from, (to - from) * sizeof(Char)) ;
+      return ::write(fd, from, (unsigned)((to - from) * sizeof(Char))) ;
    }
 } ;
 

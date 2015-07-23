@@ -446,13 +446,13 @@
 #include <stdint.h>
 
 #ifdef PCOMN_PL_WIN64
-typedef __int64 ssize_t ;
+typedef intptr_t ssize_t ;
 #endif
 
 /** Represents file-offset value.
  */
-typedef off_t  fileoff_t ;
-typedef size_t filesize_t ;
+typedef ssize_t fileoff_t ;
+typedef size_t  filesize_t ;
 
 typedef int16_t   int16_le ;
 typedef uint16_t  uint16_le ;

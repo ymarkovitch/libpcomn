@@ -30,16 +30,16 @@
 namespace pcomn {
 namespace sys {
 
-inline off_t filesize(int fd)
+inline fileoff_t filesize(int fd)
 {
    struct stat st ;
-   return fstat(fd, &st) == 0 ? (off_t)st.st_size : (off_t)-1 ;
+   return fstat(fd, &st) == 0 ? (fileoff_t)st.st_size : (fileoff_t)-1 ;
 }
 
-inline off_t filesize(const char *name)
+inline fileoff_t filesize(const char *name)
 {
    struct stat st ;
-   return stat(name, &st) == 0 ? (off_t)st.st_size : (off_t)-1 ;
+   return stat(name, &st) == 0 ? (fileoff_t)st.st_size : (fileoff_t)-1 ;
 }
 
 #define _PCOMN_SYS_FSTATAT(statfn, dirfd, path, flags, raise)        \
@@ -75,10 +75,10 @@ inline fsstat linkstatat(const char *path, RaiseError raise = DONT_RAISE_ERROR)
 
 #undef _PCOMN_SYS_FSTATAT
 
-inline off_t filesize(int fd, const char *name)
+inline fileoff_t filesize(int fd, const char *name)
 {
    const fsstat &st = filestatat(fd, name) ;
-   return st ? (off_t)st.st_size : (off_t)-1 ;
+   return st ? (fileoff_t)st.st_size : (fileoff_t)-1 ;
 }
 
 /// Indicate if two filestats denote the same file.

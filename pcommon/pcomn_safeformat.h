@@ -167,7 +167,7 @@ class State {
       const char_type * _format ;
       size_t            _width ;
       size_t            _prec ;
-      unsigned long     _flags ;
+      uintptr_t         _flags ;
       ptrdiff_t         _result ;
 
       template<typename T>

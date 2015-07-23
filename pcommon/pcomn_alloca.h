@@ -37,11 +37,11 @@
 ///
 #define P_FAST_BUFFER(name, itemtype, nitems, threshold)                \
    const size_t _var_##__LINE__##name##_count_ = (nitems) ;             \
-   const std::unique_ptr<typename std::aligned_storage<sizeof(itemtype), std::alignment_of<itemtype >::value>::type> \
+   const std::unique_ptr<std::aligned_storage_t<sizeof(itemtype), std::alignment_of<itemtype >::value> > \
    _var_##__LINE__##name##_guard_                                       \
    (_var_##__LINE__##name##_count_ * sizeof(itemtype) <= (threshold)    \
     ? nullptr                                                           \
-    : new typename std::aligned_storage<sizeof(itemtype), std::alignment_of<itemtype >::value>::type[_var_##__LINE__##name##_count_]) ; \
+    : new std::aligned_storage_t<sizeof(itemtype), std::alignment_of<itemtype >::value>[_var_##__LINE__##name##_count_]) ; \
    itemtype *name = reinterpret_cast<itemtype *>(_var_##__LINE__##name##_guard_.get()) ; \
    if (!name && _var_##__LINE__##name##_count_) name = P_ALLOCA(itemtype, _var_##__LINE__##name##_count_) ;
 
