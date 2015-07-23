@@ -23,10 +23,10 @@ extern "C" {
  *    ascii_len   -  source string length
  *    buflen      -  source string length
  */
-_PCOMNEXP size_t a2b_base64(const char *ascii_data, unsigned ascii_len, void *buf) ;
+_PCOMNEXP size_t a2b_base64(const char *ascii_data, size_t ascii_len, void *buf) ;
 
-_PCOMNEXP unsigned b2a_base64(const void *source, unsigned srclen,
-                              char *ascii_data, unsigned ascii_len) ;
+_PCOMNEXP size_t b2a_base64(const void *source, size_t srclen,
+                            char *ascii_data, size_t ascii_len) ;
 
 #ifdef __cplusplus
 }
@@ -49,11 +49,11 @@ inline size_t a2b_bufsize_base64(size_t ascii_len)
    return ((ascii_len+3)/4)*3 ;
 }
 
-_PCOMNEXP unsigned a2b_base64(pcomn::shared_buffer &buffer,
-                              const char *ascii_data,
-                              unsigned ascii_len) ;
+_PCOMNEXP size_t a2b_base64(pcomn::shared_buffer &buffer,
+                            const char *ascii_data,
+                            size_t ascii_len) ;
 
-inline unsigned a2b_base64(pcomn::shared_buffer &buffer, const char *ascii_data)
+inline size_t a2b_base64(pcomn::shared_buffer &buffer, const char *ascii_data)
 {
    return a2b_base64(buffer, ascii_data, strlen(ascii_data)) ;
 }
@@ -68,23 +68,23 @@ _PCOMNEXP std::ostream &b2a_base64(std::ostream &os,
                                    size_t datasize,
                                    unsigned line_length = 80) ;
 
-_PCOMNEXP std::ostream &b2a_cstring(std::ostream &os, const void *data, unsigned size) ;
+_PCOMNEXP std::ostream &b2a_cstring(std::ostream &os, const void *data, size_t size) ;
 
 inline std::ostream &b2a_cstring(std::ostream &os, const char *data)
 {
    return b2a_cstring(os, data, strlen(data)) ;
 }
 
-_PCOMNEXP std::string b2a_cstring(const void *data, unsigned size) ;
+_PCOMNEXP std::string b2a_cstring(const void *data, size_t size) ;
 
 inline std::string b2a_cstring(const char *data)
 {
    return b2a_cstring(data, strlen(data)) ;
 }
 
-_PCOMNEXP char *b2a_hex(const void *data, unsigned size, char *result) ;
+_PCOMNEXP char *b2a_hex(const void *data, size_t size, char *result) ;
 
-inline std::string b2a_hex(const void *data, unsigned size)
+inline std::string b2a_hex(const void *data, size_t size)
 {
    if (!size)
       return std::string() ;
@@ -93,7 +93,7 @@ inline std::string b2a_hex(const void *data, unsigned size)
    return result ;
 }
 
-_PCOMNEXP char *b2a_hexz(const void *data, unsigned size, char *result) ;
+_PCOMNEXP char *b2a_hexz(const void *data, size_t size, char *result) ;
 
 #endif
 

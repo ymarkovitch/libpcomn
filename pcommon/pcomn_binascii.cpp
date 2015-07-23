@@ -41,7 +41,7 @@ static const char base64_a2b_table[] =
 static const char base64_b2a_table[] =
 "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-size_t a2b_base64(const char *ascii_data, unsigned ascii_len, void *buf)
+size_t a2b_base64(const char *ascii_data, size_t ascii_len, void *buf)
 {
    if (!buf || !ascii_len)
       return a2b_bufsize_base64(ascii_len) ;
@@ -90,8 +90,8 @@ size_t a2b_base64(const char *ascii_data, unsigned ascii_len, void *buf)
    return bin_len ;
 }
 
-unsigned b2a_base64(const void *source, unsigned source_len,
-                    char *ascii_data, unsigned ascii_len)
+size_t b2a_base64(const void *source, size_t source_len,
+                  char *ascii_data, size_t ascii_len)
 {
    unsigned char *bin_data = (unsigned char *)source ;
    int leftbits = 0 ;
@@ -134,7 +134,7 @@ unsigned b2a_base64(const void *source, unsigned source_len,
    return source_len ;
 }
 
-unsigned a2b_base64(pcomn::shared_buffer &buffer, const char *ascii_data, unsigned ascii_len)
+size_t a2b_base64(pcomn::shared_buffer &buffer, const char *ascii_data, size_t ascii_len)
 {
    size_t buflen = a2b_bufsize_base64(ascii_len) ;
    if (buflen)
@@ -154,7 +154,7 @@ std::ostream &b2a_base64(std::ostream &os,
    if (!line_length)
       line_length = 80 ;
    pcomn::PTVSafePtr<char> outbuf (new char[line_length]) ;
-   for (unsigned remains = datasize ; remains && os ; os << outbuf << std::endl)
+   for (size_t remains = datasize ; remains && os ; os << outbuf << std::endl)
       remains = b2a_base64(pcomn::padd(data, (datasize - remains)),
                            remains, outbuf.get(), line_length) ;
    return os ;
@@ -169,7 +169,7 @@ static const char * const nonprintable_symbol[] =
    "\\x17", "\\x18", "\\x19", "\\\\", "\\x7F", "\\0"
 } ;
 
-std::ostream &b2a_cstring(std::ostream &os, const void *data, unsigned size)
+std::ostream &b2a_cstring(std::ostream &os, const void *data, size_t size)
 {
    const char *cdata = static_cast<const char *>(data) ;
    const char * const cend = cdata + size ;
@@ -186,7 +186,7 @@ std::ostream &b2a_cstring(std::ostream &os, const void *data, unsigned size)
    return os ;
 }
 
-std::string b2a_cstring(const void *data, unsigned size)
+std::string b2a_cstring(const void *data, size_t size)
 {
    !size || PCOMN_ENSURE_ARG(data) ;
 
@@ -207,7 +207,7 @@ std::string b2a_cstring(const void *data, unsigned size)
    return result ;
 }
 
-char *b2a_hex(const void *data, unsigned size, char *result)
+char *b2a_hex(const void *data, size_t size, char *result)
 {
    if (!size)
       return result ;
@@ -227,7 +227,7 @@ char *b2a_hex(const void *data, unsigned size, char *result)
    return digit ;
 }
 
-char *b2a_hexz(const void *data, unsigned size, char *result)
+char *b2a_hexz(const void *data, size_t size, char *result)
 {
    PCOMN_ENSURE_ARG(result) ;
    *b2a_hex(data, size, result) = 0 ;
