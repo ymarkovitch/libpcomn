@@ -19,6 +19,23 @@ namespace pcomn {
 /** Standard UUID
 *******************************************************************************/
 struct uuid {
+   private:
+      union {
+            uint64_t       _idata[2] ;
+            uint16_t       _hdata[8] ;
+            unsigned char  _cdata[16] ;
+      } ;
+
+      static constexpr uint16_t be(uint16_t value)
+      {
+         #ifdef PCOMN_CPU_BIG_ENDIAN
+         return value ;
+         #else
+         return uint16_t((value >> 8) | (value << 8)) ;
+         #endif
+      }
+
+   public:
       /// Create a "null" UUID
       ///
       /// Null UUID has all its octets set to 0; operator bool() returns false
@@ -28,7 +45,7 @@ struct uuid {
 
       constexpr uuid(uint16_t h1, uint16_t h2, uint16_t h3, uint16_t h4,
                      uint16_t h5, uint16_t h6, uint16_t h7, uint16_t h8) :
-      _hdata{be(h1), be(h2), be(h3), be(h4), be(h5), be(h6), be(h7), be(h8)}
+         _hdata{be(h1), be(h2), be(h3), be(h4), be(h5), be(h6), be(h7), be(h8)}
       {}
 
       /// Create a UUID from "standard" string representation
@@ -95,22 +112,6 @@ struct uuid {
       }
 
       size_t hash() const { return pcomn::hasher(std::make_pair(_idata[0], _idata[1])) ; }
-
-   private:
-      union {
-            uint64_t       _idata[2] ;
-            uint16_t       _hdata[8] ;
-            unsigned char  _cdata[16] ;
-      } ;
-
-      static constexpr uint16_t be(uint16_t value)
-      {
-         #ifdef PCOMN_CPU_BIG_ENDIAN
-         return value ;
-         #else
-         return uint16_t((value >> 8) | (value << 8)) ;
-         #endif
-      }
 } ;
 
 inline void swap(uuid &lhs, uuid &rhs) { lhs.swap(rhs) ; }
