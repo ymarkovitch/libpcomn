@@ -115,10 +115,10 @@ class PTRefCounter : public PRefBase, public PTActiveCounter<0, ThreadPolicy> {
       typedef refcount_policy<PTRefCounter<ThreadPolicy> > refcount_policy_type ;
 
       /// Alias for instances(), added to match std::shared_ptr insterface
-      long use_count() const { return instances() ; }
+      intptr_t use_count() const { return instances() ; }
 
       /// Get current instance counter value.
-      int instances() const { return this->count() ; }
+      intptr_t instances() const { return this->count() ; }
 
    protected:
       /// The default constructor creates object with zero counter.
@@ -206,7 +206,7 @@ class shared_intrusive_ptr {
       static T *policy(...) ;
    public:
       typedef T element_type ;
-      typedef typename detail::refcount_policy_<typename std::remove_pointer<decltype(policy((T *)nullptr))>::type>::type refcount_policy_type ;
+      typedef typename detail::refcount_policy_<std::remove_pointer_t<decltype(policy(autoval<T *>()))> >::type refcount_policy_type ;
 
       template<typename U>
       friend class shared_intrusive_ptr ;
@@ -244,10 +244,10 @@ class shared_intrusive_ptr {
       /// Get the number of different intrusive_sptr instances (this included) managing
       /// the current object
       ///
-      int instances() const { return _object ? refcount_policy_type::instances(_object) : 0 ; }
+      intptr_t instances() const { return _object ? refcount_policy_type::instances(_object) : 0 ; }
 
       /// Alias for instances(), added to match std::shared_ptr insterface
-      long use_count() const { return instances() ; }
+      intptr_t use_count() const { return instances() ; }
 
       void reset() { shared_intrusive_ptr().swap(*this) ; }
 
@@ -477,8 +477,8 @@ class shared_ref {
          return get()[std::forward<A>(a)] ;
       }
 
-      int instances() const { return _ptr.use_count() ; }
-      long use_count() const { return _ptr.use_count() ; }
+      intptr_t instances() const { return _ptr.use_count() ; }
+      intptr_t use_count() const { return _ptr.use_count() ; }
 
       void swap(shared_ref &other) { pcomn_swap(_ptr, other._ptr) ; }
 
