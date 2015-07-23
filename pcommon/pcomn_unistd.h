@@ -77,7 +77,7 @@
 #  endif
 
 /// ftruncate quasi for Windows.
-__inline int ftruncate(int fd, long newsize) { return _chsize(fd, newsize) ; }
+__inline int ftruncate(int fd, fileoff_t newsize) { return _chsize_s(fd, newsize) ; }
 
 __inline void msleep(unsigned msec) { Sleep(msec) ; }
 
@@ -94,8 +94,12 @@ __inline errno_t unsetenv(const char *name) { return setenv(name, NULL, 1) ; }
 #define STDOUT_FILENO (fileno(stdout))
 #define STDIN_FILENO  (fileno(stdin))
 
+#define fseek_i(stream, offset, whence) (_fseeki64((stream), (offset), (whence)))
+
 #else /* end of PCOMN_PL_WINDOWS */
 /* PCOMN_PL_UNIX */
+
+#define fseek_i(stream, offset, whence) (fseek((stream), (offset), (whence)))
 
 #  include <unistd.h>
 #  include <fcntl.h>

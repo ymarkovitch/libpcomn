@@ -160,7 +160,7 @@ raw_ios::pos_type raw_fstreambase<RawStream>::seekoff(raw_ios::off_type offs,
 
       default: return raw_ios::pos_type(-1) ;
    }
-   return std::fseek(fptr(), offs, whence) ? -1 : std::ftell(fptr()) ;
+   return fseek_i(fptr(), offs, whence) ? -1 : std::ftell(fptr()) ;
 }
 
 template<class RawStream>

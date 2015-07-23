@@ -69,8 +69,8 @@ class _PCOMNEXP raw_ios {
          end   = std::ios_base::end
       } ;
 
-      typedef long off_type ;
-      typedef unsigned long pos_type ;
+      typedef ssize_t off_type ;
+      typedef size_t  pos_type ;
       typedef failure_exception failure ;
 
       raw_ios() :
