@@ -146,11 +146,11 @@ binary_obufstream::~binary_obufstream()
       flush() ;
    }
    catch (const std::exception &x) {
-      WARNPX(PCOMN_BinaryStream, true, DBGL_ALWAYS,
-             "Exception " << PCOMN_TYPENAME(x) << " in " << PCOMN_PRETTY_FUNCTION << ": " << x.what()) ;
+      LOGPXWARN(PCOMN_BinaryStream,
+                "Exception " << PCOMN_TYPENAME(x) << " in " << PCOMN_PRETTY_FUNCTION << ": " << x.what()) ;
    }
    catch (...) {
-      WARNPX(PCOMN_BinaryStream, true, DBGL_ALWAYS, "Unknown exception in " << PCOMN_PRETTY_FUNCTION) ;
+      LOGPXWARN(PCOMN_BinaryStream, "Unknown exception in " << PCOMN_PRETTY_FUNCTION) ;
    }
 }
 

@@ -17,6 +17,10 @@
 #include <string.h>
 #include <errno.h>
 
+#ifdef PCOMN_PL_WINDOWS
+#include <windows.h>
+#endif
+
 #define PCOMN_MAXPATH 512
 
 #define SECTION_ENABLED "ENABLED"
