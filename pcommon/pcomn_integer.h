@@ -315,7 +315,7 @@ constexpr inline if_integer_t<I> clrrnzb(I x)
 template<typename I>
 constexpr inline if_integer_t<I> getrnzb(I x)
 {
-   return static_cast<I>(x & -x) ;
+   return static_cast<I>(x & (0 - x)) ;
 }
 
 /// Get Rightmost Zero Bit.
@@ -333,7 +333,7 @@ constexpr inline if_integer_t<I> getrzb(I x)
 template<typename I>
 constexpr inline if_integer_t<I> getrzbseq(I x)
 {
-   return static_cast<I>(~(-getrnzb(x))) ;
+   return static_cast<I>(~(0 - getrnzb(x))) ;
 }
 
 /*******************************************************************************
@@ -537,6 +537,9 @@ using ct_log2floor = ct_lnzbpos<i> ;
 template<unsigned v, unsigned s>
 struct ct_shl : public detail::_ct_shl<v, s, (s < bitsizeof(unsigned)) > {} ;
 
+MS_DIAGNOSTIC_PUSH()
+MS_IGNORE_WARNING(4307)
+
 template<unsigned v1,
          unsigned v2 = (unsigned)-1, unsigned v3 = (unsigned)-1, unsigned v4 = (unsigned)-1,
          unsigned v5 = (unsigned)-1, unsigned v6 = (unsigned)-1, unsigned v7 = (unsigned)-1,
@@ -551,6 +554,8 @@ struct one_of {
                          v5+1 <= msz && v6+1 <= msz && v7+1 <= msz && v8+1 <= msz) ;
       static constexpr bool is(unsigned value) { return !!(mask & (1U<<value)) ; }
 } ;
+
+MS_DIAGNOSTIC_POP()
 
 } // end of namespace pcomn
 
