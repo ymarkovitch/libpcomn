@@ -15,6 +15,9 @@
 
 namespace pcomn {
 
+// Sanity check
+static const size_t MAX_SANE_STACK_SIZE = 1*GiB ;
+
 /*******************************************************************************
  BasicThread
 *******************************************************************************/
@@ -28,7 +31,8 @@ BasicThread::BasicThread(JoinMode jmode, size_t stack_size, Priority priority) :
 
    _handle(0),
    _id(0),
-   _stack_size(stack_size),
+   _stack_size((unsigned)ensure_le<std::out_of_range>
+               (stack_size, MAX_SANE_STACK_SIZE, "The requested thread stack size is too big and out of sanity range")),
    _retval(0)
 {}
 

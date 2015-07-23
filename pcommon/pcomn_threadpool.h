@@ -49,7 +49,7 @@ class _PCOMNEXP ThreadPool {
       void push(const task_type &task) ;
 
       /// Get current number of working threads.
-      std::pair<int, int> size() const { return std::pair<int, int>(_size, _registered.size()) ; }
+      std::pair<int, int> size() const { return std::pair<int, int>(_size, (int)_registered.size()) ; }
 
       int resize(int new_size) ;
 
@@ -109,7 +109,7 @@ class _PCOMNEXP ThreadPool {
 
       int   _capacity ; /* The maximum number of working threads allowed. */
       int   _size ;     /* The last requested size of a pool */
-      int   _worker_stack_size ; /* The stack size for a worker thread */
+      size_t _worker_stack_size ; /* The stack size for a worker thread */
       BasicThread::Priority  _worker_priority ;   /* The worker threads' priority */
       bool  _stopping ; /* This is set to true for the period of stopping */
 

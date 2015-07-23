@@ -215,7 +215,7 @@ class _PCOMNEXP BasicThread : public virtual Runnable {
 
       thread_handle_t   _handle ;
       thread_id_t       _id ;
-      const size_t      _stack_size ;
+      const unsigned    _stack_size ;
       intptr_t          _retval ;
       std::recursive_mutex   _lock ;
 
