@@ -52,7 +52,7 @@
 #define RETURN_APICALL(stream, call, params)            \
 {                                                       \
     const zstream_api_t *api = (stream)->api ;          \
-    return api && api->call ? (api->call params) : -1 ; \
+    return api && api->call ? (long)(api->call params) : -1 ;   \
 }
 
 static int const gz_magic[2] = {0x1f, 0x8b}; /* gzip magic header */
@@ -90,22 +90,22 @@ static int    destroy     (zstream_t *s);
 static void   putLong     (zstreambuf_t *buf, uint32_t x);
 static uint32_t  getLong     (zstream_t *s);
 
-static int bufread(zstreambuf_t *stream, void *buf, unsigned size)
+static int bufread(zstreambuf_t *stream, void *buf, size_t size)
 {
     RETURN_APICALL(stream, stream_read, (stream, buf, size)) ;
 }
 
-static int bufwrite(zstreambuf_t *stream, const void *buf, unsigned size)
+static int bufwrite(zstreambuf_t *stream, const void *buf, size_t size)
 {
     RETURN_APICALL(stream, stream_write, (stream, buf, size)) ;
 }
 
-static int bufseek(zstreambuf_t *stream, long offset, int origin)
+static long bufseek(zstreambuf_t *stream, fileoff_t offset, int origin)
 {
     RETURN_APICALL(stream, stream_seek, (stream, offset, origin)) ;
 }
 
-static int buftell(zstreambuf_t *stream)
+static long buftell(zstreambuf_t *stream)
 {
     return bufseek(stream, 0, SEEK_CUR) ;
 }
@@ -379,15 +379,18 @@ static int destroy(zstream_t *s)
      Reads the given number of uncompressed bytes from the compressed file.
    gzread returns the number of bytes actually read (0 for end of file).
 */
-int zread(GZSTREAM s, voidp buf, unsigned len)
+ssize_t zread(GZSTREAM s, voidp buf, size_t buflen)
 {
     Bytef *start = (Bytef*)buf; /* starting point for crc computation */
     Byte  *next_out; /* == stream.next_out but not forced far (for MSDOS) */
+    unsigned len = (unsigned)buflen;
 
     if (s == NULL || s->mode != 'r') return Z_STREAM_ERROR;
 
     if (s->z_err == Z_DATA_ERROR || s->z_err == Z_ERRNO) return -1;
     if (s->z_err == Z_STREAM_END) return 0;  /* EOF */
+
+    if (len != buflen) return Z_MEM_ERROR;
 
     next_out = (Byte*)buf;
     s->stream.next_out = (Bytef*)buf;
@@ -428,7 +431,7 @@ int zread(GZSTREAM s, voidp buf, unsigned len)
             s->in  += len;
             s->out += len;
             if (len == 0) s->z_eof = 1;
-            return (int)len;
+            return (ssize_t)len;
         }
         if (s->stream.avail_in == 0 && !s->z_eof) {
             s->stream.avail_in = bufread(s->streambuf, s->inbuf, Z_BUFSIZE);
@@ -474,7 +477,7 @@ int zread(GZSTREAM s, voidp buf, unsigned len)
     }
     s->crc = crc32(s->crc, start, (uInt)(s->stream.next_out - start));
 
-    return (int)(len - s->stream.avail_out);
+    return (ssize_t)(len - s->stream.avail_out);
 }
 
 
@@ -524,9 +527,13 @@ char * zgets(GZSTREAM stream, char *buf, int len)
      Writes the given number of uncompressed bytes into the compressed file.
    gzwrite returns the number of bytes actually written (0 in case of error).
 */
-int zwrite(GZSTREAM s, voidpc buf, unsigned len)
+ssize_t zwrite(GZSTREAM s, voidpc buf, size_t buflen)
 {
+    unsigned len = (unsigned)buflen;
+
     if (s == NULL || s->mode != 'w') return Z_STREAM_ERROR;
+
+    if (len != buflen) return Z_MEM_ERROR;
 
     s->stream.next_in = (Bytef*)buf;
     s->stream.avail_in = len;
@@ -570,7 +577,7 @@ int zputc(GZSTREAM s, int c)
    the terminating null character.
       zputs returns the number of characters written, or -1 in case of error.
 */
-int zputs(GZSTREAM stream, const char *str)
+ssize_t zputs(GZSTREAM stream, const char *str)
 {
     return zwrite(stream, (char*)str, (unsigned)strlen(str));
 }
@@ -657,7 +664,7 @@ z_off_t zseek(GZSTREAM s, z_off_t offset, int whence)
             uInt size = Z_BUFSIZE;
             if (offset < Z_BUFSIZE) size = (uInt)offset;
 
-            size = zwrite(s, s->inbuf, size);
+            size = (uInt)zwrite(s, s->inbuf, size);
             if (size == 0) return -1L;
 
             offset -= size;
@@ -702,12 +709,12 @@ z_off_t zseek(GZSTREAM s, z_off_t offset, int whence)
         if (s->last) s->z_err = Z_STREAM_END;
     }
     while (offset > 0)  {
-        int size = Z_BUFSIZE;
-        if (offset < Z_BUFSIZE) size = (int)offset;
+        ssize_t size = Z_BUFSIZE;
+        if (offset < Z_BUFSIZE) size = offset;
 
-        size = zread(s, s->outbuf, (uInt)size);
+        size = zread(s, s->outbuf, size);
         if (size <= 0) return -1L;
-        offset -= size;
+        offset -= (z_off_t)size;
     }
     return s->out;
 }

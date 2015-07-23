@@ -49,7 +49,7 @@ inline constexpr gzFile handle_traits<gz_handle_tag>::invalid_handle()
 /// Compress a buffer into an output stream (std::ostream).
 int ostream_zcompress(std::ostream &dest, const char *source, size_t source_len, int level = Z_DEFAULT_COMPRESSION) ;
 /// Uncompress an input stream (std::istream) into a buffer.
-int istream_zuncompress(char *dest, size_t &destLen, std::istream &source, size_t source_len) ;
+int istream_zuncompress(char *dest, size_t &dest_len, std::istream &source, size_t source_len) ;
 
 /******************************************************************************/
 /** Exception to indicate ZLIB errors.
@@ -91,9 +91,9 @@ class _PCOMNEXP basic_zstreambuf : private zstreambuf_t {
       basic_zstreambuf(bool destroy_on_close) ;
       virtual ~basic_zstreambuf() {}
 
-      virtual int read(void *, unsigned) { return -1 ; }
-      virtual int write(const void *, unsigned) { return -1 ; }
-      virtual int seek(long, int) { return -1 ; }
+      virtual ssize_t read(void *, size_t) { return -1 ; }
+      virtual ssize_t write(const void *, size_t) { return -1 ; }
+      virtual ssize_t seek(fileoff_t, int) { return -1 ; }
       virtual int open() { return 0 ; }
       virtual int close() { return 0 ; }
 
@@ -120,9 +120,9 @@ class _PCOMNEXP basic_zstreambuf : private zstreambuf_t {
       static int _destroy(GZSTREAMBUF self) ;
 
       static int _error(GZSTREAMBUF self, int clear) ;
-      static int _read(GZSTREAMBUF self, void *buf, unsigned size) ;
-      static int _write(GZSTREAMBUF self, const void *buf, unsigned size) ;
-      static int _seek(GZSTREAMBUF self, long offset, int origin) ;
+      static ssize_t _read(GZSTREAMBUF self, void *buf, size_t size) ;
+      static ssize_t _write(GZSTREAMBUF self, const void *buf, size_t size) ;
+      static fileoff_t _seek(GZSTREAMBUF self, fileoff_t offset, int origin) ;
 } ;
 
 /*******************************************************************************
@@ -166,21 +166,21 @@ class _PCOMNEXP basic_zstreamwrap {
          }
       }
 
-      int setparams(int level, int strategy)
+      ssize_t setparams(int level, int strategy)
       {
          return ::zsetparams(ensure_stream(), level, strategy) ;
       }
 
-      int read(void *buf, unsigned len)
+      ssize_t read(void *buf, size_t len)
       {
          return ::zread(ensure_stream(), buf, len) ;
       }
-      int write(const void *buf, unsigned len)
+      ssize_t write(const void *buf, size_t len)
       {
          return ::zwrite(ensure_stream(), buf, len) ;
       }
 
-      int put_string(const char *str)
+      ssize_t put_string(const char *str)
       {
          return ::zputs(ensure_stream(), str) ;
       }
@@ -198,13 +198,13 @@ class _PCOMNEXP basic_zstreamwrap {
          return ::zflush(ensure_stream(), flushmode) ;
       }
 
-      long seek(long offset, int whence)
+      fileoff_t seek(fileoff_t offset, int whence)
       {
-         return ::zseek(ensure_stream(), offset, whence) ;
+         return ::zseek(ensure_stream(), (long)offset, whence) ;
       }
       int rewind() { return ::zrewind(ensure_stream()) ; }
 
-      long tell() const { return ::ztell(ensure_stream()) ; }
+      fileoff_t tell() const { return ::ztell(ensure_stream()) ; }
       bool eof() const { return ::zeof(ensure_stream()) ; }
       std::ios_base::iostate rdstate() const
       {
@@ -264,7 +264,7 @@ class _PCOMNEXP rawstream_zstreambuf : public basic_zstreambuf {
          _stream(stream)
       {}
 
-      int error(bool clear)
+      int error(bool clear) override
       {
          using pcomn::raw_ios ;
          bigflag_t state = _stream.rdstate() ;
@@ -276,7 +276,7 @@ class _PCOMNEXP rawstream_zstreambuf : public basic_zstreambuf {
          return result ;
       }
 
-      int seek(long offset, int origin)
+      fileoff_t seek(fileoff_t offset, int origin) override
       {
          if (_stream.rdstate() == (pcomn::raw_ios::failbit|pcomn::raw_ios::eofbit))
             _stream.setstate(pcomn::raw_ios::failbit, false) ;
@@ -303,7 +303,7 @@ class _PCOMNEXP orawstream_zstreambuf : public rawstream_zstreambuf {
       {}
 
    protected:
-      int write(const void *buf, unsigned size)
+      fileoff_t write(const void *buf, size_t size) override
       {
          return
             !_stream.write(static_cast<const char *>(buf), size) ? -1 : size ;
@@ -325,7 +325,7 @@ class _PCOMNEXP irawstream_zstreambuf : public rawstream_zstreambuf {
          _stream(stream)
       {}
    protected:
-      int read(void *buf, unsigned size)
+      fileoff_t read(void *buf, size_t size) override
       {
          _stream.read(static_cast<char *>(buf), size) ;
          return _stream.last_read() ;
@@ -346,7 +346,7 @@ class stdstream_zstreambuf : public basic_zstreambuf {
          _stream(stream)
       {}
 
-      int error(bool clear)
+      int error(bool clear) override
       {
          if (_stream.good())
             return 0 ;
@@ -358,7 +358,7 @@ class stdstream_zstreambuf : public basic_zstreambuf {
    protected:
       Stream &_stream ;
 
-      int do_seek(long offset, int origin, unsigned seekflag)
+      int do_seek(fileoff_t offset, int origin, unsigned seekflag)
       {
          if (_stream.rdstate() == (std::ios::failbit|std::ios::eofbit))
             _stream.clear(std::ios::eofbit) ;
@@ -383,12 +383,12 @@ class ostdstream_zstreambuf : public stdstream_zstreambuf<Stream> {
       {}
 
    protected:
-      int write(const void *buf, unsigned size)
+      ssize_t write(const void *buf, size_t size) override
       {
          return
             !this->_stream.write(static_cast<const char *>(buf), size) ? -1 : size ;
       }
-      int seek(long offset, int origin)
+      fileoff_t seek(long offset, int origin) override
       {
          return this->do_seek(offset, origin, std::ios_base::out) ;
       }
@@ -406,12 +406,12 @@ class istdstream_zstreambuf : public stdstream_zstreambuf<Stream> {
          ancestor(stream, destroy_on_close)
       {}
    protected:
-      int read(void *buf, unsigned size)
+      ssize_t read(void *buf, size_t size) override
       {
          return
             this->_stream.read(static_cast<char *>(buf), size).gcount() ;
       }
-      int seek(long offset, int origin)
+      fileoff_t seek(fileoff_t offset, int origin) override
       {
          return this->do_seek(offset, origin, std::ios_base::in) ;
       }

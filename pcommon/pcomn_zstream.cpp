@@ -111,19 +111,19 @@ int basic_zstreambuf::_error(GZSTREAMBUF self, int clear)
    return ((basic_zstreambuf *)self)->error(!!clear) ;
 }
 
-int basic_zstreambuf::_read(GZSTREAMBUF self, void *buf, unsigned size)
+ssize_t basic_zstreambuf::_read(GZSTREAMBUF self, void *buf, size_t size)
 {
    NOXCHECK(self) ;
    return ((basic_zstreambuf *)self)->read(buf, size) ;
 }
 
-int basic_zstreambuf::_write(GZSTREAMBUF self, const void *buf, unsigned size)
+ssize_t basic_zstreambuf::_write(GZSTREAMBUF self, const void *buf, size_t size)
 {
    NOXCHECK(self) ;
    return ((basic_zstreambuf *)self)->write(buf, size) ;
 }
 
-int basic_zstreambuf::_seek(GZSTREAMBUF self, long offset, int origin)
+fileoff_t basic_zstreambuf::_seek(GZSTREAMBUF self, fileoff_t offset, int origin)
 {
    NOXCHECK(self) ;
    return ((basic_zstreambuf *)self)->seek(offset, origin) ;
@@ -144,13 +144,13 @@ void basic_zstreamwrap::bad_state() const
  ostream_zcompress
  istream_zuncompress
 *******************************************************************************/
-static const size_t compress_chunk = 64 * 1024 ;
+static const unsigned compress_chunk = 64 * 1024 ;
 
 // _flush_out()   -  flushes (bufsize-stream.avail_out) bytes into the output stream
 //                   and resets stream.avail_out to bufsize.
 // Returns:
 //    Former value of stream.avail_out
-static inline void _flush_out(std::ostream &dest, z_stream &stream, size_t bufsize)
+static inline void _flush_out(std::ostream &dest, z_stream &stream, unsigned bufsize)
 {
    size_t write_size = bufsize - stream.avail_out ;
    stream.next_out -= write_size ;
@@ -158,18 +158,21 @@ static inline void _flush_out(std::ostream &dest, z_stream &stream, size_t bufsi
    stream.avail_out = bufsize ;
 }
 
-int ostream_zcompress(std::ostream &dest, const char *source, size_t source_len, int level)
+int ostream_zcompress(std::ostream &dest, const char *source, size_t source_size, int level)
 {
    z_stream stream ;
    int err ;
+   const unsigned source_len = (unsigned)source_size ;
+   const unsigned bufsize = (unsigned)std::min<size_t>(compress_chunk, (source_len * 11ULL)/10 + 13) ;
+
+   if (source_len != source_size) return Z_MEM_ERROR ;
 
    stream.next_in = (uint8_t *)(source) ;
-   stream.avail_in = (uInt)source_len ;
+   stream.avail_in = source_len ;
    stream.zalloc = NULL ;
    stream.zfree = NULL ;
    stream.opaque = NULL ;
 
-   size_t bufsize = std::min<size_t>(compress_chunk, (source_len * 11)/10 + 13) ;
    PTVSafePtr<char> buffer (new char[bufsize]) ;
 
    stream.next_out = (uint8_t *)buffer.get() ;
@@ -200,20 +203,24 @@ int ostream_zcompress(std::ostream &dest, const char *source, size_t source_len,
    return err ;
 }
 
-int istream_zuncompress(char *dest, size_t &destLen, std::istream &source, size_t source_len)
+int istream_zuncompress(char *dest, size_t &dest_len, std::istream &source, size_t source_size)
 {
    NOXPRECONDITION(dest != NULL && source) ;
 
    z_stream stream ;
    int err ;
+   const unsigned source_len = (unsigned)source_size ;
+   const unsigned bufsize = std::min(compress_chunk, source_len) ;
+
+   if (source_len != source_size) return Z_MEM_ERROR ;
+   if (dest_len != (unsigned)dest_len) return Z_MEM_ERROR ;
 
    stream.next_out = (uint8_t *)dest ;
-   stream.avail_out = destLen ;
+   stream.avail_out = (unsigned)dest_len ;
    stream.zalloc = NULL ;
    stream.zfree = NULL ;
    stream.opaque = NULL ;
 
-   size_t bufsize = std::min<size_t>(compress_chunk, source_len) ;
    PTVSafePtr<char> buffer (new char[bufsize]) ;
    size_t remains = source_len ;
 
@@ -227,8 +234,8 @@ int istream_zuncompress(char *dest, size_t &destLen, std::istream &source, size_
    do
    {
       stream.next_in = (uint8_t *)buffer.get() ;
-      stream.avail_in = source.read(reinterpret_cast<char *>(stream.next_in),
-                                    std::min(bufsize, remains)).gcount() ;
+      stream.avail_in = (unsigned)source.read(reinterpret_cast<char *>(stream.next_in),
+                                              std::min(bufsize, (unsigned)remains)).gcount() ;
 
       err = inflate(&stream, remains >= stream.avail_in ? Z_NO_FLUSH : Z_FINISH) ;
 
@@ -240,7 +247,7 @@ int istream_zuncompress(char *dest, size_t &destLen, std::istream &source, size_
    {
       case Z_STREAM_END:
          err = inflateEnd(&stream) ;
-         destLen -= remains ;
+         dest_len -= remains ;
          break ;
 
       case Z_OK:

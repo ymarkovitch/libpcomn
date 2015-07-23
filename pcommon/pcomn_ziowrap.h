@@ -34,9 +34,9 @@ typedef zstreambuf_t *GZSTREAMBUF ;
 typedef zstream_t    *GZSTREAM ;
 
 typedef int (*zstreambuf_init)  (GZSTREAMBUF) ;
-typedef int (*zstreambuf_read)  (GZSTREAMBUF, void *, unsigned) ;
-typedef int (*zstreambuf_write) (GZSTREAMBUF, const void *, unsigned) ;
-typedef int (*zstreambuf_seek)  (GZSTREAMBUF, long offset, int origin) ;
+typedef ssize_t   (*zstreambuf_read)  (GZSTREAMBUF, void *, size_t) ;
+typedef ssize_t   (*zstreambuf_write) (GZSTREAMBUF, const void *, size_t) ;
+typedef fileoff_t (*zstreambuf_seek)  (GZSTREAMBUF, fileoff_t offset, int origin) ;
 typedef int (*zstreambuf_error) (GZSTREAMBUF, int clear) ;
 
 struct zstream_api_t {
@@ -79,19 +79,19 @@ _PCOMNEXP int zsetparams(GZSTREAM stream, int level, int strategy) ;
     zread returns the number of uncompressed bytes actually read (0 for
     end of file, -1 for error).
 */
-_PCOMNEXP int zread(GZSTREAM stream, void *buf, unsigned len) ;
+_PCOMNEXP ssize_t zread(GZSTREAM stream, void *buf, size_t len) ;
 
 /** Write the given number of uncompressed bytes into the compressed stream.
     zwrite returns the number of uncompressed bytes actually written
     (0 in case of error).
 */
-_PCOMNEXP int zwrite(GZSTREAM stream, const void *buf, unsigned len) ;
+_PCOMNEXP ssize_t zwrite(GZSTREAM stream, const void *buf, size_t len) ;
 
 /** Write the given null-terminated string to the compressed stream, excluding
     the terminating null character.
     zputs returns the number of characters written, or -1 in case of error.
 */
-_PCOMNEXP int zputs(GZSTREAM stream, const char *s) ;
+_PCOMNEXP ssize_t zputs(GZSTREAM stream, const char *s) ;
 
 /** Read bytes from the compressed stream until len-1 characters are read, or
     a newline character is read and transferred to buf, or an end-of-file
