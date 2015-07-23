@@ -24,7 +24,7 @@
 #ifdef PCOMN_PL_UNIX
 #include <sys/uio.h> /* struct iovec */
 #else
-typedef struct iovec {
+struct iovec {
       void *   iov_base ;
       size_t   iov_len ;
 } ;
@@ -407,7 +407,7 @@ static typename membuf_traits<T>::type *_is_buffer(T**) ;
 /// @endcond
 
 template<typename T> using
-is_buffer = bool_constant<sizeof detail::_is_buffer(std::declval<T**>()) == sizeof(void *)> ;
+is_buffer = bool_constant<sizeof detail::_is_buffer(autoval<T**>()) == sizeof(void *)> ;
 
 template<typename T, typename Type> struct
 enable_if_buffer : std::enable_if<is_buffer<T>::value, Type> {} ;

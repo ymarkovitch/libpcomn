@@ -260,7 +260,7 @@ template<typename C> struct
 is_char : bool_constant<std::is_same<C, char>::value || std::is_same<C, wchar_t>::value> {} ;
 
 template<typename S> struct
-is_string : bool_constant<sizeof detail::_is_string(std::declval<S**>()) == sizeof(void *)> {} ;
+is_string : bool_constant<sizeof detail::_is_string(autoval<S**>()) == sizeof(void *)> {} ;
 
 template<typename S, typename C> struct
 is_strchar : detail::_is_strchar<S, C, is_string<S>::value> {} ;

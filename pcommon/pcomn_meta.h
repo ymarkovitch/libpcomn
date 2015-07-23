@@ -103,6 +103,15 @@ template<unsigned long long v>
 using ulonglong_constant = std::integral_constant<unsigned long long, v> ;
 
 /******************************************************************************/
+/** Function for getting T value in unevaluated context for e.g. passsing
+ to functions in SFINAE context without the need to go through constructors
+
+ Differs from std::declval in that it does not converts T to rvalue reference
+*******************************************************************************/
+template<typename T>
+T autoval() ;
+
+/******************************************************************************/
 /** disable_if is a complement to std::enable_if
 *******************************************************************************/
 template<bool disabled, typename T>
@@ -227,7 +236,7 @@ struct rebind___t {
 } ;
 
 template<typename C, typename T, typename... A>
-using rebind_t = decltype(rebind___t<T, A...>::eval(std::declval<C *>())) ;
+using rebind_t = decltype(rebind___t<T, A...>::eval(autoval<C *>())) ;
 
 /*******************************************************************************
                      union max_align

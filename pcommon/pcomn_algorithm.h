@@ -81,7 +81,8 @@ std::pair<InputIterator, OutputIterator> bound_copy_if
 #define PCOMN_MEMBER_EXTRACTOR(member)                                  \
    template<typename T>                                                 \
    struct extract_##member {                                            \
-      decltype(declval<T>().member()) operator() (const T &t) const { return t.member() ; } \
+      typedef decltype(std::declval<T>().member()) type ;               \
+      type operator() (const T &t) const { return t.member() ; }        \
    } ;                                                                  \
                                                                         \
    template<typename T>                                                 \
@@ -89,9 +90,10 @@ std::pair<InputIterator, OutputIterator> bound_copy_if
                                                                         \
    template<typename T>                                                 \
    struct extract_##member<T *>  {                                      \
-      decltype(declval<const T *>()->member()) operator() (const T *t) const \
+      typedef decltype(pcomn::autoval<const T *>()->member()) type ;    \
+      type operator() (const T *t) const                                \
       {                                                                 \
-         return t ? t->member() : pcomn::default_constructed<pcomn::valtype_t<R> >::value ; \
+         return t ? t->member() : pcomn::default_constructed<pcomn::valtype_t<type> >::value ; \
       }                                                                 \
    }
 
