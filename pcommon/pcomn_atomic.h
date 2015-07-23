@@ -21,8 +21,8 @@
 
 namespace pcomn {
 
-typedef long            atomic_t ;
-typedef unsigned long   uatomic_t ;
+typedef intptr_t  atomic_t ;
+typedef uintptr_t uatomic_t ;
 
 typedef int32_t   atomic32_t ;
 typedef uint32_t  uatomic32_t ;
