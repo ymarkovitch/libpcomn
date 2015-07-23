@@ -459,12 +459,12 @@ class raw_basic_zstream : public raw_stream_wrapper<basic_zstreamwrap, RawStream
 
       size_t do_read(void *buffer, size_t size)
       {
-         return std::max(0, this->stream().read(buffer, size)) ;
+         return std::max<ssize_t>(0, this->stream().read(buffer, size)) ;
       }
 
       size_t do_write(const void *buffer, size_t size)
       {
-         return std::max(0, this->stream().write(buffer, size)) ;
+         return std::max<ssize_t>(0, this->stream().write(buffer, size)) ;
       }
 
       static const char *open_mode(const char *mode)

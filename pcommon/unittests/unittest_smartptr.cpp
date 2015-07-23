@@ -180,53 +180,53 @@ void DirectSmartPtrTests::Test_Constructors()
 
    CPPUNIT_LOG_IS_TRUE(foo_reg.constructed) ;
    CPPUNIT_LOG_IS_FALSE(foo_reg.destructed) ;
-   CPPUNIT_LOG_EQUAL(foo.instances(), 1) ;
+   CPPUNIT_LOG_EQ(foo.instances(), 1) ;
    CPPUNIT_LOG_IS_TRUE(bar_reg.constructed) ;
    CPPUNIT_LOG_IS_FALSE(bar_reg.destructed) ;
-   CPPUNIT_LOG_EQUAL(bar.instances(), 1) ;
+   CPPUNIT_LOG_EQ(bar.instances(), 1) ;
    CPPUNIT_LOG_IS_TRUE(quux_reg.constructed) ;
    CPPUNIT_LOG_IS_FALSE(quux_reg.destructed) ;
-   CPPUNIT_LOG_EQUAL(quux.instances(), 2) ;
-   CPPUNIT_LOG_EQUAL(quux1.instances(), 2) ;
+   CPPUNIT_LOG_EQ(quux.instances(), 2) ;
+   CPPUNIT_LOG_EQ(quux1.instances(), 2) ;
    CPPUNIT_LOG_EQUAL(static_cast<Foo *>(&*quux), &*quux1) ;
 
    CPPUNIT_LOG(std::endl) ;
    CPPUNIT_LOG_RUN(foo = bar) ;
    CPPUNIT_LOG_IS_TRUE(foo_reg.destructed) ;
-   CPPUNIT_LOG_EQUAL(foo.instances(), 2) ;
-   CPPUNIT_LOG_EQUAL(bar.instances(), 2) ;
+   CPPUNIT_LOG_EQ(foo.instances(), 2) ;
+   CPPUNIT_LOG_EQ(bar.instances(), 2) ;
    CPPUNIT_LOG_EQUAL(foo, bar) ;
    CPPUNIT_LOG_RUN(bar = foo) ;
    CPPUNIT_LOG_IS_FALSE(bar_reg.destructed) ;
-   CPPUNIT_LOG_EQUAL(foo.instances(), 2) ;
-   CPPUNIT_LOG_EQUAL(bar.instances(), 2) ;
+   CPPUNIT_LOG_EQ(foo.instances(), 2) ;
+   CPPUNIT_LOG_EQ(bar.instances(), 2) ;
    CPPUNIT_LOG_EQUAL(foo, bar) ;
    CPPUNIT_LOG_RUN(foo = NULL) ;
    CPPUNIT_LOG_IS_FALSE(foo) ;
    CPPUNIT_LOG_IS_FALSE(bar_reg.destructed) ;
-   CPPUNIT_LOG_EQUAL(bar.instances(), 1) ;
+   CPPUNIT_LOG_EQ(bar.instances(), 1) ;
    CPPUNIT_LOG_RUN(bar = foo) ;
    CPPUNIT_LOG_IS_FALSE(bar) ;
    CPPUNIT_LOG_IS_TRUE(bar_reg.destructed) ;
 
    CPPUNIT_LOG(std::endl) ;
    CPPUNIT_LOG_RUN(foo = bar = quux) ;
-   CPPUNIT_LOG_EQUAL(foo.instances(), 4) ;
-   CPPUNIT_LOG_EQUAL(quux.instances(), 4) ;
+   CPPUNIT_LOG_EQ(foo.instances(), 4) ;
+   CPPUNIT_LOG_EQ(quux.instances(), 4) ;
 
    LifetimeRegister newbar_reg ;
    CPPUNIT_LOG_RUN(foo = new Bar(newbar_reg)) ;
-   CPPUNIT_LOG_EQUAL(foo.instances(), 1) ;
-   CPPUNIT_LOG_EQUAL(quux.instances(), 3) ;
+   CPPUNIT_LOG_EQ(foo.instances(), 1) ;
+   CPPUNIT_LOG_EQ(quux.instances(), 3) ;
 
    CPPUNIT_LOG(std::endl) ;
    LifetimeRegister constfoo_reg ;
    pcomn::shared_intrusive_ptr<const Foo> cfoo (new Foo(constfoo_reg)) ;
    CPPUNIT_LOG_IS_TRUE(constfoo_reg.constructed) ;
    CPPUNIT_LOG_IS_FALSE(constfoo_reg.destructed) ;
-   CPPUNIT_LOG_EQUAL(cfoo.instances(), 1) ;
-   CPPUNIT_LOG_EQUAL(quux.instances(), 3) ;
-   CPPUNIT_LOG_EQUAL((cfoo = quux).instances(), 4) ;
+   CPPUNIT_LOG_EQ(cfoo.instances(), 1) ;
+   CPPUNIT_LOG_EQ(quux.instances(), 3) ;
+   CPPUNIT_LOG_EQ((cfoo = quux).instances(), 4) ;
    CPPUNIT_LOG_IS_TRUE(constfoo_reg.destructed) ;
 }
 
@@ -470,25 +470,25 @@ void SmartRefTests::Test_Constructors()
 
    CPPUNIT_LOG_IS_TRUE(foo_reg.constructed) ;
    CPPUNIT_LOG_IS_FALSE(foo_reg.destructed) ;
-   CPPUNIT_LOG_EQUAL(foo.instances(), 1) ;
-   CPPUNIT_LOG_EQUAL(foo.get().instances(), 1) ;
+   CPPUNIT_LOG_EQ(foo.instances(), 1) ;
+   CPPUNIT_LOG_EQ(foo.get().instances(), 1) ;
 
    CPPUNIT_LOG_IS_TRUE(bar_reg.constructed) ;
    CPPUNIT_LOG_IS_FALSE(bar_reg.destructed) ;
-   CPPUNIT_LOG_EQUAL(bar.instances(), 1) ;
-   CPPUNIT_LOG_EQUAL(bar.get().instances(), 1) ;
+   CPPUNIT_LOG_EQ(bar.instances(), 1) ;
+   CPPUNIT_LOG_EQ(bar.get().instances(), 1) ;
 
    pcomn::shared_intrusive_ptr<Foo> foobar (bar) ;
 
    CPPUNIT_LOG_IS_TRUE(bar_reg.constructed) ;
    CPPUNIT_LOG_IS_FALSE(bar_reg.destructed) ;
-   CPPUNIT_LOG_EQUAL(bar.instances(), 2) ;
-   CPPUNIT_LOG_EQUAL(bar.get().instances(), 2) ;
-   CPPUNIT_LOG_EQUAL(foobar.instances(), 2) ;
+   CPPUNIT_LOG_EQ(bar.instances(), 2) ;
+   CPPUNIT_LOG_EQ(bar.get().instances(), 2) ;
+   CPPUNIT_LOG_EQ(foobar.instances(), 2) ;
 
-   CPPUNIT_LOG_EQUAL(quux12.instances(), 1) ;
-   CPPUNIT_LOG_EQUAL(quux52.instances(), 1) ;
-   CPPUNIT_LOG_EQUAL(quux67.instances(), 1) ;
+   CPPUNIT_LOG_EQ(quux12.instances(), 1) ;
+   CPPUNIT_LOG_EQ(quux52.instances(), 1) ;
+   CPPUNIT_LOG_EQ(quux67.instances(), 1) ;
 
    CPPUNIT_LOG_EQUAL(quux12.get().a, 1) ;
    CPPUNIT_LOG_EQUAL(quux12.get().b, 2) ;
@@ -503,11 +503,11 @@ void SmartRefTests::Test_Constructors()
 
    pcomn::shared_ref<const Quux> quux90 (9, 0) ;
    CPPUNIT_LOG_EQUAL(quux90.get().a, 9) ;
-   CPPUNIT_LOG_EQUAL(quux67.instances(), 1) ;
+   CPPUNIT_LOG_EQ(quux67.instances(), 1) ;
    CPPUNIT_LOG_RUN(quux90 = quux67) ;
    CPPUNIT_LOG_EQUAL(quux90.get().a, 6) ;
-   CPPUNIT_LOG_EQUAL(quux67.instances(), 2) ;
-   CPPUNIT_LOG_EQUAL(quux90.instances(), 2) ;
+   CPPUNIT_LOG_EQ(quux67.instances(), 2) ;
+   CPPUNIT_LOG_EQ(quux90.instances(), 2) ;
 }
 
 int main(int argc, char *argv[])
