@@ -289,8 +289,6 @@ feature.feature pic : off on : propagated ;
 ################################################################################
 # Compilation: C++ 11, optimization
 ################################################################################
-# Custom optimization mode: speed w/o most dangerous optiomizations (like strict aliasing)
-feature.extend optimization : safespeed ;
 # C++11/C++98 compilation
 feature.feature c++std : 11 14 98 : incidental ;
 
@@ -339,7 +337,7 @@ module gcc {
 
   # Override default Boost.Build notion of speed optimization
   # Turn off strict aliasing: extermely buggy when optimization is on
-  toolset.flags gcc.compile OPTIONS <optimization>safespeed : -O2 -fno-strict-aliasing -fwrapv ;
+  toolset.flags gcc.compile OPTIONS <optimization>speed : -fno-inline-functions -fno-strict-aliasing -fwrapv ;
 
   # C++98 or C++11 (default is C++11)
   toolset.flags gcc.compile.c++ OPTIONS <c++std>11 : --std=gnu++11 ;
@@ -397,8 +395,6 @@ variant-augment release :
   <variant-tag>release
   <link>static
   <threading>multi
-
-  <optimization>safespeed
 
   <debug-symbols>on
   <check>off

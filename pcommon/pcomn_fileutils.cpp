@@ -11,6 +11,9 @@
 *******************************************************************************/
 #include <pcomn_fileutils.h>
 #include <pcomn_unistd.h>
+
+#include <limits>
+
 #include <stdlib.h>
 
 namespace pcomn {
