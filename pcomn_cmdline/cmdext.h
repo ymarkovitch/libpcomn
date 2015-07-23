@@ -415,7 +415,7 @@ struct rebind___c {
 } ;
 
 template<typename C, typename T, typename... A>
-using rebind_container = decltype(rebind___c<T, A...>::eval(std::declval<C *>())) ;
+using rebind_container = decltype(rebind___c<T, A...>::eval((C *)nullptr)) ;
 
 /*******************************************************************************
  Base class for integer argument traits (of different integral types)
