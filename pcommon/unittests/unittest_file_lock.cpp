@@ -47,6 +47,7 @@ class NativeFileLockTests : public pcomn::unit::TestFixture<FILELOCK_FIXTURE> {
 
 void NativeFileLockTests::Test_Exclusive_File_Lock()
 {
+#ifdef PCOMN_PL_LINUX
    struct local {
          static void run_child(NativeFileLockTests &test, forkcmd &process)
          {
@@ -155,6 +156,7 @@ void NativeFileLockTests::Test_Exclusive_File_Lock()
       }
    }
    CPPUNIT_ASSERT(false) ;
+#endif
 }
 
 void NativeFileLockTests::Test_Shared_File_Lock()

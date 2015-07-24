@@ -612,7 +612,7 @@ struct tagged_ptr_union {
       }
 
       /// Get the index of the type of the pointer currently held by the union
-      constexpr unsigned type_ndx() const { return tag() ; }
+      constexpr unsigned type_ndx() const { return (unsigned)tag() ; }
 
    private:
       union {

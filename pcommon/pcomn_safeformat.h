@@ -46,8 +46,8 @@ namespace pcomn {
 // Namespace fmt is for placing everything format-related
 namespace fmt {
 
-// long is 32 bit on 64-bit Windows!
-#ifdef PCOMN_PL_WINDOWS
+// long is 32 bit on 64-bit Microsoft-comnpatible compilers!
+#ifdef PCOMN_PL_MS
 typedef intptr_t  safeformat_long_t ;
 typedef uintptr_t safeformat_ulong_t ;
 #else

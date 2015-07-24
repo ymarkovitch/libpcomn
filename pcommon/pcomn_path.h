@@ -162,9 +162,26 @@ using posix::is_basename ;
 #elif defined(PCOMN_PL_MS)
 
 namespace windows {
+
+size_t joinpath(const strslice &p1, const strslice &p2, char *result, size_t bufsize) ;
+
 size_t abspath(const char *name, char *result, size_t bufsize) ;
+
+inline bool is_absolute(const strslice &path)
+{
+   const char *p = path.begin() ;
+   return path.size() >= 3
+      && (inrange(*p, 'A', 'Z') || inrange(*p, 'a', 'z'))
+      && *++p == ':' && (*++p == '\\' || *p == '/') ;
+}
+
+inline bool is_absolute(const char *path)
+{
+   return path[0] && path[1] && path[2] && is_absolute({path, path + 3}) ;
+}
 } // end of namespace pcomn::path::windows
 using windows::abspath ;
+using windows::joinpath ;
 #endif
 
 using posix::basename ;

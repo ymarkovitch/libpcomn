@@ -18,7 +18,7 @@
                        PCOMN_PL_WINDOWS (Win32, Win64)
                        PCOMN_PL_WIN64
                        PCOMN_PL_WIN32   (Win32,Win32 Console,Win32s,DPMI32)
-                       PCOMN_PL_MS      (All Microsoft platforms, alias for PCOMN_PL_WINDOWS)
+                       PCOMN_PL_MS      (Strict MS environment, no GNU)
                        PCOMN_PL_OS2     (IBM OS/2 2.x)
                        PCOMN_PL_AS400   (IBM AS/400)
                        PCOMN_PL_UNIX    (All UNIX platforms)

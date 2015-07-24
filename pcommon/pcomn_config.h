@@ -115,7 +115,7 @@
 
 #define PCOMN_USE(var) ((void)(var))
 
-#if defined(PCOMN_PL_WINDOWS)
+#if defined(PCOMN_PL_MS)
 
 #  define PCOMN_PATH_DELIMS "\\"
 #  define PCOMN_PATH_NATIVE_DELIM '\\'
@@ -137,7 +137,7 @@
 
 #endif
 
-#if defined(PCOMN_PL_WINDOWS)
+#if defined(PCOMN_PL_MS)
 #  define PCOMN_EOL_NATIVE "\r\n"
 #else
 #  define PCOMN_EOL_NATIVE "\n"

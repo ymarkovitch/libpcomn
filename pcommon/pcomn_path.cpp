@@ -14,6 +14,10 @@
 #include <pcomn_unistd.h>
 #include <pcstring.h>
 
+#ifdef PCOMN_PL_MS
+#include <filesystem>
+#endif
+
 #ifndef PCOMN_PL_POSIX
 #define readlink(x, y, z) (((void)(x), (void)(y), (void)(z), (-1)))
 #endif
@@ -252,6 +256,40 @@ static inline char *normalize_separators(char *path_begin, char *path_end)
                                        [](char x, char y) { return y == '/' && (x == '/' || x == '\\') ; }),
                 '/', '\\') ;
    return path_end ;
+}
+
+size_t joinpath(const strslice &p1, const strslice &p2, char *result, size_t bufsize)
+{
+   if (!result || !bufsize)
+      return 0 ;
+
+   if (const strslice *sp = !p2 ? &p1 : (is_absolute(p2) || !p1 ? &p2 : NULL))
+   {
+      size_t sz = sp->size() ;
+      if (sz >= bufsize)
+         return 0 ;
+      memmove(result, sp->begin(), sz) ;
+      sz = normalize_separators(result, result + sz) - result ;
+      result[sz] = 0 ;
+      return sz ;
+   }
+
+   size_t p1sz = p1.size() ;
+   const size_t p2sz = p2.size() ;
+   const char p1_last = *(p1.end() - 1) ;
+   size_t fullsz = p1sz + p2sz + (p1_last != '\\' && p1_last != '/') ;
+
+   if (fullsz >= bufsize)
+      return 0 ;
+
+   memmove(result, p1.begin(), p1sz) ;
+   if (p1sz + p2sz != fullsz)
+      result[p1sz++] = '\\' ;
+   memmove(result + p1sz, p2.begin(), p2sz) ;
+   fullsz = normalize_separators(result, result + fullsz) - result ;
+   result[fullsz] = 0 ;
+
+   return fullsz ;
 }
 
 size_t abspath(const char *name, char *result, size_t bufsize)

@@ -602,9 +602,9 @@ template<size_t n> const wchar_t emptystr<wchar_t[n]>::value[n] = L"" ;
 template<typename S>
 inline typename std::enable_if
 <string_traits<S>::has_std_read,
- int>::type stringchr(const S &s,
-                      typename string_traits<S>::char_type c,
-                      typename string_traits<S>::size_type from_pos = 0)
+ ssize_t>::type stringchr(const S &s,
+                          typename string_traits<S>::char_type c,
+                          typename string_traits<S>::size_type from_pos = 0)
 {
    return s.find(c, from_pos) ;
 }
@@ -612,9 +612,9 @@ inline typename std::enable_if
 template<typename S>
 inline typename disable_if
 <string_traits<S>::has_std_read,
- int>::type stringchr(const S &s,
-                      typename string_traits<S>::char_type c,
-                      typename string_traits<S>::size_type from_pos = 0)
+ ssize_t>::type stringchr(const S &s,
+                          typename string_traits<S>::char_type c,
+                          typename string_traits<S>::size_type from_pos = 0)
 {
    typedef typename string_traits<S>::size_type size_type ;
    typedef typename string_traits<S>::char_type char_type ;

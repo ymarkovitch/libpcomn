@@ -23,6 +23,7 @@
 #include <pcomn_path.h>
 #include <pcomn_function.h>
 #include <pcomn_safeptr.h>
+#include <pcomn_unistd.h>
 #include <pcomn_handle.h>
 #include <pcomn_sys.h>
 
@@ -88,7 +89,7 @@ struct test_environment {
  test_environment
 *******************************************************************************/
 template<nullptr_t n>
-std::string test_environment<n>::_progdir {"."} ;
+std::string test_environment<n>::_progdir (".") ;
 template<nullptr_t n>
 std::string test_environment<n>::_testdir ;
 
@@ -423,7 +424,7 @@ class TestRunner : public CppUnit::TextUi::TestRunner {
 *******************************************************************************/
 template<const char *private_dirname>
 class TestFixture : public CppUnit::TestFixture {
-      PCOMN_STATIC_CHECK(private_dirname != nullptr) ;
+      PCOMN_STATIC_CHECK(!!private_dirname) ;
    public:
       typedef ostream_lock<TestFixture<private_dirname> > locked_out ;
 
@@ -911,9 +912,9 @@ void ExpectedExceptionCodeTraits<ExceptionType>::expectedException(const pcomn::
 #define CPPUNIT_STRING(value) (::pcomn::unit::to_string(value))
 #define CPPUNIT_CONTAINER(type, items) (::pcomn::container_inserter< type >() items .container())
 
-#define CPPUNIT_STRVECTOR(items)    CPPUNIT_CONTAINER(std::vector<std::string>, items)
-#define CPPUNIT_STRSET(items)       CPPUNIT_CONTAINER(std::set<std::string>, items)
-#define CPPUNIT_STRMAP(type, items) CPPUNIT_CONTAINER(P_PASS(std::map<std::string, type >), items)
+#define CPPUNIT_STRVECTOR(...)    CPPUNIT_CONTAINER(std::vector<std::string>, __VA_ARGS__)
+#define CPPUNIT_STRSET(...)       CPPUNIT_CONTAINER(std::set<std::string>, __VA_ARGS__)
+#define CPPUNIT_STRMAP(type, ...) CPPUNIT_CONTAINER(P_PASS(std::map<std::string, type >), __VA_ARGS__)
 
 // Extremely inefficient, but it is all the same for testing!
 template<typename Container>

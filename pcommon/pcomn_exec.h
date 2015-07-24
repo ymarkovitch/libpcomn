@@ -16,6 +16,7 @@
 *******************************************************************************/
 #include <pcomn_platform.h>
 #include <pcomn_except.h>
+#include <pcomn_unistd.h>
 #include <pcomn_def.h>
 
 #include <stdarg.h>
@@ -49,6 +50,44 @@ namespace sys {
 
 /// The default output buffer limit for a shell command run
 const size_t DEFAULT_MAXSHELLOUT = 8*MiB ;
+
+/******************************************************************************/
+/** Popen object.
+*******************************************************************************/
+struct _PCOMNEXP popencmd {
+      /// Create a command pipe.
+      /// @param cmd    Shell command; may contain pipe redirections, etc.
+      /// @param mode   Pipe mode: 'r' - read from the command's stdout, 'w' - write to
+      /// stdin.
+      ///
+      popencmd(const char *cmd, char mode = 'r') ;
+
+      ~popencmd() { unchecked_close() ; }
+
+      FILE *pipe() { return _pipe ; }
+
+      /// Indicate if the command pipe is closed
+      bool is_closed() const { return !_pipe ; }
+
+      /// Wait until the command finished execution and close the command pipe.
+      /// @return Exit status of the command pipe.
+      ///
+      int close() ;
+
+   private:
+      const std::string _cmd ;
+      FILE *            _pipe ;
+      int               _status ;
+
+      int unchecked_close()
+      {
+         if (is_closed())
+            return _status ;
+         FILE *p = _pipe ;
+         _pipe = NULL ;
+         return _status = pclose(p) ;
+      }
+} ;
 
 /******************************************************************************/
 /** The result type of a shell command run.

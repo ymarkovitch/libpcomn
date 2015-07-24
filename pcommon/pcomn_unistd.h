@@ -16,7 +16,9 @@
 #include <pcomn_platform.h>
 
 #ifdef PCOMN_PL_WINDOWS
-/* PCOMN_PL_WINDOWS */
+/*******************************************************************************
+ PCOMN_PL_WINDOWS
+*******************************************************************************/
 
 #  include <io.h>
 #  include <fcntl.h>
@@ -76,6 +78,14 @@
 #     define PATH_MAX _MAX_PATH
 #  endif
 
+#  ifndef WEXITSTATUS
+#     define WEXITSTATUS(status) ((status))
+#  endif
+
+#  ifndef WIFEXITED
+#     define WIFEXITED(status) ((1))
+#  endif
+
 /// ftruncate quasi for Windows.
 __inline int ftruncate(int fd, fileoff_t newsize) { return _chsize_s(fd, newsize) ; }
 
@@ -96,8 +106,13 @@ __inline errno_t unsetenv(const char *name) { return setenv(name, NULL, 1) ; }
 
 #define fseek_i(stream, offset, whence) (_fseeki64((stream), (offset), (whence)))
 
+#define popen(cmd, mode) (_popen((cmd), (mode)))
+#define pclose(stream)   (_pclose((stream)))
+
 #else /* end of PCOMN_PL_WINDOWS */
-/* PCOMN_PL_UNIX */
+/*******************************************************************************
+ PCOMN_PL_UNIX
+*******************************************************************************/
 
 #define fseek_i(stream, offset, whence) (fseek((stream), (offset), (whence)))
 

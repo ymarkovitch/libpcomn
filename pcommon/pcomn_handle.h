@@ -57,30 +57,30 @@ struct _atomic_set_handle {
 } ;
 
 template<typename T> struct _set_handle<T *> : _atomic_set_handle<T *> {} ;
-template<> struct _set_handle<atomic_t> : _atomic_set_handle<atomic_t> {} ;
-template<> struct _set_handle<uatomic_t> : _atomic_set_handle<uatomic_t> {} ;
+template<> struct _set_handle<atomic_t>   : _atomic_set_handle<atomic_t> {} ;
+template<> struct _set_handle<uatomic_t>  : _atomic_set_handle<uatomic_t> {} ;
+template<> struct _set_handle<int>        : _atomic_set_handle<int> {} ;
+template<> struct _set_handle<unsigned>   : _atomic_set_handle<unsigned> {} ;
 
 /******************************************************************************/
 /** POSIX I/O file descriptor handle traits.
 *******************************************************************************/
 struct fd_handle_tag {
-      /// We use signed atomic type instead of 'int' here ot provide for the possibility
-      /// to release handles atomically.
-      typedef atomic_t handle_type ;
+      typedef int handle_type ;
 } ;
 
 template<>
-inline bool handle_traits<fd_handle_tag>::close(atomic_t h)
+inline bool handle_traits<fd_handle_tag>::close(int h)
 {
-   return ::close((int)h) == 0 ;
+   return ::close(h) == 0 ;
 }
 template<>
-inline bool handle_traits<fd_handle_tag>::is_valid(atomic_t h)
+inline bool handle_traits<fd_handle_tag>::is_valid(int h)
 {
    return h >= 0 ;
 }
 template<>
-inline constexpr atomic_t handle_traits<fd_handle_tag>::invalid_handle()
+inline constexpr int handle_traits<fd_handle_tag>::invalid_handle()
 {
    return -1 ;
 }

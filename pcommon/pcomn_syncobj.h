@@ -241,6 +241,9 @@ class shared_lock {
       }
 } ;
 
+#else
+typedef std::shared_timed_mutex shared_mutex ;
+using std::shared_lock ;
 #endif // PCOMN_HAS_SHARED_MUTEX
 
 } // end of namespace pcomn

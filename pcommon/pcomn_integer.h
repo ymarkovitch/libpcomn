@@ -105,7 +105,7 @@ inline typename if_signed_int<T, T>::type iabs(T v)
    return std::abs(v) ;
 }
 
-#ifdef PCOMN_PL_WINDOWS
+#ifdef PCOMN_PL_MS
 
 template<>
 inline int64_t iabs(int64_t v)

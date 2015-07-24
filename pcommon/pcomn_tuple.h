@@ -174,18 +174,23 @@ const_tie(A&& ...args)
 
 *******************************************************************************/
 namespace detail {
-template<typename T, bool> struct tuplesize_ : std::tuple_size<std::remove_cv_t<T> > {} ;
-template<typename T> struct tuplesize_<T, false> : std::integral_constant<ssize_t, -1> {} ;
+template<typename... Args>
+inline constexpr ssize_t tuplesize_(std::tuple<Args...> *) { return std::tuple_size<std::tuple<Args...> >::value ; }
+template<typename U, typename V>
+inline constexpr ssize_t tuplesize_(std::pair<U, V> *) { return std::tuple_size<std::pair<U, V> >::value ; }
+template<typename T, size_t n>
+inline constexpr ssize_t tuplesize_(std::array<T, n> *) { return std::tuple_size<std::array<T, n> >::value ; }
+inline constexpr ssize_t tuplesize_(void *) { return -1  ; }
 }
 
 template<typename T>
 inline constexpr ssize_t tuplesize()
 {
-   return detail::tuplesize_<T, std::is_destructible<std::tuple_size<T> >::value>::value ;
+   return detail::tuplesize_((valtype_t<T> *)nullptr)  ;
 }
 
 template<typename T>
-inline constexpr ssize_t tuplesize(const T &) { return tuplesize<T>() ; }
+inline constexpr ssize_t tuplesize(T &&) { return tuplesize<T>() ; }
 
 } // end of namespace pcomn
 

@@ -25,7 +25,7 @@ typedef pcomn::raw_ios::pos_type pos_type ;
 
 static size_t file_size(int fd)
 {
-   return pcomn::ensure_ge<pcomn::system_error>(pcomn::sys::filesize(fd), (fileoff_t)0) ;
+   return pcomn::ensure_ge<pcomn::system_error>(pcomn::sys::filesize(fd), 0) ;
 }
 
 /*******************************************************************************
@@ -90,10 +90,10 @@ void MMapTests::Test_MemMapFile()
    CPPUNIT_LOG(std::endl) ;
    CPPUNIT_LOG_EXCEPTION(MMFile.reset(new pcomn::PMemMappedFile(-1)), pcomn::environment_error) ;
    CPPUNIT_LOG_RUN(fd = pcomn::ensure_ge<pcomn::system_error>(open(name, O_RDONLY), 0)) ;
-   CPPUNIT_LOG_EQUAL(file_size(fd), (size_t)66000) ;
+   CPPUNIT_LOG_EQ(file_size(fd), 66000) ;
    CPPUNIT_LOG_RUN(MMFile.reset(new pcomn::PMemMappedFile(fd, 6000, O_RDONLY))) ;
-   CPPUNIT_LOG_EQUAL(MMFile->requested_size(), (filesize_t)6000) ;
-   CPPUNIT_LOG_EQUAL(file_size(fd), (size_t)66000) ;
+   CPPUNIT_LOG_EQ(MMFile->requested_size(), 6000) ;
+   CPPUNIT_LOG_EQ(file_size(fd), 66000) ;
 }
 
 void MMapTests::Test_MemMapFileRead()
@@ -203,9 +203,9 @@ void MMapTests::Test_MemMapFileReadWrite()
    CPPUNIT_LOG_EQUAL(file_size(fd), (size_t)0) ;
    CPPUNIT_LOG_RUN(Mapping.reset(new pcomn::PMemMapping(fd, 37, 54, O_RDWR))) ;
    CPPUNIT_LOG_EQUAL(file_size(fd), (size_t)54) ;
-   CPPUNIT_LOG_EQUAL(write(fd, Create_Str(10, 18).c_str(), 48), (ssize_t)48) ;
+   CPPUNIT_LOG_EQ(write(fd, Create_Str(10, 18).c_str(), 48), 48) ;
    CPPUNIT_LOG_RUN(memcpy(Mapping->cdata() + 11, Create_Str(3, 4).c_str(), 6)) ;
-   CPPUNIT_LOG_EQUAL(file_size(fd), (size_t)54) ;
+   CPPUNIT_LOG_EQ(file_size(fd), 54) ;
 
    CPPUNIT_LOG(std::endl) ;
    pcomn::safe_handle<pcomn::FILE_handle_tag> TestFile ;

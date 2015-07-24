@@ -52,8 +52,6 @@ if ! [ adhoc-targets ]
   compile-fail unittest_hashclosed_compfail.cpp ;
 
   unittest unittest_cacher ;
-  unittest unittest_crypthash ;
-  unittest unittest_exec ;
   unittest unittest_file_lock ;
   unittest unittest_hashclosed ;
   unittest unittest_inclist ;
@@ -64,7 +62,6 @@ if ! [ adhoc-targets ]
   #unittest unittest_keyedmutex ;
   #unittest unittest_keyedset ;
   unittest unittest_mmap ;
-  unittest unittest_mxmutex ;
   unittest unittest_rawstream ;
   unittest unittest_regex ;
   unittest unittest_safeformat ;
@@ -79,14 +76,18 @@ if ! [ adhoc-targets ]
   unittest unittest_uuid ;
   unittest unittest_zstream ;
 
-  # pcomn::journal
-  unittest unittest_journal_files ;
-  unittest unittest_journal ;
-
   if [ os.name ] != NT
   {
+    unittest unittest_crypthash ;
+    unittest unittest_exec ;
+
+    # pcomn::journal
+    unittest unittest_journal_files ;
+    unittest unittest_journal ;
+
     unittest unittest_filesys ;
     unittest unittest_synccomplex ;
+    unittest unittest_mxmutex ;
   }
   #if [ os.name ] = LINUX
   #{

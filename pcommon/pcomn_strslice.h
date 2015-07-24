@@ -368,7 +368,7 @@ class cstrseq_iterator :
       typedef typename ancestor::value_type value_type ;
 
       explicit constexpr cstrseq_iterator(const char *buffer) : _buffer(buffer) {}
-      constexpr cstrseq_iterator() : cstrseq_iterator(nullptr)  {}
+      constexpr cstrseq_iterator() : _buffer() {}
 
       value_type operator*() const { return value_type(_buffer) ; }
 

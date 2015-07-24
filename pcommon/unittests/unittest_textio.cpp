@@ -96,17 +96,15 @@ void TextIOTests::Test_ReadingFile()
    CPPUNIT_LOG_EQUAL(reader.eoltype(), (bigflag_t)eol_CRLF) ;
 }
 
-#ifdef PCOMN_PL_WINDOWS
+#ifdef PCOMN_PL_MS
   #define _NEWLINE_STR_     "\r\n"
-  #define _NEWLINE_ENDCHAR_ '\n'
-#elif PCOMN_PL_UNIX
-  #define _NEWLINE_STR_     "\n"
   #define _NEWLINE_ENDCHAR_ '\n'
 #elif PCOMN_PL_MAC
   #define _NEWLINE_STR_     "\r"
   #define _NEWLINE_ENDCHAR_ '\r'
-#else
-#error "Unknown platform"
+#else // Unix, Linux, Cygwin
+  #define _NEWLINE_STR_     "\n"
+  #define _NEWLINE_ENDCHAR_ '\n'
 #endif
 
 bool check_line(const char **buffer, const char *compare)

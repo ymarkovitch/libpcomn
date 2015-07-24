@@ -79,13 +79,13 @@ alias user32 : : <os>LINUX ;
 ################################################################################
 alias pcommon-unix-sources :
   pcomn_crypthash.cpp
-  pcomn_exec.cpp
   pcomn_shutil.cpp
   pcomn_scheduler.cpp
   pcomn_journal.cpp
   pcomn_journstorage.cpp
   pcomn_journfile.cpp
   pcomn_journmmap.cpp
+  pcomn_posix_exec.cpp
 
   : <toolset>gcc
   ;
@@ -122,6 +122,7 @@ lib pcommon :
   pcomn_binascii.cpp
   pcomn_cfgparser.cpp
   pcomn_diag.cpp
+  pcomn_exec.cpp
   pcomn_fileutils.cpp
   pcomn_incdlist.cpp
   pcomn_iostream.cpp

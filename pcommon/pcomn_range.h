@@ -16,6 +16,7 @@
 #include <iterator>
 #include <type_traits>
 #include <algorithm>
+#include <functional>
 
 #include <stddef.h>
 

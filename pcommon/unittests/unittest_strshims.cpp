@@ -167,7 +167,7 @@ struct TestData {
 } ;
 
 #define TEST_ITEM(type, strpfx, name, value) \
-template<> type const TestData<type>::name { strpfx##value }
+template<> type const TestData<type>::name (strpfx##value)
 
 #define TEST_DATA(type, strpfx)                                         \
    TEST_ITEM(type, strpfx, empty_string, "") ;                          \

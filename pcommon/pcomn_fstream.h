@@ -64,7 +64,7 @@ class _PCOMNEXP binary_ifdstream : public detail::posix_fd, public binary_istrea
    protected:
       size_t read_data(void *buf, size_t size)
       {
-         return PCOMN_ENSURE_POSIX(::read(fd(), buf, size), "read") ;
+         return PCOMN_ENSURE_POSIX(::read(fd(), buf, (unsigned long)size), "read") ;
       }
 } ;
 
@@ -80,7 +80,7 @@ class _PCOMNEXP binary_ofdstream : public detail::posix_fd, public binary_ostrea
    protected:
       size_t write_data(const void *buf, size_t size)
       {
-         return PCOMN_ENSURE_POSIX(::write(fd(), buf, size), "write") ;
+         return PCOMN_ENSURE_POSIX(::write(fd(), buf, (unsigned long)size), "write") ;
       }
 
 } ;

@@ -51,7 +51,7 @@ struct TestBuf {
       {
          memset(data, init, sizeof data) ;
       }
-      int check(int pattern) const
+      ptrdiff_t check(int pattern) const
       {
          const char *iter = data ;
          return
@@ -67,9 +67,9 @@ void MetafunctionTests::Test_Static_Fill()
 #define CHECKFILL(sz)                                                   \
    {                                                                    \
       TestBuf<sz> TestBuf##sz ;                                         \
-      CPPUNIT_LOG_EQUAL(pcomn::static_fill<-1>(&TestBuf##sz)->check(-1), -1) ; \
+      CPPUNIT_LOG_EQ(pcomn::static_fill<-1>(&TestBuf##sz)->check(-1), -1) ; \
       TestBuf<sz> TestBuf_C##sz ;                                       \
-      CPPUNIT_LOG_EQUAL((int)*(pcomn::static_fill<-1>(TestBuf_C##sz.data) + (sz-1)), -1) ; \
+      CPPUNIT_LOG_EQ(*(pcomn::static_fill<-1>(TestBuf_C##sz.data) + (sz-1)), -1) ; \
    }
    CHECKFILL(1) ;
    CHECKFILL(2) ;

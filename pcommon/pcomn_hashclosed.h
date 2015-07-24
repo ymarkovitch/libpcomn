@@ -39,7 +39,7 @@
 #include <string.h>
 #include <math.h>
 
-#define PCOMN_CLOSED_HASH_LOAD_FACTOR (0.75)
+constexpr const float PCOMN_CLOSED_HASH_LOAD_FACTOR = 0.75 ;
 
 namespace pcomn {
 

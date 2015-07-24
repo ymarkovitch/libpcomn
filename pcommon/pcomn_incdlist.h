@@ -253,15 +253,11 @@ class incdlist : private PDList {
          protected:
             Node *node ;
 
-            iterator (Node * x) :
-               node(x)
-            {}
+            constexpr iterator(Node *x) : node(x) {}
 
 
          public:
-            iterator() :
-               node(NULL)
-            {}
+            constexpr iterator() : iterator(nullptr) {}
 
             /// Create an iterator to an item from the item itself; introduces implicit
             /// conversion
@@ -298,22 +294,18 @@ class incdlist : private PDList {
          protected:
             const Node *node ;
 
-            const_iterator (const Node *x) :
-               node(x)
-            {}
+            constexpr const_iterator(const Node *x) : node(x) {}
 
          public:
-            const_iterator() :
-               node(NULL)
-            {}
+            constexpr const_iterator() : const_iterator(nullptr) {}
 
-            const_iterator(const iterator& x) :
+            const_iterator(const typename incdlist::iterator &x) :
                node(x.node)
             {}
 
             /// Create an iterator to an item from the item itself; introduces implicit
             /// conversion
-            const_iterator (const_reference r) :
+            const_iterator(const_reference r) :
                node(incdlist<T, N>::node(&r))
             {}
 
