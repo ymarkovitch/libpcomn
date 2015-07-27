@@ -26,6 +26,10 @@ if ! [ adhoc-targets ]
   # Unit tests
   #
   unittest unittest_network_address ;
-  unittest unittest_netsockets ;
-  unittest unittest_netstreams ;
+
+  if [ os.name ] != NT
+  {
+    unittest unittest_netsockets ;
+    unittest unittest_netstreams ;
+  }
 }

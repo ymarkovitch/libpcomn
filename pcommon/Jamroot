@@ -155,6 +155,9 @@ lib pcommon :
 
   : # Usage requirements
   <library>$(PROJROOT)//user32
+  <include>$(VENDOR_PREFIX)/include
+  <library-path>$(VENDOR_PREFIX)/lib
+
   <os>NT:<define>WIN32_LEAN_AND_MEAN=1
   <os>NT:<define>_WIN32_WINNT=0x0600
 

@@ -95,7 +95,7 @@ public:
         _addr(from_string(address_string, flags))
     {}
 
-    explicit constexpr operator bool() { return !!_addr ; }
+    explicit constexpr operator bool() const { return !!_addr ; }
 
     /// Get one octet of an IP address by octet index (0-3).
     uint8_t octet(unsigned ndx) const
@@ -119,7 +119,7 @@ public:
     }
 
     /// Get an IP address as a 32-bit unsigned number in the host byte order.
-    constexpr uint32_t ipaddr() { return _addr ; }
+    constexpr uint32_t ipaddr() const { return _addr ; }
 
     in_addr inaddr() const
     {
@@ -129,8 +129,8 @@ public:
     }
     operator struct in_addr() const { return inaddr() ; }
 
-    constexpr inet_address next() { return inet_address(ipaddr() + 1) ; }
-    constexpr inet_address prev() { return inet_address(ipaddr() - 1) ; }
+    constexpr inet_address next() const { return inet_address(ipaddr() + 1) ; }
+    constexpr inet_address prev() const { return inet_address(ipaddr() - 1) ; }
     static constexpr inet_address last() { return inet_address((uint32_t)~0) ; }
 
     /// Get a hostname for the address.
@@ -348,7 +348,7 @@ public:
     unipair<inet_address> addr_range() const
     {
         const uint32_t first = addr().ipaddr() & netmask() ;
-        const uint32_t last = first + (0x100000000ULL >> pfxlen()) - 1 ;
+        const uint32_t last =  uint32_t(first + (0x100000000ULL >> pfxlen()) - 1) ;
         return {inet_address(first), inet_address(last)} ;
     }
 

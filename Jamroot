@@ -40,7 +40,6 @@ constant PROJSHARE : /libpcomn ;
 path-constant SHAREPATH : . ;
 
 path-constant VENDOR_LIBPATH  : vendor/lib ;
-path-constant VENDOR_INCPATH  : vendor/include ;
 
 constant BUILD_HOST : [ pcommon.build-host ] ;
 
@@ -113,7 +112,6 @@ lib cppunit : : <os>NT <os>NT:<link>static <variant>debug <name>cppunitd ;
 
 lib ncurses : : <link>shared ;
 lib crypto  : : <link>shared ;
-lib re2     : : <link>static <search>$(VENDOR_LIBPATH) ;
 
 ################################################################################
 # Project
@@ -126,8 +124,6 @@ project libpcomn
   # Include headers of all other our libraries with corresponding prefix,
   # like <pcomn_net/netsockets.h>
   <include>$(SHAREPATH)
-
-  <include>$(VENDOR_INCPATH)
 
   <threading>multi
 
