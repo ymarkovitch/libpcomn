@@ -412,18 +412,18 @@ class nzbitpos_iterator : public std::iterator<std::forward_iterator_tag, V> {
       constexpr nzbitpos_iterator() : _data(), _pos(bitsizeof(I)) {}
       explicit nzbitpos_iterator(I value) : _data((datatype)value), _pos(-1)
       {
-         advance() ;
+         advance_pos() ;
       }
 
       nzbitpos_iterator &operator++()
       {
-         advance() ;
+         advance_pos() ;
          return *this ;
       }
       nzbitpos_iterator operator++(int)
       {
          nzbitpos_iterator<I> tmp(*this) ;
-         advance() ;
+         advance_pos() ;
          return tmp ;
       }
 
@@ -442,7 +442,7 @@ class nzbitpos_iterator : public std::iterator<std::forward_iterator_tag, V> {
       datatype _data ;
       int      _pos ;
 
-      void advance()
+      void advance_pos()
       {
          NOXCHECK(_pos < (int)bitsizeof(I)) ;
          if (!_data)
