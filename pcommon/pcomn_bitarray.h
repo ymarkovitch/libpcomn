@@ -622,6 +622,9 @@ inline bitarray operator-(const bitarray &left, const bitarray &right)
 
 #undef PCOMN_BIN_BITOP
 
+MS_DIAGNOSTIC_PUSH()
+MS_IGNORE_WARNING(4267)
+
 /*******************************************************************************
  bitarray_base<Element>
 *******************************************************************************/
@@ -762,6 +765,8 @@ size_t bitarray_base<Element>::find_first_bit(size_t start, size_t finish) const
    }
    return start ;
 }
+
+MS_DIAGNOSTIC_POP()
 
 /******************************************************************************/
 /** swap specialization for pcomn::bitarray.

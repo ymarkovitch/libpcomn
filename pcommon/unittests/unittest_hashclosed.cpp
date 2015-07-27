@@ -207,7 +207,7 @@ void ClosedHashTests::Test_Closed_Hash_Empty()
 void ClosedHashTests::Test_Closed_Hash_Init()
 {
    test_inthashtable IntHash(4) ;
-   CPPUNIT_LOG_EQUAL(IntHash.max_load_factor(), (float)0.75) ;
+   CPPUNIT_LOG_EQ(IntHash.max_load_factor(), 0.75) ;
    CPPUNIT_LOG_EQUAL(IntHash.bucket_count(), (size_t)6) ;
 
    test_inthashtable IntHash2 ({4, 0.5}) ;
@@ -234,7 +234,7 @@ void ClosedHashTests::Test_Closed_Hash_Insert_One()
    pcomn::closed_hashtable<long> IntHash ;
    CPPUNIT_LOG_ASSERT(IntHash.empty()) ;
    CPPUNIT_LOG_EQUAL(IntHash.size(), (size_t)0) ;
-   CPPUNIT_LOG_EQUAL(IntHash.load_factor(), (float)1.0) ;
+   CPPUNIT_LOG_EQ(IntHash.load_factor(), 1.0) ;
    CPPUNIT_LOG(IntHash << std::endl) ;
    CPPUNIT_LOG_ASSERT(IntHash.insert(20).second) ;
    CPPUNIT_LOG(IntHash << " load_factor=" << IntHash.load_factor() << std::endl) ;
@@ -267,7 +267,7 @@ void ClosedHashTests::Test_Closed_Hash_Insert_One()
 void ClosedHashTests::Test_Closed_Hash_Insert()
 {
    test_inthashtable IntHash(4) ;
-   CPPUNIT_LOG_EQUAL(IntHash.max_load_factor(), (float)0.75) ;
+   CPPUNIT_LOG_EQ(IntHash.max_load_factor(), 0.75) ;
    CPPUNIT_LOG_EQUAL(IntHash.bucket_count(), (size_t)6) ;
 
    CPPUNIT_LOG_ASSERT(IntHash.insert(10).second) ;
@@ -325,7 +325,7 @@ void ClosedHashTests::Test_Closed_Hash_Erase()
 
    CPPUNIT_LOG(std::endl) ;
    CPPUNIT_LOG("Testing erasing in the presence of collisions" << std::endl) ;
-   const int BucketCount = IntHash.bucket_count() ;
+   const int BucketCount = (int)IntHash.bucket_count() ;
    CPPUNIT_LOG("Bucket count = " << BucketCount << std::endl) ;
 
    CPPUNIT_LOG_ASSERT(IntHash.insert(BucketCount + 4).second) ;
@@ -373,7 +373,7 @@ void ClosedHashTests::Test_Static_Optimization_Insert()
    CPPUNIT_LOG(PCOMN_TYPENAME(CHash) << '=' << CHash
                << " sizeof(" << PCOMN_TYPENAME(CHash) << ")=" << sizeof CHash << std::endl) ;
 
-   CPPUNIT_LOG_EQUAL(CHash.max_load_factor(), (float)0.75) ;
+   CPPUNIT_LOG_EQ(CHash.max_load_factor(), 0.75) ;
    CPPUNIT_LOG_EQUAL(CHash.bucket_count(), (size_t)4) ;
 
    CPPUNIT_LOG_ASSERT(CHash.insert(Foo).second) ;
@@ -391,7 +391,7 @@ void ClosedHashTests::Test_Static_Optimization_Insert()
    CPPUNIT_LOG_ASSERT(CHash.insert(Hello).second) ;
    CPPUNIT_LOG(CHash << std::endl) ;
    CPPUNIT_LOG_EQUAL(CHash.size(), (size_t)4) ;
-   CPPUNIT_LOG_EQUAL(CHash.load_factor(), (float)1.0) ;
+   CPPUNIT_LOG_EQ(CHash.load_factor(), 1.0) ;
 
    CPPUNIT_LOG_EQUAL(CHash.count(Foo), (size_t)1) ;
    CPPUNIT_LOG_EQUAL(CHash.count(Bar), (size_t)1) ;
@@ -408,7 +408,7 @@ void ClosedHashTests::Test_Static_Optimization_Insert()
 void ClosedHashTests::Test_Static_Optimization_Erase()
 {
    pcomn::closed_hashtable<const char *> CHash ;
-   CPPUNIT_LOG_EQUAL(CHash.max_load_factor(), (float)0.75) ;
+   CPPUNIT_LOG_EQ(CHash.max_load_factor(), 0.75) ;
    CPPUNIT_LOG_EQUAL(CHash.bucket_count(), (size_t)4) ;
 
    CPPUNIT_LOG_ASSERT(CHash.insert(Foo).second) ;
@@ -444,7 +444,7 @@ void ClosedHashTests::Test_Static_Optimization_Erase()
 void ClosedHashTests::Test_Static_Optimization_Grow()
 {
    pcomn::closed_hashtable<const char *> CHash ;
-   CPPUNIT_LOG_EQUAL(CHash.max_load_factor(), (float)0.75) ;
+   CPPUNIT_LOG_EQ(CHash.max_load_factor(), 0.75) ;
    CPPUNIT_LOG_EQUAL(CHash.bucket_count(), (size_t)4) ;
 
    CPPUNIT_LOG_ASSERT(CHash.insert(Foo).second) ;
@@ -462,7 +462,7 @@ void ClosedHashTests::Test_Static_Optimization_Grow()
    CPPUNIT_LOG_ASSERT(CHash.insert(Hello).second) ;
    CPPUNIT_LOG(CHash << std::endl) ;
    CPPUNIT_LOG_EQUAL(CHash.size(), (size_t)4) ;
-   CPPUNIT_LOG_EQUAL(CHash.load_factor(), (float)1.0) ;
+   CPPUNIT_LOG_EQ(CHash.load_factor(), 1.0) ;
    CPPUNIT_LOG_ASSERT(CHash.insert(Quux).second) ;
    CPPUNIT_LOG(CHash << std::endl) ;
    CPPUNIT_LOG_EQUAL(CHash.size(), (size_t)5) ;
@@ -485,7 +485,7 @@ void ClosedHashTests::Test_Static_Optimization_Grow()
 void ClosedHashTests::Test_Closed_Hash_Copy()
 {
    pcomn::closed_hashtable<const char *> CHash ;
-   CPPUNIT_LOG_EQUAL(CHash.max_load_factor(), (float)0.75) ;
+   CPPUNIT_LOG_EQ(CHash.max_load_factor(), 0.75) ;
    CPPUNIT_LOG_EQUAL(CHash.bucket_count(), (size_t)4) ;
 
    CPPUNIT_LOG_ASSERT(CHash.insert(Foo).second) ;
@@ -541,7 +541,7 @@ void ClosedHashTests::Test_Closed_Hash_Copy()
 void ClosedHashTests::Test_Closed_Hash_Move()
 {
    pcomn::closed_hashtable<const char *> CHash ;
-   CPPUNIT_LOG_EQUAL(CHash.max_load_factor(), (float)0.75) ;
+   CPPUNIT_LOG_EQ(CHash.max_load_factor(), 0.75) ;
    CPPUNIT_LOG_EQUAL(CHash.bucket_count(), (size_t)4) ;
 
    CPPUNIT_LOG_ASSERT(CHash.insert(Foo).second) ;

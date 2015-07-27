@@ -229,7 +229,7 @@ class closed_hashtable {
 
       explicit closed_hashtable(size_type initsize = 0) ;
 
-      explicit closed_hashtable(const std::pair<size_type, float> &size_n_load) ;
+      explicit closed_hashtable(const std::pair<size_type, double> &size_n_load) ;
 
       closed_hashtable(const closed_hashtable &other) :
          _basic_state{other.hash_function(), other.key_eq(), {}, other.max_load_factor()},
@@ -240,13 +240,13 @@ class closed_hashtable {
 
       closed_hashtable(closed_hashtable &&other) : closed_hashtable(0) { swap(other) ; }
 
-      closed_hashtable(const std::pair<size_type, float> &size_n_load,
+      closed_hashtable(const std::pair<size_type, double> &size_n_load,
                        const hasher &hf, const key_equal &keq = {}, const key_extract &kex = {}) :
          _basic_state{hf, keq, kex, size_n_load.second},
          _bucket_container(size_n_load.first, _basic_state)
       {}
 
-      closed_hashtable(const std::pair<size_type, float> &size_n_load,
+      closed_hashtable(const std::pair<size_type, double> &size_n_load,
                        const key_extract &kx, const key_equal &eq = {}) :
          _basic_state{{}, eq, kx, size_n_load.second},
          _bucket_container(size_n_load.first, _basic_state)
@@ -364,12 +364,12 @@ class closed_hashtable {
 
       size_type max_size() const { return bucket_count() ; }
 
-      float max_load_factor() const { return _basic_state._max_load_factor ; }
+      double max_load_factor() const { return _basic_state._max_load_factor ; }
 
-      float load_factor() const
+      double load_factor() const
       {
          const size_type bc = bucket_count() ;
-         return bc ? (float)size()/bc : 1.0 ;
+         return bc ? (double)size()/bc : 1.0 ;
       }
 
       bool empty() const { return !size() ; }
@@ -425,11 +425,11 @@ class closed_hashtable {
             basic_state(const hasher &h, const key_equal &keq = {}, const key_extract &kex = {}) :
                _hasher(h), _key_eq(keq), _key_get(kex) {}
 
-            basic_state(const hasher &h, const key_equal &keq, const key_extract &kex, float max_load) :
+            basic_state(const hasher &h, const key_equal &keq, const key_extract &kex, double max_load) :
                _hasher(h), _key_eq(keq), _key_get(kex),
                // Set max load factor bounds to float values exactly representable in
                // binary
-               _max_load_factor(max_load <= 0 ? PCOMN_CLOSED_HASH_LOAD_FACTOR : midval<float>(0.125, 0.875, max_load))
+               _max_load_factor(max_load <= 0 ? PCOMN_CLOSED_HASH_LOAD_FACTOR : midval<float>(0.125, 0.875, (float)max_load))
             {}
 
             bool is_static_buckets() const { return !!_embed_count ; }
@@ -461,7 +461,7 @@ class closed_hashtable {
             bucket_type *begin_buckets() const { return _buckets ; }
             bucket_type *end_buckets() const { return begin_buckets() + _bucket_count ; }
 
-            void init(size_type initsize, float max_load_factor)
+            void init(size_type initsize, double max_load_factor)
             {
                reset_members() ;
                if (initsize)
@@ -500,9 +500,9 @@ class closed_hashtable {
                ++_valid_count ;
             }
 
-            bool overloaded(float max_load_factor) const
+            bool overloaded(double max_load_factor) const
             {
-               return !_bucket_count || (float)_occupied_count/_bucket_count >= max_load_factor ;
+               return !_bucket_count || (double)_occupied_count/_bucket_count >= max_load_factor ;
             }
          private:
             void reset_members()
@@ -816,7 +816,7 @@ closed_hashtable<V, X, H, P>::closed_hashtable(size_type initsize) :
 {}
 
 template<typename V, typename X, typename H, typename P>
-closed_hashtable<V, X, H, P>::closed_hashtable(const std::pair<size_type, float> &size_n_load) :
+closed_hashtable<V, X, H, P>::closed_hashtable(const std::pair<size_type, double> &size_n_load) :
    _basic_state{{}, {}, {}, size_n_load.second},
    _bucket_container(size_n_load.first, _basic_state)
 {}

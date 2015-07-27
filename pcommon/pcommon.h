@@ -85,12 +85,41 @@ inline const char *demangled_typename(char *buf, size_t buflen)
      buf, buflen) ;
 }
 }
-#define PCOMN_DEMANGLE(name) (::pcomn::demangle((name), std::array<char, 1024>().begin(), 1024))
-#else
-#define PCOMN_DEMANGLE(name) (name)
-#endif
 
+#define PCOMN_DEMANGLE(name) (::pcomn::demangle((name), std::array<char, 1024>().begin(), 1024))
 #define PCOMN_CLASSNAME(type) (pcomn::demangled_typename<type >(std::array<char, 1024>().begin(), 1024))
+
+#else
+
+namespace pcomn {
+
+template<typename T>
+inline const char *demangled_typename_(std::false_type)
+{
+  return typeid(T).name() ;
+}
+
+template<typename T>
+inline const char *demangled_typename_(std::true_type)
+{
+   return demangled_typename_<typename std::add_pointer<typename std::remove_reference<T>::type>::type>(std::false_type()) ;
+}
+
+template<typename T>
+inline const char *demangled_typename()
+{
+  return demangled_typename_<T>
+    (std::integral_constant<bool,
+     std::is_class<typename std::remove_reference<T>::type>::value ||
+     std::is_union<typename std::remove_reference<T>::type>::value>()) ;
+}
+
+}
+
+#define PCOMN_DEMANGLE(name) (name)
+#define PCOMN_CLASSNAME(type) (pcomn::demangled_typename<type >())
+
+#endif
 
 #define PCOMN_TYPENAME(type_or_value) PCOMN_DEMANGLE(typeid(type_or_value).name())
 

@@ -90,9 +90,9 @@
 /*******************************************************************************
  Multi-argument appliers
 *******************************************************************************/
-#define P_APPLY(macro, nargs, ...) P_APPLY_##nargs##_(macro, __VA_ARGS__)
+#define P_APPLY(macro, nargs, ...) P_PASS(P_APPLY_##nargs##_(macro, __VA_ARGS__))
 
-#define P_APPL1(macro, arg, nargs, ...) P_APPL1_##nargs##_(macro, arg, __VA_ARGS__)
+#define P_APPL1(macro, arg, nargs, ...) P_PASS(P_APPL1_##nargs##_(macro, arg, __VA_ARGS__))
 
 #define P_FOR(count, macro, ...) P_FOR_##count##_(macro, __VA_ARGS__)
 

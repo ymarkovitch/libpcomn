@@ -736,14 +736,14 @@ class matrix_slice {
       /// Get both matrix dimensions {rows, columns}
       unipair<size_t> dim() const { return {_rows, _cols} ; }
 
-      row_type       row(int ndx)       { return {_data + _cols * ndx, columns()} ; }
-      const_row_type row(int ndx) const { return {_data + _cols * ndx, columns()} ; }
+      row_type       row(ptrdiff_t ndx)       { return {_data + _cols * ndx, columns()} ; }
+      const_row_type row(ptrdiff_t ndx) const { return {_data + _cols * ndx, columns()} ; }
 
-      row_type operator[](int ndx) { return row(ndx) ; }
-      const_row_type operator[](int ndx) const { return row(ndx) ; }
+      row_type operator[](ptrdiff_t ndx) { return row(ndx) ; }
+      const_row_type operator[](ptrdiff_t ndx) const { return row(ndx) ; }
 
-      const column_type column(int num) const { return column_type(_data + num, _rows, columns()) ; }
-      column_type column(int num) { return column_type(_data + num, _rows, columns()) ; }
+      const column_type column(ptrdiff_t num) const { return column_type(_data + num, _rows, columns()) ; }
+      column_type column(ptrdiff_t num) { return column_type(_data + num, _rows, columns()) ; }
 
       iterator begin() { return {*this, 0} ; }
       iterator end() { return {*this, size()} ; }
