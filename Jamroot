@@ -145,6 +145,9 @@ project libpcomn
 
   <cxxflags>-fno-implement-inlines ]
 
+  <toolset>msvc:<define>_SCL_SECURE_NO_WARNINGS
+  <toolset>msvc:<define>_CRT_SECURE_NO_WARNINGS
+
   <define>BUILD_HOST="\"$(BUILD_HOST)\""
 
   : default-build debug <link>static <threading>multi

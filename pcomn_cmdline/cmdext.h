@@ -82,6 +82,8 @@
 #error "Invalid redefinition of EXIT_USAGE"
 #endif
 
+CMDL_MS_DIAGNOSTIC_PUSH()
+CMDL_MS_IGNORE_WARNING(4996)
 
 #define CMDL_FLAG(varname, optchar, keyword, description, ...)           \
    ::cmdl::Arg<bool> varname ((optchar), (keyword), (description), ##__VA_ARGS__)
@@ -309,7 +311,7 @@ struct separator {
       }
       else
       {
-         memcpy(_sep, sep, _size = std::min(strlen(sep), sizeof _sep - 1)) ;
+         memcpy(_sep, sep, _size = (uint8_t)std::min(strlen(sep), sizeof _sep - 1)) ;
          _sep[_size] = 0 ;
       }
    }
@@ -474,12 +476,13 @@ bool argint_traits<T>::compile(const char *&arg, CmdLine &cmdline)
       return false ;
    }
 
+   CMDL_MS_IGNORE_WARNING(4018)
    struct local {
       static type strtoint(const char *nptr, char **endptr, std::true_type)
       {
          const long long r = strtoll(nptr, endptr, 0) ;
          if (r >= std::numeric_limits<type>::min() && r <= std::numeric_limits<type>::max())
-            return r ;
+            return (type)r ;
 
          // Out of range
          *endptr = const_cast<char *>(nptr) ;
@@ -490,13 +493,14 @@ bool argint_traits<T>::compile(const char *&arg, CmdLine &cmdline)
       {
          const unsigned long long r = strtoull(nptr, endptr, 0) ;
          if (r <= (unsigned long long)(type)~0ULL)
-            return r ;
+            return (type)r ;
 
          // Out of range
          *endptr = const_cast<char *>(nptr) ;
          return 1 ;
       }
    } ;
+   CMDL_MS_ENABLE_WARNING(4018)
 
    char *ptr = NULL ;
    // Compile the string into an integer; watch out for -c0xa vs -axc0!
@@ -1248,5 +1252,7 @@ inline bool all_given(std::initializer_list<const CmdArg *> args)
 }
 
 } // end of namespace cmdl
+
+CMDL_MS_DIAGNOSTIC_POP()
 
 #endif /* __CMDLINE_CMDEXT_H */

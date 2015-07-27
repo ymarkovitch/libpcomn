@@ -45,6 +45,8 @@ project pcommon
   <toolset>intel-win:<cflags>-QxSSE4.1
   <toolset>intel-win:<cflags>-arch:SSE4.1
 
+  <toolset>msvc:<define>_SCL_SECURE_NO_WARNINGS
+
   <os>NT:<define>_WIN32_WINNT=0x0600
   <os>NT:<define>WIN32_LEAN_AND_MEAN=1
 

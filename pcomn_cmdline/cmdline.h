@@ -25,6 +25,17 @@
 #include <iostream>
 #include <string>
 
+#ifdef _MSC_VER
+#  define CMDL_MS_MAKE_PRAGMA(arg, ...) __pragma(arg, ##__VA_ARGS__)
+#else
+#  define CMDL_MS_MAKE_PRAGMA(arg, ...)
+#endif
+#define CMDL_MS_IGNORE_WARNING(warnlist) CMDL_MS_MAKE_PRAGMA(warning(disable : warnlist))
+#define CMDL_MS_ENABLE_WARNING(warnlist) CMDL_MS_MAKE_PRAGMA(warning(default : warnlist))
+
+#define CMDL_MS_DIAGNOSTIC_PUSH() CMDL_MS_MAKE_PRAGMA(warning(push))
+#define CMDL_MS_DIAGNOSTIC_POP()  CMDL_MS_MAKE_PRAGMA(warning(pop))
+
 class  CmdLine ;
 class  CmdArg ;
 
