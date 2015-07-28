@@ -69,7 +69,7 @@ class event_mutex {
       PCOMN_NONCOPYABLE(event_mutex) ;
       PCOMN_NONASSIGNABLE(event_mutex) ;
    public:
-      explicit event_mutex() : _native_lock(), _acquired{} {}
+      event_mutex() : _native_lock(), _acquired{} {}
 
       explicit event_mutex(bool acquire) : event_mutex()
       {
