@@ -327,11 +327,13 @@ struct _PCOMNEXP sequence_closed : public object_closed {
  System/POSIX errors handling functions
 *******************************************************************************/
 template<bool>
-__noreturn __noinline void throw_syserror(const char *, const char *, int err = system_error::lasterr()) ;
+__noreturn __noinline
+void throw_syserror(const char *, const char *, int err = system_error::lasterr()) ;
 template<bool>
 __noreturn __noinline void throw_syserror(int, const char *, ...) PCOMN_ATTR_PRINTF(2, 3) ;
 
 template<bool>
+__noreturn __noinline
 void throw_syserror(int err, const char *format, ...)
 {
    char buf[PCOMN_MSGBUFSIZE] ;
@@ -343,6 +345,7 @@ void throw_syserror(int err, const char *format, ...)
 }
 
 template<bool dummy>
+__noreturn __noinline
 void throw_syserror(const char *function_name, const char *call_name_or_message, int err)
 {
    if (!strchr(call_name_or_message, ' '))
@@ -384,6 +387,7 @@ inline void ensure_enoerr(int result, const char *function_name, const char *cal
 template<class X>
 __noreturn __noinline void throwf(const char *, ...) PCOMN_ATTR_PRINTF(1, 2) ;
 template<class X>
+__noreturn __noinline
 void throwf(const char *format, ...)
 {
    char buf[PCOMN_MSGBUFSIZE] ;

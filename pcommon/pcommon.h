@@ -228,8 +228,7 @@ constexpr void * const NaP = not_a_pointer<>::value ;
  Out-of-line exception throw
 *******************************************************************************/
 template<class X, typename... XArgs>
-__noreturn __noinline void throw_exception(XArgs&& ...) ;
-template<class X, typename... XArgs>
+__noreturn __noinline
 void throw_exception(XArgs&& ...args) { throw X(std::forward<XArgs>(args)...) ; }
 
 template<typename Msg>
