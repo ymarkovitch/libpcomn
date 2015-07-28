@@ -136,8 +136,8 @@ void MetafunctionTests::Test_Count_Types()
 void MetafunctionTests::Test_Rebind_Contaner()
 {
    using namespace pcomn ;
-   //PCOMN_STATIC_CHECK(std::is_same<std::vector<int>, rebind_t<std::vector<double>, int> >::value) ;
-   //PCOMN_STATIC_CHECK(std::is_same<std::map<std::string, int>, rebind_t<std::map<double, char>, std::string, int> >::value) ;
+   PCOMN_STATIC_CHECK(std::is_same<std::vector<int>, rebind_t<std::vector<double>, int> >::value) ;
+   PCOMN_STATIC_CHECK(std::is_same<std::map<std::string, int>, rebind_t<std::map<double, char>, std::string, int> >::value) ;
 }
 
 int main(int argc, char *argv[])
