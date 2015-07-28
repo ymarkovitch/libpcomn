@@ -113,6 +113,10 @@ lib cppunit : : <os>NT <os>NT:<link>static <variant>debug <name>cppunitd ;
 lib ncurses : : <link>shared ;
 lib crypto  : : <link>shared ;
 
+lib readline  : : <os>LINUX <os>LINUX:<link>shared : : <library>ncurses ;
+lib readline : : <os>NT <name>editline ;
+lib readline : : <os>NT <variant>debug <name>editlined ;
+
 ################################################################################
 # Project
 ################################################################################

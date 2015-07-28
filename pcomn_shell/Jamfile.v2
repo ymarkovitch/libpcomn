@@ -12,11 +12,13 @@ project
   : requirements
   <library>$(PROJROOT)//pcommon
   <library>$(PROJROOT)//pcomn_cmdline
+  <library>$(PROJROOT)//readline
   <link>static
 
   : usage-requirements
   <library>$(PROJROOT)//pcommon
   <library>$(PROJROOT)//pcomn_cmdline
+  <library>$(PROJROOT)//readline
 ;
 
 lib pcomn_shell :

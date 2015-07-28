@@ -413,7 +413,7 @@ inline const char *cstr(const std::string &s) { return s.c_str() ; }
 template<typename T, typename... A>
 struct rebind___c {
    template<template<typename...> class Template, typename U, typename... Args>
-   static Template<T, Args...> eval(Template<U, Args...> *) ;
+   static Template<T, A...> eval(Template<U, Args...> *) ;
 } ;
 
 template<typename C, typename T, typename... A>
@@ -1156,7 +1156,7 @@ private:
 } ;
 
 template<typename T>
-const separator Arg<interval<T> >::_default_sep {".."} ;
+const separator Arg<interval<T> >::_default_sep ("..") ;
 
 /******************************************************************************/
 /** Command-line iterator over STL iterator

@@ -1,7 +1,7 @@
 /*-*- tab-width:4;indent-tabs-mode:nil;c-file-style:"stroustrup";c-file-offsets:((innamespace . 0)(inline-open . 0)(case-label . +)) -*-*/
 /*******************************************************************************
  FILE         :   shell_repl.cpp
- COPYRIGHT    :   Yakov Markovitch, 2009-2014. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2009-2015. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Interactive command-line shell implementation.
@@ -16,9 +16,6 @@
 #include <pcomn_string.h>
 #include <pcomn_sys.h>
 
-#include <readline/readline.h>
-#include <readline/history.h>
-
 #include <iostream>
 #include <algorithm>
 #include <stdexcept>
@@ -26,19 +23,41 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include <sysexits.h>
+#ifndef PCOMN_PL_WINDOWS
+/*******************************************************************************
+ Windows
+*******************************************************************************/
+#include <readline/readline.h>
+#include <readline/history.h>
 #include <syslog.h>
-
-namespace pcomn {
-namespace sh {
-
-namespace { struct quit_shell{} ; }
 
 static inline bool is_probably_interactive()
 {
     const unsigned mode = sys::filestat(fileno(stdin)).st_mode ;
     return S_ISCHR(mode) || S_ISFIFO(mode) ;
 }
+
+#else
+/*******************************************************************************
+ Nix
+*******************************************************************************/
+#include <editline/readline.h>
+#include <stdio.h>
+#include <io.h>
+
+#define openlog(name, level, facility) ((void)0)
+static inline int rl_initialize() { return using_history() ; }
+
+static inline bool is_probably_interactive()
+{
+    return isatty(fileno(stdout)) ;
+}
+#endif
+
+namespace pcomn {
+namespace sh {
+
+namespace { struct quit_shell{} ; }
 
 /*******************************************************************************
  CmdContext

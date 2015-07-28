@@ -139,6 +139,7 @@ void CmdExtTests::Test_Pair_Args()
     cmd01.append(optintvec) ;
     CPPUNIT_LOG_EQ(cmd01.parse(CmdStrTokIter("--oi=1..2,10")), 0) ;
     CPPUNIT_LOG_EXPRESSION(optintvec) ;
+    CPPUNIT_LOG_EXPRESSION(PCOMN_TYPENAME(optintvec.value())) ;
     CPPUNIT_LOG_EQUAL(optintvec.value(), (std::vector<unipair<int> >{{1, 2}, {10, 10}})) ;
 }
 
