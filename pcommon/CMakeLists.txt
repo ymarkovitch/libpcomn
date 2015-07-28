@@ -40,7 +40,6 @@ force_flags(CMAKE_CXX_FLAGS
 
 add_library(pcommon STATIC
 
-  pcomn_aprintf.c
   regex.c
 
   pcomn_crc32.c
@@ -55,6 +54,7 @@ add_library(pcommon STATIC
   pcomn_cfgparser.cpp
   pcomn_crypthash.cpp
   pcomn_diag.cpp
+  pcomn_exec.cpp
   pcomn_fileutils.cpp
   pcomn_incdlist.cpp
   pcomn_iostream.cpp
@@ -81,8 +81,7 @@ add_library(pcommon STATIC
   pcomn_zstream.cpp
 
   # Platform sources
-  ${PLATFORM_SOURCES}/pcomn_nrthreadmutex.c
-  ${PLATFORM_SOURCES}/pcomn_exec.cpp
+  ${PLATFORM_SOURCES}/pcomn_posix_exec.cpp
   ${PLATFORM_SOURCES}/pcomn_shutil.cpp
   ${PLATFORM_SOURCES}/pcomn_sys.cpp
 )
