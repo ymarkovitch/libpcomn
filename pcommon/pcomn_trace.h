@@ -266,10 +266,10 @@ _PCOMNEXP void register_syslog(int fd, LogLevel level = LOGL_WARNING) ;
 /******************************************************************************/
 /** Diagnostics group declaration macro
 *******************************************************************************/
-#define DECLARE_DIAG_GROUP(GRP, EXPMACRO)                               \
+#define DECLARE_DIAG_GROUP(GRP, ...)                                    \
 namespace diag {                                                        \
 namespace grp {                                                         \
-class EXPMACRO GRP : private PDiagBase                                  \
+class __VA_ARGS__ GRP : private PDiagBase                               \
 {                                                                       \
   public:                                                               \
    GRP() ;                                                              \
@@ -304,8 +304,8 @@ class EXPMACRO GRP : private PDiagBase                                  \
 } ;                                                                     \
 }}
 
-#define DEFINE_DIAG_GROUP(GRP, ENA, LVL, EXPMACRO)                      \
-   DECLARE_DIAG_GROUP(GRP, P_EMPTY_ARG EXPMACRO) ;                      \
+#define DEFINE_DIAG_GROUP(GRP, ENA, LVL, ...)                           \
+   DECLARE_DIAG_GROUP(GRP, ##__VA_ARGS__) ;                             \
    static const ::diag::PTraceSuperGroup *GRP##_supergroup ;            \
    static ::diag::grp::GRP __##GRP ;                                    \
    ::diag::grp::GRP::GRP() :                                            \
