@@ -723,8 +723,8 @@ class matrix_slice {
       matrix_slice(item_type *data, size_t cols, std::initializer_list<std::initializer_list<T> > init) ;
 
       matrix_slice(const matrix_slice<std::remove_const_t<item_type> > &other) :
-         _rows(other.rows()),
-         _cols(other.columns()),
+         _rows((int)other.rows()),
+         _cols((int)other.columns()),
          _data(const_cast<matrix_slice<std::remove_const_t<item_type> > &>(other).data())
       {}
 
