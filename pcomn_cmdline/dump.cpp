@@ -126,7 +126,7 @@ static std::ostream &
 dump_cmd_status(std::ostream & os, unsigned  status)
 {
    if (! status) {
-      os << "NO_ERROR";
+      os << "CMDSTAT_OK";
       return  os;
    } else {
       os << "ERROR";

@@ -505,7 +505,7 @@ public:
 
       // Flags to convey parsing-status
    enum CmdStatus {
-      NO_ERROR      = 0x000,  // No problems
+      CMDSTAT_OK    = 0x000,  // No problems
       ARG_MISSING   = 0x001,  // A required argument was not specified
       VAL_MISSING   = 0x002,  // A required argument value was not specified
       VAL_NOTSTICKY = 0x004,  // Value needs to be in same token

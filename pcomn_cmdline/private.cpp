@@ -309,7 +309,7 @@ CmdLine::prompt_user(CmdArg * cmdarg)
    if (! errs)  cmdarg->set_flags(CmdArg::VALSEP);
 
    if (buf)  ::free(buf);
-   return  (errs) ? ARG_MISSING : NO_ERROR ;
+   return  (errs) ? ARG_MISSING : CMDSTAT_OK ;
 }
 
 //-------

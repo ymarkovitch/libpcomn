@@ -62,7 +62,7 @@ CmdLine::prologue()
    // reset parse-specific attributes
    cmd_parse_state = cmd_START_STATE ;
    cmd_state = 0 ;
-   cmd_status = NO_ERROR ;
+   cmd_status = CMDSTAT_OK ;
    cmd_nargs_parsed = 0 ;
 
    // reset parse-specific attributes for each argument
@@ -100,7 +100,7 @@ CmdLine::prologue()
 //    Prints a usage message if there were syntax error.
 //
 //    Terminates program execution by calling quit(e_SYNTAX) if
-//    (NO_ABORT is NOT set and the command-status is NOT NO_ERROR).
+//    (NO_ABORT is NOT set and the command-status is NOT CMDSTAT_OK).
 //
 // ^RETURN-VALUE:
 //    A combination of bitmasks of type CmdLine::CmdStatus corresponding to

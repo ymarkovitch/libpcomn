@@ -174,7 +174,7 @@ CmdLine::CmdLine(const char * cmdname) :
    cmd_parse_state(cmd_START_STATE),
    cmd_state(cmd_START_STATE),
    cmd_flags(DEFAULT_CMDFLAGS),
-   cmd_status(CmdLine::NO_ERROR),
+   cmd_status(CmdLine::CMDSTAT_OK),
    cmd_nargs_parsed(0),
    cmd_usage_level(VERBOSE_USAGE),
    cmd_name(NULL),

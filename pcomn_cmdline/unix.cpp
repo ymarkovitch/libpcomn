@@ -97,7 +97,7 @@ EndOptions() { return "--" ; }
 //    are printed if QUIET is NOT set.
 //
 // ^RETURN-VALUE:
-//    NO_ERROR is returned if no errors were encountered. Otherwise the
+//    CMDSTAT_OK is returned if no errors were encountered. Otherwise the
 //    return value is a combination of bitmasks of type CmdLine::CmdStatus
 //    (defined in <cmdline.h>) indicating all the problems that occurred.
 //
@@ -266,7 +266,7 @@ CmdLine::parse_option(const char * arg)
 //    are printed if QUIET is NOT set.
 //
 // ^RETURN-VALUE:
-//    NO_ERROR is returned if no errors were encountered. Otherwise the
+//    CMDSTAT_OK is returned if no errors were encountered. Otherwise the
 //    return value is a combination of bitmasks of type CmdLine::CmdStatus
 //    (defined in <cmdline.h>) indicating all the problems that occurred.
 //
@@ -438,7 +438,7 @@ CmdLine::parse_keyword(const char * arg)
 //    are printed if QUIET is NOT set.
 //
 // ^RETURN-VALUE:
-//    NO_ERROR is returned if no errors were encountered. Otherwise the
+//    CMDSTAT_OK is returned if no errors were encountered. Otherwise the
 //    return value is a combination of bitmasks of type CmdLine::CmdStatus
 //    (defined in <cmdline.h>) indicating all the problems that occurred.
 //
@@ -536,7 +536,7 @@ CmdLine::parse_value(const char * arg)
 //    are printed if QUIET is NOT set.
 //
 // ^RETURN-VALUE:
-//    NO_ERROR is returned if no errors were encountered. Otherwise the
+//    CMDSTAT_OK is returned if no errors were encountered. Otherwise the
 //    return value is a combination of bitmasks of type CmdLine::CmdStatus
 //    (defined in <cmdline.h>) indicating all the problems that occurred.
 //
