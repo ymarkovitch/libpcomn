@@ -1,12 +1,11 @@
 #-*- mode: jam; jam-indent-size: 4; tab-width: 2; indent-tabs-mode: nil; -*-
 #------------------------------------------------------------------------------
-# FILE         :  rpm.jam
-# COPYRIGHT    :  Yakov Markovitch, 2012-2015. All rights reserved.
-# DESCRIPTION  :  RPM tool for Boost.Build v2
+# FILE         :  dotnetexe.jam
+# COPYRIGHT    :  Yakov Markovitch, 2015. All rights reserved.
+# DESCRIPTION  :  .NET assembly building tool for Boost.Build v2
 # PROGRAMMED BY:  Yakov Markovitch
-# CREATION DATE:  26 Apr 2012
+# CREATION DATE:  3 Aug 2015
 #------------------------------------------------------------------------------
-
 import type ;
 import "class" : new ;
 import errors : user-error ;
@@ -14,26 +13,103 @@ import feature toolset ;
 import project targets ;
 import sequence ;
 
+.LF = "
+" ;
+
+################################################################################
+# Supported CPU architectures.
+################################################################################
+.cpu-arch-anycpu =
+    <architecture>/<address-model> ;
+
+.cpu-arch-x86 =
+    <architecture>/<address-model>32
+    <architecture>x86/<address-model>
+    <architecture>x86/<address-model>32 ;
+
+.cpu-arch-x64 =
+    <architecture>/<address-model>64
+    <architecture>x86/<address-model>64 ;
+
 ################################################################################
 # Target types
 ################################################################################
 type.register ASSEMBLY_EXE : : EXE ;
 type.register ASSEMBLY_DLL : : SHARED_LIB ;
-
-actions dotnetexe.exe
+if ! [ type.registered PDB ]
 {
-    # Exit if any statement returned an error
-    echo hello
-}
-
-actions dotnetexe.dll
-{
-    # Exit if any statement returned an error
-    echo Bye
+    type.register PDB : pdb ;
 }
 
 ################################################################################
-# RPM generator class
+# Target flags
+################################################################################
+toolset.flags dotnetexe.build.exe FLAGS <user-interface>console : -target:exe ;
+toolset.flags dotnetexe.build.exe FLAGS <user-interface>gui     : -target:winexe ;
+toolset.flags dotnetexe.build.dll FLAGS                         : -target:library ;
+
+toolset.flags dotnetexe.build FLAGS $(.cpu-arch-anycpu) : -platform:anycpu ;
+toolset.flags dotnetexe.build FLAGS $(.cpu-arch-x86)    : -platform:x86 ;
+toolset.flags dotnetexe.build FLAGS $(.cpu-arch-x64)    : -platform:x64;
+
+toolset.flags dotnetexe.build FLAGS <debug-symbols>on  : -debug+ ;
+toolset.flags dotnetexe.build FLAGS <debug-symbols>off : -debug- ;
+
+toolset.flags dotnetexe.build FLAGS <optimization>off : -optimize- ;
+toolset.flags dotnetexe.build FLAGS <optimization>speed : -optimize+ ;
+toolset.flags dotnetexe.build FLAGS <optimization>space : -optimize+ ;
+
+toolset.flags dotnetexe.build FLAGS <warnings>on  : -warn:4 ;
+toolset.flags dotnetexe.build FLAGS <warnings>off : -warn:0 ;
+toolset.flags dotnetexe.build FLAGS <warnings>all : -warn:4 ;
+toolset.flags dotnetexe.build FLAGS <warnings-as-errors>on : -warnaserror ;
+
+toolset.flags dotnetexe.build DEFINES <define> ;
+toolset.flags dotnetexe.build LIBPATH <library-path> ;
+toolset.flags dotnetexe.build REFERENCES    : <find-shared-library> ;
+toolset.flags dotnetexe.build LIBRARY_FILES : <library-file> ;
+
+################################################################################
+# Actions
+################################################################################
+local rule build ( targets + : sources * : properties * )
+{
+    local library-files = [ on $(<) return $(LIBRARY_FILES) ] ;
+    if $(library-files)
+    {
+        DEPENDS $(<) : $(library-files) ;
+    }
+
+    RSPLINE on $(targets[1]) = [ on $(targets[1])
+        return $(FLAGS) -define:"$(DEFINES)" $(.LF)-lib:\"$(LIBPATH)\" $(.LF)-reference:\"$(REFERENCES)\" ] ;
+}
+
+rule dotnetexe.build.exe ( targets + : sources * : properties * )
+{
+    build $(targets) : $(sources) : $(properties) ;
+}
+
+rule dotnetexe.build.dll ( targets + : sources * : properties * )
+{
+    build $(targets) : $(sources) : $(properties) ;
+}
+
+actions dotnetexe.build.exe bind LIBRARY_FILES
+{
+    # Exit if any statement returned an error
+    echo hello
+    $(.CSC) @"@($(<[1]:W).rsp:E=$(RSPLINE) $(.LF)-out:"$(<[1])" $(.LF)-reference:"$(LIBRARY_FILES)" $(.LF)"$(>)")"
+}
+
+actions dotnetexe.build.dll bind LIBRARY_FILES
+{
+    # Exit if any statement returned an error
+    echo Bye
+    $(.CSC) @"@($(<[1]:W).rsp:E=$(RSPLINE) $(.LF)-out:"$(<[1])" $(.LF)-reference:"$(LIBRARY_FILES)" $(.LF)"$(>)")"
+}
+
+################################################################################
+# Assembly generator classes
 ################################################################################
 class exe-class : basic-target
 {
@@ -49,7 +125,7 @@ class exe-class : basic-target
     {
         local target =
             [ new file-target $(self.name) : ASSEMBLY_EXE : $(self.project)
-            : [ new action $(source-targets) : dotnetexe.exe : $(property-set) ] ] ;
+            : [ new action $(source-targets) : dotnetexe.build.exe : $(property-set) ] ] ;
         return [ property-set.empty ] [ virtual-target.register $(target) ] ;
     }
 }
@@ -68,7 +144,7 @@ class dll-class : basic-target
     {
         local target =
             [ new file-target $(self.name) : ASSEMBLY_DLL : $(self.project)
-            : [ new action $(source-targets) : dotnetexe.dll : $(property-set) ] ] ;
+            : [ new action $(source-targets) : dotnetexe.build.dll : $(property-set) ] ] ;
         return [ property-set.empty ] [ virtual-target.register $(target) ] ;
     }
 }
@@ -99,5 +175,150 @@ rule dotnetexe.dotnetdll ( target-name : sources + : requirements * : usage-requ
        : [ targets.main-target-usage-requirements $(usage-requirements) : $(project) ]
      ] ;
 }
+
+# Initialize a specific toolset version configuration. For example, you might
+# have:
+#
+#    using dotnet : 2.0 ;
+#
+# The version parameter may be ommited. This will cause the latest avaialble
+# version of .NET framework will be used:
+#
+#    using dotnet ;
+#
+# The following keywords have special meanings when specified as versions:
+#   - all     - all detected but not yet used versions will be marked as used
+#               with their default options.
+#   - default - this is an equivalent to an empty version.
+#
+rule init ( version ? )
+{
+    version ?= "default" ;
+    configure $(version) ;
+}
+
+rule configure ( version )
+{
+    local all-versions = [ $(.versions).all ] ;
+    switch $(version)
+    {
+        case "all" :
+            # Configure (i.e. mark as used) all registered versions.
+            for local v in $(all-versions)
+            {
+                # Note that there is no need to skip already configured
+                # versions here as this will request configure-version rule
+                # to configure the version using default options which will
+                # in turn cause it to simply do nothing in case the version
+                # has already been configured.
+                configure-version $(v) ;
+            }
+
+        case "default" :
+            # Decide what the 'default' version is.
+            if $(all-versions)
+            {
+                # Take the highest auto-detected version.
+                local versions = [ SORT $(all-versions) ] ;
+                configure-version $(versions[-1]) ;
+            }
+            else
+            {
+                errors.error ".NET Framework is not found." ;
+            }
+
+        case * :
+            if $(version) in $(all-versions)
+            {
+                configure-version $(version) ;
+            }
+            else
+            {
+                errors.error ".NET Framework version '$(version)' is not found." ;
+            }
+    }
+}
+
+# Worker rule for toolset version configuration. Takes an explicit version id or
+# nothing in case it should configure the default toolset version (the first
+# registered one or a new 'default' one in case no toolset versions have been
+# registered yet).
+#
+local rule configure-version ( version )
+{
+    # Check whether the selected configuration is already in use.
+    if ! $(version) in [ $(.versions).used ]
+    {
+        # Mark the configuration as 'used'.
+        $(.versions).use $(version) ;
+
+        # Generate conditions and save them.
+        local conditions =
+            [ common.check-init-parameters dotnet : version $(version) ] ;
+        $(.versions).set $(version) : conditions : $(conditions) ;
+
+        # Get auto-detected options.
+        local options = [ $(.versions).get $(version) : options ] ;
+
+        # Get framework path.
+        local path = [ feature.get-values <path> : $(options) ] ;
+
+        cscompiler = [ path.join $(path) "csc.exe" ] ;
+        vbcompiler = [ path.join $(path) "vbc.exe" ] ;
+
+        toolset.flags dotnet.compile .CSC $(conditions) : $(cscompiler) -nologo ;
+        toolset.flags dotnet.compile .VBC $(conditions) : $(vbcompiler) -nologo ;
+    }
+}
+
+################################################################################
+#
+#   Startup code executed when loading this module.
+#
+################################################################################
+if [ MATCH (--debug-configuration) : [ modules.peek : ARGV ] ]
+{
+    .debug-configuration = true ;
+}
+
+# List of all registered configurations.
+.versions = [ new configurations ] ;
+
+# Auto-detect all the available .NET installations on the system.
+if [ os.name ] in NT CYGWIN
+{
+    local dotnet = [ path.join [ modules.peek : windir ] Microsoft.NET ] ;
+    local frameworks = [ path.join $(dotnet) Framework64 ] [ path.join $(dotnet) Framework ] ;
+
+    local found = [ path.glob $(frameworks) : v*.* ] ;
+    for local p in $(found)
+    {
+        local ver = [ MATCH "v([0-9]+\.[0-9]+)" : [ path.basename $(p) ] ] ;
+        if $(ver)
+        {
+            # Validates the path, register found configuration and print debug
+            # information about it.
+            local np = [ path.native $(p) ] ;
+            if $(np)
+            {
+                local csc = [ GLOB $(np) : csc.exe ] ;
+                if $(csc) && [ $(.versions).register $(ver) ]
+                {
+                    $(.versions).set $(ver) : options : <path>$(path) ;
+                }
+            }
+        }
+    }
+    if $(.debug-configuration)
+    {
+        for local ver in [ $(.versions).all ]
+        {
+            local options = [ $(.versions).get $(ver) : options ] ;
+            local path = [ feature.get-values <path> : $(options) ] ;
+            ECHO "notice: [dotnet-cfg] dotnet-$(ver) detected, path: '$(path)'" ;
+        }
+    }
+}
+
 
 IMPORT $(__name__) : dotnetexe.dotnetexe dotnetexe.dotnetdll : : dotnetexe dotnetdll ;
