@@ -87,7 +87,7 @@ toolset.flags quex.quex QUEX_TKNCLS  <quex.token-class> ;
 
 rule quex ( dest_cpp dest_header : src : properties * )
 {
-  # Space as a optinon
+  # Space as an option
   SP on $(<) = " " ;
   # <quex.token-file> must be a file-object instance
   local tkn-file = [ property.select quex.token-id-file : $(properties) ] ;

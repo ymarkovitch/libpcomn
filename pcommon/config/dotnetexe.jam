@@ -1,0 +1,103 @@
+#-*- mode: jam; jam-indent-size: 4; tab-width: 2; indent-tabs-mode: nil; -*-
+#------------------------------------------------------------------------------
+# FILE         :  rpm.jam
+# COPYRIGHT    :  Yakov Markovitch, 2012-2015. All rights reserved.
+# DESCRIPTION  :  RPM tool for Boost.Build v2
+# PROGRAMMED BY:  Yakov Markovitch
+# CREATION DATE:  26 Apr 2012
+#------------------------------------------------------------------------------
+
+import type ;
+import "class" : new ;
+import errors : user-error ;
+import feature toolset ;
+import project targets ;
+import sequence ;
+
+################################################################################
+# Target types
+################################################################################
+type.register ASSEMBLY_EXE : : EXE ;
+type.register ASSEMBLY_DLL : : SHARED_LIB ;
+
+actions dotnetexe.exe
+{
+    # Exit if any statement returned an error
+    echo hello
+}
+
+actions dotnetexe.dll
+{
+    # Exit if any statement returned an error
+    echo Bye
+}
+
+################################################################################
+# RPM generator class
+################################################################################
+class exe-class : basic-target
+{
+    import type virtual-target ;
+
+    rule __init__ ( name : project : sources + : requirements * : default-build * : usage-requirements * )
+    {
+        basic-target.__init__ $(name) : $(project) : $(sources)
+          : $(requirements) : $(default-build) : $(usage-requirements) ;
+    }
+
+    rule construct ( name : source-targets + : property-set )
+    {
+        local target =
+            [ new file-target $(self.name) : ASSEMBLY_EXE : $(self.project)
+            : [ new action $(source-targets) : dotnetexe.exe : $(property-set) ] ] ;
+        return [ property-set.empty ] [ virtual-target.register $(target) ] ;
+    }
+}
+
+class dll-class : basic-target
+{
+    import type virtual-target ;
+
+    rule __init__ ( name : project : sources * : requirements * : default-build * : usage-requirements * )
+    {
+        basic-target.__init__ $(name) : $(project) : $(sources)
+          : $(requirements) : $(default-build) : $(usage-requirements) ;
+    }
+
+    rule construct ( name : source-targets + : property-set )
+    {
+        local target =
+            [ new file-target $(self.name) : ASSEMBLY_DLL : $(self.project)
+            : [ new action $(source-targets) : dotnetexe.dll : $(property-set) ] ] ;
+        return [ property-set.empty ] [ virtual-target.register $(target) ] ;
+    }
+}
+
+# Declares the 'make' main target.
+rule dotnetexe.dotnetexe ( target-name : sources + : requirements * : usage-requirements * )
+{
+    local project = [ project.current ] ;
+
+    targets.main-target-alternative
+     [ new exe-class $(target-name) : $(project)
+       : [ targets.main-target-sources $(sources) : $(target-name) ]
+       : [ targets.main-target-requirements $(requirements) : $(project) ]
+       : [ targets.main-target-default-build : $(project) ]
+       : [ targets.main-target-usage-requirements $(usage-requirements) : $(project) ]
+     ] ;
+}
+
+rule dotnetexe.dotnetdll ( target-name : sources + : requirements * : usage-requirements * )
+{
+    local project = [ project.current ] ;
+
+    targets.main-target-alternative
+     [ new dll-class $(target-name) : $(project)
+       : [ targets.main-target-sources $(sources) : $(target-name) ]
+       : [ targets.main-target-requirements $(requirements) : $(project) ]
+       : [ targets.main-target-default-build : $(project) ]
+       : [ targets.main-target-usage-requirements $(usage-requirements) : $(project) ]
+     ] ;
+}
+
+IMPORT $(__name__) : dotnetexe.dotnetexe dotnetexe.dotnetdll : : dotnetexe dotnetdll ;
