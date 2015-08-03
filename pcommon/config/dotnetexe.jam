@@ -44,13 +44,15 @@ if ! [ type.registered PDB ]
 ################################################################################
 # Target flags
 ################################################################################
+feature.feature dotnet.define : : free ;
+
 toolset.flags dotnetexe.build.exe FLAGS <user-interface>console : -target:exe ;
 toolset.flags dotnetexe.build.exe FLAGS <user-interface>gui     : -target:winexe ;
 toolset.flags dotnetexe.build.dll FLAGS                         : -target:library ;
 
 toolset.flags dotnetexe.build FLAGS $(.cpu-arch-anycpu) : -platform:anycpu ;
 toolset.flags dotnetexe.build FLAGS $(.cpu-arch-x86)    : -platform:x86 ;
-toolset.flags dotnetexe.build FLAGS $(.cpu-arch-x64)    : -platform:x64;
+toolset.flags dotnetexe.build FLAGS $(.cpu-arch-x64)    : -platform:x64 ;
 
 toolset.flags dotnetexe.build FLAGS <debug-symbols>on  : -debug+ ;
 toolset.flags dotnetexe.build FLAGS <debug-symbols>off : -debug- ;
@@ -64,10 +66,13 @@ toolset.flags dotnetexe.build FLAGS <warnings>off : -warn:0 ;
 toolset.flags dotnetexe.build FLAGS <warnings>all : -warn:4 ;
 toolset.flags dotnetexe.build FLAGS <warnings-as-errors>on : -warnaserror ;
 
-toolset.flags dotnetexe.build DEFINES <define> ;
+toolset.flags dotnetexe.build DEFINES <dotnet.define> ;
 toolset.flags dotnetexe.build LIBPATH <library-path> ;
 toolset.flags dotnetexe.build REFERENCES    : <find-shared-library> ;
 toolset.flags dotnetexe.build LIBRARY_FILES : <library-file> ;
+
+toolset.flags dotnetexe.build DEFINES <trace>on : TRACE ;
+toolset.flags dotnetexe.build DEFINES <check>on <check>paranoid : DEBUG ;
 
 ################################################################################
 # Actions
@@ -96,15 +101,11 @@ rule dotnetexe.build.dll ( targets + : sources * : properties * )
 
 actions dotnetexe.build.exe bind LIBRARY_FILES
 {
-    # Exit if any statement returned an error
-    echo hello
     $(.CSC) @"@($(<[1]:W).rsp:E=$(RSPLINE) $(.LF)-out:"$(<[1])" $(.LF)-reference:"$(LIBRARY_FILES)" $(.LF)"$(>)")"
 }
 
 actions dotnetexe.build.dll bind LIBRARY_FILES
 {
-    # Exit if any statement returned an error
-    echo Bye
     $(.CSC) @"@($(<[1]:W).rsp:E=$(RSPLINE) $(.LF)-out:"$(<[1])" $(.LF)-reference:"$(LIBRARY_FILES)" $(.LF)"$(>)")"
 }
 
@@ -252,22 +253,14 @@ local rule configure-version ( version )
         # Mark the configuration as 'used'.
         $(.versions).use $(version) ;
 
-        # Generate conditions and save them.
-        local conditions =
-            [ common.check-init-parameters dotnet : version $(version) ] ;
-        $(.versions).set $(version) : conditions : $(conditions) ;
-
         # Get auto-detected options.
         local options = [ $(.versions).get $(version) : options ] ;
 
         # Get framework path.
         local path = [ feature.get-values <path> : $(options) ] ;
 
-        cscompiler = [ path.join $(path) "csc.exe" ] ;
-        vbcompiler = [ path.join $(path) "vbc.exe" ] ;
-
-        toolset.flags dotnet.compile .CSC $(conditions) : $(cscompiler) -nologo ;
-        toolset.flags dotnet.compile .VBC $(conditions) : $(vbcompiler) -nologo ;
+        toolset.flags dotnetexe.build .CSC : [ path.native [ path.join $(path) "csc.exe" ] ] -nologo ;
+        toolset.flags dotnetexe.build .VBC : [ path.native [ path.join $(path) "vbc.exe" ] ] -nologo ;
     }
 }
 
@@ -304,7 +297,7 @@ if [ os.name ] in NT CYGWIN
                 local csc = [ GLOB $(np) : csc.exe ] ;
                 if $(csc) && [ $(.versions).register $(ver) ]
                 {
-                    $(.versions).set $(ver) : options : <path>$(path) ;
+                    $(.versions).set $(ver) : options : <path>$(np) ;
                 }
             }
         }
@@ -320,5 +313,6 @@ if [ os.name ] in NT CYGWIN
     }
 }
 
+init ;
 
 IMPORT $(__name__) : dotnetexe.dotnetexe dotnetexe.dotnetdll : : dotnetexe dotnetdll ;
