@@ -22,6 +22,8 @@
 #include "states.h"
 #include "fifolist.h"
 
+CMDL_MS_IGNORE_WARNING(4244 4267 4800)
+
 #ifdef vms
 #  define  getenv  getsym
    extern  const char * getsym(const char *);

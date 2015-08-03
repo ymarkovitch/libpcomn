@@ -32,6 +32,8 @@
 #include "cmdline.h"
 #include "states.h"
 
+CMDL_MS_IGNORE_WARNING(4244 4267 4800)
+
 //
 // Some Helper function for getting and recognizing prefixes
 //
