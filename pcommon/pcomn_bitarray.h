@@ -622,8 +622,7 @@ inline bitarray operator-(const bitarray &left, const bitarray &right)
 
 #undef PCOMN_BIN_BITOP
 
-MS_DIAGNOSTIC_PUSH()
-MS_IGNORE_WARNING(4267)
+MS_PUSH_IGNORE_WARNING(4267)
 
 /*******************************************************************************
  bitarray_base<Element>

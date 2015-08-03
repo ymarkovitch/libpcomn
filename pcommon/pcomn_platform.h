@@ -234,13 +234,8 @@
 #define GCC_IGNORE_WARNING(warn) GCC_MAKE_PRAGMA(GCC diagnostic ignored "-W"#warn)
 #define GCC_ENABLE_WARNING(warn) GCC_MAKE_PRAGMA(GCC diagnostic warning "-W"#warn)
 
-#if PCOMN_WORKAROUND(__GNUC_VER__, >= 460)
-#  define GCC_DIAGNOSTIC_PUSH() GCC_MAKE_PRAGMA(GCC diagnostic push)
-#  define GCC_DIAGNOSTIC_POP() GCC_MAKE_PRAGMA(GCC diagnostic pop)
-#else
-#  define GCC_DIAGNOSTIC_PUSH()
-#  define GCC_DIAGNOSTIC_POP()
-#endif
+#define GCC_DIAGNOSTIC_PUSH() GCC_MAKE_PRAGMA(GCC diagnostic push)
+#define GCC_DIAGNOSTIC_POP() GCC_MAKE_PRAGMA(GCC diagnostic pop)
 
 // MS warning control
 #define MS_IGNORE_WARNING(warnlist) MS_MAKE_PRAGMA(warning(disable : warnlist))
@@ -248,6 +243,8 @@
 
 #define MS_DIAGNOSTIC_PUSH() MS_MAKE_PRAGMA(warning(push))
 #define MS_DIAGNOSTIC_POP()  MS_MAKE_PRAGMA(warning(pop))
+
+#define MS_PUSH_IGNORE_WARNING(warnlist) MS_DIAGNOSTIC_PUSH() MS_IGNORE_WARNING(warnlist)
 
 /*******************************************************************************
  Borland C++

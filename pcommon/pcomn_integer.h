@@ -537,8 +537,7 @@ using ct_log2floor = ct_lnzbpos<i> ;
 template<unsigned v, unsigned s>
 struct ct_shl : public detail::_ct_shl<v, s, (s < bitsizeof(unsigned)) > {} ;
 
-MS_DIAGNOSTIC_PUSH()
-MS_IGNORE_WARNING(4307)
+MS_PUSH_IGNORE_WARNING(4307)
 
 template<unsigned v1,
          unsigned v2 = (unsigned)-1, unsigned v3 = (unsigned)-1, unsigned v4 = (unsigned)-1,
