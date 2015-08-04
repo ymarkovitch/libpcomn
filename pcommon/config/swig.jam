@@ -14,13 +14,13 @@
 # This tool defines new generator "swig", whuch translates targets of type SWIG (*.i, *.swg)
 # into CPP targets with .cxx extension (e.g. foo.i -> foo_wrap.cpp), using SWIG (www.swig.org)
 #
-
 import type ;
 import generators ;
 import feature ;
 import property ;
 import pcommon ;
 import python ;
+import dotnetexe ;
 import utility ;
 import "class" : new ;
 import toolset ;
@@ -33,21 +33,20 @@ if [ MATCH (--debug-generators) : [ modules.peek : ARGV ] ]
     .debug = true ;
 }
 
-local rule dbgout ( message * )
-{
-    if $(.debug)
-        { ECHO [ sequence.transform utility.str : $(message) ] ; }
-}
-
 rule registered-languages ( )
 {
-    return $(languages) ;
+    return $(.languages) ;
 }
 
 ################################################################################
-# Declare SWIG-realted features
+# SWIG types
 ################################################################################
-feature.feature swig.language       : python perl5 : optional incidental ;
+type.register SWIG : iswg swg ;  # SWIG interface/library
+
+################################################################################
+# Declare SWIG-related features
+################################################################################
+feature.feature swig.language       : python csharp : optional incidental ;
 
 feature.feature swig.defaultctor    : off on       : incidental ;
 feature.feature swig.copyctor       : off on       : incidental ;
@@ -69,7 +68,7 @@ feature.extend verbose-build        : swig ;
 #
 
 toolset.flags swig LANGINIT <swig.language>python   : -python -modern -modernargs ;
-toolset.flags swig LANGINIT <swig.language>perl5    : -perl5 ;
+toolset.flags swig LANGINIT <swig.language>csharp   : -csharp ;
 
 toolset.flags swig INCLUDES <swig.include> ;
 toolset.flags swig DEFINES  <swig.define> ;
@@ -94,8 +93,6 @@ toolset.flags swig USER_OPTIONS <swig.flags> ;
 ################################################################################
 class swig-generator : generator
 {
-    import swig : dbgout ;
-
     rule __init__ ( id : source-types + : target-types + : requirements * )
     {
         generator.__init__ $(id) : $(source-types) : $(target-types) : $(requirements) ;
@@ -103,8 +100,6 @@ class swig-generator : generator
 
     rule generated-targets ( sources + : property-set : project name ? )
     {
-        #dbgout GENERATED-TARGETS "(" $(sources) ":" [ $(property-set).raw ] ":" [ $(project).full-name ] $(name) ")" ;
-
         # Note we don't pass the $(name) to the base class at all
         # The name of the first source completely defines the name of generated targets
         local result = [ generator.generated-targets $(sources[1]) : $(property-set) : $(project) ] ;
@@ -122,45 +117,38 @@ class swig-generator : generator
     }
 }
 
-#
-# New target types
-#
-type.register SWIG : i swg ;  # SWIG interface/library
-
-type.register PM : pm ; # PERL module
-
-# Change generated CPP type target sufiix to .cxx
-type.set-generated-target-suffix CPP : <swig.language>python : cxx ;
-
 # The rule for registering SWIG generator for various target languages
 local rule register-swig-generator ( target-language : language-type )
 {
-    languages += $(target-language) ;
+    .languages += $(target-language) ;
 
     generators.register [ new swig-generator
         # Note that the the generator ID must be fully qualified.
         swig.swig
-        :
         # Source type
-        SWIG
-        :
+        : SWIG
         # Target types and target name pattern (foo.i -> foo_wrap_python.cpp)
-        $(language-type) CPP(%_wrap_$(target-language))
-        :
+        : $(language-type) CPP(%_wrap_$(target-language))
         # Requirements
-        <swig.language>$(target-language)
+        : <swig.language>$(target-language)
         ] ;
 }
 
 ################################################################################
 # Registering SWIG wrapper generators for various languages
 ################################################################################
-register-swig-generator python : PY ; # Python
-register-swig-generator perl5  : PM ; # Perl 5 (PM stands for Perl Module)
+# Change generated CPP type target sufiix to .cxx
+type.set-generated-target-suffix CPP : <swig.language>python : cxx ;
+register-swig-generator python : PY ;
 
+type.set-generated-target-suffix CPP : <swig.language>csharp : cxx ;
+register-swig-generator csharp : CSHARP ;
+
+################################################################################
 # Register dummy swig generator to handle undefined <swig.language> feature value
 # We deliberately specify it as "optional" and explicitly catch this case instead of
 # specifying default value, to provide intelligible diagnostics
+################################################################################
 class swig-nolang-error : generator
 {
     rule __init__ ( )
@@ -182,49 +170,8 @@ class swig-nolang-error : generator
 generators.register [ new swig-nolang-error ] ;
 
 ################################################################################
-# Make python extension from a SWIG-generated wrapper
-#
+# Swigfiles include scanner
 ################################################################################
-rule swig-python-extension (
-    name :
-    sources + :
-    requirements * :
-    default-build * :
-    usage-requirements * )
-{
-    requirements += <use>/python//python_for_extensions ;
-
-    return
-        [ pcommon.define-target _$(name)
-
-        : SWIG_PYTHON
-        : $(sources)
-        : $(requirements)
-        : $(default-build)
-        : $(usage-requirements) ]
-
-        ;
-}
-
-# Inject swig-python-extension into the global module namespace (the empty 3d parameter
-# designates the global module)
-IMPORT swig : swig-python-extension : : swig-python-extension ;
-
-# The rule for registering extension types
-local rule register-extension-type ( target-language : file-suffixes + : target-prefix ? )
-{
-    local ext = SWIG_$(target-language:U) ;
-    target-prefix ?= "" ;
-
-    type.register $(ext) : : SHARED_LIB ;
-    type.set-generated-target-suffix $(ext) : : $(file-suffixes) ;
-    # Unset 'lib' prefix for the extension
-    type.set-generated-target-prefix $(ext) : : $(target-prefix) ;
-}
-
-register-extension-type python : so ;
-register-extension-type perl5 : so ;
-
 class swig-scanner : common-scanner
 {
     rule pattern ( )
@@ -245,7 +192,7 @@ type.set-scanner SWIG : swig-scanner ;
 ################################################################################
 # Actions
 ################################################################################
-actions swig
+actions swig.swig
 {
     swig -c++ $(LANGINIT) $(USER_OPTIONS) $(OPTIONS) -D$(DEFINES) -I$(INCLUDES) -outdir $(<[1]:D) -o $(<[2]) $(>)
 }
