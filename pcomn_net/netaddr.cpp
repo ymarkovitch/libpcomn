@@ -42,8 +42,6 @@ static const unsigned IFNAMSIZ = 256 ;
 
 inline std::string hstrerror(long sockerr) { return pcomn::sys_error_text(sockerr) ; }
 
-#pragma comment(lib, "Ws2_32.lib")
-
 MS_IGNORE_WARNING(4267)
 #endif
 

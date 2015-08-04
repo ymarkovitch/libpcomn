@@ -26,6 +26,7 @@
 #include <netinet/in.h>
 #else
 #include <winsock2.h>
+#pragma comment(lib, "Ws2_32.lib")
 typedef uint32_t in_addr_t ;
 #endif
 
