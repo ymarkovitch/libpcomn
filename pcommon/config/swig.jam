@@ -106,13 +106,13 @@ class swig-generator : generator
 
         # The name of generated proxy class source file must match the project name (if any)
         # E.g., there must be "foobar.py" for "foobar" project
-        local result-name = [ $(result[1]).name ] ;
-        if $(result) && $(name) && $(result-name:B) != $(name)
-        {
-            ECHO "warning: The name of generated proxy class source '"$(result-name)"'"
-                "doesn't match the project name '"$(name)"'." ;
-            result = ;
-        }
+        #local result-name = [ $(result[1]).name ] ;
+        #if $(result) && $(name) && $(result-name:B) != $(name)
+        #{
+        #    ECHO "warning: The name of generated proxy class source '"$(result-name)"'"
+        #        "doesn't match the project name '"$(name)"'." ;
+        #    result = ;
+        #}
         return $(result) ;
     }
 }
@@ -128,7 +128,7 @@ local rule register-swig-generator ( target-language : language-type )
         # Source type
         : SWIG
         # Target types and target name pattern (foo.i -> foo_wrap_python.cpp)
-        : $(language-type) CPP(%_wrap_$(target-language))
+        : $(language-type)(%_wrap) CPP(%_wrap_$(target-language))
         # Requirements
         : <swig.language>$(target-language)
         ] ;
@@ -194,7 +194,7 @@ type.set-scanner SWIG : swig-scanner ;
 ################################################################################
 actions swig.swig
 {
-    swig -c++ $(LANGINIT) $(USER_OPTIONS) $(OPTIONS) -D$(DEFINES) -I$(INCLUDES) -outdir $(<[1]:D) -o $(<[2]) $(>)
+    swig -c++ $(LANGINIT) $(USER_OPTIONS) $(OPTIONS) -D$(DEFINES) -I$(INCLUDES) -outdir $(<[1]:D) -outfile $(<[1]:BS) -o $(<[2]) $(>)
 }
 
 ################################################################################
