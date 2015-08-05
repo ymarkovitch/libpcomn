@@ -81,7 +81,7 @@ toolset.flags swig OPTIONS <swig.copyctor>on        : -copyctor ;
 toolset.flags swig OPTIONS <swig.warnings>all          : -Wall ;
 toolset.flags swig OPTIONS <swig.warnings-as-errors>on : -Werror ;
 toolset.flags swig OPTIONS <verbose-build>swig         : -v ;
-toolset.flags swig OPTIONS <address-model>64           : -DSWIGWORDSIZE64 ;
+#toolset.flags swig OPTIONS <address-model>64 : -DSWIGWORDSIZE64 ;
 
 toolset.flags swig USER_OPTIONS <swig.flags> ;
 
