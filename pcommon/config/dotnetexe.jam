@@ -47,6 +47,7 @@ type.register CSHARP : cs ;
 # Target flags
 ################################################################################
 feature.feature dotnet.define : : free ;
+feature.feature dotnet.unsafe : off on : optional incidental ;
 
 toolset.flags dotnetexe.build.exe FLAGS <user-interface>console : -target:exe ;
 toolset.flags dotnetexe.build.exe FLAGS <user-interface>gui     : -target:winexe ;
@@ -67,6 +68,8 @@ toolset.flags dotnetexe.build FLAGS <warnings>on  : -warn:4 ;
 toolset.flags dotnetexe.build FLAGS <warnings>off : -warn:0 ;
 toolset.flags dotnetexe.build FLAGS <warnings>all : -warn:4 ;
 toolset.flags dotnetexe.build FLAGS <warnings-as-errors>on : -warnaserror ;
+
+toolset.flags dotnetexe.build FLAGS <dotnet.unsafe>on : -unsafe ;
 
 toolset.flags dotnetexe.build DEFINES <dotnet.define> ;
 toolset.flags dotnetexe.build LIBPATH <library-path> ;
