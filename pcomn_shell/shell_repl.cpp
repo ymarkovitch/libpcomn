@@ -33,7 +33,7 @@
 
 static inline bool is_probably_interactive()
 {
-    const unsigned mode = sys::filestat(fileno(stdin)).st_mode ;
+    const unsigned mode = pcomn::sys::filestat(fileno(stdin)).st_mode ;
     return S_ISCHR(mode) || S_ISFIFO(mode) ;
 }
 
