@@ -72,6 +72,16 @@ get_keyed_value(const KeyedContainer &c, const typename KeyedContainer::key_type
    return i == c.end() ? defval : i->second ;
 }
 
+template<class Set, typename Key,
+         typename C = typename Set::key_compare, typename = typename C::is_transparent>
+inline const typename Set::key_type &
+get_keyed_value(const Set &c, Key &&key,
+                const typename Set::key_type &defval = typename Set::key_type())
+{
+   const typename Set::const_iterator i (c.find(std::forward<Key>(key))) ;
+   return i == c.end() ? defval : *i ;
+}
+
 template<class KeyedContainer>
 inline bool erase_keyed_value(KeyedContainer &c,
                               const typename KeyedContainer::key_type &key,
