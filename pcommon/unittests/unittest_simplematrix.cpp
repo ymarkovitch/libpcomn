@@ -20,12 +20,14 @@ class SimpleSliceTests : public CppUnit::TestFixture {
       void Test_Simple_Slice_Construct() ;
       void Test_Simple_Vector_Construct() ;
       void Test_Simple_Matrix_Construct() ;
+      void Test_Trivial_Set() ;
 
       CPPUNIT_TEST_SUITE(SimpleSliceTests) ;
 
       CPPUNIT_TEST(Test_Simple_Slice_Construct) ;
       CPPUNIT_TEST(Test_Simple_Vector_Construct) ;
       CPPUNIT_TEST(Test_Simple_Matrix_Construct) ;
+      CPPUNIT_TEST(Test_Trivial_Set) ;
 
       CPPUNIT_TEST_SUITE_END() ;
 } ;
@@ -327,6 +329,76 @@ void SimpleSliceTests::Test_Simple_Matrix_Construct()
    CPPUNIT_LOG_EQ(rmatrix2_3x2.dim(), unipair<size_t>(2, 2)) ;
    CPPUNIT_LOG_EQ(rmatrix2_3x2[0], (string_vector{"1", "2"})) ;
    CPPUNIT_LOG_EQ(rmatrix2_3x2[1], (string_vector{"3", "4"})) ;
+}
+
+void SimpleSliceTests::Test_Trivial_Set()
+{
+   using namespace pcomn ;
+
+   typedef trivial_set<int> test_set ;
+
+   test_set empty ;
+   CPPUNIT_LOG_ASSERT(empty.empty()) ;
+   CPPUNIT_LOG_EQ(empty.size(), 0) ;
+   CPPUNIT_LOG_ASSERT(empty.begin() == empty.end()) ;
+
+   test_set single (2) ;
+   CPPUNIT_LOG_IS_FALSE(single.empty()) ;
+   CPPUNIT_LOG_EQ(single.size(), 1) ;
+   CPPUNIT_LOG_ASSERT(single.begin() != single.end()) ;
+   CPPUNIT_LOG_EQ(std::distance(single.begin(), single.end()), 1) ;
+   CPPUNIT_LOG_EQ(single.front(), 2) ;
+
+   const int vlanset[] = { 3, 6, 1, 2, 1, 13, 11, 12, 10, 15 } ;
+   test_set many (std::begin(vlanset), std::end(vlanset)) ;
+   CPPUNIT_LOG_IS_FALSE(many.empty()) ;
+   CPPUNIT_LOG_EQ(many.size(), 9) ;
+   CPPUNIT_LOG_ASSERT(many.begin() != many.end()) ;
+   CPPUNIT_LOG_EQ(std::distance(many.begin(), many.end()), 9) ;
+
+   // Test insertion
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_EQ(empty.insert(0), std::make_pair(nullptr, false)) ;
+   CPPUNIT_LOG_ASSERT(empty.empty()) ;
+   CPPUNIT_LOG_EQ(empty.size(), 0) ;
+   CPPUNIT_LOG_ASSERT(empty.begin() == empty.end()) ;
+
+   auto ins1 = empty.insert(5) ;
+   CPPUNIT_LOG_IS_FALSE(empty.empty()) ;
+   CPPUNIT_LOG_EQ(empty.size(), 1) ;
+   CPPUNIT_LOG_IS_FALSE(empty.begin() == empty.end()) ;
+   CPPUNIT_LOG_EQ(*empty.begin(), 5) ;
+   CPPUNIT_LOG_EQ(std::distance(empty.begin(), empty.end()), 1) ;
+
+   CPPUNIT_LOG_EQ(ins1, std::make_pair(empty.begin(), true)) ;
+   CPPUNIT_LOG_EQ(empty.front(), 5) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_EQ(single.insert(0), std::make_pair(nullptr, false)) ;
+   CPPUNIT_LOG_EQ(single.size(), 1) ;
+
+   auto ins0 = empty.insert(5) ;
+   CPPUNIT_LOG_EQ(empty.size(), 1) ;
+   CPPUNIT_LOG_EQ(empty.front(), 5) ;
+   CPPUNIT_LOG_EQ(ins0, std::make_pair(empty.begin(), false)) ;
+
+   auto ins2 = single.insert(-19) ;
+   CPPUNIT_LOG_EQ(single.size(), 2) ;
+
+   CPPUNIT_LOG_EQ(std::distance(single.begin(), single.end()), 2) ;
+   CPPUNIT_LOG_EQ(single.front(), -19) ;
+   CPPUNIT_LOG_EQ(*single.begin(), -19) ;
+   CPPUNIT_LOG_EQ(*std::next(single.begin()), 2) ;
+   CPPUNIT_LOG_EQ(ins2, std::make_pair(single.begin(), true)) ;
+
+   auto ins3 = single.insert(7) ;
+   CPPUNIT_LOG_EQ(single.size(), 3) ;
+
+   CPPUNIT_LOG_EQ(single.front(), -19) ;
+   CPPUNIT_LOG_EQ(*single.begin(), -19) ;
+   CPPUNIT_LOG_EQ(*std::next(single.begin()), 2) ;
+   CPPUNIT_LOG_EQ(*std::next(std::next(single.begin())), 7) ;
+   CPPUNIT_LOG_EQ(ins3, std::make_pair(std::prev(single.end()), true)) ;
 }
 
 int main(int argc, char *argv[])
