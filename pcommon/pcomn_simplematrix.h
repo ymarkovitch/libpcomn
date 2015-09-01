@@ -649,7 +649,7 @@ class matrix_slice {
 
    public:
       template<bool c>
-      class byrow_iterator : iterator_descriptor<c> {
+      class byrow_iterator : public iterator_descriptor<c> {
             friend byrow_iterator<!c> ;
             typedef std::conditional_t<c, const matrix_slice, matrix_slice> container_type ;
          public:
@@ -712,8 +712,8 @@ class matrix_slice {
       matrix_slice() = default ;
 
       matrix_slice(item_type *data, size_t rows, size_t cols) :
-         _rows(rows),
-         _cols(cols),
+         _rows((int)rows),
+         _cols((int)cols),
          _data(data)
       {
          NOXCHECK(_cols || !_rows) ;

@@ -424,7 +424,7 @@ class TestRunner : public CppUnit::TextUi::TestRunner {
 *******************************************************************************/
 template<const char *private_dirname>
 class TestFixture : public CppUnit::TestFixture {
-      PCOMN_STATIC_CHECK(private_dirname != nullptr) ;
+      PCOMN_STATIC_CHECK(!!private_dirname) ;
    public:
       typedef ostream_lock<TestFixture<private_dirname> > locked_out ;
 
