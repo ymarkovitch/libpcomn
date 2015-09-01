@@ -356,7 +356,7 @@ module msvc {
   import toolset ;
 
   toolset.flags msvc.compile CFLAGS <extra-warnings>on : -W4 ;
-  toolset.flags msvc.compile CFLAGS : -we4003 -we4172 ;
+  toolset.flags msvc.compile CFLAGS : -we4003 -we4172 -wd4503 ;
 
   # Turn on strict C++ conformance
   toolset.flags msvc.compile C++FLAGS : /Zc:strictStrings /Zc:inline /Zc:rvalueCast /Zc:throwingNew ;
