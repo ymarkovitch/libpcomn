@@ -727,9 +727,9 @@ const_mapped_iter(const Container &c, const Iter &i)
 
 template<typename Converter, typename Iterator>
 inline xform_iterator<Iterator, Converter>
-xform_iter(const Iterator &i, const Converter &c)
+xform_iter(const Iterator &i, Converter &&c)
 {
-   return xform_iterator<Iterator, Converter>(i, c) ;
+   return {i, std::forward<Converter>(c)} ;
 }
 
 template<typename Type, typename Iterator>

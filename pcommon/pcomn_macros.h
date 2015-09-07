@@ -38,9 +38,9 @@
 /*
  * Stringifying macros
  */
-#define P_STRINGIFY(arg) #arg
-#define P_STRINGIFY_I(arg) P_STRINGIFY(arg)
-#define P_STRINGIFY_INDIRECT(arg) P_STRINGIFY(arg)
+#define P_STRINGIFY(...) #__VA_ARGS__
+#define P_STRINGIFY_I(...) P_STRINGIFY(__VA_ARGS__)
+#define P_STRINGIFY_INDIRECT(...) P_STRINGIFY(__VA_ARGS__)
 
 /*
  * Concatenate arguments
