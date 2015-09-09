@@ -489,10 +489,14 @@ class TestFixture : public CppUnit::TestFixture {
       void setUp()
       {
          char buf[2048] ;
-         _data_basedir = CPPUNIT_PROGDIR + "/data" ;
-         snprintf(buf, sizeof buf, "%s/%s.%s", pcomn::str::cstr(_data_basedir), private_dirname, testname()) ;
+         _data_basedir = CPPUNIT_PROGDIR + (PCOMN_PATH_DELIMS "data") ;
+
+         snprintf(buf, sizeof buf, "%s%c%s.%s",
+                  pcomn::str::cstr(_data_basedir), PCOMN_PATH_NATIVE_DELIM, private_dirname, testname()) ;
          _datadir = buf ;
-         snprintf(buf, sizeof buf, "%s/%s.out", pcomn::str::cstr(_data_basedir), testname()) ;
+
+         snprintf(buf, sizeof buf, "%s%c%s.out",
+                  pcomn::str::cstr(_data_basedir), PCOMN_PATH_NATIVE_DELIM, testname()) ;
          _datafile = path::abspath<std::string>(buf) ;
 
          cleanupDirs() ;
