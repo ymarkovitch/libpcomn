@@ -963,7 +963,7 @@ public:
     /// Conversion constructor, implicit
     trivial_set(value_type single) :
         _item_signle(single),
-        _item_set(single ? value_set(&_item_signle, &_item_signle + 1) : value_set())
+        _item_set(&_item_signle, &_item_signle + 1)
     {}
 
     ~trivial_set() { clear() ; } ;
@@ -1013,8 +1013,8 @@ private:
     value_type _item_signle ;
     value_set  _item_set ;
 
-    template<typename InputIterator>
-    void construct(InputIterator b, InputIterator e, std::true_type)
+    template<typename ForwardIterator>
+    void construct(ForwardIterator b, ForwardIterator e, std::true_type)
     {
         switch (const size_t sz = std::distance(b, e))
         {
