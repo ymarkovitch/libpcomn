@@ -942,144 +942,161 @@ PCOMN_DEFINE_SWAP(simple_matrix<P_PASS(T, r)>, template<typename T, bool r>) ;
 *******************************************************************************/
 template<typename T>
 class trivial_set {
-    static_assert(std::is_trivially_copyable<T>::value, "trivial_set<> item type must be trivially copyable, but is not") ;
+      static_assert(std::is_trivially_copyable<T>::value, "trivial_set<> item type must be trivially copyable, but is not") ;
 
-    typedef pcomn::simple_slice<T> value_set ;
-public:
-    typedef T value_type ;
+      typedef pcomn::simple_slice<T> value_set ;
+   public:
+      typedef T value_type ;
 
-    typedef typename value_set::const_iterator iterator ;
-    typedef iterator const_iterator ;
+      typedef typename value_set::const_iterator iterator ;
+      typedef iterator const_iterator ;
 
-    trivial_set() : _item_signle() {}
-    trivial_set(trivial_set &&other) : trivial_set() { swap(other) ; }
+      trivial_set() : _item_single() {}
+      trivial_set(trivial_set &&other) : trivial_set() { swap(other) ; }
 
-    template<typename InputIterator>
-    trivial_set(InputIterator b, InputIterator e) : trivial_set()
-    {
-        construct(b, e, pcomn::is_iterator<InputIterator, std::forward_iterator_tag>()) ;
-    }
+      template<typename InputIterator>
+      trivial_set(InputIterator b, InputIterator e) : trivial_set()
+      {
+         construct(b, e, pcomn::is_iterator<InputIterator, std::forward_iterator_tag>()) ;
+      }
 
-    /// Conversion constructor, implicit
-    trivial_set(value_type single) :
-        _item_signle(single),
-        _item_set(&_item_signle, &_item_signle + 1)
-    {}
+      /// Conversion constructor, implicit
+      trivial_set(value_type single) :
+         _item_single(single),
+         _item_set(&_item_single, &_item_single + 1)
+      {}
 
-    ~trivial_set() { clear() ; } ;
+      ~trivial_set() { clear() ; } ;
 
-    trivial_set &operator=(trivial_set &&other)
-    {
-        if (&other != this)
-        {
+      trivial_set &operator=(trivial_set &&other)
+      {
+         if (&other != this)
+         {
             swap(other) ;
             trivial_set().swap(other) ;
-        }
-        return *this ;
-    }
+         }
+         return *this ;
+      }
 
-    void swap(trivial_set &other)
-    {
-        if (&other == this)
+      void swap(trivial_set &other)
+      {
+         if (&other == this)
             return ;
-        using std::swap ;
-        swap(_item_set, other._item_set) ;
-        swap(_item_signle, other._item_signle) ;
-        if (_item_set.begin() == &other._item_signle)
-            value_set(&_item_signle, &_item_signle + 1).swap(_item_set) ;
-        if (other._item_set.begin() == &_item_signle)
-            value_set(&other._item_signle, &other._item_signle + 1).swap(other._item_set) ;
-    }
+         using std::swap ;
+         swap(_item_set, other._item_set) ;
+         swap(_item_single, other._item_single) ;
+         if (_item_set.begin() == &other._item_single)
+            value_set(&_item_single, &_item_single + 1).swap(_item_set) ;
+         if (other._item_set.begin() == &_item_single)
+            value_set(&other._item_single, &other._item_single + 1).swap(other._item_set) ;
+      }
 
-    const_iterator begin() const { return _item_set.begin() ; }
-    const_iterator end() const { return _item_set.end() ; }
-    size_t size() const { return _item_set.size() ; }
-    bool empty() const { return !size() ; }
+      const_iterator begin() const { return _item_set.begin() ; }
+      const_iterator end() const { return _item_set.end() ; }
+      size_t size() const { return _item_set.size() ; }
+      bool empty() const { return !size() ; }
 
-    /// If only one item in the set
-    const value_type &front() const { return _item_signle ; }
+      bool has_member(const value_type &member) const
+      {
+         switch (size())
+         {
+            case 0: return false ;
+            case 1: return member == _item_single ;
+         }
+         return std::binary_search(begin(), end(), member) ;
+      }
 
-    std::pair<const_iterator, bool> insert(const value_type &value) ;
+      /// If only one item in the set
+      const value_type &front() const { return _item_single ; }
 
-    /// Equality compare is a kludge, to facilitate cmdl::Arg<trivial_set> (must be fixed to
-    /// allow types w/o equality operator)
-    friend bool operator==(const trivial_set &x, const trivial_set &y)
-    {
-        return x.size() == y.size() && std::equal(x.begin(), x.end(), y.begin()) ;
-    }
-    friend bool operator!=(const trivial_set &x, const trivial_set &y) { return !(x == y) ; }
+      std::pair<const_iterator, bool> insert(const value_type &value) ;
 
-private:
-    value_type _item_signle ;
-    value_set  _item_set ;
+      friend bool operator==(const trivial_set &x, const trivial_set &y)
+      {
+         const size_t xsz = x.size() ;
+         if (y.size() != xsz)
+            return false ;
+         switch (xsz)
+         {
+            case 0: return true ;
+            case 1: return x._item_single == y._item_single ;
+         }
+         return std::equal(x.begin(), x.end(), y.begin()) ;
+      }
 
-    template<typename ForwardIterator>
-    void construct(ForwardIterator b, ForwardIterator e, std::true_type)
-    {
-        switch (const size_t sz = std::distance(b, e))
-        {
+      friend bool operator!=(const trivial_set &x, const trivial_set &y) { return !(x == y) ; }
+
+   private:
+      value_type _item_single ;
+      value_set  _item_set ;
+
+      template<typename ForwardIterator>
+      void construct(ForwardIterator b, ForwardIterator e, std::true_type)
+      {
+         switch (const size_t sz = std::distance(b, e))
+         {
             case 0: break ;
             default:
             {
-                value_type * const items = new value_type[sz] ;
-                value_type * end = std::copy(b, e, items) ;
-                std::sort(items, end) ;
-                end = std::unique(items, end) ;
-                if (end - items <= 1)
-                    delete [] items ;
-                else
-                {
-                    value_set(items, end).swap(_item_set) ;
-                    break ;
-                }
+               value_type * const items = new value_type[sz] ;
+               value_type * end = std::copy(b, e, items) ;
+               std::sort(items, end) ;
+               end = std::unique(items, end) ;
+               if (end - items <= 1)
+                  delete [] items ;
+               else
+               {
+                  value_set(items, end).swap(_item_set) ;
+                  break ;
+               }
             }
             case 1:
-                _item_signle = *b ;
-                value_set(&_item_signle, &_item_signle + 1).swap(_item_set) ;
-                break ;
-        }
-    }
+               _item_single = *b ;
+               value_set(&_item_single, &_item_single + 1).swap(_item_set) ;
+               break ;
+         }
+      }
 
-    template<typename InputIterator>
-    void construct(InputIterator &b, InputIterator &e, std::false_type)
-    {
-        std::vector<value_type> v (b, e) ;
-        construct(v.begin(), v.end(), std::true_type()) ;
-    }
+      template<typename InputIterator>
+      void construct(InputIterator &b, InputIterator &e, std::false_type)
+      {
+         std::vector<value_type> v (b, e) ;
+         construct(v.begin(), v.end(), std::true_type()) ;
+      }
 
-    void clear()
-    {
-        if (_item_set.begin() != &_item_signle)
+      void clear()
+      {
+         if (_item_set.begin() != &_item_single)
             delete [] _item_set.begin() ;
-    }
+      }
 } ;
 
 template<typename T>
 std::pair<typename trivial_set<T>::const_iterator, bool> trivial_set<T>::insert(const value_type &value)
 {
-    trivial_set nset (value) ;
-    if (nset.empty())
-        return {} ;
+   trivial_set nset (value) ;
+   if (nset.empty())
+      return {} ;
 
-    if (empty())
-    {
-        swap(nset) ;
-        return {begin(), true} ;
-    }
+   if (empty())
+   {
+      swap(nset) ;
+      return {begin(), true} ;
+   }
 
-    auto found = std::lower_bound(_item_set.begin(), _item_set.end(), value) ;
-    if (found != _item_set.end() && *found == value)
-        return {found, false} ;
+   auto found = std::lower_bound(_item_set.begin(), _item_set.end(), value) ;
+   if (found != _item_set.end() && *found == value)
+      return {found, false} ;
 
-    value_type * const items = new value_type[size() + 1] ;
-    value_type * const valiter = std::copy(_item_set.begin(), found, items) ;
-    *valiter = value ;
-    value_set new_items (items, std::copy(found, _item_set.end(), valiter + 1)) ;
-    clear() ;
-    _item_set = new_items ;
-    _item_signle = new_items.front() ;
+   value_type * const items = new value_type[size() + 1] ;
+   value_type * const valiter = std::copy(_item_set.begin(), found, items) ;
+   *valiter = value ;
+   value_set new_items (items, std::copy(found, _item_set.end(), valiter + 1)) ;
+   clear() ;
+   _item_set = new_items ;
+   _item_single = new_items.front() ;
 
-    return {valiter, true} ;
+   return {valiter, true} ;
 }
 
 PCOMN_DEFINE_SWAP(trivial_set<T>, template<typename T>) ;

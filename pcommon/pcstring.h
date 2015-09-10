@@ -17,6 +17,7 @@
 #if defined(PCOMN_COMPILER_MS)
 #define strnicmp(lhs, rhs, count) (_strnicmp((lhs), (rhs), (count)))
 #define stricmp(lhs, rhs) (_stricmp((lhs), (rhs)))
+#define strtok_r(str, delim, context) (strtok_s((str), (delim), (context)))
 #elif defined(PCOMN_COMPILER_GNU)
 #define strnicmp(lhs, rhs, count) (strncasecmp((lhs), (rhs), (count)))
 #define stricmp(lhs, rhs) (strcasecmp((lhs), (rhs)))
