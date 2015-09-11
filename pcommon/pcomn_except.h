@@ -384,13 +384,13 @@ inline void ensure_enoerr(int result, const char *function_name, const char *cal
 /******************************************************************************/
 /** Throw exception with formatted message
 *******************************************************************************/
-template<class X>
+template<class X, size_t bufsize = PCOMN_MSGBUFSIZE>
 __noreturn __noinline void throwf(const char *, ...) PCOMN_ATTR_PRINTF(1, 2) ;
-template<class X>
+template<class X, size_t bufsize>
 __noreturn __noinline
 void throwf(const char *format, ...)
 {
-   char buf[PCOMN_MSGBUFSIZE] ;
+   char buf[bufsize] ;
    va_list parm ;
    va_start(parm, format) ;
    vsnprintf(buf, sizeof buf, format, parm) ;
