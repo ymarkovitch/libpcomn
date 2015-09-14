@@ -15,7 +15,7 @@
  CREATION DATE:   19 Dec 2006
 *******************************************************************************/
 #include <pcomn_meta.h>
-#include <pcommon.h>
+#include <pcomn_function.h>
 
 #include <utility>
 #include <iterator>
@@ -737,6 +737,12 @@ inline xform_iterator<Iterator, identity_type<Type> >
 xform_iter(const Iterator &i)
 {
    return xform_iterator<Iterator, identity_type<Type> >(i) ;
+}
+
+template<typename Iterator>
+inline xform_iterator<Iterator, select1st> mapkey_iter(const Iterator &i)
+{
+   return {i} ;
 }
 
 template<typename Counter>

@@ -17,7 +17,6 @@
 
 #include <stdexcept>
 #include <functional>
-#include <functional>
 
 namespace pcomn {
 
