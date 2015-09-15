@@ -182,9 +182,9 @@ inline std::vector<T> &sort(std::vector<T> &v)
 }
 
 template<typename T, typename BinaryPredicate>
-inline std::vector<T> &sort(std::vector<T> &v, BinaryPredicate predicate)
+inline std::vector<T> &sort(std::vector<T> &v, BinaryPredicate &&pred)
 {
-   std::sort(v.begin(), v.end(), predicate) ;
+   std::sort(v.begin(), v.end(), std::forward<BinaryPredicate>(pred)) ;
    return v ;
 }
 
@@ -203,9 +203,9 @@ inline std::vector<T> &unique(std::vector<T> &v)
 
 /// @overload
 template<typename T, typename BinaryPredicate>
-inline std::vector<T> &unique(std::vector<T> &v, BinaryPredicate predicate)
+inline std::vector<T> &unique(std::vector<T> &v, BinaryPredicate &&pred)
 {
-   v.erase(std::unique(v.begin(), v.end(), predicate), v.end()) ;
+   v.erase(std::unique(v.begin(), v.end(), std::forward<BinaryPredicate>(pred)), v.end()) ;
    return v ;
 }
 
@@ -218,9 +218,15 @@ inline std::vector<T> &unique_sort(std::vector<T> &v)
 
 /// @overload
 template<typename T, typename BinaryPredicate>
-inline std::vector<T> &unique_sort(std::vector<T> &v, BinaryPredicate predicate)
+inline std::vector<T> &unique_sort(std::vector<T> &v, BinaryPredicate pred)
 {
-   return unique(sort(v, predicate), std::binary_negate<BinaryPredicate>(predicate)) ;
+   return unique(sort(v, pred),
+                 #ifdef PCOMN_STL_CXX14
+                 [&](const auto &x, const auto &y) { return !pred(x, y) ; }
+                 #else
+                 std::binary_negate<BinaryPredicate>(pred)
+                 #endif
+                 ) ;
 }
 
 } // end of namespace pcomn

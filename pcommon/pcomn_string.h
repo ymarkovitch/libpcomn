@@ -648,13 +648,15 @@ inline typename ::pcomn::string_traits<S>::hash_type hasher(const S &str)
  Unsafe format functions for std::string
 *******************************************************************************/
 std::string strprintf(const char *format, ...) PCOMN_ATTR_PRINTF(1, 2) ;
+std::string &strappendf(std::string &s, const char *format, ...) PCOMN_ATTR_PRINTF(2, 3) ;
 
-inline std::string strvprintf(const char *format, va_list args)
+namespace detail {
+template<size_t initsize = 7>
+__noinline std::string strvprintf_(const char *format, va_list args)
 {
    va_list tmp ;
    va_copy(tmp, args) ;
-   const size_t initsize = 7 ;
-   std::string result ('A', 7) ;
+   std::string result ('A', initsize) ;
    const size_t actual_size = vsnprintf(&*result.begin(), initsize + 1, format, tmp) ;
    result.resize(actual_size) ;
    va_end(tmp) ;
@@ -662,6 +664,32 @@ inline std::string strvprintf(const char *format, va_list args)
       vsnprintf(&*result.begin(), actual_size + 1, format, args) ;
 
    return std::move(result) ;
+}
+
+template<nullptr_t>
+__noinline std::string &strvappendf_(std::string &s, const char *format, va_list args)
+{
+   va_list tmp ;
+   va_copy(tmp, args) ;
+
+   char dummy[1] ;
+   if (const size_t append_size = vsnprintf(dummy, 1, format, tmp))
+   {
+      const size_t old_size = s.size() ;
+      s.resize(old_size + append_size) ;
+      va_end(tmp) ;
+      vsnprintf(&*s.begin() + old_size, append_size + 1, format, args) ;
+   }
+   else
+      va_end(tmp) ;
+
+   return s ;
+}
+}
+
+inline std::string strvprintf(const char *format, va_list args)
+{
+   return detail::strvprintf_(format, args) ;
 }
 
 inline std::string strprintf(const char *format, ...)
@@ -672,6 +700,20 @@ inline std::string strprintf(const char *format, ...)
    va_end(parm) ;
 
    return std::move(result) ;
+}
+
+inline std::string &strvappendf(std::string &s, const char *format, va_list args)
+{
+   return detail::strvappendf_<nullptr>(s, format, args) ;
+}
+
+inline std::string &strappendf(std::string &s, const char *format, ...)
+{
+   va_list parm ;
+   va_start(parm, format) ;
+   strvappendf(s, format, parm) ;
+   va_end(parm) ;
+   return s ;
 }
 
 /*******************************************************************************
