@@ -357,12 +357,6 @@ void SimpleSliceTests::Test_Trivial_Set()
    CPPUNIT_LOG_EQ(std::distance(many.begin(), many.end()), 9) ;
 
    // Test insertion
-   CPPUNIT_LOG(std::endl) ;
-   CPPUNIT_LOG_EQ(empty.insert(0), std::make_pair(nullptr, false)) ;
-   CPPUNIT_LOG_ASSERT(empty.empty()) ;
-   CPPUNIT_LOG_EQ(empty.size(), 0) ;
-   CPPUNIT_LOG_ASSERT(empty.begin() == empty.end()) ;
-
    auto ins1 = empty.insert(5) ;
    CPPUNIT_LOG_IS_FALSE(empty.empty()) ;
    CPPUNIT_LOG_EQ(empty.size(), 1) ;
@@ -374,9 +368,6 @@ void SimpleSliceTests::Test_Trivial_Set()
    CPPUNIT_LOG_EQ(empty.front(), 5) ;
 
    CPPUNIT_LOG(std::endl) ;
-   CPPUNIT_LOG_EQ(single.insert(0), std::make_pair(nullptr, false)) ;
-   CPPUNIT_LOG_EQ(single.size(), 1) ;
-
    auto ins0 = empty.insert(5) ;
    CPPUNIT_LOG_EQ(empty.size(), 1) ;
    CPPUNIT_LOG_EQ(empty.front(), 5) ;
