@@ -20,6 +20,7 @@
 
 #include <iostream>
 #include <iomanip>
+#include <string>
 #include <utility>
 
 #define PCOMN_FLGOUT_DESC(flag) {(flag), #flag}
@@ -117,6 +118,16 @@ template<typename Enum>
 inline const char *enum_name(Enum value)
 {
    return valmap_find_name(enum_names<Enum>::values, value) ;
+}
+
+template<typename Enum>
+std::string enum_string(Enum value)
+{
+   if (const char * const name = enum_name(value))
+      return name ;
+   char buf[64] ;
+   snprintf(buf, sizeof buf, "%lld", (long long)value) ;
+   return buf ;
 }
 
 /******************************************************************************/

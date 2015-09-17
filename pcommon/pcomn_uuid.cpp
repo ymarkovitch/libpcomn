@@ -110,4 +110,10 @@ char *MAC::to_strbuf(char *buf) const
    return buf ;
 }
 
+std::string MAC::to_string() const
+{
+   char buf[slen() + 1] ;
+   return std::string(to_strbuf(buf)) ;
+}
+
 } // end of namespace pcomn

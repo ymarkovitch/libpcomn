@@ -482,6 +482,12 @@ constexpr int P_CURRENT_ALIGNMENT = sizeof (___offsTest)-sizeof(double) ;
 #define PCOMN_DEFINE_INVARIANT_PRINT(prefix, type)                      \
    prefix inline std::ostream &operator<<(std::ostream &os, const type &) { return os << PCOMN_CLASSNAME(type) ; }
 
+#define PCOMN_DEFINE_PRANGE(type, ...)                                  \
+   __VA_ARGS__ inline auto pbegin(type &x) -> decltype(&*std::begin(x)) { return std::begin(x) ; } \
+   __VA_ARGS__ inline auto pbegin(const type &x) -> decltype(&*std::begin(x)) { return std::begin(x) ; } \
+   __VA_ARGS__ inline auto pend(type &x) -> decltype(&*std::end(x)) { return std::end(x) ; } \
+   __VA_ARGS__ inline auto pend(const type &x) -> decltype(&*std::end(x)) { return std::end(x) ; }
+
 /******************************************************************************/
 /** Swap wrapper that calls std::swap on the arguments, but may also use ADL
  (Argument-Dependent Lookup, Koenig lookup) to use a specialised form.

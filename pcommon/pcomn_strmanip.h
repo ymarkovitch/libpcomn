@@ -118,7 +118,7 @@ const char *mbstowcdev(Device device, const char *begin, const char *end)
 template<typename Device>
 size_t wcstombdev(Device device, const wchar_t *begin, const wchar_t *end)
 {
-   static const size_t BUFSIZE = 1024 ;
+   static const int BUFSIZE = 1024 ;
    char outbuf[BUFSIZE*MB_LEN_MAX] ;
    size_t produced_total = 0 ;
    while (begin < end)

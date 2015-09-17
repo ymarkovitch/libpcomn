@@ -1203,6 +1203,13 @@ operator==(const S &x, const simple_slice<T> &y)
 }
 
 /*******************************************************************************
+ pbegin()/pend()
+*******************************************************************************/
+PCOMN_DEFINE_PRANGE(simple_slice<T>, template<typename T>) ;
+PCOMN_DEFINE_PRANGE(simple_vector<T>, template<typename T>) ;
+PCOMN_DEFINE_PRANGE(static_vector<P_PASS(T, maxsize)>, template<typename T, size_t maxsize>) ;
+
+/*******************************************************************************
  Debug output
 *******************************************************************************/
 template<typename T>

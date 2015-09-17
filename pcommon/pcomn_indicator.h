@@ -110,7 +110,7 @@ class multi_indicator_base {
 
       friend class multi_observer_base ;
    public:
-      unsigned size() const { return _indicators_count ; }
+      unsigned size() const { return (unsigned)_indicators_count ; }
       bigflag_t valid_flags() const
       {
          return flag_traits::ones >> (flag_traits::bitsize - size()) ;

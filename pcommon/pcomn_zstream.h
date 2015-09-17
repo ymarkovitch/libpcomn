@@ -388,7 +388,7 @@ class ostdstream_zstreambuf : public stdstream_zstreambuf<Stream> {
          return
             !this->_stream.write(static_cast<const char *>(buf), size) ? -1 : size ;
       }
-      fileoff_t seek(long offset, int origin) override
+      fileoff_t seek(fileoff_t offset, int origin) override
       {
          return this->do_seek(offset, origin, std::ios_base::out) ;
       }

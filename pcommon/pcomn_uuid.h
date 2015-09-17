@@ -147,11 +147,8 @@ struct MAC {
       constexpr const unsigned octet(size_t n) const { return _data[n] ; }
 
       /// Convert MAC to string of the form "XX:XX:XX:XX:XX:XX"
-      std::string to_string() const
-      {
-         char buf[slen() + 1] ;
-         return std::string(to_strbuf(buf)) ;
-      }
+      _PCOMNEXP std::string to_string() const ;
+
       /// Put MAC to a character buffer as a zero-terminated string of the form "XX:XX:XX:XX:XX:XX"
       ///
       /// @param buf Pointer to character buffer of size at least MAC::slen() + 1

@@ -18,6 +18,7 @@
 #include <pcomn_meta.h>
 
 #include <vector>
+#include <array>
 #include <memory>
 
 namespace pcomn {
@@ -117,6 +118,38 @@ range_size(const unipair<T> &c)
 {
    return c.second - c.first ;
 }
+
+template<typename T, typename A>
+inline auto pbegin(std::vector<T, A> &v) -> decltype(v.data())
+{
+   return v.data() ;
+}
+
+template<typename T, typename A>
+inline auto pbegin(const std::vector<T, A> &v) -> decltype(v.data())
+{
+   return v.data() ;
+}
+
+template<typename T, typename A>
+inline auto pend(std::vector<T, A> &v) -> decltype(v.data())
+{
+   return v.data() + v.size() ;
+}
+
+template<typename T, typename A>
+inline auto pend(const std::vector<T, A> &v) -> decltype(v.data())
+{
+   return v.data() + v.size() ;
+}
+
+template<typename T, size_t N>
+inline constexpr T *pbegin(T (&a)[N]) { return a ; }
+
+template<typename T, size_t N>
+inline constexpr T *pend(T (&a)[N]) { return a + N ; }
+
+PCOMN_DEFINE_PRANGE(std::array<P_PASS(T, N)>, template<typename T, size_t N>) ;
 
 /******************************************************************************/
 /** Clear a container containing pointers: delete all pointed values and clear

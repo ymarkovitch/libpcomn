@@ -771,17 +771,11 @@ struct assertion_traits<pcomn::simple_matrix<T, r> > : assertion_traits_matrix<p
 #undef _CPPUNIT_ASSERTION_TRAITS_SEQUENCE
 #undef _CPPUNIT_ASSERTION_TRAITS_MATRIX
 
-template<> struct assertion_traits<std::type_info> {
-      static bool equal(const std::type_info &x, const std::type_info &y)
-      {
-         return x == y ;
-      }
-
-      static std::string toString(const std::type_info &x)
-      {
-         return std::string(x.name()) ;
-      }
-} ;
+template<>
+inline std::string assertion_traits<std::type_info>::toString(const std::type_info &x)
+{
+   return std::string(x.name()) ;
+}
 
 template<typename T1, typename T2>
 struct assertion_traits<std::pair<T1, T2> > {
