@@ -335,7 +335,7 @@ public:
     constexpr unsigned pfxlen() const { return _pfxlen ; }
 
     /// Get subnet mask (host order)
-    constexpr uint32_t netmask() const { return ~0UL << (32 - _pfxlen) ; }
+    constexpr uint32_t netmask() const { return (uint32_t)(~0ULL << (32 - _pfxlen)) ; }
 
     constexpr bool is_host() const { return pfxlen() == 32 ; }
     constexpr bool is_any() const { return pfxlen() == 0 ; }
