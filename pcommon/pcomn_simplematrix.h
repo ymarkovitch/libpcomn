@@ -1101,6 +1101,49 @@ std::pair<typename trivial_set<T>::const_iterator, bool> trivial_set<T>::insert(
 
 PCOMN_DEFINE_SWAP(trivial_set<T>, template<typename T>) ;
 
+
+/******************************************************************************/
+/** Contiguous view of a container with random-access iterator
+*******************************************************************************/
+template<typename T>
+struct container_slice {
+      /// The sequence type
+      typedef T container_type ;
+
+      typedef decltype(std::begin(std::declval<container_type>()))       iterator ;
+      typedef decltype(std::begin(std::declval<const container_type>())) const_iterator ;
+
+      typedef iterator_difference_t<iterator>         difference_type ;
+      typedef std::make_unsigned_t<difference_type>   size_type ;
+
+      container_slice(container_type &c) : _container(&c) {}
+      container_slice(container_type &c, iterator from, iterator to) :
+         _container(&c),
+         _range(size_type(from - c.begin()), size_type(to - c.begin()))
+      {
+         NOXCHECK(to >= from) ;
+         NOXCHECK(from >= c.begin()) ;
+      }
+
+      iterator begin() const { return iter_at(_range.first) ; }
+      iterator end() const { return iter_at(_range.second) ; }
+
+      size_type size() const { return range_size(_range) ; }
+
+   private:
+      container_type *     _container ;
+      unipair<size_type>   _range ;
+
+   private:
+      container_type &container() const { return *_container ; }
+
+      iterator iter_at(size_type offset) const
+      {
+         NOXCHECK(offset <= container().size()) ;
+         return std::begin(container()) + offset ;
+      }
+} ;
+
 /*******************************************************************************
  simple_matrix
 *******************************************************************************/

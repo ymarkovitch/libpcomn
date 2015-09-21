@@ -27,6 +27,7 @@
 #include <pcomn_except.h>
 #include <pcomn_string.h>
 #include <pcomn_safeptr.h>
+#include <pcomn_range.h>
 #include <pcomn_simplematrix.h>
 
 #include <string>
@@ -753,10 +754,6 @@ std::string readline(binary_ibufstream &is, EOLMode eolmode = eolmode_LF) ;
  pcomn_range.h and after in the same include sequence; the only requirement is that it is
  included after pcomn_range.h at least once.
 *******************************************************************************/
-#ifdef PCOMN_USE_RANGES
-#ifndef __PCOMN_IOSTREAM_RANGES_H
-#define __PCOMN_IOSTREAM_RANGES_H
-
 namespace pcomn {
 
 struct istream_range_tag : public notional_range_tag {} ;
@@ -827,9 +824,6 @@ class istream_range : public istream_range_tag {
 } ;
 
 } // end of namespace pcomn
-
-#endif /* __PCOMN_IOSTREAM_RANGES_H */
-#endif /* PCOMN_USE_RANGES */
 
 /*******************************************************************************
  Provide pcomn::io::writer specializations for binary streams

@@ -20,10 +20,6 @@
 
 #include <stddef.h>
 
-/// Check this macro in headers that provide range algorithms to find out whether
-/// rangelib is present.
-#define PCOMN_USE_RANGES 1
-
 namespace pcomn {
 
 /******************************************************************************
