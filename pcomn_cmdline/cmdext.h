@@ -476,12 +476,12 @@ bool argint_traits<T>::compile(const char *&arg, CmdLine &cmdline)
       return false ;
    }
 
-   CMDL_MS_IGNORE_WARNING(4018)
+   CMDL_MS_PUSH_IGNORE_WARNING(4018)
    struct local {
       static type strtoint(const char *nptr, char **endptr, std::true_type)
       {
          const long long r = strtoll(nptr, endptr, 0) ;
-         if (r >= std::numeric_limits<type>::min() && r <= std::numeric_limits<type>::max())
+         if (r >= (long long)std::numeric_limits<type>::min() && r <= (long long)std::numeric_limits<type>::max())
             return (type)r ;
 
          // Out of range
@@ -500,7 +500,7 @@ bool argint_traits<T>::compile(const char *&arg, CmdLine &cmdline)
          return 1 ;
       }
    } ;
-   CMDL_MS_ENABLE_WARNING(4018)
+   CMDL_MS_DIAGNOSTIC_POP()
 
    char *ptr = NULL ;
    // Compile the string into an integer; watch out for -c0xa vs -axc0!
@@ -830,6 +830,22 @@ struct argtype_traits<std::pair<K, V> > : scalar_argument<std::pair<K, V> > {
    typedef V value_type ;
    using typename ancestor::type ;
 
+   const char *valid_delimiters() const { return _valid_delims ; }
+
+   void set_valid_delimiters(const char *d)
+   {
+      const char * const err =
+         !d ? "NULL valid delimiters set" :
+         !*d ? "Empty valid delimiters set" :
+         strlen(d) >= sizeof _valid_delims ? "Valid delimiters set is too large" :
+         nullptr ;
+
+      if (err)
+         throw std::invalid_argument(err) ;
+
+      strcpy(_valid_delims, d) ;
+   }
+
 protected:
    /// Inherit constructors
    using ancestor::ancestor ;
@@ -844,8 +860,8 @@ protected:
          return false ;
       }
 
-      const char *delim = arg + strcspn(arg, ":=") ;
-      _delim.first = *delim ? *delim : ':' ;
+      const char *delim = arg + strcspn(arg, _valid_delims) ;
+      _delim.first = *delim ? *delim : *_valid_delims ;
       if ((delim != arg &&
            !compile_half(_key_compiler, std::string(arg, delim).c_str(), cmdline, this->_value.first)) ||
 
@@ -874,6 +890,7 @@ private:
    item_compiler<key_type>   _key_compiler ;
    item_compiler<value_type> _value_compiler ;
    std::pair<char, char>     _delim ;
+   char                      _valid_delims[14] = ":=" ;
 
    template<typename T>
    bool compile_half(item_compiler<T> &compiler, const char *half, CmdLine &cmdline, T &result)

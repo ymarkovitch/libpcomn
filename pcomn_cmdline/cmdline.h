@@ -36,6 +36,8 @@
 #define CMDL_MS_DIAGNOSTIC_PUSH() CMDL_MS_MAKE_PRAGMA(warning(push))
 #define CMDL_MS_DIAGNOSTIC_POP()  CMDL_MS_MAKE_PRAGMA(warning(pop))
 
+#define CMDL_MS_PUSH_IGNORE_WARNING(warnlist) CMDL_MS_DIAGNOSTIC_PUSH() CMDL_MS_IGNORE_WARNING(warnlist)
+
 class  CmdLine ;
 class  CmdArg ;
 
@@ -87,7 +89,7 @@ public:
    friend class CmdLine ;
 
       // Flags that define the argument syntax
-   enum  CmdArgSyntax {
+   enum  CmdArgSyntax : unsigned short {
       isOPT       = 0x0000,  // argument is optional; note this value is 0 by design
 
       isREQ       = 0x0001,  // argument is required
