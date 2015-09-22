@@ -275,12 +275,7 @@ public:
 
     CommandStream &exec_line(strslice line) ;
     CommandStream &exec_from(const strslice &filename) ;
-    CommandStream &exec_from(std::istream &is)
-    {
-        for (std::string line ; std::getline(is, line) ; line.clear())
-            exec_line(line) ;
-        return *this ;
-    }
+    CommandStream &exec_from(std::istream &is) ;
 
     template<typename InputIterator>
     CommandStream &exec_from(InputIterator begin, InputIterator end)

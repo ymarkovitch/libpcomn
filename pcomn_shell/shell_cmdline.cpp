@@ -233,6 +233,20 @@ CommandStream &CommandStream::exec_from(const strslice &fn)
     return exec_from(is) ;
 }
 
+CommandStream &CommandStream::exec_from(std::istream &is)
+{
+    unsigned line_num = 0 ;
+    for (std::string line ; std::getline(is, line) ; line.clear())
+        try {
+            ++line_num ;
+            exec_line(line) ;
+        }
+        catch (const sh::command_exception &x) {
+            pcomn::throwf<sh::command_exception>("ERROR:%u:%s\n%s", line_num, x.what(), line.c_str()) ;
+        }
+    return *this ;
+}
+
 /*******************************************************************************
  Global functions
 *******************************************************************************/
