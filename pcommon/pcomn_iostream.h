@@ -743,10 +743,6 @@ inline char *readline(binary_ibufstream &is, char (&buf)[n], EOLMode eolmode = e
 /// @note Retains '\n' in the result. If @a eoltype is eol_CRLF, replaces final CRLF with LF.
 std::string readline(binary_ibufstream &is, EOLMode eolmode = eolmode_LF) ;
 
-} // end of namespace pcomn
-
-#endif /* __PCOMN_IOSTREAM_H */
-
 /*******************************************************************************
  PCommon streams provide "ranges" (http://rangelib.synesis.com.au/).
  If you want to use pcommon iostreams with STLSoft rangelib, include pcommon_iostream.h
@@ -754,8 +750,6 @@ std::string readline(binary_ibufstream &is, EOLMode eolmode = eolmode_LF) ;
  pcomn_range.h and after in the same include sequence; the only requirement is that it is
  included after pcomn_range.h at least once.
 *******************************************************************************/
-namespace pcomn {
-
 struct istream_range_tag : public notional_range_tag {} ;
 
 /******************************************************************************/
@@ -824,6 +818,8 @@ class istream_range : public istream_range_tag {
 } ;
 
 } // end of namespace pcomn
+
+#endif /* __PCOMN_IOSTREAM_H */
 
 /*******************************************************************************
  Provide pcomn::io::writer specializations for binary streams
