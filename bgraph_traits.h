@@ -74,6 +74,9 @@ vertex_property_t   = typename bgl::vertex_property_type<G>::type ;
 template<class G> using
 graph_property_t    = typename bgl::graph_property_type<G>::type ;
 
+template<class P> using
+property_value_t    = typename bgl::property_traits<P>::value_type ;
+
 }
 
 #endif /* __BGRAPH_TRAITS_H */
