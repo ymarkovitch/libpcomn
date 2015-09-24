@@ -54,10 +54,7 @@ class short_string {
       static const size_t    capacity_value = Capacity ;
 
    public:
-      short_string()
-      {
-         memset(_buf, 0, sizeof _buf) ;
-      }
+      short_string() { memset(_buf, 0, sizeof _buf) ; }
 
       short_string(size_type n, char_type c)
       {
@@ -66,16 +63,13 @@ class short_string {
          memset(_buf + sz, 0, sizeof(char_type) * (Capacity + 1 - sz)) ;
       }
 
-      short_string(const short_string &s)
-      {
-         memcpy(_buf, s._buf, sizeof _buf) ;
-      }
+      short_string(const short_string &s) { memcpy(_buf, s._buf, sizeof _buf) ; }
 
       template<typename S>
       short_string(const S &s, PCOMN_ENABLE_CTR_IF_STRCHAR(S, char_type))
       {
          *this = s ;
-         *end() = 0 ;
+         _buf[Capacity] = 0 ;
       }
 
       template<class InputIterator>
