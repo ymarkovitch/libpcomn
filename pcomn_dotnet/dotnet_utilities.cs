@@ -1,0 +1,68 @@
+/*-*- tab-width:2;c-basic-offset:2;indent-tabs-mode:nil -*-*/
+/*******************************************************************************
+ FILE         :   netreach_runtime.cs
+ DESCRIPTION  :   The library of helper functions and classes for the
+                  Network Reachability .NET wrapper
+
+                  Module initialization and finalization:
+                    - WrapperModule
+                    - WrapperHierarchyMapper
+
+                  Diagnostics and tracing:
+                    - DiagGroup
+                    - Tracer
+
+ PROGRAMMED BY:   Yakov Markovitch
+ CREATION DATE:   9 Jul 2015
+*******************************************************************************/
+using System ;
+using System.Runtime ;
+using System.Diagnostics ;
+using System.Reflection ;
+
+namespace PComn {
+  /*****************************************************************************
+   Internal static class - a holder for utility functions (necessary due to
+   C#'s inability to handle "global" functions)
+  *****************************************************************************/
+
+  /****************************************************************************
+   * <summary>A holder for helper functions and extension methods</summary>
+   ****************************************************************************/
+  public static class Helpers {
+
+    /// <summary>
+    ///   Throw NotImplementedException
+    /// </summary>
+    public static void Unimplemented(string methodName)
+    {
+      throw new NotImplementedException(String.Format("'{0}' method is not implemented.", methodName)) ;
+    }
+
+    /// <summary>
+    ///   Throw NotSupportedException
+    /// </summary>
+    public static void Unsupported(string methodName)
+    {
+      throw new NotSupportedException(String.Format("'{0}' method is not supported.", methodName)) ;
+    }
+
+    /// <summary>
+    ///   Throw ArgumentNullException if the value is null
+    /// </summary>
+    public static T EnsureNotNull<T>(this T value, string message) where T : class
+    {
+      if (value == null)
+        throw new ArgumentNullException(message);
+      return value;
+    }
+
+    /// <summary>
+    ///   Return true if "this" is an empty string or null
+    /// </summary>
+    public static bool IsEmpty(this string str)
+    {
+      return str == null || str.Length == 0 ;
+    }
+  }
+} // end of namespace PComn
