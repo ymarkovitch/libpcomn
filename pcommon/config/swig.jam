@@ -172,21 +172,20 @@ generators.register [ new swig-nolang-error ] ;
 ################################################################################
 # Swigfiles include scanner
 ################################################################################
-class swig-scanner : common-scanner
+class swig-scanner : c-scanner
 {
-    rule pattern ( )
+    rule __init__ ( includes * )
     {
-        return "%include[ \t]+([a-zA-Z+-@0-9_]*)" ;
+        c-scanner.__init__ $(includes) ;
     }
 
-    rule process ( target : matches * : binding )
+    rule pattern ( )
     {
-        #ECHO target=$(target) matches=$(matches) binding=$(binding) ;
-        return [ common-scanner.process $(target) : $(matches) : $(binding) ] ;
+        return "%include|import[ ]*(<(.*)>|\"(.*)\")" ;
     }
 }
 
-scanner.register swig-scanner : include ;
+scanner.register swig-scanner : swig.include ;
 type.set-scanner SWIG : swig-scanner ;
 
 ################################################################################
