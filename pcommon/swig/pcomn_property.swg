@@ -16,14 +16,19 @@
 #include <type_traits>
 
 template<typename T>
-static inline std::remove_const_t<T> *clone_copy(T &&value)
+static inline std::remove_cv_t<std::remove_reference_t<T>> *clone_copy(T &&value)
 {
-    typedef std::remove_const_t<T> result_t ;
+    typedef std::remove_cv_t<std::remove_reference_t<T>> result_t ;
     return new result_t(std::forward<T>(value)) ;
 }
 %}
 
-%define %properties(classname) %define PropClass__ classname %enddef %enddef
+%define %properties(Class)
+#undef PropClass__
+#define PropClass__ Class
+%enddef
+
+%define %endproperties() #undef PropClass__ %enddef
 
 %define %define_gs_etter__(Class, PropName, Op)%#define %cat(%mangle(Class), _ ## PropName, Op) %enddef
 
