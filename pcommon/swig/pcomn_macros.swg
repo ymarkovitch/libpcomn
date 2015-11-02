@@ -27,8 +27,8 @@
 #if #__VA_ARGS__ == ""
 #error Second argument required to %typedef_template, please specify template instance
 #endif
-%inline %{ typedef __VA_ARGS__ typedef_name ; %}
 %template(typedef_name) __VA_ARGS__ ;
+%inline { typedef __VA_ARGS__ typedef_name ; }
 %enddef
 
 /*******************************************************************************
