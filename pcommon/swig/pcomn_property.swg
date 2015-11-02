@@ -35,6 +35,7 @@ static inline std::remove_cv_t<std::remove_reference_t<T>> *clone_copy(T &&value
 %define %property__(PropType, PropName, Getter, Setter, GetterCall, SetterCall, writable...)
 #if #writable == ""
 %immutable PropName ;
+%naturalvar PropName ;
 #else
 %{
 %define_gs_etter__(PropClass__, PropName, _set(self_, val_)) (SetterCall)

@@ -135,3 +135,9 @@ prefix##macro
 %enddef
 
 %define %resetmacro(macro) #undef macro %enddef
+
+%define %ToString(funcname)
+%csmethodmodifiers funcname "public override" ;
+%rename(ToString) funcname ;
+std::string funcname() const ;
+%enddef

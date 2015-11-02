@@ -36,6 +36,9 @@ namespace pcomn {
 template<typename A, typename B, typename C>
 using triple = std::tuple<A, B, C> ;
 
+template<typename A, typename B, typename C, typename D>
+using quad = std::tuple<A, B, C, D> ;
+
 /******************************************************************************/
 /** Visit every item of any object compatible with std::get<n> function (this
  includes at least std::tuple, std::pair, and std::array).
