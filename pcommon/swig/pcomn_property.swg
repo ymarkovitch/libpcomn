@@ -23,28 +23,38 @@ static inline std::remove_cv_t<std::remove_reference_t<T>> *clone_copy(T &&value
 }
 %}
 
+// Define PropClass__ macro with a dummy argument to workaround SWIG preprocessor wart:
+// SWIG interprets function-like macro w/o arguments as a simple variable-like macro!
+// I.e.
+// #define foo() bar
+// foo() foo
+// will result to
+// bar bar
+//
 %define %properties(Class)
 #undef PropClass__
-#define PropClass__ Class
+#define PropClass__(dummy) Class
 %enddef
 
-%define %endproperties() #undef PropClass__ %enddef
+%define %endproperties()
+#undef PropClass__
+%enddef
 
 %define %define_gs_etter__(Class, PropName, Op)%#define %cat(%mangle(Class), _ ## PropName, Op) %enddef
 
 %define %property__(PropType, PropName, Getter, Setter, GetterCall, SetterCall, writable...)
 #if #writable == ""
-%immutable PropClass__::PropName ;
-%naturalvar PropClass__::PropName ;
+%immutable PropClass__(1)::PropName ;
+%naturalvar PropClass__(1)::PropName ;
 #else
 %{
-%define_gs_etter__(PropClass__, PropName, _set(self_, val_)) (SetterCall)
+%define_gs_etter__(PropClass__(1), PropName, _set(self_, val_)) (SetterCall)
 %}
 #endif
 %{
-%define_gs_etter__(PropClass__, PropName, _get(self_)) (GetterCall)
+%define_gs_etter__(PropClass__(1), PropName, _get(self_)) (GetterCall)
 %}
-%extend PropClass__ { PropType PropName ; }
+%extend PropClass__(1) { PropType PropName ; }
 %enddef
 
 %define %property(PropType, PropName, Getter, Setter...)
@@ -57,34 +67,34 @@ static inline std::remove_cv_t<std::remove_reference_t<T>> *clone_copy(T &&value
 
 %define %propertyval(PropType, PropName, Getter, Setter...)
 #if #Setter == ""
-%immutable PropClass__::PropName ;
+%immutable PropClass__(1)::PropName ;
 #endif
-%newobject PropClass__::PropName ;
-%extend PropClass__ { %arg(PropType) PropName ; }
+%newobject PropClass__(1)::PropName ;
+%extend PropClass__(1) { %arg(PropType) PropName ; }
 #if #Setter != ""
 %{
-%define_gs_etter__(PropClass__, PropName, _set(self_, val_)) (self_->Setter(*val_))
+%define_gs_etter__(PropClass__(1), PropName, _set(self_, val_)) (self_->Setter(*val_))
 %}
 #endif
 %{
-%define_gs_etter__(PropClass__, PropName, _get(self_)) (*clone_copy(self_->Getter()))
+%define_gs_etter__(PropClass__(1), PropName, _get(self_)) (*clone_copy(self_->Getter()))
 %}
 %enddef
 
 %define %propertystring(PropType, PropName, Getter, Setter...)
 #if #Setter != ""
 %{
-%define_gs_etter__(PropClass__, PropName, _set(self_, val_)) (self_->Setter(val_))
+%define_gs_etter__(PropClass__(1), PropName, _set(self_, val_)) (self_->Setter(val_))
 %}
 #else
 %immutable PropClass__::PropName ;
 #endif
 %{
-%define_gs_etter__(PropClass__, PropName, _get(self_)) (clone_copy(self_->Getter()))
+%define_gs_etter__(PropClass__(1), PropName, _get(self_)) (clone_copy(self_->Getter()))
 %}
-%newobject PropClass__::PropName ;
-%typemap(newfree) const PropType &PropClass__::PropName "delete $1;"
-%extend PropClass__ { PropType PropName; }
+%newobject PropClass__(1)::PropName ;
+%typemap(newfree) const PropType &PropClass__(1)::PropName "delete $1;"
+%extend PropClass__(1) { PropType PropName; }
 %enddef
 
 %define %propertyref(PropType, PropName, AccessorMethod...)
