@@ -20,7 +20,6 @@ import feature ;
 import property ;
 import pcommon ;
 import python ;
-import dotnetexe ;
 import utility ;
 import "class" : new ;
 import toolset ;
@@ -43,6 +42,10 @@ rule registered-languages ( )
 ################################################################################
 type.register SWIG : iswg swg ;  # SWIG interface/library
 
+if ! [ type.registered CSHARP ]
+{
+    type.register CSHARP : cs ;
+}
 ################################################################################
 # Declare SWIG-related features
 ################################################################################

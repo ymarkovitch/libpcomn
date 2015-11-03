@@ -41,7 +41,10 @@ if ! [ type.registered PDB ]
     type.register PDB : pdb ;
 }
 
-type.register CSHARP : cs ;
+if ! [ type.registered CSHARP ]
+{
+    type.register CSHARP : cs ;
+}
 
 ################################################################################
 # Target flags
