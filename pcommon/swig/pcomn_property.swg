@@ -44,8 +44,8 @@ static inline std::remove_cv_t<std::remove_reference_t<T>> *clone_copy(T &&value
 
 %define %property__(PropType, PropName, Getter, Setter, GetterCall, SetterCall, writable...)
 #if #writable == ""
-%immutable PropClass__(1)::PropName ;
-%naturalvar PropClass__(1)::PropName ;
+%immutable  PropName ;
+%naturalvar PropName ;
 #else
 %{
 %define_gs_etter__(PropClass__(1), PropName, _set(self_, val_)) (SetterCall)
@@ -54,7 +54,7 @@ static inline std::remove_cv_t<std::remove_reference_t<T>> *clone_copy(T &&value
 %{
 %define_gs_etter__(PropClass__(1), PropName, _get(self_)) (GetterCall)
 %}
-%extend PropClass__(1) { PropType PropName ; }
+%extend { PropType PropName ; }
 %enddef
 
 %define %property(PropType, PropName, Getter, Setter...)
@@ -67,10 +67,10 @@ static inline std::remove_cv_t<std::remove_reference_t<T>> *clone_copy(T &&value
 
 %define %propertyval(PropType, PropName, Getter, Setter...)
 #if #Setter == ""
-%immutable PropClass__(1)::PropName ;
+%immutable PropName ;
 #endif
-%newobject PropClass__(1)::PropName ;
-%extend PropClass__(1) { %arg(PropType) PropName ; }
+%newobject PropName ;
+%extend { %arg(PropType) PropName ; }
 #if #Setter != ""
 %{
 %define_gs_etter__(PropClass__(1), PropName, _set(self_, val_)) (self_->Setter(*val_))
@@ -92,9 +92,9 @@ static inline std::remove_cv_t<std::remove_reference_t<T>> *clone_copy(T &&value
 %{
 %define_gs_etter__(PropClass__(1), PropName, _get(self_)) (clone_copy(self_->Getter()))
 %}
-%newobject PropClass__(1)::PropName ;
-%typemap(newfree) const PropType &PropClass__(1)::PropName "delete $1;"
-%extend PropClass__(1) { PropType PropName; }
+%newobject PropName ;
+%typemap(newfree) const PropType &PropName "delete $1;"
+%extend { PropType PropName; }
 %enddef
 
 %define %propertyref(PropType, PropName, AccessorMethod...)
