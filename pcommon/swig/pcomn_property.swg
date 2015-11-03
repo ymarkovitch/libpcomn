@@ -9,8 +9,8 @@
  PROGRAMMED BY:   Yakov Markovitch
  CREATION DATE:   27 Oct 2015
 *******************************************************************************/
-%include attribute.i
-%include pcomn_macros.swg
+%include <attribute.i>
+%include "pcomn_macros.swg"
 
 %{
 #include <type_traits>

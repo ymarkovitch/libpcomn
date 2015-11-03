@@ -180,11 +180,12 @@ class swig-scanner : c-scanner
     rule __init__ ( includes * )
     {
         c-scanner.__init__ $(includes) ;
+        self.includes = [ toolset.handle-flag-value <swig.include> : $(includes) ] ;
     }
 
     rule pattern ( )
     {
-        return "%include|import[ ]*(<(.*)>|\"(.*)\")" ;
+        return "[ \t]*%include[ \t]*(<(.*)>|\"(.*)\")" ;
     }
 }
 
