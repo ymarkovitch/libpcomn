@@ -10,18 +10,7 @@
  CREATION DATE:   27 Oct 2015
 *******************************************************************************/
 %include <attribute.i>
-%include "pcomn_macros.swg"
-
-%{
-#include <type_traits>
-
-template<typename T>
-static inline std::remove_cv_t<std::remove_reference_t<T>> *clone_copy(T &&value)
-{
-    typedef std::remove_cv_t<std::remove_reference_t<T>> result_t ;
-    return new result_t(std::forward<T>(value)) ;
-}
-%}
+%include "pcomn_valtype.i"
 
 // Define PropClass__ macro with a dummy argument to workaround SWIG preprocessor wart:
 // SWIG interprets function-like macro w/o arguments as a simple variable-like macro!
@@ -52,20 +41,21 @@ static inline std::remove_cv_t<std::remove_reference_t<T>> *clone_copy(T &&value
 %}
 #endif
 %{
-%define_gs_etter__(PropClass__(1), PropName, _get(self_)) (GetterCall)
+%define_gs_etter__(PropClass__(1), PropName, _get(self_)) (placement_ref(_global_result, GetterCall))
 %}
 %extend { PropType PropName ; }
 %enddef
 
 %define %property(PropType, PropName, Getter, Setter...)
+%newobject PropName ;
 %property__(%arg(PropType), PropName, Getter, Setter, self_->Getter(), self_->Setter(val_), Setter)
 %enddef
 
-%define %property2(PropType, PropName, Getter, Setter...)
+%define %propertyref(PropType, PropName, Getter, Setter...)
 %property__(%arg(PropType), PropName, Getter, Setter, &self_->Getter(), self_->Setter(*val_), Setter)
 %enddef
 
-%define %propertyval(PropType, PropName, Getter, Setter...)
+%define %propertyclone(PropType, PropName, Getter, Setter...)
 #if #Setter == ""
 %immutable PropName ;
 #endif
@@ -87,28 +77,12 @@ static inline std::remove_cv_t<std::remove_reference_t<T>> *clone_copy(T &&value
 %define_gs_etter__(PropClass__(1), PropName, _set(self_, val_)) (self_->Setter(val_))
 %}
 #else
-%immutable PropClass__::PropName ;
+%immutable PropName ;
 #endif
 %{
-%define_gs_etter__(PropClass__(1), PropName, _get(self_)) (clone_copy(self_->Getter()))
+%define_gs_etter__(PropClass__(1), PropName, _get(self_)) (*new std::string(self_->Getter()))
 %}
 %newobject PropName ;
 %typemap(newfree) const PropType &PropName "delete $1;"
-%extend { PropType PropName; }
-%enddef
-
-%define %propertyref(PropType, PropName, AccessorMethod...)
-#if #AccessorMethod != ""
-%property__(%arg(PropType), PropName, AccessorMethod, AccessorMethod, self_->AccessorMethod(), self_->AccessorMethod() = val_, true)
-#else
-%property__(%arg(PropType), PropName, PropName, PropName, self_->PropName(), self_->PropName() = val_, true)
-#endif
-%enddef
-
-%define %property2ref(PropType, PropName, AccessorMethod...)
-#if #AccessorMethod != ""
-%property__(%arg(PropType), PropName, AccessorMethod, AccessorMethod, &self_->AccessorMethod(), self_->AccessorMethod() = *val_)
-#else
-%property__(%arg(PropType), AccessorName, AccessorName, AccessorName, &self_->AccessorName(), self_->AccessorName() = *val_)
-#endif
+%extend { PropType PropName ; }
 %enddef
