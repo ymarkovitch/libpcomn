@@ -28,7 +28,12 @@
 #error Second argument required to %typedef_template, please specify template instance
 #endif
 %template(typedef_name) __VA_ARGS__ ;
-%inline { typedef __VA_ARGS__ typedef_name ; }
+typedef __VA_ARGS__ typedef_name ;
+%enddef
+
+%define %typedef_template_inline(typedef_name, ...)
+%typedef_template(typedef_name, ##__VA_ARGS__)
+%{typedef __VA_ARGS__ typedef_name ;%}
 %enddef
 
 /*******************************************************************************

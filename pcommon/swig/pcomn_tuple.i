@@ -11,8 +11,9 @@
 *******************************************************************************/
 %include "pcomn_macros.swg"
 %include "pcomn_property.swg"
-%include std_common.i
-%include exception.i
+
+%include <std_common.i>
+%include <exception.i>
 
 %{
 #include <pcomn_tuple.h>
@@ -56,6 +57,7 @@ struct triple {
   public $typemap(cstype, T3) Item3 { get { return get2_() ; } }
 
   public override string ToString() { return Tuple.Create(Item1, Item2, Item3).ToString() ; }
+
 %}
 } ;
 
