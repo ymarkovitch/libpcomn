@@ -10,6 +10,8 @@ using System ;
 using System.Runtime ;
 using System.Diagnostics ;
 using System.Reflection ;
+using System.Collections ;
+using System.Collections.Generic ;
 
 namespace PComn {
 
@@ -50,6 +52,33 @@ namespace PComn {
         public static bool IsEmpty(this string str)
         {
             return str == null || str.Length == 0 ;
+        }
+
+        /// <summary>
+        ///   Return true if "this" is an empty collection or null
+        /// </summary>
+        public static bool IsEmpty<T>(this ICollection<T> collection)
+        {
+            return collection == null || collection.Count == 0 ;
+        }
+
+        /// <summary>
+        ///   Return true if "this" is an empty stack or null
+        /// </summary>
+        public static bool IsEmpty<T>(this Stack<T> collection)
+        {
+            return collection == null || collection.Count == 0 ;
+        }
+
+        /// <summary>
+        ///   Return true if "this" is an empty collection or null
+        /// </summary>
+        public static TValue LetItem<TKey, TValue>(this Dictionary<TKey, TValue> dict, TKey key) where TValue : class, new()
+        {
+            TValue result ;
+            if (!dict.TryGetValue(key, out result))
+                dict.Add(key, result = new TValue()) ;
+            return result ;
         }
     }
 } // end of namespace PComn
