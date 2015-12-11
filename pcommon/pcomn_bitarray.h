@@ -580,6 +580,8 @@ class bitarray : private bitarray_base<unsigned long> {
       const_iterator end() const { return const_iterator(*this, size()) ; }
       const_iterator cbegin() const { return begin() ; }
       const_iterator cend() const { return end() ; }
+      bool front() const { return test(0) ; }
+      bool back() const { return test(size() - 1) ; }
 
       positional_iterator begin_positional() const { return positional_iterator(*this) ; }
       positional_iterator end_positional() const { return positional_iterator(*this, size()) ; }
