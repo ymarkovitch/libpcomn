@@ -61,14 +61,16 @@
 #include <string>
 #include <algorithm>
 #include <iostream>
-#include <vector>
-#include <set>
-#include <map>
-#include <list>
 #include <stdexcept>
 #include <type_traits>
 #include <initializer_list>
 #include <limits>
+#include <functional>
+
+#include <vector>
+#include <set>
+#include <map>
+#include <list>
 
 #include <stdlib.h>
 #include <string.h>
@@ -145,6 +147,19 @@ CMDL_MS_IGNORE_WARNING(4996)
 namespace cmdl {
 
 const unsigned ARGSYNTAX_FLAGS = 0xffff ;
+
+enum ArgSyntaxExt : unsigned {
+   isEXT0   = 0x10000,
+   isEXT1   = 0x20000,
+   isEXT2   = 0x40000,
+   isEXT3   = 0x80000,
+   isEXT4  = 0x100000,
+   isEXT5  = 0x200000,
+   isEXT6  = 0x400000,
+   isEXT7  = 0x800000
+} ;
+
+const ArgSyntaxExt isNOCASE = isEXT0 ;
 
 /******************************************************************************/
 /** Generic argument type traits, used as a base class for argument classes
@@ -965,25 +980,21 @@ public:
    typedef T type ;
    typedef std::pair<std::string, type> keyed_value ; ;
 
-   ArgEnum(keyed_value default_value,
-           char         optchar,
-           const char * keyword,
-           const char * value_name,
-           const char * description,
-           unsigned     flags = CmdArg::isVALREQ) :
-      ancestor(default_value.first, optchar, keyword, value_name, description, flags),
-      _default_value(default_value.second),
-      _valmap(&default_value, &default_value + 1)
-   {}
+   ArgEnum(keyed_value default_value, char optchar, const char *keyword, const char *value_name,
+           const char *description,
+           unsigned    flags = 0) :
+      ancestor(default_value.first, optchar, keyword, value_name, description, flags | CmdArg::isVALREQ)
+   {
+      set_defvalue(default_value, flags & isNOCASE) ;
+   }
 
-   ArgEnum(keyed_value default_value,
-           const char * value_name,
-           const char * description,
-           unsigned     flags = CmdArg::isVALREQ) :
-      ancestor(default_value.first, value_name, description, flags),
-      _default_value(default_value.second),
-      _valmap(&default_value, &default_value + 1)
-   {}
+   ArgEnum(keyed_value default_value, const char *value_name,
+           const char *description,
+           unsigned    flags = 0) :
+      ancestor(default_value.first, value_name, description, flags | CmdArg::isVALREQ)
+   {
+      set_defvalue(default_value, flags & isNOCASE) ;
+   }
 
    type &value() { return _value ; }
    const type &value() const { return _value ; }
@@ -993,18 +1004,16 @@ public:
    const type &default_value() const { return _default_value ; }
 
    ArgEnum &append(const std::string &key, const type &val) ;
-
-   ArgEnum &append(const keyed_value &keyval)
-   {
-      return append(keyval.first, keyval.second) ;
-   }
+   ArgEnum &append(const keyed_value &keyval) { return append(keyval.first, keyval.second) ; }
 
 private:
-   typedef std::map<std::string, type> valmap_type ;
+   typedef std::map<std::string, type, std::function<bool(const std::string &, const std::string &)>> valmap_type ;
 
    type        _default_value ;
    type        _value {} ;
    valmap_type _valmap ;
+
+   void set_defvalue(keyed_value &default_value, bool nocase) ;
 
 protected:
    void reset() override
@@ -1015,19 +1024,24 @@ protected:
       swap(_value, v) ;
    }
 
-   bool compile(const char *&arg, CmdLine &cmdl) override
-   {
-      if (!ancestor::compile(arg, cmdl))
-         return false ;
-      const typename valmap_type::const_iterator vi (_valmap.find(ancestor::value())) ;
-      if (vi == _valmap.end())
-         return false ;
-      type v (vi->second) ;
-      using std::swap ;
-      swap(v, _value) ;
-      return true ;
-   }
+   bool compile(const char *&arg, CmdLine &cmdl) override ;
 } ;
+
+template<typename T>
+void ArgEnum<T>::set_defvalue(keyed_value &default_value, bool nocase)
+{
+   typedef typename valmap_type::key_compare key_compare ;
+
+   _valmap = valmap_type(&default_value, &default_value + 1, !nocase
+                         ? key_compare(std::less<std::string>())
+                         : key_compare([](const std::string &x, const std::string &y)
+                           {
+                              return std::lexicographical_compare
+                              (x.begin(), x.end(), y.begin(), y.end(),
+                               [](char a, char b) { return tolower(a) < tolower(b) ; }) ;
+                           })) ;
+   _default_value = std::move(default_value.second) ;
+}
 
 template<typename T>
 ArgEnum<T> &ArgEnum<T>::append(const std::string &key, const type &val)
@@ -1040,6 +1054,20 @@ ArgEnum<T> &ArgEnum<T>::append(const std::string &key, const type &val)
       swap(_value, v) ;
    swap(_valmap[key], v) ;
    return *this ;
+}
+
+template<typename T>
+bool ArgEnum<T>::compile(const char *&arg, CmdLine &cmdl)
+{
+   if (!ancestor::compile(arg, cmdl))
+      return false ;
+   const typename valmap_type::const_iterator vi (_valmap.find(ancestor::value())) ;
+   if (vi == _valmap.end())
+      return false ;
+   type v (vi->second) ;
+   using std::swap ;
+   swap(v, _value) ;
+   return true ;
 }
 
 /******************************************************************************/
