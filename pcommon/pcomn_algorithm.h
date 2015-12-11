@@ -341,6 +341,14 @@ void adjacent_for_each(ForwardIterator begin, ForwardIterator end, Function f)
    }
 }
 
+/// Coalesce the first and the second and element of each adjacent pair for which
+/// pred(*first,*last) returned true
+///
+/// @param pred      Binary predicate which returns true if the elements should be
+/// coalesced; its signature should be equivalent to the following: bool(a, b)
+/// @param coalesce  Binary operation function object that will be applied to adjacent
+/// elements, for which @a pred returned true
+///
 template<typename ForwardIterator, typename BinaryPredicate, typename BinaryOperation>
 inline ForwardIterator adjacent_coalesce(ForwardIterator first, ForwardIterator last,
                                          BinaryPredicate pred, BinaryOperation coalesce)
