@@ -28,14 +28,17 @@ using namespace pcomn::unit ;
 /*******************************************************************************
                      class ExecTests
 *******************************************************************************/
-class ExecTests : public CppUnit::TestFixture {
+extern const char EXECTEST_FIXTURE[] = "exec" ;
+class ExecTests : public pcomn::unit::TestFixture<EXECTEST_FIXTURE> {
 
       void Test_PopenCmd() ;
+      void Test_RedirCmd() ;
       void Test_ShellCmd() ;
 
       CPPUNIT_TEST_SUITE(ExecTests) ;
 
       CPPUNIT_TEST(Test_PopenCmd) ;
+      CPPUNIT_TEST(Test_RedirCmd) ;
       CPPUNIT_TEST(Test_ShellCmd) ;
 
       CPPUNIT_TEST_SUITE_END() ;
@@ -43,6 +46,24 @@ class ExecTests : public CppUnit::TestFixture {
 
 void ExecTests::Test_PopenCmd()
 {
+}
+
+void ExecTests::Test_RedirCmd()
+{
+   const std::string sortout = at_data_dir_abs("sortout.lst") ;
+
+   redircmd redir (("sort >" + sortout).c_str()) ;
+   std::cout << "foo" << std::endl ;
+   PCOMN_ENSURE_POSIX(write(fileno(stdout), "xyzzy\n", 6), "write") ;
+   printf("bar\n") ;
+   puts("quux") ;
+   redir.close() ;
+
+   CPPUNIT_LOG_EQ(full_file(sortout),
+                  "bar\n"
+                  "foo\n"
+                  "quux\n"
+                  "xyzzy\n") ;
 }
 
 void ExecTests::Test_ShellCmd()

@@ -18,6 +18,7 @@
 
 #include <array>
 
+#include <stdio.h>
 #include <errno.h>
 #include <sys/types.h>
 
@@ -47,6 +48,39 @@ int popencmd::close()
            << " (" << _cmd << ')') ;
 
    return status ;
+}
+
+/*******************************************************************************
+ redircmd
+*******************************************************************************/
+redircmd::redircmd(const char *cmd) :
+   _saved_stdout(PCOMN_ENSURE_POSIX(dup(fileno(stdout)), "dup")),
+   _saved_stderr(PCOMN_ENSURE_POSIX(dup(fileno(stderr)), "dup")),
+   _cmd(cmd, 'w')
+{
+   const int pipeno = fileno(_cmd.pipe()) ;
+   dup2(pipeno, fileno(stdout)) ;
+   dup2(pipeno, fileno(stderr)) ;
+}
+
+void redircmd::restore_standard_ostreams()
+{
+   dup2(_saved_stdout, fileno(stdout)) ;
+   dup2(_saved_stderr, fileno(stderr)) ;
+   _saved_stdout.close() ;
+   _saved_stderr.close() ;
+}
+
+int redircmd::close()
+{
+   if (!is_closed())
+   {
+      fflush(NULL) ;
+      std::cout.flush() ;
+      std::cerr.flush() ;
+      restore_standard_ostreams() ;
+   }
+   return _cmd.close() ;
 }
 
 /*******************************************************************************

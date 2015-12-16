@@ -17,6 +17,7 @@
 #include <pcomn_platform.h>
 #include <pcomn_except.h>
 #include <pcomn_unistd.h>
+#include <pcomn_handle.h>
 #include <pcomn_def.h>
 
 #include <stdarg.h>
@@ -87,6 +88,32 @@ struct _PCOMNEXP popencmd {
          _pipe = NULL ;
          return _status = pclose(p) ;
       }
+} ;
+
+/******************************************************************************/
+/** Start a pipe and redirect stdin and/or stderr into it
+
+ Destructor or close() restores original stderr and/or stdout
+*******************************************************************************/
+struct _PCOMNEXP redircmd {
+      redircmd(const char *cmd) ;
+
+      ~redircmd() { restore_standard_ostreams() ; }
+
+      /// Indicate if the command pipe is closed
+      bool is_closed() const { return _cmd.is_closed() ; }
+
+      /// Wait until the command finished execution and close the command pipe.
+      /// @return Exit status of the command pipe.
+      ///
+      int close() ;
+
+   private:
+      fd_safehandle _saved_stdout ;
+      fd_safehandle _saved_stderr ;
+      popencmd _cmd ;
+
+      void restore_standard_ostreams() ;
 } ;
 
 /******************************************************************************/
