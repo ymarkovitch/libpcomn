@@ -377,8 +377,9 @@ class ref_lease  {
       return lhs.get() op nullptr ;                                     \
    }                                                                    \
                                                                         \
-   template<typename T>                                                 \
-   inline bool operator op(const Template<T> &lhs, const Template<T> &rhs) \
+   template<typename T, typename U>                                     \
+   inline decltype((T *)nullptr == (U *)nullptr)                        \
+   operator op(const Template<T> &lhs, const Template<U> &rhs)          \
    {                                                                    \
       return lhs.get() op rhs.get() ;                                   \
    }
