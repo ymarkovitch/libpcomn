@@ -234,6 +234,12 @@ struct count_iterator : std::iterator<std::random_access_iterator_tag, Counter, 
          return *this ;
       }
 
+      count_iterator &operator=(Counter value)
+      {
+         _count = value ;
+         return *this ;
+      }
+
       PCOMN_DEFINE_POSTCREMENT_METHODS(count_iterator) ;
       PCOMN_DEFINE_NONASSOC_ADDOP_METHODS(count_iterator, ptrdiff_t) ;
 
