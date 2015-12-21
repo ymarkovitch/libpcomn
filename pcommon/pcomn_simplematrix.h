@@ -35,6 +35,7 @@ namespace pcomn {
 template<typename T>
 class simple_slice {
       typedef std::remove_const_t<T> mutable_value_type ;
+      typedef std::conditional_t<std::is_const<T>::value, T, void> const_value_type ;
    public:
       typedef T value_type ;
       typedef T * iterator ;
@@ -62,6 +63,11 @@ class simple_slice {
 
       simple_slice(const std::vector<mutable_value_type> &src) :
          _start(const_cast<T *>(&*src.begin())), _finish(const_cast<T *>(&*src.end()))
+      {}
+
+      template<typename U, typename = instance_if_t<std::is_same<const_value_type, U>::value>>
+      simple_slice(const std::vector<U> &src) :
+         _start(&*src.begin()), _finish(&*src.end())
       {}
 
       /// Get the count of slice elements
