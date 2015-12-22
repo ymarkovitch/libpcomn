@@ -84,6 +84,29 @@ using make_signed_t = typename make_signed<T>::type ;
 
 #endif /* PCOMN_STL_CXX14 */
 
+#ifndef PCOMN_STL_CXX17
+
+namespace std {
+
+template<class C>
+constexpr auto size(const C &container) -> decltype(container.size()) { return container.size() ; }
+
+template<typename T, size_t N>
+constexpr size_t size(const T (&)[N]) noexcept { return N ; }
+
+template<class C>
+constexpr auto empty(const C &container) -> decltype(container.empty()) { return container.empty() ; }
+
+template<typename T, size_t N>
+constexpr bool empty(const T (&)[N]) noexcept { return false ; }
+
+template<typename E>
+constexpr bool empty(std::initializer_list<E> v) noexcept { return v.size() == 0 ; }
+
+}
+
+#endif /* PCOMN_STL_CXX17 */
+
 namespace pcomn {
 
 template<bool v>

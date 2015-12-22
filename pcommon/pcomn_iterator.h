@@ -774,6 +774,12 @@ inline enable_if_t<pcomn::is_iterator<I>::value, I> end(const pair<I, I> &range)
 {
    return range.second ;
 }
+
+template<typename I>
+inline auto size(const pair<I, I> &range) -> decltype(range.second - range.first)
+{
+   return range.second - range.first ;
+}
 } // end of namespace std
 
 #endif /* __PCOMN_ITERATOR_H */

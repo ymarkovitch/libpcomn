@@ -113,8 +113,7 @@ range_size(C &&c)
 }
 
 template<typename T, typename = instance_if_t<std::is_arithmetic<T>::value> >
-inline decltype(std::declval<T>() - std::declval<T>())
-range_size(const unipair<T> &c)
+inline auto range_size(const unipair<T> &c) -> decltype(c.second - c.first)
 {
    return c.second - c.first ;
 }
