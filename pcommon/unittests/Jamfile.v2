@@ -45,6 +45,7 @@ if ! [ adhoc-targets ]
   unittest unittest_strshims ;
   unittest unittest_strslice ;
   unittest unittest_omanip ;
+  unittest unittest_pprint ;
 
   #unittest unittest_strunicode ;
 

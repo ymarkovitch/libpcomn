@@ -196,7 +196,10 @@ struct trace_context {
       trace_stream &os()
       {
          if (!os_ptr)
+         {
             os_ptr = new (static_cast<void *>(os_buf + 0)) trace_stream ;
+            *os_ptr << std::boolalpha ;
+         }
          return *os_ptr ;
       }
 
