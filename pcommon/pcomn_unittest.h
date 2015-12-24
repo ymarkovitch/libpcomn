@@ -762,11 +762,17 @@ _CPPUNIT_ASSERTION_TRAITS_SEQUENCE(std::list) ;
 _CPPUNIT_ASSERTION_TRAITS_SEQUENCE(std::deque) ;
 _CPPUNIT_ASSERTION_TRAITS_SEQUENCE(std::set) ;
 _CPPUNIT_ASSERTION_TRAITS_SEQUENCE(std::multiset) ;
+_CPPUNIT_ASSERTION_TRAITS_SEQUENCE(pcomn::simple_vector) ;
 
 _CPPUNIT_ASSERTION_TRAITS_MATRIX(pcomn::matrix_slice) ;
 
+template<typename T, size_t maxsize>
+struct assertion_traits<pcomn::static_vector<T, maxsize>> :
+         assertion_traits_sequence<pcomn::static_vector<T, maxsize>> {} ;
+
 template<typename T, bool r>
-struct assertion_traits<pcomn::simple_matrix<T, r> > : assertion_traits_matrix<pcomn::simple_matrix<T, r> > {} ;
+struct assertion_traits<pcomn::simple_matrix<T, r> > :
+         assertion_traits_matrix<pcomn::simple_matrix<T, r> > {} ;
 
 #undef _CPPUNIT_ASSERTION_TRAITS_SEQUENCE
 #undef _CPPUNIT_ASSERTION_TRAITS_MATRIX
