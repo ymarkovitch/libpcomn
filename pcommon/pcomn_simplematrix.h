@@ -401,12 +401,23 @@ class static_vector {
       value_type &push_back(const value_type &item)
       {
          NOXPRECONDITION(size() < maxsize) ;
-         return _data[_size++] = item ;
+         value_type &r = _data[_size] = item ;
+         ++_size ;
+         return r ;
       }
       value_type pop_back()
       {
          NOXPRECONDITION(size()) ;
-         return _data[_size--] ;
+         return std::move(_data[_size--]) ;
+      }
+
+      template<typename... Args>
+      value_type &emplace_back(Args && ...args)
+      {
+         NOXPRECONDITION(size() < maxsize) ;
+         value_type &r = _data[_size] = value_type(std::forward<Args>(args)...) ;
+         ++_size ;
+         return r ;
       }
 
       template<typename InputIterator>
