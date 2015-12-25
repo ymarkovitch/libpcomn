@@ -33,7 +33,7 @@ class SimpleSliceTests : public CppUnit::TestFixture {
 } ;
 
 typedef pcomn::simple_slice<int> int_slice ;
-typedef pcomn::simple_slice<const int> cint_slice ;
+typedef pcomn::simple_cslice<int> cint_slice ;
 typedef pcomn::simple_slice<std::string> str_slice ;
 
 typedef pcomn::simple_vector<int> int_vec ;
@@ -171,9 +171,9 @@ void SimpleSliceTests::Test_Simple_Vector_Construct()
    cint_slice CIntSlice1 (IntArrayVec) ;
    cint_slice CIntSlice2 (CIntArrayVec) ;
 
-   auto f1 = [](const simple_slice<const int> &){} ;
+   auto f1 = [](const simple_cslice<int> &){} ;
    auto f2 = [](simple_slice<int>) {} ;
-   auto f3 = [](simple_slice<const int>) {} ;
+   auto f3 = [](simple_cslice<int>) {} ;
    f1(IntArrayVec) ;
    f2(IntArrayVec) ;
    f3(IntArrayVec) ;

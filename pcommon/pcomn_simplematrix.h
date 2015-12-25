@@ -109,6 +109,10 @@ class simple_slice {
       value_type *_finish ;
 } ;
 
+/// Slice of a constant array
+template<typename T>
+using simple_cslice = simple_slice<const T> ;
+
 /******************************************************************************/
 /** Non-resizable vector with dynamic allocation of storage at construction, with
  STL random-access container interface
