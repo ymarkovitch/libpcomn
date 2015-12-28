@@ -145,6 +145,8 @@ inline std::ostream &o_sequence(std::ostream &os, InputIterator begin, InputIter
 {
    return print_sequence(begin, end, os) ;
 }
+
+inline std::ostream &o_nothing(std::ostream &os) { return os ; }
 }
 
 template<typename InputIterator, typename Before, typename After>
@@ -193,6 +195,10 @@ inline auto ocontdelim(T (&container)[sz], const Delim &delim)
 template<class Container>
 inline auto ocontdelim(const Container &container)
    PCOMN_DERIVE_OMANIP(oseqdelim(std::begin(container), std::end(container)))
+
+template<typename... Args>
+inline auto onothing(Args &&...)
+   PCOMN_MAKE_OMANIP(detail::o_nothing) ;
 
 inline char *hrsize(unsigned long long sz, char *buf)
 {
