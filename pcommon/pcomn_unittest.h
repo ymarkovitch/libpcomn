@@ -421,6 +421,13 @@ class TestRunner : public CppUnit::TextUi::TestRunner {
   at_data_dir("foo.out") ;
   at_data_dir_abs("bar.out") ;
   @endcode
+
+ Files for output:
+    data_file(): per-test-function writeable output file name ($TESTNAME.out)
+    const std::string &data_file()
+
+    data_ostream() :thread-locked per-test-function output data stream;
+    the corresponding file is data_file()
 *******************************************************************************/
 template<const char *private_dirname>
 class TestFixture : public CppUnit::TestFixture {
@@ -577,7 +584,7 @@ typename TestFixture<private_dirname>::locked_out TestFixture<private_dirname>::
 template<const char *private_dirname>
 void TestFixture<private_dirname>::ensure_data_file_match(const strslice &data_sample_filename) const
 {
-   static const char diffopts[] = "-u" ;
+   static const char diffopts[] = "-u -w -B" ;
    const std::string sample_filename { at_src_dir_abs(data_sample_filename
                                                       ? std::string(data_sample_filename)
                                                       : std::string(path::basename(data_file())) + ".tst") } ;
@@ -590,12 +597,12 @@ void TestFixture<private_dirname>::ensure_data_file_match(const strslice &data_s
       CPPUNIT_LOG_LINE("\n" << command) ;
       const int status = system(command) ;
       if (status < 0)
-         CPPUNIT_FAIL("Error running diff command") ;
+         CPPUNIT_FAIL("DIFF FAILURE: Error running diff command") ;
       switch (WEXITSTATUS(status))
       {
          case 0:  return true ;
          case 1:  return false ;
-         default: CPPUNIT_FAIL(bufprintf(command, "Either '%s' or '%s' does not exist", data_file().c_str(), sample_filename.c_str())) ;
+         default: CPPUNIT_FAIL(bufprintf(command, "DIFF FAILURE: Either '%s' or '%s' does not exist", data_file().c_str(), sample_filename.c_str())) ;
       }
       return false ;
    } ;
@@ -607,7 +614,7 @@ void TestFixture<private_dirname>::ensure_data_file_match(const strslice &data_s
    {
       // There is a difference
       rundiff("", data_file().c_str(), ".diff") ;
-      CPPUNIT_FAIL(bufprintf(command, "'%s' and '%s' differ", data_file().c_str(), sample_filename.c_str())) ;
+      CPPUNIT_FAIL(bufprintf(command, "MISMATCH '%s' and '%s'", data_file().c_str(), sample_filename.c_str())) ;
    }
 }
 
