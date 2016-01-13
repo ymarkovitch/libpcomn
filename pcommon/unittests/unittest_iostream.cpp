@@ -11,7 +11,7 @@
 *******************************************************************************/
 #include <pcomn_range.h>
 #include <pcomn_unittest.h>
-#include <pcomn_iostream.h>
+#include <pcomn_binstream.h>
 #include <pcomn_fstream.h>
 
 #include "pcomn_testhelpers.h"

@@ -87,7 +87,7 @@
 #include <pcomn_journerror.h>
 #include <pcomn_smartptr.h>
 #include <pcomn_platform.h>
-#include <pcomn_iostream.h>
+#include <pcomn_binstream.h>
 #include <pcomn_syncobj.h>
 #include <pcomn_synccomplex.h>
 #include <pcomn_diag.h>

@@ -14,7 +14,7 @@
   pcomn::binary_istream and pcomn::binary_ostream wrappers over socket objects.
 *******************************************************************************/
 #include <pcomn_net/netsockets.h>
-#include <pcomn_iostream.h>
+#include <pcomn_binstream.h>
 
 namespace pcomn {
 namespace net {

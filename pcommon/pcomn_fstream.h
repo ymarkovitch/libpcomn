@@ -14,7 +14,7 @@
 /** @file
   Implementation of binary iostreams for POSIX file descriptors.
 *******************************************************************************/
-#include <pcomn_iostream.h>
+#include <pcomn_binstream.h>
 #include <pcomn_utils.h>
 #include <pcomn_unistd.h>
 

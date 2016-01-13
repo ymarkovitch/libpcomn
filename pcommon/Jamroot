@@ -122,12 +122,12 @@ lib pcommon :
   pcomn_tracecfg.cpp
 
   pcomn_binascii.cpp
+  pcomn_binstream.cpp
   pcomn_cfgparser.cpp
   pcomn_diag.cpp
   pcomn_exec.cpp
   pcomn_fileutils.cpp
   pcomn_incdlist.cpp
-  pcomn_iostream.cpp
 
   pcomn_mmap.cpp
   pcomn_path.cpp

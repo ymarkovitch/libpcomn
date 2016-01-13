@@ -1,8 +1,8 @@
 /*-*- mode: c++; tab-width: 3; indent-tabs-mode: nil; c-file-style: "ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
-#ifndef __PCOMN_IOSTREAM_H
-#define __PCOMN_IOSTREAM_H
+#ifndef __PCOMN_BINSTREAM_H
+#define __PCOMN_BINSTREAM_H
 /*******************************************************************************
- FILE         :   pcomn_iostream.h
+ FILE         :   pcomn_binstream.h
  COPYRIGHT    :   Yakov Markovitch, 2007-2015. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
@@ -819,7 +819,7 @@ class istream_range : public istream_range_tag {
 
 } // end of namespace pcomn
 
-#endif /* __PCOMN_IOSTREAM_H */
+#endif /* __PCOMN_BINSTREAM_H */
 
 /*******************************************************************************
  Provide pcomn::io::writer specializations for binary streams

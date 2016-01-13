@@ -15,7 +15,7 @@
 
 #include <pcommon.h>
 #include <pcomn_uri.h>
-#include <pcomn_iostream.h>
+#include <pcomn_binstream.h>
 #include <pcomn_string.h>
 #include <pcomn_utils.h>
 #include <pcomn_regex.h>

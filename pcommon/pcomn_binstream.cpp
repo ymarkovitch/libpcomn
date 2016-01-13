@@ -1,6 +1,6 @@
 /*-*- tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
- FILE         :   pcomn_iostream.cpp
+ FILE         :   pcomn_binstream.cpp
  COPYRIGHT    :   Yakov Markovitch, 2007-2015. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
@@ -9,7 +9,7 @@
  PROGRAMMED BY:   Yakov Markovitch
  CREATION DATE:   10 Oct 2007
 *******************************************************************************/
-#include <pcomn_iostream.h>
+#include <pcomn_binstream.h>
 #include <pcomn_diag.h>
 
 namespace pcomn {

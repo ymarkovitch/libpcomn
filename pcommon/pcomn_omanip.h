@@ -11,6 +11,20 @@
  PROGRAMMED BY:   Yakov Markovitch
  CREATION DATE:   12 May 2000
 *******************************************************************************/
+/** @file
+  Output manipulators
+
+  @li osequence
+  @li oseqdelim
+  @li ocontainer
+  @li ocontdelim
+
+  @li onothing
+  @li oskip
+
+  @li ohrsize
+  @li ostrq
+*******************************************************************************/
 #include <pcomn_platform.h>
 #include <pcomn_iterator.h>
 

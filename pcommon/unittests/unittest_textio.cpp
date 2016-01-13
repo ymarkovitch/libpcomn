@@ -15,7 +15,7 @@
 #include <pcomn_string.h>
 #include <pcomn_rawstream.h>
 #include <pcomn_handle.h>
-#include <pcomn_iostream.h>
+#include <pcomn_binstream.h>
 #include <pcomn_fstream.h>
 
 #include <fstream>

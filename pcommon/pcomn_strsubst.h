@@ -39,7 +39,7 @@
 #include <pcomn_integer.h>
 #include <pcomn_hashclosed.h>
 #include <pcomn_algorithm.h>
-#include <pcomn_iostream.h>
+#include <pcomn_binstream.h>
 
 #include <functional>
 #include <type_traits>

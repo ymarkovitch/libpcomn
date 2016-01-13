@@ -10,7 +10,7 @@
  PROGRAMMED BY:   Yakov Markovitch
  CREATION DATE:   27 Sep 2010
 *******************************************************************************/
-#include <pcomn_iostream.h>
+#include <pcomn_binstream.h>
 #include <pcomn_mmap.h>
 #include <pcomn_strslice.h>
 #include <pcomn_fstream.h>
