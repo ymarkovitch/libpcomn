@@ -58,7 +58,6 @@ template<typename> struct omanip ;
 #  define PCOMN_MAKE_OMANIP_RETTYPE() -> omanip<decltype(std::bind(std::forward<F>(fn), std::placeholders::_1, std::forward<Args>(args)...))>
 #endif
 
-
 template<typename F, typename... Args>
 inline auto make_omanip(F &&fn, Args &&...args) PCOMN_MAKE_OMANIP_RETTYPE()
 {
@@ -67,7 +66,6 @@ inline auto make_omanip(F &&fn, Args &&...args) PCOMN_MAKE_OMANIP_RETTYPE()
    typedef valtype_t<decltype(bind(forward<F>(fn), placeholders::_1, forward<Args>(args)...))> manip ;
    return omanip<manip>(manip(bind(forward<F>(fn), placeholders::_1, forward<Args>(args)...))) ;
 }
-
 
 /******************************************************************************/
 /* Universal ostream manipulator
@@ -163,6 +161,13 @@ inline std::ostream &o_sequence(std::ostream &os, InputIterator begin, InputIter
 inline std::ostream &o_nothing(std::ostream &os) { return os ; }
 
 inline std::ostream &o_skip(std::ostream &os, unsigned w) { return !w ? os : (os << std::setw(w) << "") ; }
+
+inline std::ostream &o_callfun(std::ostream &os, const std::function<void(std::ostream &)> &fn)
+{
+   if (fn)
+      fn(os) ;
+   return os ;
+}
 }
 
 template<typename InputIterator, typename Before, typename After>
@@ -254,6 +259,10 @@ inline auto ohrsize(const T &sz)
 template<typename T>
 inline auto ostrq(const T &str)
    PCOMN_MAKE_OMANIP((&detail::print_quoted_string<T>), std::cref(str)) ;
+
+template<typename T>
+inline auto ocall(T &&functor)
+   PCOMN_MAKE_OMANIP(&detail::o_callfun, std::forward<T>(functor)) ;
 
 /******************************************************************************/
 /** Apply pcomn::omanip<F> manipulator object to an output stream
