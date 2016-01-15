@@ -757,7 +757,9 @@ class imemstream : private std::basic_streambuf<char>, public std::istream {
       }
 
       template<size_t n>
-      imemstream(const char (&data)[n]) throw() : imemstream(data + 0, n) {}
+      imemstream(const char (&data)[n]) throw() :
+         imemstream(std::begin(data), n - (!data[n-1]))
+      {}
 
       /// Get the pointer to internal buffer memory
       const char *data() const { return _data ; }

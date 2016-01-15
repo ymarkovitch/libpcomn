@@ -15,6 +15,7 @@
 *******************************************************************************/
 #include <pcomn_algorithm.h>
 #include <pcomn_function.h>
+#include <pcomn_iterator.h>
 #include <pcomn_meta.h>
 
 #include <vector>
@@ -47,6 +48,18 @@ append_container(KeyedContainer &&c1, const Container &c2)
 {
    c1.insert(std::begin(c2), std::end(c2)) ;
    return std::forward<KeyedContainer>(c1) ;
+}
+
+/******************************************************************************/
+/** Apply given function to iterator range items and construct a container from
+ result
+*******************************************************************************/
+template<class Container, typename InputIterator, typename UnaryOperation>
+inline Container make_container(InputIterator first, InputIterator last, UnaryOperation &&op)
+{
+   auto start = xform_iter(first, std::ref(op)) ;
+
+   return Container(start, xform_iter(last, std::ref(op))) ;
 }
 
 /*******************************************************************************

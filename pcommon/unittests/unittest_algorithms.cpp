@@ -37,10 +37,12 @@ class AlgorithmsTests : public CppUnit::TestFixture {
 class CAlgorithmsTests : public CppUnit::TestFixture {
    private:
       void Test_OSequence() ;
+      void Test_MakeContainer() ;
 
       CPPUNIT_TEST_SUITE(CAlgorithmsTests) ;
 
       CPPUNIT_TEST(Test_OSequence) ;
+      CPPUNIT_TEST(Test_MakeContainer) ;
 
       CPPUNIT_TEST_SUITE_END() ;
    protected:
@@ -105,6 +107,19 @@ void CAlgorithmsTests::Test_OSequence()
 {
    CPPUNIT_LOG_ASSERT(pcomn::both_ends(strvec) ==
                       pcomn::unipair<std::vector<std::string>::const_iterator>(strvec.begin(), strvec.end())) ;
+}
+
+void CAlgorithmsTests::Test_MakeContainer()
+{
+   using namespace pcomn ;
+   using namespace std::placeholders ;
+   const int v1[] = {2, 4, 6} ;
+
+   CPPUNIT_LOG_EQUAL(make_container<std::vector<unsigned>>(std::begin(v1), std::end(v1), [](int x) { return 3*x ; }),
+                  (std::vector<unsigned>{6, 12, 18})) ;
+
+   CPPUNIT_LOG_EQUAL(make_container<std::vector<unsigned>>(std::begin(v1), std::end(v1), std::bind(std::plus<int>(), _1, 10)),
+                     (std::vector<unsigned>{12, 14, 16})) ;
 }
 
 int main(int argc, char *argv[])

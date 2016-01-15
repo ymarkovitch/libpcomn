@@ -274,14 +274,23 @@ public:
     explicit CommandStream(CommandSuite &suite) ;
 
     CommandStream &exec_line(strslice line) ;
+
     CommandStream &exec_from(const strslice &filename) ;
     CommandStream &exec_from(std::istream &is) ;
+    CommandStream &exec_from(std::istream &&is) { return exec_from(*static_cast<std::istream *>(&is)) ; }
 
     template<typename InputIterator>
     CommandStream &exec_from(InputIterator begin, InputIterator end)
     {
         std::for_each(begin, end, bind_thisptr(&CommandStream::exec_line, this)) ;
         return *this ;
+    }
+
+    template<typename InputIterator>
+    std::enable_if_t<is_iterator<InputIterator>::value, CommandStream &>
+    exec_from(const unipair<InputIterator> &lines)
+    {
+        return exec_from(std::begin(lines), std::end(lines)) ;
     }
 
     CommandSuite &commands() { return _commands ; }

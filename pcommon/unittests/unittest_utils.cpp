@@ -303,6 +303,15 @@ void UtilityTests::Test_StreamUtils()
    CPPUNIT_LOG_EQUAL(omems1.checkout(), std::string('A', 50) + "\n" + std::string('b', 50)+ "\n" + std::string('C', 50)) ;
    CPPUNIT_LOG_ASSERT(omems1) ;
    CPPUNIT_LOG_EQ(omems1.str().size(), 0) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   imemstream imems2 (hello) ;
+   std::string line01 ;
+   CPPUNIT_LOG_ASSERT(std::getline(imems2, line01)) ;
+   CPPUNIT_LOG_EQ(line01, "Hello 12 15") ;
+   CPPUNIT_LOG_ASSERT(std::getline(imems2, line01)) ;
+   CPPUNIT_LOG_EQ(line01, "Bye, baby!") ;
+   CPPUNIT_LOG_IS_FALSE(std::getline(imems2, line01)) ;
 }
 
 /*******************************************************************************

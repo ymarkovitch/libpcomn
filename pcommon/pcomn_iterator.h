@@ -366,7 +366,9 @@ class call_iterator : public std::iterator<std::output_iterator_tag, void, void,
       call_type _call ;
 } ;
 
-/// Create call_iterator instance for a functor.
+/******************************************************************************/
+/** Create call_iterator instance for a functor
+*******************************************************************************/
 template<typename V>
 inline call_iterator<V> calliter(const std::function<void(const V &)> &callback)
 {
