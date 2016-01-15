@@ -3,7 +3,7 @@
 #define __PCOMN_DEF_H
 /*******************************************************************************
  FILE         :   pcomn_def.h
- COPYRIGHT    :   Yakov Markovitch, 1995-2015. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1995-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Import/export definitions for PCommon library.

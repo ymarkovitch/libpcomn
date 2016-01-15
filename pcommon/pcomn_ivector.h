@@ -3,7 +3,7 @@
 #define __PCOMN_IVECTOR_H
 /*******************************************************************************
  FILE         :   pcomn_ivector.h
- COPYRIGHT    :   Yakov Markovitch, 1996-2015. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1996-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   STL-like vector of pointers with the "object owning" logic

@@ -3,7 +3,7 @@
 #define __PCOMN_METAFUNCTIONAL_H
 /*******************************************************************************
  FILE         :   pcomn_metafunctional.h
- COPYRIGHT    :   Yakov Markovitch, 2007-2015. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2007-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Compile-time algorithms and functions.

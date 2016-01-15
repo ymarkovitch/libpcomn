@@ -3,7 +3,7 @@
 #define __PCOMN_ATOMIC_CC
 /*******************************************************************************
  FILE         :   pcomn_atomic.cc
- COPYRIGHT    :   Yakov Markovitch, 2007-2014. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2007-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Atomic operations support for GNU C platform

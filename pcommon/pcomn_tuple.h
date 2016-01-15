@@ -3,7 +3,7 @@
 #define __PCOMN_TUPLE_H
 /*******************************************************************************
  FILE         :   pcomn_tuple.h
- COPYRIGHT    :   Yakov Markovitch, 2006-2015. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2006-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   std::tuple manipulation routines.

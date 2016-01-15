@@ -3,7 +3,7 @@
 #define __PCOMN_VERSION_H
 /*******************************************************************************
  FILE         :   pcomn_version.h
- COPYRIGHT    :   Yakov Markovitch, 2001-2015. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2001-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   A version identification scheme.

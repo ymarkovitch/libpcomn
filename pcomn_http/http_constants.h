@@ -3,7 +3,7 @@
 #define __HTTP_CONSTANTS_H
 /*******************************************************************************
  FILE         :   http_constants.h
- COPYRIGHT    :   Yakov Markovitch, 2008-2014. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2008-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   HTTP constants: response codes, flags, etc.

@@ -3,7 +3,7 @@
 #define __PCOMN_STRING_H
 /*******************************************************************************
  FILE         :   pcomn_string.h
- COPYRIGHT    :   Yakov Markovitch, 2006-2015. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2006-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   String traits and string shim functions.

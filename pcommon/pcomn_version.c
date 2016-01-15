@@ -1,7 +1,7 @@
 /*-*- mode: c; tab-width: 3; indent-tabs-mode: nil; c-file-style: "ellemtel" -*-*/
 /*******************************************************************************
  FILE         :   pcomn_version.c
- COPYRIGHT    :   Yakov Markovitch, 2001-2015. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2001-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Version identification data

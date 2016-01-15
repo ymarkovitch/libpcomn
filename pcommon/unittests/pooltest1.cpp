@@ -1,7 +1,7 @@
 /*******************************************************************************
  FILE         :   POOLTEST1.CPP
 
- COPYRIGHT    :   Yakov Markovitch, 2001-2015. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2001-2016. All rights reserved.
 
  DESCRIPTION  :   The test of the thread pool class.
                   This program calculates the CRC32 for every file in the

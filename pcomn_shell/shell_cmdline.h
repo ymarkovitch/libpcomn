@@ -3,7 +3,7 @@
 #define __SHELL_CMDLINE_H
 /*******************************************************************************
  FILE         :   shell_cmdline.h
- COPYRIGHT    :   Yakov Markovitch, 2009-2014. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2009-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Command-line argument handling for DS daemons and utilities
@@ -265,7 +265,7 @@ private:
 } ;
 
 /******************************************************************************/
-/** Execute commands from a line stream
+/** Execute commands over a comand suite from a line stream
 *******************************************************************************/
 class CommandStream {
     PCOMN_NONCOPYABLE(CommandStream) ;
@@ -273,10 +273,18 @@ class CommandStream {
 public:
     explicit CommandStream(CommandSuite &suite) ;
 
+    /// Execute a single command specified as a string
     CommandStream &exec_line(strslice line) ;
 
+    /// Execute a series of commands from a file specified by the name
+    ///
+    /// Opens @a filename for reading in the text mode and executes it line-by-line,
+    /// then closes the file.
     CommandStream &exec_from(const strslice &filename) ;
+
+    /// Execute a series of commands from std::istream
     CommandStream &exec_from(std::istream &is) ;
+    /// @overload
     CommandStream &exec_from(std::istream &&is) { return exec_from(*static_cast<std::istream *>(&is)) ; }
 
     template<typename InputIterator>
@@ -304,8 +312,8 @@ public:
 
 private:
     CommandSuite &  _commands ;
-    std::string     _filename ;
-    unsigned        _linenum ; /* Last executed line number */
+    std::string     _filename ; /* For error messages */
+    unsigned        _linenum ;  /* Last executed line number */
 } ;
 
 /*******************************************************************************

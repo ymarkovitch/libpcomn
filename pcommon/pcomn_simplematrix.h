@@ -3,7 +3,7 @@
 #define __PCOMN_SIMPLEMATRIX_H
 /*******************************************************************************
  FILE         :   pcomn_simplematrix.h
- COPYRIGHT    :   Yakov Markovitch, 2000-2015. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2000-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Simple (of constant, constructor-given size) vector and matrix

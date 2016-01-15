@@ -1,7 +1,7 @@
 #-*- mode: jam; jam-indent-size: 2; tab-width: 2; indent-tabs-mode: nil; -*-
 #------------------------------------------------------------------------------
 # FILE         :  Jamfile.v2
-# COPYRIGHT    :  Yakov Markovitch, 2008-2014. All rights reserved.
+# COPYRIGHT    :  Yakov Markovitch, 2008-2016. All rights reserved.
 #                 See LICENSE for information on usage/redistribution.
 #
 # DESCRIPTION  :  Boost.Build v2 script for building http protocol library.

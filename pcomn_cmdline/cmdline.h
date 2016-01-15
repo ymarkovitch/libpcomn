@@ -1,26 +1,23 @@
 /*-*- mode:c++; tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel"; c-file-offsets:((innamespace . 0)) -*-*/
-//------------------------------------------------------------------------
-// ^FILE: cmdline.h - declare the basic classes used in the CmdLine library
-//
-// ^DESCRIPTION:
-//    This file declares the three basic classes used in the CmdLine library.
-//    These three classes are "CmdArg" (a command-argument object),
-//    "CmdLineArgIter" (an object to iterate over a set of arguments),
-//    and "CmdLine" (the command-line object itself).
-//
-// ^HISTORY:
-//    03/19/92	Brad Appleton	<bradapp@enteract.com>	Created
-//
-//    03/01/93	Brad Appleton	<bradapp@enteract.com>
-//    - Added arg_sequence field to CmdArg
-//    - Added cmd_nargs_parsed field to CmdLine
-//    - Added cmd_description field to CmdLine
-//    - Added exit_handler() and quit() member-functions to CmdLine
-//    - Added ALLOW_PLUS to list of CmdLine configuration flags
-//-^^---------------------------------------------------------------------
-
 #ifndef _usr_include_cmdline_h
 #define _usr_include_cmdline_h
+/*******************************************************************************
+ FILE         :   cmdline.h
+ COPYRIGHT    :   Brad Appleton, 1992-1993
+                  Yakov Markovitch, 2000-2016
+
+ DESCRIPTION  :   Declare the basic classes used in the CmdLine library
+ CREATION DATE:   19 Mar 1992
+*******************************************************************************/
+/** @file
+
+ This file declares the three basic classes used in the CmdLine library.
+ These three classes are:
+
+  @li CmdArg (a command-argument object)
+  @li CmdLineArgIter (an object to iterate over a set of arguments)
+  @li CmdLine" (the command-line object itself)
+*******************************************************************************/
 
 #include <iostream>
 #include <string>
@@ -286,7 +283,6 @@ protected:
 
 private:
    // Member functions for internal use
-
    void
    adjust_syntax();
 
@@ -316,8 +312,8 @@ private:
      return prev;
    }
 
+private:
    // Private data members
-
    unsigned     arg_flags ;
    unsigned     arg_syntax ;
 
@@ -959,13 +955,10 @@ private:
 inline std::ostream &
 operator <<(std::ostream & os, CmdLine & cmd)  { return  cmd.usage(os); }
 
-
-//-----------------------------------------------------------------------------
-
-   // We want to provide the user with a means to iterate over all the
-   // arguments in the argument list of a command-line.  We will provide
-   // a class named "CmdLineCmdArgIter" to do this.
-
+/*******************************************************************************
+/** A class to provide the user with a means to iterate over all the arguments
+in the argument list of a command-line
+*******************************************************************************/
 class  CmdLineCmdArgIter {
 public:
    CmdLineCmdArgIter(CmdLine & cmd);

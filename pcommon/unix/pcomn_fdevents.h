@@ -3,7 +3,7 @@
 #define __PCOMN_FDEVENTS_H
 /*******************************************************************************
  FILE         :   pcomn_fdevents.h
- COPYRIGHT    :   Yakov Markovitch, 2008-2015. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2008-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Linux file descriptor events (epoll, eventfd, etc.)

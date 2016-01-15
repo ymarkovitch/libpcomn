@@ -3,7 +3,7 @@
 #define __PCOMN_UNITTEST_H
 /*******************************************************************************
  FILE         :   pcomn_unittest.h
- COPYRIGHT    :   Yakov Markovitch, 2003-2015. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2003-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Helpers for unit testing with CPPUnit

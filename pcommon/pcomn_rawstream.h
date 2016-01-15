@@ -3,7 +3,7 @@
 #define __PCOMN_RAWSTREAM_H
 /*******************************************************************************
  FILE         :   pcomn_rawstream.h
- COPYRIGHT    :   Yakov Markovitch, 2002-2015. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2002-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Binary input and output streams.

@@ -3,7 +3,7 @@
 #define __PCOMN_W32UTIL_H
 /*******************************************************************************
  FILE         :   pcomn_w32util.h
- COPYRIGHT    :   Yakov Markovitch, 2000-2015. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2000-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Win32-related utility functions

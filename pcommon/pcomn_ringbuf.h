@@ -3,7 +3,7 @@
 #define __PCOMN_RINGBUF_H
 /*******************************************************************************
  FILE         :   pcomn_ringbuf.h
- COPYRIGHT    :   Yakov Markovitch, 2009-2015. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2009-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   "Contiguous" circular buffer, based on virtual memory

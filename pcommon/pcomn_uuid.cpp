@@ -1,7 +1,7 @@
 /*-*- tab-width: 3; indent-tabs-mode: nil; c-file-style: "ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   pcomn_uuid.cpp
- COPYRIGHT    :   Yakov Markovitch, 2014-2015
+ COPYRIGHT    :   Yakov Markovitch, 2014-2016
 
  DESCRIPTION  :   UUID and network MAC data types implementation
 

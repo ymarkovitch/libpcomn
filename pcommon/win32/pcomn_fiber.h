@@ -2,7 +2,7 @@
 #define __PCOMN_FIBER_H
 /*******************************************************************************
  FILE         :   pcomn_fiber.h
- COPYRIGHT    :   Yakov Markovitch, 2000-2015. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2000-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Fiber (microthread) classes

@@ -3,7 +3,7 @@
 #define __PCOMN_UNITTEST_MT_H
 /*******************************************************************************
  FILE         :   pcomn_unittest_mt.h
- COPYRIGHT    :   Yakov Markovitch, 2014-2015. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2014-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Helpers for multi-threaded testing with CPPUnit, googlemock, etc.

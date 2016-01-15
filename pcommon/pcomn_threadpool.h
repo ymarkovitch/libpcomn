@@ -3,7 +3,7 @@
 #define __PCOMN_THREADPOOL_H
 /*******************************************************************************
  FILE         :   pcomn_threadpool.h
- COPYRIGHT    :   Yakov Markovitch, 2001-2015. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2001-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Thread pool.

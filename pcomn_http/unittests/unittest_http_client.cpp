@@ -1,7 +1,7 @@
 /*-*- mode:c++;tab-width:4;c-file-style:"stroustrup";c-file-offsets:((innamespace . 0)(inline-open . 0)(case-label . +)) -*-*/
 /*******************************************************************************
  FILE         :   unittest_http_client.cpp
- COPYRIGHT    :   Yakov Markovitch, 2010-2014. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2010-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   HTTP client unittests

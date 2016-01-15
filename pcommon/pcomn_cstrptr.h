@@ -3,7 +3,7 @@
 #define __PCOMN_CSTRPTR_H
 /*******************************************************************************
  FILE         :   pcomn_cstrptr.h
- COPYRIGHT    :   Yakov Markovitch, 2010-2015. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2010-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   C string (const char *) proxy object.

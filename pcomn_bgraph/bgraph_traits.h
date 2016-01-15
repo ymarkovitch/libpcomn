@@ -3,7 +3,7 @@
 #define __BGRAPH_TRAITS_H
 /*******************************************************************************
  FILE         :   bgraph_traits.h
- COPYRIGHT    :   Yakov Markovitch, 2015
+ COPYRIGHT    :   Yakov Markovitch, 2015-2016
 
  DESCRIPTION  :   Typedefs over boost::graph_traits
 

@@ -3,7 +3,7 @@
 #define __PCOMN_FILEUTILS_H
 /*******************************************************************************
  FILE         :   pcomn_fileutils.h
- COPYRIGHT    :   Yakov Markovitch, 2008-2015. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2008-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Assortment of file routines: readfile, etc.

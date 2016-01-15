@@ -4,7 +4,7 @@
 /*******************************************************************************
  FILE         :   pbregex.h
  COPYRIGHT    :   Henry Spencer, 1986-1988. All rights reserved.
-                  Yakov Markovitch, 1998-2015. All rights reserved.
+                  Yakov Markovitch, 1998-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Definitions etc. for regexp(3) routines.

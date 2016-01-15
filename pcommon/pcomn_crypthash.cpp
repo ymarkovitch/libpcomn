@@ -2,7 +2,7 @@
 /*******************************************************************************
  FILE         :   pcomn_crypthash.cpp
  COPYRIGHT    :   Yakov Markovitch, Maxim Dementiev, 2010-2011. All rights reserved.
-                  Yakov Markovitch, 2012-2015. All rights reserved.
+                  Yakov Markovitch, 2012-2016. All rights reserved.
                   All rights reserved.
                   See LICENSE for information on usage/redistribution.
 

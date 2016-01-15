@@ -3,7 +3,7 @@
 #define __PCOMN_QUALNAME_H
 /*******************************************************************************
  FILE         :   pcomn_qualname.h
- COPYRIGHT    :   Yakov Markovitch, 1997-2015. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1997-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Qualified name class(es)

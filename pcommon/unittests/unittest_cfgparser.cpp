@@ -1,7 +1,7 @@
 /*-*- tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   unittest_cfgparser.cpp
- COPYRIGHT    :   Yakov Markovitch, 2007-2015. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2007-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Test configuration file parsing/writing functions.

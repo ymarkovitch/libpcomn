@@ -3,7 +3,7 @@
 #define __PCOMN_CACHER_H
 /*******************************************************************************
  FILE         :   pcomn_cacher.h
- COPYRIGHT    :   Yakov Markovitch, 2009-2015. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2009-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Generic LRU cacher templates.

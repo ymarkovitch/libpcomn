@@ -3,7 +3,7 @@
 #define __PCOMN_ALLOCA_H
 /*******************************************************************************
  FILE         :   pcomn_alloca.h
- COPYRIGHT    :   Yakov Markovitch, 1999-2015. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1999-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   alloca() function declaration for different compilers

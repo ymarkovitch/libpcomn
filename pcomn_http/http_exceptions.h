@@ -3,7 +3,7 @@
 #define __HTTP_EXCEPTIONS_H
 /*******************************************************************************
  FILE         :   http_exceptions.h
- COPYRIGHT    :   Yakov Markovitch, 2008-2014. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2008-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   HTTP exceptions hierarchy

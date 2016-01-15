@@ -1,7 +1,7 @@
 /*-*- mode: c; tab-width: 3; indent-tabs-mode: nil; c-file-style: "ellemtel" -*-*/
 /*******************************************************************************
  FILE         :   packpshn.h
- COPYRIGHT    :   Yakov Markovitch, 1998-2015. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1998-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Push Pack Native - set platform-native alignment for structures

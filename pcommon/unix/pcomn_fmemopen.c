@@ -4,7 +4,7 @@
 
  * Copyright (c) 2004-2005
  *  Bruce Korb.  All rights reserved.
- * Copyright (c) 2010-2015
+ * Copyright (c) 2010-2016
  *  Yakov Markovitch.  All rights reserved.
  *
  *

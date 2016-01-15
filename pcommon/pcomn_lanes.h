@@ -3,7 +3,7 @@
 #define __PCOMN_LANES_H
 /*******************************************************************************
  FILE         :   pcomn_lanes.h
- COPYRIGHT    :   Yakov Markovitch, 2014-2015. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2014-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Provide the possibility of running multiple single-threaded states

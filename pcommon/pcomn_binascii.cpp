@@ -1,7 +1,7 @@
 /*-*- tab-width: 3; indent-tabs-mode: nil; c-file-style: "ellemtel"; c-file-offsets:((innamespace . 0)) -*-*/
 /*******************************************************************************
  FILE         :   pcomn_binascii.cpp
- COPYRIGHT    :   Yakov Markovitch, 2001-2015. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2001-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Binary-to-ASCII and ASCII-to-binary encoding routines

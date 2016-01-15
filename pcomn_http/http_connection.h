@@ -3,7 +3,7 @@
 #define __HTTP_CONNECTION_H
 /*******************************************************************************
  FILE         :   http_connection.h
- COPYRIGHT    :   Yakov Markovitch, 2008-2014. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2008-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   HTTP connections.

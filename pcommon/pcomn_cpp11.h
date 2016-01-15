@@ -3,7 +3,7 @@
 #define __PCOMN_CPP11_H
 /*******************************************************************************
  FILE         :   pcomn_cpp11.h
- COPYRIGHT    :   Yakov Markovitch, 2012-2015. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2012-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Ensure the compilation unit is being compiled with C++ 11 compiler

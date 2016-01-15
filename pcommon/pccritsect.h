@@ -3,7 +3,7 @@
 #define __PCCRITSECT_H
 /*******************************************************************************
  FILE         :   pccritsect.h
- COPYRIGHT    :   Yakov Markovitch, 1996-2015. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1996-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Conditional critical section support for procedural C code.
