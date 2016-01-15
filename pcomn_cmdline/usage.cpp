@@ -24,11 +24,6 @@
 
 CMDL_MS_IGNORE_WARNING(4244 4267 4800)
 
-#ifdef vms
-#  define  getenv  getsym
-   extern  const char * getsym(const char *);
-#endif
-
 static const int PRINT_LMARGIN = 2 ;
 static const int PRINT_MAXCOLS = 79 ;
 
@@ -130,11 +125,7 @@ CmdLine::print_synopsis(CmdLine::CmdLineSyntax  syntax,
                         std::ostream    & os,
                         int          cols) const
 {
-#ifdef vms_style
-   static  char  usg_prefix[] = "Format: ";
-#else
    static  char  usg_prefix[] = "Usage: ";
-#endif
 
    unsigned  ll, positionals, longest = 0;
 
@@ -272,12 +263,7 @@ CmdLine::print_descriptions(CmdLine::CmdLineSyntax   syntax,
     }
   } ;
 
-  static const char arghead[] =
-#ifdef vms_style
-    "Qualifiers/Parameters:\n"
-#else
-    "Options/Arguments:\n" ;
-#endif
+  static const char arghead[] = "Options/Arguments:\n" ;
 
   int has_args = 0 ;
 

@@ -5,7 +5,7 @@
 //     This file contains the definitions for the various values of the
 //  state and parse-state of a command-line object. It also contains
 //  any definitions that are dependent upon the command-line syntax
-//  (i.e. unix_style or vms_style).
+//  (i.e. unix_style or dos_style).
 //
 // ^HISTORY:
 //    03/26/92	Brad Appleton	<bradapp@enteract.com>	Created
@@ -17,13 +17,8 @@
 #include "cmdline.h"
 
 static const unsigned DEFAULT_CMDFLAGS =
-#ifdef vms_style
-   // Default command-flags for a vms-command
-  0
-#else
    // Default command-flags for a unix-command
   CmdLine::OPTS_FIRST
-#endif
    ;
 
 //
@@ -57,14 +52,6 @@ enum cmd_parse_state_t {
 
    cmd_WANT_VAL     = 0x02,  // are we expecting a value?
    cmd_NEED_VAL     = (cmd_WANT_VAL | cmd_TOK_REQUIRED),
-
-#ifdef vms_style
-   cmd_WANT_VALSEP  = 0x04,  // are we expecting ':' or '='
-   cmd_NEED_VALSEP  = (cmd_WANT_VALSEP | cmd_TOK_REQUIRED),
-
-   cmd_WANT_LISTSEP = 0x08,  // are we expecting ',' or '+'
-   cmd_NEED_LISTSEP = (cmd_WANT_LISTSEP | cmd_TOK_REQUIRED),
-#endif
 } ;
 
 

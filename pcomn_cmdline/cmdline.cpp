@@ -130,15 +130,9 @@ filebasename(const char * filename)
 {
    if (filename == NULL)  return  filename ;
 
-# ifdef vms
-   // remove leading directory and/or device name
-   const char *p1 = ::strrchr(filename, ':');
-   const char *p2 = ::strrchr(filename, ']');
-# else
    // remove leading directory and/or drive name
    const char *p1 = ::strrchr(filename, '/');
    const char *p2 = ::strrchr(filename, '\\');
-# endif
    const char * start ;
 
    if ((p1 == NULL) && (p2 == NULL)) {
@@ -153,17 +147,12 @@ filebasename(const char * filename)
 
    char * str = ::strcpy(new char[strlen(start) + 1], start) ;
 
-#if (defined(vms) || defined(msdos) || defined(os2))
+#if (defined(msdos) || defined(os2))
    // remove the extension
    char *ext = ::strrchr(str, '.');
    if (ext)  *ext = '\0' ;
-#endif /* if (vms || msdos || os2) */
+#endif /* if (msdos || os2) */
 
-# ifdef vms
-   // remove the version
-   char * ver = ::strrchr(str, ';');
-   if (ver)  *ver = '\0' ;
-# endif
    return  str ;
 }
 

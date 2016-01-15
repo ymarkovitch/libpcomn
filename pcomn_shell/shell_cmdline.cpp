@@ -52,17 +52,14 @@ CommandSuite &CommandSuite::append(const std::string &name, const handler_fn &co
                                    unsigned mode_flags)
 {
     if (command)
-        append(name, command_ptr(new IndividualCommand(command, description, mode_flags))) ;
+        append(name, CommandP(new IndividualCommand(command, description, mode_flags))) ;
     return *this ;
 }
 
-CommandSuite &CommandSuite::append(const std::string &name, const command_ptr &command)
+CommandSuite &CommandSuite::append(const std::string &name, const CommandP &command)
 {
     if (command)
-    {
-        command_ptr newcmd (command) ;
-        pcomn_swap(_commands[name], newcmd) ;
-    }
+        _commands[name] = CommandP(command) ;
     return *this ;
 }
 

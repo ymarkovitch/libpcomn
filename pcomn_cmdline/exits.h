@@ -18,17 +18,9 @@
 
 #ifndef e_SUCCESS
 
-#ifdef vms
-# include <ssdef.h>
-# define  e_SUCCESS   SS$_NORMAL
-# define  e_USAGE     SS$_NOTMODIFIED
-# define  e_SYNTAX    SS$_BADPRAM
-# define  e_INTERNAL  SS$_CANCEL
-#else
 # define  e_SUCCESS   0
 # define  e_USAGE     1
 # define  e_SYNTAX    2
 # define  e_INTERNAL  127
-#endif
 
 #endif

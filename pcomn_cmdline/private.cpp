@@ -41,11 +41,6 @@ extern "C" {
 #include "states.h"
 #include "fifolist.h"
 
-#ifdef vms
-#  define  getenv  getsym
-   extern  const char * getsym(const char *);
-#endif
-
 //-------
 // ^FUNCTION: CmdLine::handle_arg - compile the string value of an argument
 //

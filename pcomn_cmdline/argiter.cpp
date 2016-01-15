@@ -81,11 +81,7 @@ CmdIstreamIter::~CmdIstreamIter()
    delete  tok_iter;
 }
 
-#ifdef vms
    enum { c_COMMENT = '#' } ;
-#else
-   enum { c_COMMENT = '!' } ;
-#endif
 
    // Iterator function -- operator()
    //

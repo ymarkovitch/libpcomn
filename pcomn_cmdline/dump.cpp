@@ -194,24 +194,6 @@ dump_cmd_parse_state(std::ostream & os, unsigned parse_state)
       os << "NEED_VAL";
       break;
 
-#ifdef vms_style
-   case cmd_WANT_VALSEP :
-      os << "WANT_VALSEP";
-      break;
-
-   case cmd_NEED_VALSEP :
-      os << "NEED_VALSEP";
-      break;
-
-   case cmd_WANT_LISTSEP :
-      os << "WANT_LISTSEP";
-      break;
-
-   case cmd_NEED_LISTSEP :
-      os << "NEED_LISTSEP";
-      break;
-#endif
-
    default :
       os << parse_state;
    }

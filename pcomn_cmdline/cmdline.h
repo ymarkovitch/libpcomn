@@ -955,7 +955,7 @@ private:
 inline std::ostream &
 operator <<(std::ostream & os, CmdLine & cmd)  { return  cmd.usage(os); }
 
-/*******************************************************************************
+/******************************************************************************/
 /** A class to provide the user with a means to iterate over all the arguments
 in the argument list of a command-line
 *******************************************************************************/

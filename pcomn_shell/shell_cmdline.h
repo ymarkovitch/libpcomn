@@ -45,7 +45,8 @@ class Command ;
 class CommandSuite ;
 class IndividualCommand ;
 
-typedef shared_intrusive_ptr<Command> command_ptr ;
+typedef shared_intrusive_ptr<Command>       CommandP ;
+typedef shared_intrusive_ptr<const Command> CommandCP ;
 
 /*******************************************************************************
  CLI exceptions
@@ -102,7 +103,7 @@ private:
 /******************************************************************************/
 /** Shell command
 *******************************************************************************/
-struct Command : public PRefCount {
+struct Command : PRefCount {
 
     /// Command handler; may return an integer value that the Command does not interpret,
     /// simply retrurning it from exec(); this value may be used as e.g. exit code
@@ -155,7 +156,7 @@ private:
 class CommandSuite : public Command {
     typedef Command ancestor ;
 public:
-    typedef std::pair<const std::string, command_ptr> value_type ;
+    typedef std::pair<const std::string, CommandP> value_type ;
 
     /// Construct a command suite
     /// @param suite_name The name of command suite: if this parameter is nonempty, it is
@@ -179,7 +180,7 @@ public:
                          const std::string &description,
                          unsigned mode_flags = 0) ;
 
-    CommandSuite &append(const std::string &name, const command_ptr &command) ;
+    CommandSuite &append(const std::string &name, const CommandP &command) ;
 
     template<typename T, typename P, typename R>
     CommandSuite &append(const std::string &name,
@@ -220,7 +221,7 @@ protected:
     struct register_command { register_command(CommandSuite &) {} } ;
 
 private:
-    typedef std::map<std::string, command_ptr> cmd_map ;
+    typedef std::map<std::string, CommandP> cmd_map ;
 
     std::string _suite_name ;
     cmd_map     _commands ;
