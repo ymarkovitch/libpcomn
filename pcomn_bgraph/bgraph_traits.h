@@ -18,7 +18,7 @@
 #include <boost/property_map/property_map.hpp>
 
 namespace pcomn {
-using namespace bgl = boost ;
+namespace bgl = boost ;
 
 /*******************************************************************************
  Graph traits dependent types
