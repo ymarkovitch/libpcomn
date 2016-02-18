@@ -1210,6 +1210,12 @@ inline constexpr simple_slice<const T> make_simple_slice(std::initializer_list<T
    return {v.begin(), v.end()} ;
 }
 
+template <typename T>
+inline simple_slice<T> make_simple_slice(const simple_slice<T> &v)
+{
+   return v ;
+}
+
 template<typename T, typename U, typename V>
 inline simple_slice<T> cat_slices(T *dest, const simple_slice<U> &src1, const simple_slice<V> &src2)
 {

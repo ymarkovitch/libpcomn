@@ -614,6 +614,8 @@ struct tagged_ptr_union {
       /// Get the index of the type of the pointer currently held by the union
       constexpr unsigned type_ndx() const { return (unsigned)tag() ; }
 
+      static constexpr unsigned type_maxndx() { return std::tuple_size<tag_tuple>::value - 1 ; }
+
    private:
       union {
             uintptr_t   other ;
@@ -641,6 +643,9 @@ struct tagged_ptr_union {
          _data.other = (uintptr_t)v | ndx ;
       }
 } ;
+
+template<typename T1, typename T2, typename... T>
+using tagged_cptr_union = tagged_ptr_union<const T1, const T2, const T ...> ;
 
 /*******************************************************************************
  ptr_cast<> - convert any pointerlike object to a pointer
