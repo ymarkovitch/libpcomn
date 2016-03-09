@@ -183,6 +183,11 @@
 #endif
 #define __noinline __attribute__((__noinline__))
 
+#ifdef __forceinline
+#undef __forceinline
+#endif
+#define __forceinline inline __attribute__((__always_inline__))
+
 #elif defined(PCOMN_COMPILER_MS)
 /*******************************************************************************
  Microsoft
@@ -202,6 +207,11 @@
 #undef __noinline
 #endif
 #define __noinline __declspec(noinline)
+
+#ifdef __forceinline
+#undef __forceinline
+#endif
+#define __forceinline inline __forceinline
 
 #ifdef __deprecated
 #undef __deprecated
