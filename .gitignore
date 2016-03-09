@@ -9,9 +9,7 @@ Testing/
 TAGS
 *~
 *.swp
-*.[oa]
 *.os
-*.obj
 *.*.orig
 *.output
 *.aps
@@ -20,23 +18,47 @@ TAGS
 *.suo
 *.ncb
 *.idb
-*.obj
 *.opt
-*.pch
 *.jsh
 *.jsall
 *.py[co]
 *.log
 *.ex[ep]
-*.dll
-*.lib
 *.idb
 *.pdb
 *.manifest
 *.user
-*.gch
 *.*sdf
 *.psess
 *.diag.ini
 *#
 .#*
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
