@@ -5,6 +5,7 @@ Makefile
 cmake_install.cmake
 bin
 Testing/
+maketags
 
 TAGS
 *~

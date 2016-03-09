@@ -174,3 +174,4 @@ proj-lib pcomn_net ;
 proj-lib pcomn_shell ;
 proj-lib pcomn_ssl ;
 proj-lib pcomn_cmdline ;
+proj-lib pcomn_simd ;
