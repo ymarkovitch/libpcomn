@@ -12,19 +12,30 @@
 #include <pcomn_bitarray.h>
 #include <pcomn_unittest.h>
 
+#include <initializer_list>
+
 using namespace pcomn ;
+
+static bitarray &set_bits(bitarray &a, std::initializer_list<unsigned> bits, bool value = true)
+{
+   for (unsigned pos: bits)
+      a.set(pos, value) ;
+   return a ;
+}
 
 class BitArrayTests : public CppUnit::TestFixture {
 
       void Test_Constructors() ;
-      void Test_Count() ;
-      void Test_Iterators() ;
+      void Test_Bit_Count() ;
+      void Test_Bit_Search() ;
+      void Test_Positional_Iterator() ;
 
       CPPUNIT_TEST_SUITE(BitArrayTests) ;
 
       CPPUNIT_TEST(Test_Constructors) ;
-      CPPUNIT_TEST(Test_Count) ;
-      CPPUNIT_TEST(Test_Iterators) ;
+      CPPUNIT_TEST(Test_Bit_Count) ;
+      CPPUNIT_TEST(Test_Bit_Search) ;
+      CPPUNIT_TEST(Test_Positional_Iterator) ;
 
       CPPUNIT_TEST_SUITE_END() ;
 
@@ -123,7 +134,7 @@ void BitArrayTests::Test_Constructors()
    CPPUNIT_LOG_ASSERT(b128_01.all()) ;
 }
 
-void BitArrayTests::Test_Count()
+void BitArrayTests::Test_Bit_Count()
 {
    bitarray empty ;
    CPPUNIT_LOG_EQ(empty.count(true), 0) ;
@@ -141,7 +152,7 @@ void BitArrayTests::Test_Count()
    CPPUNIT_LOG_EQ(b1_02.count(), 1) ;
 }
 
-void BitArrayTests::Test_Iterators()
+void BitArrayTests::Test_Bit_Search()
 {
    bitarray empty ;
    CPPUNIT_LOG_EQ(empty.find_first_bit(0), 0) ;
@@ -158,6 +169,41 @@ void BitArrayTests::Test_Iterators()
    CPPUNIT_LOG_EQ(b1_02.find_first_bit(1), 1) ;
    CPPUNIT_LOG_EQ(b1_02.find_first_bit(0, 0), 0) ;
    CPPUNIT_LOG_EQ(b1_02.find_first_bit(2, 1), 1) ;
+
+   bitarray b127_01 (127) ;
+   CPPUNIT_LOG_RUN(b127_01.set(126)) ;
+   CPPUNIT_LOG_EQ(b127_01.find_first_bit(0), 126) ;
+   CPPUNIT_LOG_EQ(b127_01.find_first_bit(126), 126) ;
+   CPPUNIT_LOG_EQ(b127_01.count(), 1) ;
+
+   CPPUNIT_LOG_RUN(b127_01.set(124)) ;
+   CPPUNIT_LOG_EQ(b127_01.find_first_bit(), 124) ;
+   CPPUNIT_LOG_EQ(b127_01.find_first_bit(0, 120), 120) ;
+   CPPUNIT_LOG_EQ(b127_01.find_first_bit(124), 124) ;
+   CPPUNIT_LOG_EQ(b127_01.find_first_bit(125), 126) ;
+
+
+   CPPUNIT_LOG_RUN(b127_01.set(63)) ;
+   CPPUNIT_LOG_EQ(b127_01.count(), 3) ;
+   CPPUNIT_LOG_EQ(b127_01.find_first_bit(), 63) ;
+   CPPUNIT_LOG_EQ(b127_01.find_first_bit(64), 124) ;
+
+   CPPUNIT_LOG_RUN(b127_01.set(64)) ;
+   CPPUNIT_LOG_EQ(b127_01.count(), 4) ;
+   CPPUNIT_LOG_EQ(b127_01.find_first_bit(), 63) ;
+   CPPUNIT_LOG_EQ(b127_01.find_first_bit(64), 64) ;
+
+   CPPUNIT_LOG_RUN(b127_01.set(63, false)) ;
+   CPPUNIT_LOG_EQ(b127_01.count(), 3) ;
+   CPPUNIT_LOG_EQ(b127_01.find_first_bit(), 64) ;
+}
+
+void BitArrayTests::Test_Positional_Iterator()
+{
+   bitarray b1 (4096) ;
+   set_bits(b1, {36, 44, 48, 52, 64, 70, 72, 76, 100, 208}) ;
+   CPPUNIT_LOG_EQ(std::vector<unsigned>(b1.begin_positional(), b1.end_positional()),
+                  (std::vector<unsigned>{36, 44, 48, 52, 64, 70, 72, 76, 100, 208})) ;
 }
 
 int main(int argc, char *argv[])

@@ -88,7 +88,7 @@ struct bitarray_base {
 
       /// Get the position of first nonzero bit between 'start' and 'finish'.
       /// If there is no such bit, returns 'finish'
-      size_t find_first_bit(size_t start, size_t finish = -1) const ;
+      size_t find_first_bit(size_t start = 0, size_t finish = -1) const ;
 
       /// Marshall the array of bits into the external platform-independent
       /// representation
@@ -419,14 +419,14 @@ class bitarray : private bitarray_base<unsigned long> {
 
             positional_iterator(const bitarray &array, ptrdiff_t pos = 0) :
                _ref(&array),
-               _pos(array.find_first_bit(pos, array.size()))
+               _pos(array.find_first_bit(pos))
             {}
 
             ptrdiff_t operator*() const { return _pos ; }
 
             positional_iterator &operator++()
             {
-               _pos = _ref->find_first_bit(_pos + 1, _ref->size()) ;
+               _pos = _ref->find_first_bit(_pos + 1) ;
                return *this ;
             }
             PCOMN_DEFINE_POSTCREMENT(positional_iterator, ++) ;
@@ -753,7 +753,7 @@ size_t bitarray_base<Element>::find_first_bit(size_t start, size_t finish) const
       const size_t endpos = elemndx(finish - 1) + 1 ;
       if (++pos >= endpos)
          return finish ;
-      const element_type * endbits = bits + endpos ;
+      const element_type * endbits = cbits() + endpos ;
       const element_type * const found_pos = std::find_if(bits + 1, endbits, identity()) ;
       if (found_pos == endbits)
          return finish ;
