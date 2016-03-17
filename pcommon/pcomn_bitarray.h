@@ -43,9 +43,8 @@
 
 namespace pcomn {
 
-/*******************************************************************************
-                     template<typename Element>
-                     class bitarray_base
+/******************************************************************************/
+/** Implementation of pcomn::bitarray.
 *******************************************************************************/
 template<typename Element = unsigned long>
 struct bitarray_base {
@@ -87,10 +86,9 @@ struct bitarray_base {
          return true ;
       }
 
-      /// Get the position of first nonzero bit between 'start' and 'finish'
-      ///
+      /// Get the position of first nonzero bit between 'start' and 'finish'.
       /// If there is no such bit, returns 'finish'
-      size_t find_first_bit(size_t start, size_t finish) const ;
+      size_t find_first_bit(size_t start, size_t finish = -1) const ;
 
       /// Marshall the array of bits into the external platform-independent
       /// representation
@@ -194,8 +192,8 @@ struct bitarray_base {
       {
          NOXCHECK(pos < size()) ;
          element_type &data = mutable_elem(pos) ;
-         const element_type mask = bitmask(pos) ;
-         val ? (data |= mask) : (data &= ~mask) ;
+         const element_type valmask = (long long)val - 1LL ;
+         data = ((data ^ valmask) | bitmask(pos)) ^ valmask ;
       }
 
       void flip() ;
@@ -237,7 +235,7 @@ struct bitarray_base {
 
       constexpr element_type tailmask() const
       {
-         return ~(~element_type() << (bitndx(_size - 1) + 1)) ;
+         return ~(~std::integral_constant<element_type, 1>::value << bitndx(_size - 1) << 1) ;
       }
 
       void swap(bitarray_base &other) noexcept
@@ -300,7 +298,8 @@ struct bitarray_base {
 
 
 /******************************************************************************/
-/** Like std::bitset, but has its size specified at runtime paramete
+/** Like std::bitset, but has its size specified at runtime.
+ Implemented with copy-on-write, has O(1) copy and assignment.
 *******************************************************************************/
 class bitarray : private bitarray_base<unsigned long> {
       typedef bitarray_base<unsigned long> ancestor ;
@@ -741,7 +740,7 @@ size_t bitarray_base<Element>::mem(void *memento) const
 template<typename Element>
 size_t bitarray_base<Element>::find_first_bit(size_t start, size_t finish) const
 {
-   NOXCHECK(finish <= size()) ;
+   finish = std::min(finish, size()) ;
 
    if (start >= finish)
       return finish ;
@@ -751,13 +750,15 @@ size_t bitarray_base<Element>::find_first_bit(size_t start, size_t finish) const
    element_type el = *bits >> bitndx(start) ;
    if (!el)
    {
-      size_t to = elemndx(finish) ;
-      do {
-         if (++pos > to)
-            return finish ;
-         el = *++bits ;
-      } while (!el) ;
-      start = pos * BITS_PER_ELEMENT ;
+      const size_t endpos = elemndx(finish - 1) + 1 ;
+      if (++pos >= endpos)
+         return finish ;
+      const element_type * endbits = bits + endpos ;
+      const element_type * const found_pos = std::find_if(bits + 1, endbits, identity()) ;
+      if (found_pos == endbits)
+         return finish ;
+      el = *found_pos ;
+      start = (found_pos - cbits()) * BITS_PER_ELEMENT ;
    }
    while (!(el & 1) && start < finish)
    {

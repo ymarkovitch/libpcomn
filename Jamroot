@@ -134,7 +134,7 @@ project libpcomn
   # GCC-specific compiler flags for all build variants
   [ conditional <toolset>gcc :
 
-  <cflags>-march=core2 <cflags>-msse4.1
+  <cflags>-march=corei7
 
   <cflags>-Wno-unused-local-typedefs
   <cxxflags>-Woverloaded-virtual
