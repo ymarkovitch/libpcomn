@@ -49,11 +49,6 @@ static void test(size_t sz)
 
    std::copy(b.begin(), b.end(), std::ostream_iterator<int>(std::cout << std::endl)) ;
    std::cout << std::endl ;
-   std::cout << b.mem() << " bytes to save. Before saving:" << std::endl << b << std::endl ;
-   char *buf = new char[b.mem()] ;
-   b.mem(buf) ;
-   std::cout << "After restoring:" << std::endl << pcomn::bitarray(buf, b.size()) << std::endl ;
-   delete buf ;
 }
 
 static void test_positional_iterator()

@@ -343,6 +343,8 @@ class cow_buffer {
 
 /******************************************************************************/
 /** A 'typed' buffer.
+ @param T      The type of buffer item
+ @param Buffer Memory manager
 *******************************************************************************/
 template<typename T, class Buffer>
 class typed_buffer : private Buffer {
