@@ -287,6 +287,11 @@ feature.feature tls-model : "default" gd ld ie se : propagated ;
 feature.feature pic : off on : propagated ;
 
 ################################################################################
+# Platform-specific acceleration (instruction set, SIMD, etc.)
+################################################################################
+feature.feature acceleration : on off native max : propagated ;
+
+################################################################################
 # Compilation: C++ 11, optimization
 ################################################################################
 # C++11/C++98 compilation
@@ -345,6 +350,11 @@ module gcc {
   toolset.flags gcc.compile.c++ OPTIONS <c++std>14 : --std=gnu++14 ;
 
   toolset.flags gcc.compile OPTIONS : -Werror=return-type -Werror=return-local-addr ;
+
+  # Acceleration
+  toolset.flags gcc.compile OPTIONS <acceleration>on     : -march=corei7 ;
+  toolset.flags gcc.compile OPTIONS <acceleration>native : -march=native ;
+  toolset.flags gcc.compile OPTIONS <acceleration>max    : -march=core-avx2 ;
 }
 
 ################################################################################
@@ -769,9 +779,62 @@ rule adhoc-targets ( )
 }
 
 ################################################################################
+# Build-variant-based installation location
+################################################################################
+rule variant-based-location ( property-name : prefix : postfix ? )
+{
+  local rule trace-based-location ( property-name : prefix : variant_type : condition infix ? )
+  {
+    local trace = .trace ;
+    if $(variant_type) = debug
+      { trace = "" ; }
+    infix ?= "" ;
+    return
+      <variant>$(variant_type),$(condition),<trace>off:<$(property-name)>$(prefix)/$(variant_type)$(infix)
+      <variant>$(variant_type),$(condition),<trace>on:<$(property-name)>$(prefix)/$(variant_type)$(infix)$(trace) ;
+  }
+
+  postfix = /$(postfix) ; postfix ?= "" ;
+
+  local prefix-localtions ;
+  for local value in [ feature.values variant ]
+  {
+    prefix-localtions +=
+      [ trace-based-location $(property-name) : $(prefix) : $(value) : <sanitize>off ]
+      [ trace-based-location $(property-name) : $(prefix) : $(value) : <sanitize>address .sanitize-address ]
+      [ trace-based-location $(property-name) : $(prefix) : $(value) : <sanitize>thread .sanitize-thread ] ;
+  }
+
+  return $(prefix-localtions)$(postfix) ;
+}
+
+################################################################################
+# Build-variant and sanitize-mode-based location
+################################################################################
+rule sanitize-based-location ( property-name : variant-feature : prefix : postfix ? )
+{
+  local rule sanitize-location ( variant-type )
+  {
+    return
+      <$(variant-feature)>$(variant-type),<sanitize>off:<$(property-name)>$(prefix)/$(variant-type)
+      <$(variant-feature)>$(variant-type),<sanitize>address:<$(property-name)>$(prefix)/$(variant-type).sanitize-address
+      <$(variant-feature)>$(variant-type),<sanitize>thread:<$(property-name)>$(prefix)/$(variant-type).sanitize-thread ;
+  }
+
+  postfix = /$(postfix) ; postfix ?= "" ;
+
+  local prefix-localtions ;
+  for local value in [ feature.values $(variant-feature) ]
+    { prefix-localtions += [ sanitize-location $(value) ] ; }
+
+  return $(prefix-localtions)$(postfix) ;
+}
+
+
+################################################################################
 # Insert several rules into the global namespace
 ################################################################################
 IMPORT pcommon
-    : unittest runtest adhoc-exe adhoc-dll adhoc-targets check-tool-presence
+    : unittest runtest adhoc-exe adhoc-dll adhoc-targets check-tool-presence variant-based-location sanitize-based-location
     :
-    : unittest runtest adhoc-exe adhoc-dll adhoc-targets check-tool-presence ;
+    : unittest runtest adhoc-exe adhoc-dll adhoc-targets check-tool-presence variant-based-location sanitize-based-location ;
