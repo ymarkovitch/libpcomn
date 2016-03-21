@@ -13,9 +13,6 @@
 #include <pcomn_platform.h>
 #include <pcomn_atomic.h>
 
-// Note that PTActiveCounter MUST be properly aligned, hence packpshn/packpop
-#include <packpshn.h>
-
 namespace pcomn {
 
 /*******************************************************************************
@@ -109,7 +106,5 @@ template<typename InstanceType, typename Atomic>
 typename instance_id<InstanceType, Atomic>::type instance_id<InstanceType, Atomic>::_counter ;
 
 } // end of namespace pcomn
-
-#include <packpop.h>
 
 #endif /* __PCOMN_COUNTER_H */

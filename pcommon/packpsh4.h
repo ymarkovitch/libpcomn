@@ -17,19 +17,8 @@
 #ifdef __BORLANDC__
 #  pragma nopackwarning
 #endif
+#ifdef _MSC_VER >= 800
+#  pragma warning(disable:4103)
+#endif
 
-#if ! (defined(lint) || defined(_lint))
-#  ifndef RC_INVOKED
-#    if ( _MSC_VER >= 800 ) || (defined(__BORLANDC__) && defined(__FLAT__))
-#      pragma warning(disable:4103)
-#      if !(defined( MIDL_PASS )) || defined( __midl )
-#        pragma pack(push)
-#      endif
-#      pragma pack(4)
-#    elif defined(__BORLANDC__) && !defined(__FLAT__)
-#      error 4-byte packing is not supported!!
-#    else
-#      pragma pack(4)
-#    endif
-#  endif // ndef RC_INVOKED
-#endif // ! (defined(lint) || defined(_lint))
+#pragma pack(4)
