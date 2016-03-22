@@ -12,7 +12,8 @@
 #include "unittest_journal.h"
 #include "test_journal.h"
 
-#include <pcomn_journmmap.h>
+#include <pcomn_journal/journmmap.h>
+
 #include <pcomn_string.h>
 #include <pcomn_sys.h>
 #include <pcomn_path.h>

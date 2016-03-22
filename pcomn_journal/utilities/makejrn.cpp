@@ -1,6 +1,6 @@
 /*-*- tab-width:3;indent-tabs-mode:nil;c-file-style:"ellemtel";c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
- FILE         :   pcomn_makejrn.cpp
+ FILE         :   makejrn.cpp
  COPYRIGHT    :   Yakov Markovitch, 2010-2016. All rights reserved.
 
  DESCRIPTION  :   Command-line utility for creating journal checkpoints from data read
@@ -9,7 +9,8 @@
  PROGRAMMED BY:   Yakov Markovitch
  CREATION DATE:   5 Apr 2010
 *******************************************************************************/
-#include <pcomn_journmmap.h>
+#include <pcomn_journal/journmmap.h>
+
 #include <pcomn_getopt.h>
 #include <pcomn_version.h>
 #include <pcomn_fstream.h>

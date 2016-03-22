@@ -1,6 +1,6 @@
 /*-*- tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
- FILE         :   pcomn_journfile.cpp
+ FILE         :   journfile.cpp
  COPYRIGHT    :   Yakov Markovitch, 2008-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
@@ -11,7 +11,8 @@
  PROGRAMMED BY:   Yakov Markovitch
  CREATION DATE:   12 Nov 2008
 *******************************************************************************/
-#include <pcomn_journmmap.h>
+#include "journmmap.h"
+
 #include <pcomn_string.h>
 #include <pcomn_utils.h>
 #include <pcomn_diag.h>

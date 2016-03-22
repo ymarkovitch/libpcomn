@@ -11,7 +11,8 @@
  PROGRAMMED BY:   Yakov Markovitch
  CREATION DATE:   28 Nov 2008
 *******************************************************************************/
-#include <pcomn_journal.h>
+#include <pcomn_journal/journal.h>
+
 #include <pcomn_omanip.h>
 #include <pcomn_diag.h>
 

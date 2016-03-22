@@ -83,10 +83,6 @@ alias pcommon-unix-sources :
   pcomn_crypthash.cpp
   pcomn_shutil.cpp
   pcomn_scheduler.cpp
-  pcomn_journal.cpp
-  pcomn_journstorage.cpp
-  pcomn_journfile.cpp
-  pcomn_journmmap.cpp
   pcomn_posix_exec.cpp
 
   : <toolset>gcc

@@ -10,7 +10,9 @@
  CREATION DATE:   28 Nov 2008
 *******************************************************************************/
 #include "test_journal.h"
-#include <pcomn_journmmap.h>
+
+#include <pcomn_journal/journmmap.h>
+
 #include <pcomn_getopt.h>
 #include <pcomn_version.h>
 #include <pcomn_string.h>

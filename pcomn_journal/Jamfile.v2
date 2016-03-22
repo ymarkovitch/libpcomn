@@ -4,24 +4,23 @@
 # COPYRIGHT    :  Yakov Markovitch, 2008-2016. All rights reserved.
 #                 See LICENSE for information on usage/redistribution.
 #
-# DESCRIPTION  :  Jamfile for building PCommon command-line utilities
+# DESCRIPTION  :  Boost.Build v2 script for building pcomn::journal library.
 #
-# PROGRAMMED BY:  Yakov Markovitch
-# CREATION DATE:  24 Nov 2008
+# CREATION DATE:  19 Jan 2008
 #------------------------------------------------------------------------------
 project
   : requirements
   <library>$(PROJROOT)//pcommon
+  <link>static <threading>multi
 
-  : default-build debug <link>static <threading>multi
+  : usage-requirements
+  <library>$(PROJROOT)//pcommon
+;
+
+lib pcomn_journal :
+  journal.cpp
+  journfile.cpp
+  journmmap.cpp
+  journstorage.cpp
+  : <link>static
   ;
-
-
-# Check for --build=EXE and/or --compile=SOURCE command-line options; if there are, build
-# requested utilities instead of those listed below.
-if ! [ adhoc-targets ]
-{
-  # Utilities
-  #exe pcomn-jrninfo : pcomn_jrninfo.cpp ;
-  exe pcomn-makejrn : pcomn_makejrn.cpp ;
-}

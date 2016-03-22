@@ -1,0 +1,33 @@
+#-*- mode: jam; jam-indent-size: 2; tab-width: 2; indent-tabs-mode: nil; -*-
+#------------------------------------------------------------------------------
+# FILE         :  Jamfile.v2
+# COPYRIGHT    :  Yakov Markovitch, 2008-2016. All rights reserved.
+#                 See LICENSE for information on usage/redistribution.
+#
+# DESCRIPTION  :  Jamfile for building pcomn::journal unittests.
+#
+# CREATION DATE:  31 Jan 2008
+#------------------------------------------------------------------------------
+project
+  : requirements
+  <library>$(PROJROOT)//pcomn_journal
+  <library>$(PROJROOT)//pcommon
+  <library>$(PROJROOT)//cppunit
+
+  : default-build debug <link>static <threading>multi
+  ;
+
+# Check for --build=EXE and/or --run=TEST and/or --compile=SOURCE command-line options;
+# if there are, build or build/run requested ad-hoc tests instead of unittests listed
+# below.
+if ! [ adhoc-targets ]
+{
+  #
+  # Unit tests
+  #
+  if [ os.name ] != NT
+  {
+    unittest unittest_journal_files ;
+    unittest unittest_journal ;
+  }
+}

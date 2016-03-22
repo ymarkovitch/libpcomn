@@ -2,7 +2,7 @@
 #ifndef __PCOMN_JOURNMMAP_H
 #define __PCOMN_JOURNMMAP_H
 /*******************************************************************************
- FILE         :   pcomn_journmmap.h
+ FILE         :   journmmap.h
  COPYRIGHT    :   Yakov Markovitch, 2008-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
@@ -14,8 +14,9 @@
 /** @file
  Journalling engine storage implementation on memory-mappable filesystem.
 *******************************************************************************/
-#include <pcomn_journal.h>
-#include <pcomn_journstorage.h>
+#include "journal.h"
+#include "journstorage.h"
+
 #include <pcomn_string.h>
 #include <pcomn_strslice.h>
 #include <pcomn_integer.h>

@@ -62,7 +62,6 @@ if ! [ adhoc-targets ]
   unittest unittest_iostream ;
   unittest unittest_iterator ;
   #unittest unittest_keyedmutex ;
-  #unittest unittest_keyedset ;
   unittest unittest_mmap ;
   unittest unittest_rawstream ;
   unittest unittest_regex ;
@@ -81,10 +80,6 @@ if ! [ adhoc-targets ]
   {
     unittest unittest_crypthash ;
     unittest unittest_exec ;
-
-    # pcomn::journal
-    unittest unittest_journal_files ;
-    unittest unittest_journal ;
 
     unittest unittest_filesys ;
     unittest unittest_synccomplex ;

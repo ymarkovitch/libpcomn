@@ -12,7 +12,7 @@
  CREATION DATE:   18 Dec 2008
 *******************************************************************************/
 #include <pcomn_unittest.h>
-#include <pcomn_journal.h>
+#include <pcomn_journal/journal.h>
 #include <pcomn_string.h>
 #include <pcomn_handle.h>
 #include <pcomn_except.h>

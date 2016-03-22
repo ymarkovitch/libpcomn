@@ -109,6 +109,7 @@ rule proj-lib ( name : dir ? )
 
 proj-lib pcommon ;
 
+proj-lib pcomn_journal ;
 proj-lib pcomn_http ;
 proj-lib pcomn_net ;
 proj-lib pcomn_shell ;
