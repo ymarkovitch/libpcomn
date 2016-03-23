@@ -52,6 +52,7 @@ if ! [ adhoc-targets ]
   compile unittest_atomic_compile.cpp ;
   compile-fail unittest_hashclosed_compfail.cpp ;
 
+  unittest unittest_bitops ;
   unittest unittest_bitarray ;
   unittest unittest_cacher ;
   unittest unittest_file_lock ;
