@@ -416,6 +416,25 @@
 #  define PCOMN_PL_MS 1 /* Pure Windows */
 #endif
 
+/*******************************************************************************
+ SIMD instruction sets
+*******************************************************************************/
+#if defined(PCOMN_PL_X86)
+#  if defined(PCOMN_COMPILER_GNU)
+
+#     ifdef __SSE4_2__
+#        define PCOMN_PL_SIMD_SSE42 1
+#     endif
+#     ifdef __AVX__
+#        define PCOMN_PL_SIMD_AVX   1
+#     endif
+#     ifdef __AVX2__
+#        define PCOMN_PL_SIMD_AVX2  1
+#     endif
+
+#  endif /* PCOMN_COMPILER_GNU && PCOMN_PL_X86 */
+#endif /* PCOMN_PL_X86 */
+
 /******************************************************************************/
 /** @def likely
  Provide the compiler with branch prediction information, assering the expression is

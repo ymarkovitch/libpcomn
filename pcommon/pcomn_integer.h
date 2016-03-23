@@ -13,7 +13,6 @@
  CREATION DATE:   27 Nov 2006
 *******************************************************************************/
 #include <pcomn_meta.h>
-#include <pcomn_macros.h>
 #include <pcomn_bitops.h>
 
 #include <functional>
@@ -46,13 +45,14 @@ template<typename T>
 struct int_traits {
       PCOMN_STATIC_CHECK(std::is_integral<T>::value) ;
 
-      typedef typename std::make_signed<T>::type    stype ;
-      typedef typename std::make_unsigned<T>::type  utype ;
+      typedef T type ;
+      typedef typename std::make_signed_t<type>    stype ;
+      typedef typename std::make_unsigned_t<type>  utype ;
 
-      static constexpr const bool     is_signed = std::numeric_limits<T>::is_signed ;
-      static constexpr const unsigned bitsize = bitsizeof(T) ;
-      static constexpr const T        ones = (T)~(T)0 ;
-      static constexpr const T        signbit = (T)((T)1 << (bitsize - 1)) ;
+      static constexpr const bool     is_signed = std::numeric_limits<type>::is_signed ;
+      static constexpr const unsigned bitsize = bitsizeof(type) ;
+      static constexpr const type     ones = (type)~type() ;
+      static constexpr const type     signbit = (type)((type)1 << (bitsize - 1)) ;
 } ;
 
 template<typename T>
