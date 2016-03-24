@@ -44,6 +44,9 @@ static void test(I value)
    r = native_bitcount(value, tag) ;
    PRINT("native_bitcount") ;
 
+   r = native_rzcnt(value, tag) ;
+   PRINT("native_rzcnt") ;
+
    #undef PRINT
 }
 
@@ -53,32 +56,40 @@ int main(int argc, char *argv[])
 
    test<generic_isa_tag>((int8_t)source) ;
    test<sse42_isa_tag>((int8_t)source) ;
+   test<native_isa_tag>((int8_t)source) ;
 
    std::cout << '\n' ;
    test<generic_isa_tag>((uint8_t)source) ;
    test<sse42_isa_tag>((uint8_t)source) ;
+   test<native_isa_tag>((uint8_t)source) ;
 
    std::cout << '\n' ;
    test<generic_isa_tag>((int16_t)source) ;
    test<sse42_isa_tag>((int16_t)source) ;
+   test<native_isa_tag>((int16_t)source) ;
 
    std::cout << '\n' ;
    test<generic_isa_tag>((uint16_t)source) ;
    test<sse42_isa_tag>((uint16_t)source) ;
+   test<native_isa_tag>((uint16_t)source) ;
 
    std::cout << '\n' ;
    test<generic_isa_tag>((int32_t)source) ;
    test<sse42_isa_tag>((int32_t)source) ;
+   test<native_isa_tag>((int32_t)source) ;
 
    std::cout << '\n' ;
    test<generic_isa_tag>((uint32_t)source) ;
    test<sse42_isa_tag>((uint32_t)source) ;
+   test<native_isa_tag>((uint32_t)source) ;
 
    std::cout << '\n' ;
    test<generic_isa_tag>((int64_t)source) ;
    test<sse42_isa_tag>((int64_t)source) ;
+   test<native_isa_tag>((int64_t)source) ;
 
    std::cout << '\n' ;
    test<generic_isa_tag>((uint64_t)source) ;
    test<sse42_isa_tag>((uint64_t)source) ;
+   test<native_isa_tag>((uint64_t)source) ;
 }

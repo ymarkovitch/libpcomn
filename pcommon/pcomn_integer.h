@@ -114,7 +114,7 @@ namespace bitop {
 template<typename I>
 inline unsigned bitcount(I i)
 {
-   return bit_traits<int_traits<I>::bitsize>::bitcount(i) ;
+   return native_bitcount(i, native_isa_tag()) ;
 }
 
 template<typename I>
@@ -162,6 +162,16 @@ template<typename I>
 constexpr inline if_integer_t<I> getrzbseq(I x)
 {
    return static_cast<I>(~(0 - getrnzb(x))) ;
+}
+
+/// Get Rightmost Zero Bit Count.
+/// 00101000 -> 3
+/// 00101001 -> 0
+/// 0 -> bitsizeof(I)
+template<typename I>
+constexpr inline if_integer_t<I> rzcnt(I x)
+{
+   return native_rzcnt(x, native_isa_tag()) ;
 }
 
 /******************************************************************************/
@@ -231,13 +241,16 @@ inline nzbit_iterator<if_integer_t<I> > make_nzbit_iterator(I value)
 *************************************************************************/
 template<typename I, typename V = int>
 class nzbitpos_iterator : public std::iterator<std::forward_iterator_tag, V> {
+
       typedef typename int_traits<I>::utype datatype ;
+      typedef std::conditional_t<(sizeof(datatype) >= sizeof(int)), int, typename int_traits<I>::stype> postype ;
+
       typedef std::iterator<std::forward_iterator_tag, V> ancestor ;
    public:
       using typename ancestor::value_type ;
 
       constexpr nzbitpos_iterator() : _data(), _pos(bitsizeof(I)) {}
-      explicit nzbitpos_iterator(I value) : _data((datatype)value), _pos(-1)
+      explicit nzbitpos_iterator(I value) : _data(static_cast<datatype>(value)), _pos()
       {
          advance_pos() ;
       }
@@ -263,22 +276,17 @@ class nzbitpos_iterator : public std::iterator<std::forward_iterator_tag, V> {
          return !(*this == rhs) ;
       }
 
-      constexpr value_type operator*() const { return static_cast<value_type>(_pos) ; }
+      value_type operator*() const { return static_cast<value_type>((int)_pos) ; }
 
    private:
       datatype _data ;
-      int      _pos ;
+      postype  _pos ;
 
       void advance_pos()
       {
-         NOXCHECK(_pos < (int)bitsizeof(I)) ;
-         if (!_data)
-         {
-            _pos = bitsizeof(I) ;
-            return ;
-         }
-         for ( ; ++_pos, !(_data & 1) ; _data >>= 1) ;
-         _data >>= 1 ;
+         NOXCHECK((int)_pos < (int)bitsizeof(I)) ;
+         _pos = rzcnt(_data) ;
+         _data = clrrnzb(_data) ;
       }
 } ;
 

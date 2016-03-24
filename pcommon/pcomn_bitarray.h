@@ -616,7 +616,6 @@ class bitarray : private bitarray_base<unsigned long> {
       /// Indicate if all the bits in this array are '0'
       bool none() const { return !any() ; }
 
-
       void swap(bitarray &other)
       {
          ancestor::swap(other) ;
@@ -779,25 +778,17 @@ size_t bitarray_base<Element>::find_first_bit(size_t start, size_t finish) const
 
    size_t pos = elemndx(start) ;
    const element_type *bits = cbits() + pos ;
-   element_type el = *bits >> bitndx(start) ;
-   if (!el)
+   element_type element = *bits >> bitndx(start) ;
+   if (!element)
    {
-      const size_t endpos = elemndx(finish - 1) + 1 ;
-      if (++pos >= endpos)
+      const size_t endpos = elemndx(finish - 1) ;
+      if (pos >= endpos)
          return finish ;
-      const element_type * endbits = cbits() + endpos ;
-      const element_type * const found_pos = std::find_if(bits + 1, endbits, identity()) ;
-      if (found_pos == endbits)
-         return finish ;
-      el = *found_pos ;
+      const element_type * const found_pos = std::find_if(bits + 1, cbits() + endpos, identity()) ;
+      element = *found_pos ;
       start = (found_pos - cbits()) * BITS_PER_ELEMENT ;
    }
-   while (!(el & 1) && start < finish)
-   {
-      el >>= 1 ;
-      ++start ;
-   }
-   return start ;
+   return std::min(start + bitop::rzcnt(element), finish) ;
 }
 
 MS_DIAGNOSTIC_POP()

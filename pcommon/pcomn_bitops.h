@@ -21,6 +21,11 @@
 #include <pcomn_platform.h>
 
 #include <limits.h>
+#ifdef PCOMN_COMPILER_GNU
+#  if defined(PCOMN_PL_X86)
+#     include <x86intrin.h>
+#  endif
+#endif
 
 namespace pcomn {
 
@@ -215,14 +220,52 @@ inline size_t native_bitcount(I v, generic_isa_tag)
 }
 
 template<typename I>
+inline size_t native_rzcnt(I v, generic_isa_tag)
+{
+   // Get rightmost non-zero bit
+   // 00001010 -> 00000010
+   const I rnzb = static_cast<I>(v & (0 - v)) ;
+   // Convert rigthmost 0-sequence to 1-sequence and count bits
+   return native_bitcount(static_cast<I>(rnzb - 1), native_isa_tag()) ;
+}
+
+/*******************************************************************************
+ x86_64
+*******************************************************************************/
+#ifdef PCOMN_PL_X86
+#if defined(PCOMN_COMPILER_GNU)
+template<typename I>
 inline size_t native_bitcount(I v, sse42_isa_tag)
 {
    size_t result ;
    const uintmax_t source = (std::make_unsigned_t<I>)v ;
    // POPCNT sets ZF, thus "cc" constraint
-   asm("popcnt %1,%0" : "=r"(result) : "rm"(source) : "cc") ;
+   asm(
+      "popcnt %[source], %[result]"
+      : [result]"=r"(result)
+      : [source]"rm"(source) : "cc"
+      ) ;
    return result ;
 }
+
+template<typename I>
+inline size_t native_rzcnt(I v, x86_64_isa_tag)
+{
+   size_t result ;
+   const uintmax_t source = (std::make_unsigned_t<I>)v ;
+   const uintmax_t bitsize = bitsizeof(I) ;
+   asm(
+      "bsf   %[source],  %[result]\n\t"
+      "cmovz %[bitsize], %[result]"
+      : [result]"=r"(result)
+      : [source]"rm"(source),
+        [bitsize]"r"(bitsize)
+      : "cc") ;
+   return result ;
+}
+
+#endif
+#endif
 
 } // end of namespace pcomn
 
