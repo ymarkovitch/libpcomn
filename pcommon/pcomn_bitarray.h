@@ -57,7 +57,7 @@ struct bitarray_base {
       {
          if (!size())
             return 0 ;
-         auto &bitcount = cb()->cached_bitcount() ;
+         auto &bitcount = cb(cdata())->cached_bitcount() ;
          if (bitcount == ~0UL)
             bitcount = count_ones() ;
          return bitval ? bitcount : _size - bitcount ;
@@ -72,19 +72,25 @@ struct bitarray_base {
       /// Indicate if there exists '1' bit in this array
       bool any() const
       {
-         const element_type * const data = cbits() ;
-         return std::any_of(data, data + nelements(), identity()) ;
+         const item_type * const data = cdata() ;
+         const element_type * const start_nzmap = &cb(data)->_nonzero_map->_element ;
+         const element_type * const end_nzmap = bits(data) ;
+
+         return std::any_of(start_nzmap, end_nzmap, identity()) ;
       }
 
       /// Indicate if all bits in this array are '1'
       bool all() const
       {
-         if (const size_t n = nelements())
+         const element_type * const b = cbits() ;
+         switch (const size_t n = nelements())
          {
-            const element_type * const data = cbits() ;
-            return
-               std::all_of(data, data + (n-1), [](element_type e){ return e == ~element_type() ; }) &&
-               (data[n-1] & tailmask()) == tailmask() ;
+            default:
+               if (!std::all_of(b, b + (n-1), [](element_type e){ return e == ~element_type() ; }))
+                  return false ;
+
+            case 1: return (b[n-1] & tailmask()) == tailmask() ;
+            case 0: break ;
          }
          return true ;
       }
@@ -103,14 +109,10 @@ struct bitarray_base {
        Constants for bit counts and sizes
       *************************************************************************/
       /// Bit count per storage element
-      static constexpr const size_t BITS_PER_ELEMENT     = CHAR_BIT*sizeof(element_type) ;
-      /// The capacity of a counter of nonzero elements
-      static constexpr const size_t COUNTER_CAPACITY     = 64 ;
-      /// The number of counters packed into an elements
-      static constexpr const size_t COUNTERS_PER_ELEMENT = sizeof(element_type) ;
+      static constexpr const size_t BITS_PER_ELEMENT = bitsizeof(element_type) ;
       /*************************************************************************/
 
-      constexpr bitarray_base() {}
+      constexpr bitarray_base() = default ;
 
       // Constructor.
       // Parameters:
@@ -150,12 +152,11 @@ struct bitarray_base {
          return *this ;
       }
 
-      void and_assign(const bitarray_base &source) ;
-      void or_assign(const bitarray_base &source) ;
-      void xor_assign(const bitarray_base &source) ;
-      void andnot_assign(const bitarray_base &source) ;
 
-      void reset() { memset(mbits(), 0, nelements()*sizeof(element_type)) ; }
+      template<typename Operator>
+      void op_assign(const bitarray_base &source, Operator op) ;
+
+      void reset() { size() && memset(mdata(), 0, _elements.size()) ; }
 
       void set()
       {
@@ -164,60 +165,23 @@ struct bitarray_base {
             return ;
 
          item_type * const data = mdata() ;
-         element_type * const bitdata = bits(data) ;
-         memset(bitdata, -1, elemcount * sizeof(element_type)) ;
-         bitdata[elemcount - 1] &= tailmask() ;
+         memset(data, -1, _elements.size()) ;
+         *(bits(data) + (elemcount - 1)) &= tailmask() ;
          cb(data)->cached_bitcount() = size() ;
       }
 
-      void set(size_t pos, bool val = true)
-      {
-         NOXCHECK(pos < size()) ;
-         element_type &data = mutable_elem(pos) ;
-         const element_type valmask = (long long)val - 1LL ;
-         data = ((data ^ valmask) | bitmask(pos)) ^ valmask ;
-      }
+      void set(size_t pos, bool val = true) ;
 
       void flip() ;
-      bool flip(size_t pos)
-      {
-         NOXCHECK(pos < size()) ;
-         return !!((mutable_elem(pos) ^= bitmask(pos)) & bitmask(pos)) ;
-      }
+      bool flip(size_t pos) ;
 
       bool equal(const bitarray_base &other) const
       {
+         const item_type * const data1 = cdata() ;
+         const item_type * const data2 = other.cdata() ;
          return
-            _size == other._size &&
-            std::equal(cbits(), cbits() + nelements(), other.cbits()) ;
-      }
-
-      /// Indicate if given position is a valid bitarray index
-      bool valid_position(size_t pos) { return pos < nelements() ; }
-
-      /// Given a bit position, get the position of an element containing specified bit
-      ///
-      static constexpr size_t elemndx(size_t pos)
-      {
-         return pos / BITS_PER_ELEMENT ;
-      }
-
-      /// Given a bit position, get the index inside the appropriate chunk in bits[]
-      /// such that 0 <= index < BITS_PER_ELEMENT.
-      ///
-      static constexpr size_t bitndx(size_t pos)
-      {
-         return pos & (BITS_PER_ELEMENT - 1) ;
-      }
-
-      static constexpr element_type bitmask(size_t pos)
-      {
-         return std::integral_constant<element_type, 1>::value << bitndx(pos) ;
-      }
-
-      constexpr element_type tailmask() const
-      {
-         return ~(~std::integral_constant<element_type, 1>::value << bitndx(_size - 1) << 1) ;
+            data1 == data2 ||
+            _size == other._size && !memcmp(data1 + 1, data2 + 1, _elements.size() - sizeof *data1) ;
       }
 
       void swap(bitarray_base &other) noexcept
@@ -226,56 +190,59 @@ struct bitarray_base {
          _elements.swap(other._elements) ;
       }
 
-   private:
-      // A pack of nonzero elements count
-      union elcount_pack {
-            element_type _counter_pack ;
-            uint8_t      _counters[sizeof(element_type)] ;
+      /// Given a bit position, get the position of an element containing specified bit
+      static constexpr size_t elemndx(size_t pos) { return pos / BITS_PER_ELEMENT ; }
 
-            constexpr uint8_t count(unsigned ndx) const
-            {
-               #ifdef PCOMN_CPU_LITTLE_ENDIAN
-               return _counters[ndx] ;
-               #else
-               return _counters[sizeof _nzero_elcount - ndx] ;
-               #endif
-            }
-      } ;
+      /// Given a bit position, get the index inside the appropriate chunk in bits[]
+      /// such that 0 <= index < BITS_PER_ELEMENT.
+      static constexpr size_t bitndx(size_t pos) { return pos & (BITS_PER_ELEMENT - 1) ; }
 
-      union item_type {
-            element_type   _element ;
-            elcount_pack   _nzero_elcount ;
-            mutable size_t _bitcount ; /* The cached count of 1s in the bitset */
-      } ;
+      static constexpr element_type bitmask(size_t pos)
+      {
+         return std::integral_constant<element_type, 1>::value << bitndx(pos) ;
+      }
 
-      struct control_block {
-            item_type _cached_bitcount ;
-            item_type _nonzero_elcount[] ;
-
-            size_t &cached_bitcount() const { return _cached_bitcount._bitcount ; }
-      } ;
-
-      static_assert(sizeof(element_type) >= sizeof(size_t),
-                    "The Element type argument to pcomn::bitarray_base must be at least sizeof(size_t)") ;
-      PCOMN_STATIC_CHECK(sizeof(item_type) ==  sizeof(element_type)) ;
-      PCOMN_STATIC_CHECK(sizeof(elcount_pack) ==  sizeof(element_type)) ;
-
-   private:
-      size_t                              _size  = 0UL ;
-      typed_buffer<item_type, cow_buffer> _elements ;
+      element_type tailmask() const { return ~(~element_type(1) << bitndx(_size - 1) << 1) ; }
 
    private:
       /*************************************************************************
        Data layout (every single item is item_type):
           control_block (AKA bcb, bits control block)
               cached_bitcount
-              nonzero_elcount_packs[]
+              nonzero_map[]
           elements[]
       *************************************************************************/
-      bitarray_base(size_t sz, nullptr_t) :
-         _size(sz), _elements(nelements() + cb_size())
-      {}
+      union item_type {
+            element_type   _element ;
+            mutable size_t _bitcount ; /* The cached count of 1s in the bitset */
+      } ;
 
+      struct control_block {
+            item_type _cached_bitcount ;
+            item_type _nonzero_map[] ; /* Map of nonzero elements */
+
+            size_t &cached_bitcount() const { return _cached_bitcount._bitcount ; }
+
+            // The size of the control block expressed in item_type items
+            static constexpr size_t size(size_t nelements)
+            {
+               // Add 1 to make allowance for _cached_bitcount
+               return (nelements + (BITS_PER_ELEMENT - 1))/BITS_PER_ELEMENT + 1 ;
+            }
+      } ;
+
+      static_assert(sizeof(element_type) >= sizeof(size_t),
+                    "The Element type argument to pcomn::bitarray_base must be at least sizeof(size_t)") ;
+      PCOMN_STATIC_CHECK(sizeof(item_type) ==  sizeof(element_type)) ;
+
+   private:
+      size_t      _size  = 0UL ;
+      cow_buffer  _elements ;
+
+      // Fake control block data for zero-sized bitarrays
+      static const item_type _empty_data[control_block::size(1)] ;
+
+   private:
       static constexpr size_t nelements(size_t sz)
       {
          return (sz + (BITS_PER_ELEMENT - 1))/BITS_PER_ELEMENT ;
@@ -283,16 +250,21 @@ struct bitarray_base {
 
       size_t nelements() const { return nelements(_size) ; }
 
-      // The size of bits control block expressed in item_type items
-      size_t cb_size() const
-      {
-         const auto element_capacity = COUNTER_CAPACITY * COUNTERS_PER_ELEMENT ;
-         return (nelements() + (element_capacity - 1))/element_capacity ;
-      }
+      static constexpr size_t nzmapndx(size_t pos) { return elemndx(elemndx(pos)) ; }
+      static constexpr size_t nzmapbitndx(size_t pos) { return bitndx(nzmapndx(pos)) ; }
+      static constexpr element_type nzmapbitmask(size_t pos) { return bitmask(nzmapbitndx(pos)) ; }
+
+      element_type nzmaptailmask() const { return ~(~element_type(1) << bitndx(nelements() - 1) << 1) ; }
 
       // Get bits by data
-      element_type *bits(item_type *data) { return &((data + cb_size())->_element) ; }
-      const element_type *bits(const item_type *data) const { return &((data + cb_size())->_element) ; }
+      element_type *bits(item_type *data)
+      {
+         return &((data + control_block::size(nelements()))->_element) ;
+      }
+      const element_type *bits(const item_type *data) const
+      {
+         return &((data + control_block::size(nelements()))->_element) ;
+      }
 
       // Get a control block by data
       control_block *cb(item_type *data)
@@ -309,25 +281,33 @@ struct bitarray_base {
       }
 
       // Ensure COW, reset cache, get mutable data
+      // Don't COW, don't touch cache
+      const item_type *cdata() const
+      {
+         const item_type * const d = static_cast<const item_type *>(_elements.get()) ;
+         return d ? d : _empty_data ;
+      }
+      const element_type *cbits() const { return bits(cdata()) ; }
+
       item_type *mdata()
       {
-         item_type * const data = _elements.get() ;
+         NOXCHECK(_size) ;
+         item_type * const data = static_cast<item_type *>(_elements.get()) ;
          cb(data)->cached_bitcount() = ~0UL ;
          return data ;
       }
 
-      // Don't COW, don't touch cache
-      const item_type *cdata() const { return _elements.get() ; }
-      const control_block *cb() const { return cb(cdata()) ; }
-
-      // Ensure COW, reset cache, get mutable bits
-      element_type *mbits() { return bits(mdata()) ; }
-      const element_type *cbits() const { return bits(cdata()) ; }
-
       size_t count_ones() const ;
 
-      element_type &mutable_elem(size_t bitpos) { return mbits()[elemndx(bitpos)] ; }
       const element_type &const_elem(size_t bitpos) const { return cbits()[elemndx(bitpos)] ; }
+
+   private:
+      /*************************************************************************
+       Constructors
+      *************************************************************************/
+      bitarray_base(size_t sz, nullptr_t) :
+         _size(sz), _elements(sz ? sizeof(item_type) * (nelements() + control_block::size(nelements())) : 0)
+      {}
 
       template<typename InputIterator>
       bitarray_base(InputIterator &start, InputIterator &finish, std::false_type) :
@@ -335,30 +315,34 @@ struct bitarray_base {
       {}
 
       template<typename RandomAccessIterator>
-      bitarray_base(RandomAccessIterator &start, RandomAccessIterator &finish, std::true_type) :
-         bitarray_base(std::distance(start, finish))
-      {
-         if (!size())
-            return ;
-
-         element_type * const bitdata = mbits() ;
-         auto &cached_count = cb()->cached_bitcount() ;
-         for (size_t pos = 0 ; pos < size() ; ++pos, ++start)
-         {
-            if (!*start)
-               continue ;
-            bitdata[elemndx(pos)] |= bitmask(pos) ;
-            ++cached_count ;
-         }
-      }
+      bitarray_base(RandomAccessIterator &start, RandomAccessIterator &finish, std::true_type) ;
 
       /// Constructor to allow derived classes for construction from non-random-access
       /// iterators.
       bitarray_base(std::vector<bool> &&bits, Instantiate) :
          bitarray_base(bits.begin(), bits.end())
       {}
-} ;
 
+      /*************************************************************************
+       Generic mutators
+      *************************************************************************/
+      template<typename Operator>
+      element_type update_element(item_type *data, size_t elndx, element_type operand, Operator op)
+      {
+         element_type &nzmap_cell = cb(data)->_nonzero_map[elemndx(elndx)]._element ;
+         element_type &element = bits(data)[elndx] ;
+         const element_type input = element ;
+         const element_type output = op(input, operand) ;
+         element = output ;
+         nzmap_cell ^= element_type(!input ^ !output) << bitndx(elndx) ;
+         return output ;
+      }
+
+      void fix_tail(item_type *data)
+      {
+         update_element(data, nelements() - 1, tailmask(), std::bit_and<element_type>()) ;
+      }
+} ;
 
 /******************************************************************************/
 /** Like std::bitset, but has its size specified at runtime.
@@ -516,15 +500,14 @@ class bitarray : private bitarray_base<unsigned long> {
       using ancestor::all ;
       using ancestor::find_first_bit ;
 
-      constexpr bitarray() = default ;
+      constexpr bitarray() {}
 
-      /// Create bitarray of specified size
-      ///
+      /// Create bitarray of specified size.
       /// @param sz  The size of array (bit count).
       ///
-      explicit bitarray(size_t sz) : ancestor(sz, false) {}
+      explicit bitarray(size_t sz) : bitarray(sz, false) {}
 
-      /// Create bitarray of specified size filled with specified bit
+      /// Create bitarray of specified size filled with specified bit.
       /// @param sz        The size of array (bit count)
       /// @param initval   Initial value of all bits
       ///
@@ -543,33 +526,31 @@ class bitarray : private bitarray_base<unsigned long> {
 
       bitarray &operator&=(const bitarray &source)
       {
-         and_assign(source) ;
+         op_assign(source, std::bit_and<element_type>()) ;
          return *this ;
       }
 
       bitarray &operator|=(const bitarray &source)
       {
-         or_assign(source) ;
+         op_assign(source, std::bit_or<element_type>()) ;
          return *this ;
       }
 
       bitarray &operator^=(const bitarray &source)
       {
-         xor_assign(source) ;
+         op_assign(source, std::bit_xor<element_type>()) ;
          return *this ;
       }
 
       bitarray &operator-=(const bitarray &source)
       {
-         andnot_assign(source) ;
+         size() >= source.size()
+            ? op_assign(source, [](element_type x, element_type y) { return x &~ y ; })
+            : op_assign(source, [](element_type x, element_type y) { return y &~ x ; }) ;
          return *this ;
       }
 
-      bitarray &mask(const bitarray &source)
-      {
-         ancestor::andnot_assign(source) ;
-         return *this ;
-      }
+      bitarray &mask(const bitarray &source) { return *this -= source ; }
 
       bitarray &set()
       {
@@ -591,12 +572,6 @@ class bitarray : private bitarray_base<unsigned long> {
 
       bitarray &reset(size_t pos) { return set(pos, false) ; }
 
-      bitarray operator~() const
-      {
-         bitarray tmp(*this) ;
-         return tmp.flip() ;
-      }
-
       bitarray &flip()
       {
          ancestor::flip() ;
@@ -616,10 +591,7 @@ class bitarray : private bitarray_base<unsigned long> {
       /// Indicate if all the bits in this array are '0'
       bool none() const { return !any() ; }
 
-      void swap(bitarray &other)
-      {
-         ancestor::swap(other) ;
-      }
+      void swap(bitarray &other) { ancestor::swap(other) ; }
 
       //
       // STL-like access
@@ -637,34 +609,22 @@ class bitarray : private bitarray_base<unsigned long> {
       positional_iterator end_positional() const { return positional_iterator(*this, size()) ; }
 } ;
 
-#define PCOMN_BIN_BITOP(op,lhs,rhs)             \
-const bitarray *l ;                             \
-const bitarray *r ;                             \
-if (lhs.size() >= rhs.size())                   \
-{                                               \
-   l = &lhs ;                                   \
-   r = &rhs ;                                   \
-}                                               \
-else                                            \
-{                                               \
-   l = &rhs ;                                   \
-   r = &lhs ;                                   \
-}                                               \
-return std::move(bitarray(*l).operator op(*r)) ;
-
+/*******************************************************************************
+ bitarray
+*******************************************************************************/
 inline bitarray operator&(const bitarray &left, const bitarray &right)
 {
-   PCOMN_BIN_BITOP(&=, left, right) ;
+   return std::move(bitarray(left) &= right) ;
 }
 
 inline bitarray operator|(const bitarray &left, const bitarray &right)
 {
-   PCOMN_BIN_BITOP(|=, left, right) ;
+   return std::move(bitarray(left) |= right) ;
 }
 
 inline bitarray operator^(const bitarray &left, const bitarray &right)
 {
-   PCOMN_BIN_BITOP(^=, left, right) ;
+   return std::move(bitarray(left) ^= right) ;
 }
 
 inline bitarray operator-(const bitarray &left, const bitarray &right)
@@ -672,7 +632,10 @@ inline bitarray operator-(const bitarray &left, const bitarray &right)
    return std::move(bitarray(left) -= right) ;
 }
 
-#undef PCOMN_BIN_BITOP
+inline bitarray operator~(bitarray v)
+{
+   return std::move(v.flip()) ;
+}
 
 MS_PUSH_IGNORE_WARNING(4267)
 
@@ -680,92 +643,101 @@ MS_PUSH_IGNORE_WARNING(4267)
  bitarray_base<Element>
 *******************************************************************************/
 template<typename Element>
-void bitarray_base<Element>::flip()
+const typename bitarray_base<Element>::item_type bitarray_base<Element>::_empty_data[] = {} ;
+
+template<typename Element>
+template<typename RandomAccessIterator>
+bitarray_base<Element>::bitarray_base(RandomAccessIterator &start, RandomAccessIterator &finish, std::true_type) :
+   bitarray_base(std::distance(start, finish))
 {
-   const size_t n = nelements() ;
-   if (!n)
+   if (!size())
       return ;
 
-   element_type *data = mbits() ;
-   for (element_type * const end = data + n ; data != end ; ++data)
-      *data ^= ~element_type() ;
+   item_type * const data = mdata() ;
+   element_type * const bitdata = bits(data) ;
+   element_type * const nzmapdata = &cb(data)->_nonzero_map._element ;
+   auto &cached_count = cb(data)->cached_bitcount() ;
 
-   *--data &= tailmask() ;
+   for (size_t pos = 0 ; pos < size() ; ++pos, ++start)
+   {
+      if (!*start)
+         continue ;
+      bitdata[elemndx(pos)] |= bitmask(pos) ;
+      nzmapdata[nzmapndx(pos)] |= nzmapbitmask(pos) ;
+      ++cached_count ;
+   }
 }
 
 template<typename Element>
 size_t bitarray_base<Element>::count_ones() const
 {
    size_t cnt = 0 ;
-   for (const element_type *data = cbits(), *end = data + nelements() ; data != end ; ++data)
-      cnt += bitop::bitcount(*data) ;
+   for (const element_type *element = cbits(), *end = element + nelements() ; element != end ; ++element)
+      cnt += bitop::bitcount(*element) ;
 
    return cnt ;
 }
 
 template<typename Element>
-void bitarray_base<Element>::and_assign(const bitarray_base<Element> &source)
+inline void bitarray_base<Element>::set(size_t pos, bool val)
 {
-   const element_type *source_data = source.cbits() ;
-   if (cbits() == source_data)
+   NOXCHECK(pos < size()) ;
+   update_element(mdata(), elemndx(pos), (long long)val - 1LL,
+                  [=](element_type data, element_type mask)
+                  { return ((data ^ mask) | bitmask(pos)) ^ mask ; }) ;
+}
+
+template<typename Element>
+inline bool bitarray_base<Element>::flip(size_t pos)
+{
+   NOXCHECK(pos < size()) ;
+   const element_type mask = bitmask(pos) ;
+   return
+      update_element(mdata(), elemndx(pos), mask, std::bit_xor<element_type>()) & mask ;
+}
+
+template<typename Element>
+void bitarray_base<Element>::flip()
+{
+   const size_t n = nelements() ;
+   if (!n)
       return ;
 
-   const int minsize = std::min(_size, source._size) ;
-   const int full = minsize / BITS_PER_ELEMENT ;
-   const int elem = std::min(nelements(), source.nelements()) ;
+   item_type * const data = mdata() ;
+   for (size_t ndx = 0 ; ndx < n ; ++ndx)
+      update_element(data, ndx, ~element_type(), std::bit_xor<element_type>()) ;
 
-   element_type *data = mbits() ;
-   for (int i = 0 ; i < full ; ++i)
-      data[i] &= source_data[i] ;
-   if (full < elem)
-      data[full] &= source_data[full] | (~0 << (minsize % BITS_PER_ELEMENT)) ;
+   fix_tail(data) ;
 }
 
 template<typename Element>
-void bitarray_base<Element>::or_assign(const bitarray_base<Element> &source)
+template<typename Operator>
+void bitarray_base<Element>::op_assign(const bitarray_base &source, Operator op)
 {
-   const element_type *source_data = source.cbits() ;
-   if (cbits() == source_data)
+   const element_type *source_bits = source.cbits() ;
+   if (cbits() == source_bits)
       return ;
 
-   const int minsize = std::min(_size, source._size) ;
-   const int full = minsize / BITS_PER_ELEMENT ;
-   const int elem = std::min(nelements(), source.nelements()) ;
+   bitarray_base input (source) ;
+   if (source.size() > size())
+   {
+      swap(input) ;
+      source_bits = input.cbits() ;
+   }
 
-   element_type *data = mbits() ;
-   for (int i = 0 ; i < full ; ++i)
-      data[i] |= source_data[i] ;
-   if (full < elem)
-      data[full] |= source_data[full] & ~(~0 << (minsize % BITS_PER_ELEMENT)) ;
-}
+   const size_t ninput = input.nelements() ;
+   const size_t noutput = nelements() ;
 
-template<typename Element>
-void bitarray_base<Element>::xor_assign(const bitarray_base<Element> &source)
-{
-   int minsize = std::min(_size, source._size) ;
-   int full = minsize / BITS_PER_ELEMENT ;
-   int elem = std::min(nelements(), source.nelements()) ;
-   element_type *data = mbits() ;
-   const element_type *source_data = source.cbits() ;
-   for (int i = 0 ; i < full ; ++i)
-      data[i] ^= source_data[i] ;
-   if (full < elem)
-      data[full] ^= source_data[full] & ~(~0 << (minsize % BITS_PER_ELEMENT)) ;
-}
+   item_type * const outdata = mdata() ;
 
-template<typename Element>
-void bitarray_base<Element>::andnot_assign(const bitarray_base<Element> &source)
-{
-   const int minsize = std::min(_size, source._size) ;
-   const int full = minsize / BITS_PER_ELEMENT ;
-   const int elem = std::min(nelements(), source.nelements()) ;
+   size_t ndx ;
+   for (ndx = 0 ; ndx < ninput ; ++ndx)
+      update_element(outdata, ndx, source_bits[ndx], op) ;
 
-   element_type *data = mbits() ;
-   const element_type *source_data = source.cbits() ;
-   for (int i = 0 ; i < full ; ++i)
-      data[i] &= ~source_data[i] ;
-   if (full < elem)
-      data[full] &= ~(source_data[full] & ~(~0 << (minsize % BITS_PER_ELEMENT))) ;
+   for (; ndx < noutput ; ++ndx)
+      update_element(outdata, ndx, 0, op) ;
+
+   fix_tail(outdata) ;
 }
 
 template<typename Element>
