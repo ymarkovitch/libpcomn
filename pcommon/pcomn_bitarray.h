@@ -32,6 +32,7 @@
 #include <pcomn_buffer.h>
 #include <pcomn_integer.h>
 #include <pcomn_function.h>
+#include <pcomn_iterator.h>
 
 #include <algorithm>
 #include <iterator>
@@ -73,7 +74,7 @@ struct bitarray_base {
       bool any() const
       {
          const item_type * const data = cdata() ;
-         const element_type * const start_nzmap = &cb(data)->_nonzero_map->_element ;
+         const element_type * const start_nzmap = nzmap(data) ;
          const element_type * const end_nzmap = bits(data) ;
 
          return std::any_of(start_nzmap, end_nzmap, identity()) ;
@@ -89,7 +90,7 @@ struct bitarray_base {
                if (!std::all_of(b, b + (n-1), [](element_type e){ return e == ~element_type() ; }))
                   return false ;
 
-            case 1: return (b[n-1] & tailmask()) == tailmask() ;
+            case 1: return (b[n-1] & tailmask(size())) == tailmask(size()) ;
             case 0: break ;
          }
          return true ;
@@ -166,13 +167,21 @@ struct bitarray_base {
 
          item_type * const data = mdata() ;
          memset(data, -1, _elements.size()) ;
-         *(bits(data) + (elemcount - 1)) &= tailmask() ;
+         // Fix the tail of bitdata
+         *(bits(data) + (elemcount - 1)) &= tailmask(size()) ;
+         // Fix the tail of the nonzero map
+         *(nzmap(data) + cellndx(elemcount - 1)) &= tailmask(elemcount) ;
+
          cb(data)->cached_bitcount() = size() ;
       }
 
       void set(size_t pos, bool val = true) ;
 
+      /// Flip (invert) all the bits in the array.
       void flip() ;
+
+      /// Flip (invert) the bit at @a pos.
+      /// @return New (i.e. flipped) value of the nit at @a pos.
       bool flip(size_t pos) ;
 
       bool equal(const bitarray_base &other) const
@@ -191,7 +200,7 @@ struct bitarray_base {
       }
 
       /// Given a bit position, get the position of an element containing specified bit
-      static constexpr size_t elemndx(size_t pos) { return pos / BITS_PER_ELEMENT ; }
+      static constexpr size_t cellndx(size_t pos) { return pos / BITS_PER_ELEMENT ; }
 
       /// Given a bit position, get the index inside the appropriate chunk in bits[]
       /// such that 0 <= index < BITS_PER_ELEMENT.
@@ -202,7 +211,10 @@ struct bitarray_base {
          return std::integral_constant<element_type, 1>::value << bitndx(pos) ;
       }
 
-      element_type tailmask() const { return ~(~element_type(1) << bitndx(_size - 1) << 1) ; }
+      static constexpr element_type tailmask(size_t bitcnt)
+      {
+         return ~(~element_type(1) << bitndx(bitcnt - 1)) ;
+      }
 
    private:
       /*************************************************************************
@@ -243,18 +255,12 @@ struct bitarray_base {
       static const item_type _empty_data[control_block::size(1)] ;
 
    private:
-      static constexpr size_t nelements(size_t sz)
-      {
-         return (sz + (BITS_PER_ELEMENT - 1))/BITS_PER_ELEMENT ;
-      }
-
+      static constexpr size_t nelements(size_t sz) { return cellndx(sz + (BITS_PER_ELEMENT - 1)) ; }
       size_t nelements() const { return nelements(_size) ; }
 
-      static constexpr size_t nzmapndx(size_t pos) { return elemndx(elemndx(pos)) ; }
-      static constexpr size_t nzmapbitndx(size_t pos) { return bitndx(nzmapndx(pos)) ; }
+      static constexpr size_t nzmapcellndx(size_t pos) { return cellndx(cellndx(pos)) ; }
+      static constexpr size_t nzmapbitndx(size_t pos) { return bitndx(cellndx(pos)) ; }
       static constexpr element_type nzmapbitmask(size_t pos) { return bitmask(nzmapbitndx(pos)) ; }
-
-      element_type nzmaptailmask() const { return ~(~element_type(1) << bitndx(nelements() - 1) << 1) ; }
 
       // Get bits by data
       element_type *bits(item_type *data)
@@ -280,6 +286,15 @@ struct bitarray_base {
          return r ;
       }
 
+      const element_type *nzmap(const item_type *data) const
+      {
+         return &cb(data)->_nonzero_map[0]._element ;
+      }
+      element_type *nzmap(item_type *data)
+      {
+         return &cb(data)->_nonzero_map[0]._element ;
+      }
+
       // Ensure COW, reset cache, get mutable data
       // Don't COW, don't touch cache
       const item_type *cdata() const
@@ -299,7 +314,7 @@ struct bitarray_base {
 
       size_t count_ones() const ;
 
-      const element_type &const_elem(size_t bitpos) const { return cbits()[elemndx(bitpos)] ; }
+      const element_type &const_elem(size_t bitpos) const { return cbits()[cellndx(bitpos)] ; }
 
    private:
       /*************************************************************************
@@ -324,23 +339,26 @@ struct bitarray_base {
       {}
 
       /*************************************************************************
-       Generic mutators
+       Generic mutator
+       Returns _new_ value of bits(data)[elndx]
       *************************************************************************/
       template<typename Operator>
       element_type update_element(item_type *data, size_t elndx, element_type operand, Operator op)
       {
-         element_type &nzmap_cell = cb(data)->_nonzero_map[elemndx(elndx)]._element ;
-         element_type &element = bits(data)[elndx] ;
+         element_type &nzmap_cell = *(nzmap(data) + cellndx(elndx)) ;
+         element_type &element = *(bits(data) + elndx) ;
          const element_type input = element ;
          const element_type output = op(input, operand) ;
          element = output ;
+         // If the "nonzero state" of the element has been changed (i.e. zero->nonzero or
+         // vice versa), flip the corresponding bit in the nonzero map
          nzmap_cell ^= element_type(!input ^ !output) << bitndx(elndx) ;
          return output ;
       }
 
       void fix_tail(item_type *data)
       {
-         update_element(data, nelements() - 1, tailmask(), std::bit_and<element_type>()) ;
+         update_element(data, nelements() - 1, tailmask(size()), std::bit_and<element_type>()) ;
       }
 } ;
 
@@ -655,15 +673,15 @@ bitarray_base<Element>::bitarray_base(RandomAccessIterator &start, RandomAccessI
 
    item_type * const data = mdata() ;
    element_type * const bitdata = bits(data) ;
-   element_type * const nzmapdata = &cb(data)->_nonzero_map._element ;
+   element_type * const nzmapdata = nzmap(data) ;
    auto &cached_count = cb(data)->cached_bitcount() ;
 
    for (size_t pos = 0 ; pos < size() ; ++pos, ++start)
    {
       if (!*start)
          continue ;
-      bitdata[elemndx(pos)] |= bitmask(pos) ;
-      nzmapdata[nzmapndx(pos)] |= nzmapbitmask(pos) ;
+      bitdata[cellndx(pos)] |= bitmask(pos) ;
+      nzmapdata[nzmapcellndx(pos)] |= nzmapbitmask(pos) ;
       ++cached_count ;
    }
 }
@@ -682,7 +700,7 @@ template<typename Element>
 inline void bitarray_base<Element>::set(size_t pos, bool val)
 {
    NOXCHECK(pos < size()) ;
-   update_element(mdata(), elemndx(pos), (long long)val - 1LL,
+   update_element(mdata(), cellndx(pos), (long long)val - 1LL,
                   [=](element_type data, element_type mask)
                   { return ((data ^ mask) | bitmask(pos)) ^ mask ; }) ;
 }
@@ -693,7 +711,7 @@ inline bool bitarray_base<Element>::flip(size_t pos)
    NOXCHECK(pos < size()) ;
    const element_type mask = bitmask(pos) ;
    return
-      update_element(mdata(), elemndx(pos), mask, std::bit_xor<element_type>()) & mask ;
+      update_element(mdata(), cellndx(pos), mask, std::bit_xor<element_type>()) & mask ;
 }
 
 template<typename Element>
@@ -748,17 +766,37 @@ size_t bitarray_base<Element>::find_first_bit(size_t start, size_t finish) const
    if (start >= finish)
       return finish ;
 
-   size_t pos = elemndx(start) ;
-   const element_type *bits = cbits() + pos ;
-   element_type element = *bits >> bitndx(start) ;
+   const item_type * const self = cdata() ;
+   const element_type * const bit_cells = bits(self) ;
+
+   size_t current_elemndx = cellndx(start) ;
+   element_type element = bit_cells[current_elemndx] >> bitndx(start) ;
+
    if (!element)
    {
-      const size_t endpos = elemndx(finish - 1) ;
-      if (pos >= endpos)
+      start = ++current_elemndx * BITS_PER_ELEMENT ;
+      if (start >= finish)
          return finish ;
-      const element_type * const found_pos = std::find_if(bits + 1, cbits() + endpos, identity()) ;
-      element = *found_pos ;
-      start = (found_pos - cbits()) * BITS_PER_ELEMENT ;
+
+      // Search for the first nonzero element after the current using the nonzero map
+      const element_type * const nzmap_cells = nzmap(self) ;
+
+      size_t current_nzcellndx = cellndx(current_elemndx) ;
+      element_type nzcell = nzmap_cells[current_nzcellndx] & (~element_type() << bitndx(current_elemndx)) ;
+      for ( ; !nzcell ; nzcell = nzmap_cells[current_nzcellndx])
+      {
+         ++current_nzcellndx ;
+         start = current_nzcellndx * (BITS_PER_ELEMENT * BITS_PER_ELEMENT) ;
+         if (start >= finish)
+            return finish ;
+      }
+      current_elemndx = current_nzcellndx * BITS_PER_ELEMENT + bitop::rzcnt(nzcell) ;
+      NOXCHECK(current_elemndx < nelements()) ;
+
+      element = bit_cells[current_elemndx] ;
+      NOXCHECK(element) ;
+
+      start = current_elemndx * BITS_PER_ELEMENT ;
    }
    return std::min(start + bitop::rzcnt(element), finish) ;
 }
@@ -769,6 +807,20 @@ MS_DIAGNOSTIC_POP()
 /** swap specialization for pcomn::bitarray.
 *******************************************************************************/
 PCOMN_DEFINE_SWAP(bitarray) ;
+
+/******************************************************************************/
+/** User-defined literal for bitarrays (e.g. 101_bits, 011111_bits)
+*******************************************************************************/
+inline bitarray operator "" _bit(const char *r)
+{
+   static constexpr auto chartobit = [](char c)
+   {
+      ensure<std::invalid_argument>
+      (c == '0' || c == '1', "Invalid bitarray literal: only 0s and 1s are allowed") ;
+      return c == '1' ;
+   } ;
+   return bitarray(xform_iter(r, chartobit), xform_iter(r + strlen(r), chartobit)) ;
+}
 
 /*******************************************************************************
  Stream output

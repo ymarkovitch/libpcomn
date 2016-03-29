@@ -332,10 +332,10 @@ module gcc {
   toolset.flags gcc.compile OPTIONS <tls-model>ie : -ftls-model=initial-exec ;
   toolset.flags gcc.compile OPTIONS <tls-model>se : -ftls-model=static-exec ;
 
-  toolset.flags gcc.compile OPTIONS   <sanitize>address : -fsanitize=address -fno-common -fno-omit-frame-pointer -fPIC ;
-  toolset.flags gcc.link  FINDLIBS-SA <sanitize>address : asan ;
-  toolset.flags gcc.compile OPTIONS   <sanitize>thread  : -fsanitize=thread -fno-omit-frame-pointer -fPIC ;
-  toolset.flags gcc.link  FINDLIBS-SA <sanitize>thread  : tsan asan ;
+  toolset.flags gcc.compile OPTIONS <sanitize>address : -fsanitize=address -fno-common -fno-omit-frame-pointer -fPIC ;
+  toolset.flags gcc.link    OPTIONS <sanitize>address : -fsanitize=address ;
+  toolset.flags gcc.compile OPTIONS <sanitize>thread  : -fsanitize=thread -fsanitize=address -fno-omit-frame-pointer -fPIC ;
+  toolset.flags gcc.link    OPTIONS <sanitize>thread  : -fsanitize=thread -fsanitize=address ;
 
   # <link>shared turns on -fPIC anyway
   toolset.flags gcc.compile OPTIONS <pic>on/<link>static : -fPIC ;

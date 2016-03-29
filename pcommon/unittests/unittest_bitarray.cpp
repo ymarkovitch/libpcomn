@@ -26,6 +26,7 @@ static bitarray &set_bits(bitarray &a, std::initializer_list<unsigned> bits, boo
 class BitArrayTests : public CppUnit::TestFixture {
 
       void Test_Constructors() ;
+      void Test_Set_Reset_Bits() ;
       void Test_Bit_Count() ;
       void Test_Bit_Search() ;
       void Test_Positional_Iterator() ;
@@ -33,6 +34,7 @@ class BitArrayTests : public CppUnit::TestFixture {
       CPPUNIT_TEST_SUITE(BitArrayTests) ;
 
       CPPUNIT_TEST(Test_Constructors) ;
+      CPPUNIT_TEST(Test_Set_Reset_Bits) ;
       CPPUNIT_TEST(Test_Bit_Count) ;
       CPPUNIT_TEST(Test_Bit_Search) ;
       CPPUNIT_TEST(Test_Positional_Iterator) ;
@@ -132,6 +134,85 @@ void BitArrayTests::Test_Constructors()
 
    CPPUNIT_LOG_EQ(string_cast(b128_01), std::string(128, '1')) ;
    CPPUNIT_LOG_ASSERT(b128_01.all()) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_EQ(string_cast(1_bit), "1") ;
+   CPPUNIT_LOG_EQ(string_cast(0_bit), "0") ;
+   CPPUNIT_LOG_EXCEPTION(2_bit, std::invalid_argument) ;
+   CPPUNIT_LOG_EQ(string_cast(0001_bit), "0001") ;
+   CPPUNIT_LOG_EQ(string_cast(01111111100000000111111110000000011111111000000001111111100000000_bit),
+                  "01111111100000000111111110000000011111111000000001111111100000000") ;
+}
+
+void BitArrayTests::Test_Set_Reset_Bits()
+{
+   bitarray b1_00 (1) ;
+   bitarray b1_01 (1, true) ;
+
+   CPPUNIT_LOG_NOT_EQUAL(b1_00, b1_01) ;
+   CPPUNIT_LOG_IS_FALSE(b1_00 == b1_01) ;
+   CPPUNIT_LOG_ASSERT(b1_00.none()) ;
+   CPPUNIT_LOG_IS_FALSE(b1_00.any()) ;
+   CPPUNIT_LOG_IS_FALSE(b1_00.all()) ;
+
+   CPPUNIT_LOG_IS_FALSE(b1_01.none()) ;
+   CPPUNIT_LOG_ASSERT(b1_01.any()) ;
+   CPPUNIT_LOG_ASSERT(b1_01.all()) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_RUN(b1_00.set()) ;
+   CPPUNIT_LOG_EQUAL(b1_00, b1_01) ;
+   CPPUNIT_LOG_IS_FALSE(b1_00 != b1_01) ;
+
+   CPPUNIT_LOG_IS_FALSE(b1_00.none()) ;
+   CPPUNIT_LOG_ASSERT(b1_00.any()) ;
+   CPPUNIT_LOG_ASSERT(b1_00.all()) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   bitarray b2_00 (2) ;
+   bitarray b2_01 (2, true) ;
+   CPPUNIT_LOG_EQ(b2_00.size(), 2) ;
+
+   CPPUNIT_LOG_IS_FALSE(b2_00 == b2_01) ;
+   CPPUNIT_LOG_ASSERT(b2_00.none()) ;
+   CPPUNIT_LOG_IS_FALSE(b2_00.any()) ;
+   CPPUNIT_LOG_IS_FALSE(b2_00.all()) ;
+
+   CPPUNIT_LOG_IS_FALSE(b2_01.none()) ;
+   CPPUNIT_LOG_ASSERT(b2_01.any()) ;
+   CPPUNIT_LOG_ASSERT(b2_01.all()) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_RUN(b2_01.flip(1)) ;
+   CPPUNIT_LOG_EQ(string_cast(b2_01), "10") ;
+   CPPUNIT_LOG_NOT_EQUAL(b2_00, b2_01) ;
+   CPPUNIT_LOG_RUN(b2_00.flip(0)) ;
+   CPPUNIT_LOG_EQUAL(b2_00, b2_01) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   bitarray b65_00 (65) ;
+   bitarray b65_01 (65, true) ;
+
+   CPPUNIT_LOG_IS_FALSE(b65_00 == b65_01) ;
+   CPPUNIT_LOG_ASSERT(b65_00.none()) ;
+   CPPUNIT_LOG_IS_FALSE(b65_00.any()) ;
+   CPPUNIT_LOG_IS_FALSE(b65_00.all()) ;
+
+   CPPUNIT_LOG_IS_FALSE(b65_01.none()) ;
+   CPPUNIT_LOG_ASSERT(b65_01.any()) ;
+   CPPUNIT_LOG_ASSERT(b65_01.all()) ;
+
+   CPPUNIT_LOG_RUN(for(int i = 0 ; i < 65 ; b65_00.set(i++));) ;
+   CPPUNIT_LOG_EQUAL(b65_00, b65_01) ;
+   CPPUNIT_LOG_RUN(b65_00.reset(64)) ;
+   CPPUNIT_LOG_IS_FALSE(b65_01.flip(64)) ;
+   CPPUNIT_LOG_EQUAL(b65_00, b65_01) ;
+
+   CPPUNIT_LOG_RUN(b65_00.reset()) ;
+   CPPUNIT_LOG_NOT_EQUAL(b65_00, b65_01) ;
+   CPPUNIT_LOG_RUN(b65_00.set(64)) ;
+   CPPUNIT_LOG_RUN(b65_01.flip()) ;
+   CPPUNIT_LOG_EQUAL(b65_00, b65_01) ;
 }
 
 void BitArrayTests::Test_Bit_Count()
@@ -202,8 +283,43 @@ void BitArrayTests::Test_Positional_Iterator()
 {
    bitarray b1 (4096) ;
    set_bits(b1, {36, 44, 48, 52, 64, 70, 72, 76, 100, 208}) ;
-   CPPUNIT_LOG_EQ(std::vector<unsigned>(b1.begin_positional(), b1.end_positional()),
-                  (std::vector<unsigned>{36, 44, 48, 52, 64, 70, 72, 76, 100, 208})) ;
+   auto bp = b1.begin_positional() ;
+   const auto ep = b1.end_positional() ;
+   CPPUNIT_LOG_ASSERT(bp != ep) ;
+   CPPUNIT_LOG_EQ(*bp, 36) ;
+   CPPUNIT_LOG_ASSERT(++bp != ep) ;
+   CPPUNIT_LOG_EQ(*bp, 44) ;
+   CPPUNIT_LOG_ASSERT(++bp != ep) ;
+   CPPUNIT_LOG_EQ(*bp, 48) ;
+   CPPUNIT_LOG_ASSERT(++bp != ep) ;
+   CPPUNIT_LOG_EQ(*bp, 52) ;
+   CPPUNIT_LOG_ASSERT(++bp != ep) ;
+   CPPUNIT_LOG_EQ(*bp, 64) ;
+   CPPUNIT_LOG_ASSERT(++bp != ep) ;
+   CPPUNIT_LOG_EQ(*bp, 70) ;
+   CPPUNIT_LOG_EQ(*bp, 70) ;
+   CPPUNIT_LOG_ASSERT(++bp != ep) ;
+   CPPUNIT_LOG_EQ(*bp, 72) ;
+   CPPUNIT_LOG_ASSERT(++bp != ep) ;
+   CPPUNIT_LOG_EQ(*bp, 76) ;
+   CPPUNIT_LOG_ASSERT(++bp != ep) ;
+   CPPUNIT_LOG_EQ(*bp, 100) ;
+   CPPUNIT_LOG_ASSERT(++bp != ep) ;
+   CPPUNIT_LOG_EQ(*bp, 208) ;
+   CPPUNIT_LOG_ASSERT(++bp == ep) ;
+   CPPUNIT_LOG_ASSERT(bp == ep) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_RUN(b1.reset()) ;
+   CPPUNIT_LOG_RUN(bp = b1.begin_positional()) ;
+   CPPUNIT_LOG_ASSERT(bp == ep) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_RUN(b1.set(4095)) ;
+   CPPUNIT_LOG_RUN(bp = b1.begin_positional()) ;
+   CPPUNIT_LOG_ASSERT(bp != ep) ;
+   CPPUNIT_LOG_EQ(*bp, 4095) ;
+   CPPUNIT_LOG_ASSERT(++bp == ep) ;
 }
 
 int main(int argc, char *argv[])
