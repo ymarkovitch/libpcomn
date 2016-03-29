@@ -87,7 +87,7 @@ inline const char *demangled_typename(char *buf, size_t buflen)
 }
 
 #define PCOMN_DEMANGLE(name) (::pcomn::demangle((name), std::array<char, 1024>().begin(), 1024))
-#define PCOMN_CLASSNAME(type) (pcomn::demangled_typename<type >(std::array<char, 1024>().begin(), 1024))
+#define PCOMN_CLASSNAME(type, ...) (pcomn::demangled_typename<type, ##__VA_ARGS__>(std::array<char, 1024>().begin(), 1024))
 
 #else
 
