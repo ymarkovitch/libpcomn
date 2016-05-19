@@ -57,10 +57,12 @@ struct _atomic_set_handle {
 } ;
 
 template<typename T> struct _set_handle<T *> : _atomic_set_handle<T *> {} ;
-template<> struct _set_handle<atomic_t>   : _atomic_set_handle<atomic_t> {} ;
-template<> struct _set_handle<uatomic_t>  : _atomic_set_handle<uatomic_t> {} ;
-template<> struct _set_handle<int>        : _atomic_set_handle<int> {} ;
-template<> struct _set_handle<unsigned>   : _atomic_set_handle<unsigned> {} ;
+template<> struct _set_handle<int>           : _atomic_set_handle<int> {} ;
+template<> struct _set_handle<unsigned>      : _atomic_set_handle<unsigned> {} ;
+template<> struct _set_handle<long>          : _atomic_set_handle<long> {} ;
+template<> struct _set_handle<unsigned long> : _atomic_set_handle<unsigned long> {} ;
+template<> struct _set_handle<long long>     : _atomic_set_handle<long long> {} ;
+template<> struct _set_handle<unsigned long long> : _atomic_set_handle<unsigned long long> {} ;
 
 /******************************************************************************/
 /** POSIX I/O file descriptor handle traits.

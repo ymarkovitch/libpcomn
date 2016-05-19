@@ -25,11 +25,11 @@
 #include <pcomn_sys.h>
 #include <pcomn_hash.h>
 #include <pcomn_flgout.h>
-#include <pcomn_atomic.h>
 #include <pcomn_ivector.h>
 #include <pcomn_unistd.h>
 
 #include <vector>
+#include <atomic>
 
 #include <stddef.h>
 
@@ -375,7 +375,7 @@ class _PCOMNEXP MMapStorage : public Storage {
                const size_t written = end - begin == 1 ?
                   write_buffer(begin->iov_base, begin->iov_len) : write_vector(begin, end) ;
 
-               atomic_op::inc(&_opcount) ;
+               _opcount.fetch_add(1, std::memory_order_acq_rel) ;
                return written ;
             }
 
@@ -397,11 +397,11 @@ class _PCOMNEXP MMapStorage : public Storage {
             /// Set new CRC32 value
             uint32_t set_crc32(uint32_t value) { return pcomn::xchange(_crc32, value) ; }
 
-            unsigned opcount() const { return _opcount ; }
+            ulonglong_t opcount() const { return _opcount.load(std::memory_order_relaxed) ; }
 
-            unsigned set_opcount(unsigned count)
+            ulonglong_t set_opcount(ulonglong_t count)
             {
-               return atomic_op::xchg(&_opcount, (uatomic_t)count) ;
+               return _opcount.exchange(count, std::memory_order_acq_rel) ;
             }
 
             uint64_t uid() const { return _uid ; }
@@ -467,14 +467,14 @@ class _PCOMNEXP MMapStorage : public Storage {
             FileState      _state ;
             FormatError    _corruption ;
 
-            uint32_t       _crc32 ;
-            uatomic_t      _opcount ;
-            generation_t   _generation ;
-            uint64_t       _uid ;
-            int64_t        _seg_id ;
+            uint32_t                _crc32 ;
+            std::atomic<uint64_t>   _opcount ;
+            generation_t            _generation ;
+            uint64_t                _uid ;
+            int64_t                 _seg_id ;
 
             magic_t        _user_magic ;
-            fileoff_t          _data_begin ;
+            fileoff_t      _data_begin ;
 
             void probably_calc_crc32(const void *buf, size_t sz)
             {

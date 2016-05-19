@@ -28,15 +28,15 @@ namespace pcomn {
 /// @param counted  An object to add a reference to. If @a counted is, NULL the function
 /// does nothing.
 /// @return Value of @a counted.
-template<atomic_t init, typename ThreadPolicy>
-inline PTActiveCounter<init, ThreadPolicy> *inc_ref(PTActiveCounter<init, ThreadPolicy> *counted)
+template<typename C, intptr_t init>
+inline active_counter<C, init> *inc_ref(active_counter<C, init> *counted)
 {
    counted && counted->inc() ;
    return counted ;
 }
 
-template<atomic_t init, typename ThreadPolicy>
-inline PTActiveCounter<init, ThreadPolicy> *dec_ref(PTActiveCounter<init, ThreadPolicy> *counted)
+template<typename C, intptr_t init>
+inline active_counter<C, init> *dec_ref(active_counter<C, init> *counted)
 {
    counted && counted->dec() ;
    return counted ;
@@ -78,7 +78,7 @@ struct refcount_basic_policy {
       static C instances(const T *ptr)
       {
          NOXCHECK(ptr) ;
-         return atomic_op::get(&(ptr->*counter)) ;
+         return atomic_op::load(&(ptr->*counter), std::memory_order_consume) ;
       }
 
       static C inc_ref(T *ptr)
@@ -108,17 +108,18 @@ class PRefBase {
 /******************************************************************************/
 /** Reference counter: the base class for reference counted objects.
 *******************************************************************************/
-template<typename ThreadPolicy = atomic_op::MultiThreaded>
-class PTRefCounter : public PRefBase, public PTActiveCounter<0, ThreadPolicy> {
-      typedef PTActiveCounter<0, ThreadPolicy> ancestor ;
+template<typename C = std::atomic<intptr_t>>
+class PTRefCounter : public PRefBase, public active_counter<C> {
+      typedef active_counter<C> ancestor ;
    public:
-      typedef refcount_policy<PTRefCounter<ThreadPolicy> > refcount_policy_type ;
+      using typename ancestor::count_type ;
+      typedef refcount_policy<PTRefCounter<C>> refcount_policy_type ;
 
       /// Alias for instances(), added to match std::shared_ptr insterface
-      intptr_t use_count() const { return instances() ; }
+      count_type use_count() const { return instances() ; }
 
       /// Get current instance counter value.
-      intptr_t instances() const { return this->count() ; }
+      count_type instances() const { return this->count() ; }
 
    protected:
       /// The default constructor creates object with zero counter.
@@ -132,16 +133,16 @@ class PTRefCounter : public PRefBase, public PTActiveCounter<0, ThreadPolicy> {
       /// Destructor does nothing, declared for inheritance protection and debugging purposes.
       ~PTRefCounter() = default ;
 
-      /// Deletes "this" (itself); overrides pure virtual PTActiveCounter::dec_action().
-      atomic_t dec_action(atomic_t threshold) override
+      /// Deletes "this" (itself); overrides pure virtual active_counter::dec_action().
+      count_type dec_action(count_type threshold) override
       {
          self_destroy(this) ;
          return threshold ;
       }
 
       /// Does nothing, provided in order to implement pure virtual function of
-      /// PTActiveCounter.
-      atomic_t inc_action(atomic_t threshold) override
+      /// active_counter.
+      count_type inc_action(count_type threshold) override
       {
          return threshold ;
       }
@@ -153,20 +154,21 @@ typedef PTRefCounter<> PRefCount ;
 /** Intrusive reference-counted pointer policy for objects based on
  PTRefCounter (or PRefCount)
 *******************************************************************************/
-template<typename ThreadPolicy>
-struct refcount_policy<PTRefCounter<ThreadPolicy> > {
+template<typename C>
+struct refcount_policy<PTRefCounter<C>> {
+      typedef typename PTRefCounter<C>::count_type count_type ;
 
-      static atomic_t instances(const PTRefCounter<ThreadPolicy> *counted)
+      static count_type instances(const PTRefCounter<C> *counted)
       {
          NOXCHECK(counted) ;
          return counted->instances() ;
       }
-      static atomic_t inc_ref(PTRefCounter<ThreadPolicy> *counted)
+      static count_type inc_ref(PTRefCounter<C> *counted)
       {
          NOXCHECK(counted) ;
          return counted->inc() ;
       }
-      static atomic_t dec_ref(PTRefCounter<ThreadPolicy> *counted)
+      static count_type dec_ref(PTRefCounter<C> *counted)
       {
          NOXCHECK(counted) ;
          return counted->dec() ;
@@ -323,29 +325,24 @@ inline shared_intrusive_ptr<T> sptr_cast(const shared_intrusive_ptr<U> &src)
                      class ref_lease
 *******************************************************************************/
 template<class T>
-class ref_lease  {
-      PCOMN_NONCOPYABLE(ref_lease) ;
-   public:
-      explicit ref_lease(T *guarded) : _guarded(guarded), _initcount(inccount(guarded))
-      {
-         NOXCHECK(_initcount >= 0) ;
-      }
+struct ref_lease  {
+      explicit ref_lease(T *guarded) : _guarded(guarded) { inccount(guarded) ; }
+      ~ref_lease() { deccount(_guarded) ; }
 
-      ~ref_lease() { NOXVERIFY(deccount(_guarded) >= _initcount) ; }
    private:
       T * const _guarded ;
-      const atomic_t _initcount ;
 
-      template<atomic_t init, typename AtomicPolicy>
-      static atomic_t inccount(PTActiveCounter<init, AtomicPolicy> *counter)
+      template<typename C, intptr_t init>
+      static void inccount(active_counter<C, init> *counter)
       {
-         return counter ? counter->inc_passive() - 1 : 0 ;
+         if (counter) counter->inc_passive() ;
       }
-      template<atomic_t init, typename AtomicPolicy>
-      static atomic_t deccount(PTActiveCounter<init, AtomicPolicy> *counter)
+      template<typename C, intptr_t init>
+      static void deccount(active_counter<C, init> *counter)
       {
-         return counter ? counter->dec_passive() : 0 ;
+         if (counter) counter->dec_passive() ;
       }
+      PCOMN_NONCOPYABLE(ref_lease) ;
 } ;
 
 /*******************************************************************************
@@ -492,9 +489,9 @@ template<class T> class sptr_wrapper_tag ;
 /******************************************************************************/
 /** sptr_wrapper<T> is a wrapper around a smartpointer of type T
 
- sptr_wrapper<T> is implicitly convertible to (T::element_type *) and, as such, may be
- efficient as a bound plain pointer argument
- (like e.g. std::bind(&Foo::bar, sptr(pcomn::shared_intrusive_ptr<Foo> >(new Foo))))
+ sptr_wrapper<T> is implicitly convertible to (T::element_type *) and designed for
+ use as a bound plain pointer argument in closures and std::bind
+ (like e.g. std::bind(&Foo::bar,sptr(pcomn::shared_intrusive_ptr<Foo>>(new Foo))))
 *******************************************************************************/
 template<class T>
 class sptr_wrapper : private sptr_wrapper_tag<T> {

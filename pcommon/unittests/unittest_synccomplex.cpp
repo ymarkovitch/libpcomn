@@ -30,12 +30,12 @@ class IdentDispenserTests : public CppUnit::TestFixture {
 
       CPPUNIT_TEST_SUITE(IdentDispenserTests) ;
 
-      CPPUNIT_TEST(Test_IdentDispenser_SingleThread<pcomn::atomic32_t>) ;
-      CPPUNIT_TEST(Test_IdentDispenser_SingleThread<pcomn::atomic64_t>) ;
-      CPPUNIT_TEST(Test_IdentDispenser_SingleThread<pcomn::uatomic64_t>) ;
-      CPPUNIT_TEST(Test_IdentDispenser_MultiThread<pcomn::atomic32_t>) ;
-      CPPUNIT_TEST(Test_IdentDispenser_MultiThread<pcomn::atomic64_t>) ;
-      CPPUNIT_TEST(Test_IdentDispenser_MultiThread<pcomn::uatomic64_t>) ;
+      CPPUNIT_TEST(Test_IdentDispenser_SingleThread<int32_t>) ;
+      CPPUNIT_TEST(Test_IdentDispenser_SingleThread<int64_t>) ;
+      CPPUNIT_TEST(Test_IdentDispenser_SingleThread<uint64_t>) ;
+      CPPUNIT_TEST(Test_IdentDispenser_MultiThread<int32_t>) ;
+      CPPUNIT_TEST(Test_IdentDispenser_MultiThread<int64_t>) ;
+      CPPUNIT_TEST(Test_IdentDispenser_MultiThread<uint64_t>) ;
 
       CPPUNIT_TEST_SUITE_END() ;
 } ;

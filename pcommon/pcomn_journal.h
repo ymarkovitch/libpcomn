@@ -420,14 +420,14 @@ class _PCOMNEXP Journallable {
       friend class Operation ;
 
       /// Mutually exclusive states of the journallable object.
-      enum State {
+      enum State : int64_t {
          ST_INITIAL,    /**< Initial state, the Journallable get to this upon construction */
          ST_RESTORING,  /**< Journallable is in the process of restoring from the journal */
          ST_RESTORED,   /**< Restored from the journal, no journal to write to */
          ST_ACTIVE,     /**< There is a journal to write operations to */
          ST_CHECKPOINT, /**< Making a checkpoint */
 
-         ST_INVALID  = (atomic_t)~(atomic_t())
+         ST_INVALID  = ~0LL
       } ;
 
       virtual ~Journallable()
@@ -490,7 +490,7 @@ class _PCOMNEXP Journallable {
       /// @overload
       void apply(const operation_ptr &optr) ;
 
-      uatomic_t changecount() const { return atomic_op::get(&_changecnt) ; }
+      uint64_t changecount() const { return atomic_op::load(&_changecnt, std::memory_order_acq_rel) ; }
 
       friend std::ostream &operator<<(std::ostream &os, const Journallable &j)
       {
@@ -542,11 +542,11 @@ class _PCOMNEXP Journallable {
       }
 
    private:
-      mutable shared_mutex _lock ;
-      std::mutex           _cplock ;    /* Checkpoint lock */
-      State                _state ;
-      Port *               _journal ; /* The current journal (may change during object lifetime) */
-      uatomic_t            _changecnt ;
+      mutable shared_mutex    _lock ;
+      std::mutex              _cplock ;    /* Checkpoint lock */
+      State                   _state ;
+      Port *                  _journal ; /* The current journal (may change during object lifetime) */
+      std::atomic<uint64_t>   _changecnt ;
 
       typedef shared_lock<shared_mutex> read_guard ;
       typedef std::lock_guard<shared_mutex> write_guard ;

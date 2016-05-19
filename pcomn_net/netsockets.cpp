@@ -10,7 +10,8 @@
 *******************************************************************************/
 #include <pcomn_net/netsockets.h>
 #include <pcomn_net/netexcept.h>
-#include <pcomn_atomic.h>
+
+#include <mutex>
 
 #include <signal.h>
 
@@ -54,16 +55,23 @@ bool basic_socket::close(bool crash) throw()
 
 void basic_socket::init_network()
 {
-    static atomic_t netinit_lock ;
-    if (atomic_op::xchg(&netinit_lock, (atomic_t)1))
+    static std::mutex netinit_lock ;
+    static bool initialized ;
+    if (initialized)
         return ;
 
-    struct sigaction ignore ;
-    fill_mem(ignore) ;
-    ignore.sa_handler = SIG_IGN ;
-    // Prevent socket applications from being killed due to a peer closed a socket!
-    sigaction(SIGPIPE, &ignore, NULL) ;
-    sigaction(SIGHUP, &ignore, NULL) ;
+    netinit_lock.lock() ;
+    if (!initialized)
+    {
+        struct sigaction ignore ;
+        fill_mem(ignore) ;
+        ignore.sa_handler = SIG_IGN ;
+        // Prevent socket applications from being killed due to a peer closed a socket!
+        sigaction(SIGPIPE, &ignore, NULL) ;
+        sigaction(SIGHUP, &ignore, NULL) ;
+        initialized = true ;
+    }
+    netinit_lock.unlock() ;
 }
 
 /*******************************************************************************

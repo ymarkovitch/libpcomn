@@ -12,41 +12,79 @@
  CREATION DATE:   16 Apr 2001
 *******************************************************************************/
 /** @file
-  Atomic operations (inc, dec, xchg) support for all platforms.
+  Global functions implementing atomic operations on "raw" types using their
+  std::atomic counterparts.
+
+ Provides "classic" atomic operations on "raw" variables, like e.g. atomic_op::inc(int*)
+ (vs. std::atomic<int>).
+
+ Sometimes "explicit atomic operation on a suitable standard layout type" is
+ better way than using std::atomic<>.
+ Sometimes it is the @em only way, for e.g. interop with pre-existing code.
 *******************************************************************************/
 #include <pcomn_platform.h>
-#include <pcomn_meta.h>
+
+#include <atomic>
+#include <type_traits>
 
 #include <stddef.h>
 
 namespace pcomn {
 
-typedef intptr_t  atomic_t ;
-typedef uintptr_t uatomic_t ;
+template<typename C>
+struct atomic_type {
+      typedef std::atomic<typename std::remove_cv<C>::type> type ;
+      typedef C value_type ;
+} ;
 
-typedef int32_t   atomic32_t ;
-typedef uint32_t  uatomic32_t ;
+template<typename C>
+struct atomic_type<std::atomic<C>> : atomic_type<C> {} ;
+template<typename C>
+struct atomic_type<const std::atomic<C>> : atomic_type<const C> {} ;
+template<typename C>
+struct atomic_type<const volatile std::atomic<C>> : atomic_type<const volatile C> {} ;
+template<typename C>
+struct atomic_type<volatile std::atomic<C>> : atomic_type<volatile C> {} ;
 
-typedef PCOMN_ALIGNED(8) int64_t    atomic64_t ;
-typedef PCOMN_ALIGNED(8) uint64_t   uatomic64_t ;
-
-namespace atomic_op {
-template<typename T, bool is_integer> struct implementor ;
-}
-} // end of namespace pcomn
-
-#include PCOMN_PLATFORM_HEADER(pcomn_atomic.cc)
-
-namespace pcomn {
+template<typename C>
+using atomic_type_t = typename atomic_type<C>::type ;
+template<typename C>
+using atomic_value_t = typename atomic_type<C>::value_type ;
 
 template<typename T>
-struct is_atomic : bool_constant<std::is_pointer<T>::value ||
-                                 std::is_integral<T>::value &&
-                                 std::alignment_of<T>::value >= 4 &&
-                                 sizeof(T) >= 4 && sizeof(T) <= 8> {} ;
+using is_atomic_placement =
+   std::integral_constant<bool, sizeof(T) >= 4 && sizeof(T) <= sizeof(void *) && alignof(T) >= sizeof(T)> ;
 
-template<typename T, typename R> struct
-enable_if_atomic : std::enable_if<is_atomic<T>::value, R> {} ;
+/******************************************************************************/
+/** If the type is eligible for both atomic load/store and integral or pointer
+ arithmetic operations, provides the member constant @a value equal to true;
+ otherwise, false.
+*******************************************************************************/
+template<typename T>
+struct is_atomic_arithmetic : std::integral_constant
+<bool,
+ std::is_pointer<T>::value ||
+ std::is_integral<T>::value && is_atomic_placement<T>::value>
+{} ;
+
+/******************************************************************************/
+/** If the type is eligible for atomic store, load, and exchange, provides the member
+ constant @a value equal to true; otherwise, false.
+*******************************************************************************/
+template<typename T>
+struct is_atomic : std::integral_constant
+<bool,
+ is_atomic_arithmetic<T>::value ||
+ std::is_trivially_copyable<T>::value && is_atomic_placement<T>::value>
+{} ;
+
+template<typename T, typename R = T>
+using enable_if_atomic_t =
+   typename std::enable_if<is_atomic<atomic_value_t<T>>::value, R>::type ;
+
+template<typename T, typename R = T>
+using enable_if_atomic_arithmetic_t =
+   typename std::enable_if<is_atomic_arithmetic<atomic_value_t<T>>::value, R>::type ;
 
 /******************************************************************************/
 /** @namespace pcomn::atomic_op
@@ -54,166 +92,102 @@ enable_if_atomic : std::enable_if<is_atomic<T>::value, R> {} ;
 *******************************************************************************/
 namespace atomic_op {
 
-template<size_t sz, bool sign = false> struct traits ;
-
-template<> struct traits<4, true>    { typedef atomic32_t type ; } ;
-template<> struct traits<4, false>   { typedef uatomic32_t type ; } ;
-template<> struct traits<8, true>    { typedef atomic64_t type ; } ;
-template<> struct traits<8, false>   { typedef uatomic64_t type ; } ;
-
-template<typename T, typename R>
-using
-atomic_result_t = std::enable_if_t<((sizeof(T)==4 || sizeof(T)==8) &&
-                                    std::alignment_of<T>::value >= std::alignment_of<typename traits<sizeof(T)>::type>::value), R> ;
-
 /// Atomic preincrement
 template<typename T>
-inline typename enable_if_atomic<T, T>::type
+inline enable_if_atomic_arithmetic_t<atomic_value_t<T>>
 inc(T *value)
 {
-   return implementor<T, std::is_integral<T>::value>::inc(value) ;
+   return ++*reinterpret_cast<atomic_type_t<T> *>(value) ;
 }
 
 /// Atomic predecrement
 template<typename T>
-inline typename enable_if_atomic<T, T>::type
+inline enable_if_atomic_arithmetic_t<atomic_value_t<T>>
 dec(T *value)
 {
-   return implementor<T, std::is_integral<T>::value>::dec(value) ;
+   return --*reinterpret_cast<atomic_type_t<T> *>(value) ;
 }
 
 /// Atomic add
 template<typename T>
-inline typename enable_if_atomic<T, T>::type
+inline enable_if_atomic_arithmetic_t<atomic_value_t<T>>
 add(T *value, ptrdiff_t addend)
 {
-   return implementor<T, std::is_integral<T>::value>::add(value, addend) ;
+   return *reinterpret_cast<atomic_type_t<T> *>(value) += addend ;
 }
 
 /// Atomic subtract
 template<typename T>
-inline typename enable_if_atomic<T, T>::type
+inline enable_if_atomic_arithmetic_t<atomic_value_t<T>>
 sub(T *value, ptrdiff_t subtrahend)
 {
-   return implementor<T, std::is_integral<T>::value>::sub(value, subtrahend) ;
+   return *reinterpret_cast<atomic_type_t<T> *>(value) -= subtrahend ;
 }
 
-/// Atomic get value
+/// Atomic load value
 template<typename T>
-inline atomic_result_t<T, T> get(T *value)
+inline enable_if_atomic_t<atomic_value_t<T>>
+load(T *value, std::memory_order order = std::memory_order_seq_cst)
 {
-   typedef typename traits<sizeof(T)>::type atomic ;
+   return reinterpret_cast<const atomic_type_t<T> *>(value)
+      ->load(order) ;
+}
 
-   atomic result = implementor<atomic, true>::get((atomic *)(void *)value) ;
-   return reinterpret_cast<T &&>(*(&result)) ;
+/// Atomic store value
+template<typename T>
+inline enable_if_atomic_t<T, void>
+store(T *value, atomic_value_t<T> new_value, std::memory_order order = std::memory_order_seq_cst)
+{
+   reinterpret_cast<atomic_type_t<T> *>(value)->store(new_value, order) ;
 }
 
 /// Atomic set value and return previous
 template<typename T>
-inline atomic_result_t<T, T> xchg(T *value, T new_value)
+inline enable_if_atomic_t<atomic_value_t<T>>
+xchg(T *value, atomic_value_t<T> new_value, std::memory_order order = std::memory_order_seq_cst)
 {
-   typedef typename traits<sizeof(T)>::type atomic ;
-   atomic result = implementor<atomic, true>::xchg((atomic *)(void *)value,
-                                                   *(atomic *)(void *)&new_value) ;
-   return reinterpret_cast<T &&>(*(&result)) ;
+   return reinterpret_cast<atomic_type_t<T> *>(value)
+      ->exchange(new_value, order) ;
 }
 
 /// Atomic compare-and-swap operation
 template<typename T>
-inline atomic_result_t<T, bool> cas(T *value, T old_value, T new_value)
+inline enable_if_atomic_t<T, bool>
+cas(T *value, atomic_value_t<T> old_value, atomic_value_t<T> new_value,
+    std::memory_order order = std::memory_order_seq_cst)
 {
-   typedef typename traits<sizeof(T)>::type atomic ;
-
-   return implementor<atomic, true>::cas((atomic *)(void *)value,
-                                         *(atomic *)(void *)&old_value,
-                                         *(atomic *)(void *)&new_value) ;
+   return reinterpret_cast<atomic_type_t<T> *>(value)
+      ->compare_exchange_strong(old_value, new_value, order) ;
 }
 
 /// Atomic set bound
 /// @return true, is a value was set; false, if value was already changed
 template<typename T, typename Predicate>
-inline atomic_result_t<T, bool> set_bound(T *value, T bound, Predicate pred)
+inline enable_if_atomic_t<T, bool>
+set_bound(T *value, atomic_value_t<T> bound, Predicate pred)
 {
    bool result = false ;
-   for(T current ; !pred((current = get(value)), bound) && !(result|=cas(value, current, bound)) ;) ;
+   for(T current ; !pred((current = load(value)), bound) && !(result|=cas(value, current, bound)) ;) ;
    return result ;
 }
 
 template<typename T>
-inline atomic_result_t<T, T> set_flags(T *value, T flags)
+inline enable_if_atomic_t<atomic_value_t<T>>
+set_flags(T *value, atomic_value_t<T> flags)
 {
    T cf ;
-   while ((((cf = get(value)) & flags) != flags) && !cas(value, cf, cf | flags)) ;
+   while ((((cf = load(value)) & flags) != flags) && !cas(value, cf, cf | flags)) ;
    return cf | flags ;
 }
 
 template<typename T>
-inline atomic_result_t<T, T> clear_flags(T *value, T flags)
+inline enable_if_atomic_t<atomic_value_t<T>>
+clear_flags(T *value, atomic_value_t<T> flags)
 {
    T cf ;
-   while (((cf = get(value)) & flags) && !cas(value, cf, cf &~ flags)) ;
+   while (((cf = load(value)) & flags) && !cas(value, cf, cf &~ flags)) ;
    return cf &~ flags ;
 }
-
-/*******************************************************************************
- Atomic operations threading policies
-*******************************************************************************/
-/******************************************************************************/
-/** Single-threaded program policy.
-*******************************************************************************/
-struct SingleThreaded {
-
-      template<typename T> static T inc(T &value) { return ++value ; }
-      template<typename T> static T dec(T &value) { return --value ; }
-      template<typename T> static T get(T &value)
-      {
-         PCOMN_STATIC_CHECK(std::is_trivially_copyable<T>::value) ;
-         return value ;
-      }
-      template<typename T> static T xchg(T &value, const T &new_value)
-      {
-         PCOMN_STATIC_CHECK(std::is_trivially_copyable<T>::value) ;
-         const T old = value ;
-         value = new_value ;
-         return old ;
-      }
-
-      template<typename T>
-      static bool cas(T &value, const T &old_value, const T &new_value)
-      {
-         PCOMN_STATIC_CHECK(std::is_trivially_copyable<T>::value) ;
-         if (old_value != value)
-            return false ;
-         value = new_value ;
-         return true ;
-      }
-
-      template<typename T>
-      static T reset(T &value) { SingleThreaded::xchg(value, T()) ; }
-} ;
-
-/******************************************************************************/
-/** Multiple-threaded program policy.
-*******************************************************************************/
-struct MultiThreaded {
-      template<typename T> static T inc(T &value) { return ::pcomn::atomic_op::inc(&value) ; }
-      template<typename T> static T dec(T &value) { return ::pcomn::atomic_op::dec(&value) ; }
-
-      template<typename T> static T get(T &value) { return ::pcomn::atomic_op::get(&value) ; }
-      template<typename T> static T xchg(T &value, const T &new_value)
-      {
-         return ::pcomn::atomic_op::xchg(&value, new_value) ;
-      }
-
-      template<typename T>
-      static T reset(T &value) { MultiThreaded::xchg(value, T()) ; }
-
-      template<typename T>
-      static bool cas(T &value, const T &old_value, const T &new_value)
-      {
-         return ::pcomn::atomic_op::cas(&value, old_value, new_value) ;
-      }
-} ;
 
 } // end of namespace pcomn::atomic_op
 } // end of namespace pcomn

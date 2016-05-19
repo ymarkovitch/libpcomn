@@ -259,7 +259,7 @@ int64_t Scheduler::reschedule_tasks()
 
       // Did we have enough time to complete running before the next scheduling?
       // If not, skip this round
-      if (task->_sched_count == atomic_op::get(&task->_finished_count))
+      if (task->_sched_count == atomic_op::load(&task->_finished_count, std::memory_order_acq_rel))
       {
          TRACEPX(PCOMN_Scheduler, DBGL_NORMAL, "Schedule the task " << *task << " to run now ("
                  << now << "), " << *this) ;

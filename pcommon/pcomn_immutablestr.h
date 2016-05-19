@@ -23,6 +23,7 @@
 #include <pcomn_meta.h>
 #include <pcomn_metafunctional.h>
 #include <pcomn_atomic.h>
+#include <pcomn_counter.h>
 #include <pcomn_function.h>
 #include <pcomn_algorithm.h>
 #include <pcomn_strmanip.h>
@@ -48,19 +49,16 @@ template<typename Char, class CharTraits, class Storage>
 class mutable_strbuf ;
 
 /*******************************************************************************
-                     template<typename Char,
-                              class AtomicThreadingPolicy>
+                     template<typename Char, bool Atomic>
                      struct refcounted_strdata
 *******************************************************************************/
-template<typename Char, class AtomicThreadingPolicy = ::pcomn::atomic_op::SingleThreaded>
+template<typename Char, bool Atomic = false>
 struct refcounted_strdata {
-      intptr_t _refcount ;
+      active_counter_base<std::conditional_t<Atomic, std::atomic<intptr_t>, intptr_t>> _refcount ;
       size_t   _size ;
       Char     _begin[1] ;
 
-      static const refcounted_strdata<Char, AtomicThreadingPolicy> zero ;
-
-      typedef AtomicThreadingPolicy atomic_policy ;
+      static constexpr const refcounted_strdata<Char, Atomic> zero { {}, 0, {0} } ;
 
       union alignment {
             intptr_t _1 ;
@@ -75,14 +73,12 @@ struct refcounted_strdata {
       const Char *end() const { return _begin + _size ; }
 } ;
 
-template<typename Char, class AtomicThreadingPolicy>
-const refcounted_strdata<Char, AtomicThreadingPolicy>
-refcounted_strdata<Char, AtomicThreadingPolicy>::zero = { 0, 0, {0} } ;
+template<typename Char, bool Atomic>
+constexpr const refcounted_strdata<Char, Atomic>
+refcounted_strdata<Char, Atomic>::zero ;
 
 /*******************************************************************************
-                     template <typename Char,
-                               class AtomicThreadingPolicy,
-                               class Allocator>
+                     template <typename Char, bool Atomic, class Allocator>
                      class refcounted_storage
 *******************************************************************************/
 /** Reference-counted storage for pcomn::shared_string.
@@ -93,16 +89,15 @@ refcounted_strdata<Char, AtomicThreadingPolicy>::zero = { 0, 0, {0} } ;
  *storage.end() is always allowed and produces value_type().
 *******************************************************************************/
 template <typename Char,
-          class AtomicThreadingPolicy = atomic_op::SingleThreaded,
+          bool Atomic = false,
           class Allocator = typename std::basic_string<Char>::allocator_type>
 class refcounted_storage : public Allocator {
       typedef Allocator                                     ancestor ;
-      typedef AtomicThreadingPolicy                         atomic_policy ;
-      typedef refcounted_storage<Char, AtomicThreadingPolicy, Allocator> self_type ;
+      typedef refcounted_storage<Char, Atomic, Allocator>   self_type ;
       friend class mutable_strbuf<Char, std::char_traits<Char>, self_type> ;
 
    protected:
-      typedef refcounted_strdata<Char, atomic_policy> data_type ;
+      typedef refcounted_strdata<Char, Atomic> data_type ;
 
    public:
       typedef Char                              value_type ;
@@ -237,7 +232,7 @@ class refcounted_storage : public Allocator {
          size_type actual_size = char_count + 1 ;
          data_type * const d = reinterpret_cast<data_type *>(do_alloc(actual_size)) ;
          char_count = actual_size - 1 ;
-         d->_refcount = 1 ;
+         d->_refcount.reset(1) ;
          d->_size = requested_count ;
          // Trailing zero (C string compatible)
          *d->end() = value_type() ;
@@ -260,7 +255,7 @@ class refcounted_storage : public Allocator {
          // string(s) references the same way as for nonempty, actually checking
          // _is_ an optimization since allows to avoid cache flushing by avoiding
          // write operations.
-         return data._size ? atomic_policy::inc(data._refcount) : 0 ;
+         return data._size ? data._refcount.inc_passive() : 0 ;
       }
 
       static size_type aligner_count(size_type count)
@@ -275,7 +270,7 @@ class refcounted_storage : public Allocator {
       void do_decref()
       {
          data_type *d = &str_data() ;
-         if (d->_size && !atomic_policy::dec(d->_refcount))
+         if (d->_size && !d->_refcount.dec_passive())
             do_dealloc(d) ;
       }
 } ;
@@ -854,7 +849,7 @@ class mutable_strbuf : public shared_string<Char, CharTraits, Storage> {
       data_type &reserve(const size_type requested_capacity)
       {
          NOXCHECK(this->storage_type::_data &&
-                  (!storage_type::str_data()._size || storage_type::str_data()._refcount == 1)) ;
+                  (!storage_type::str_data()._size || storage_type::str_data()._refcount.count() == 1)) ;
          if (requested_capacity > _capacity)
             recapacitate(requested_capacity) ;
          return storage_type::str_data() ;
@@ -892,10 +887,10 @@ void mutable_strbuf<C, Traits, Storage>::recapacitate(const size_type requested_
    this->storage_type::_data = new_data->_begin ;
    // "-1" stands for the trailing zero
    _capacity = actual_capacity - 1 ;
-   new_data->_refcount = 1 ;
+   new_data->_refcount.reset(1) ;
    if (old_data->_size)
    {
-      NOXCHECK(old_data->_refcount == 1) ;
+      NOXCHECK(old_data->_refcount.count() == 1) ;
       this->do_dealloc(old_data) ;
    }
 }

@@ -388,7 +388,7 @@ class PTIdentDispenser {
                   PCOMN_VERIFY(newrange.first >= _range.second && newrange.second > newrange.first) ;
                   _next_id = newrange.first ;
                   // Issue a memory barrier
-                  atomic_op::get(&_next_id) ;
+                  atomic_op::load(&_next_id, std::memory_order_acq_rel) ;
 
                   _range = newrange ;
                }

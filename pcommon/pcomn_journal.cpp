@@ -154,8 +154,8 @@ size_t Port::store_operation(opcode_t code, opversion_t version,
 
 Journallable::Journallable() :
    _state(ST_INITIAL),
-   _journal(NULL),
-   _changecnt(0)
+   _journal(),
+   _changecnt()
 {}
 
 Journallable::State Journallable::valid_state() const

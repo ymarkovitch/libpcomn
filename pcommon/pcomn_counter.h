@@ -12,43 +12,76 @@
 *******************************************************************************/
 #include <pcomn_platform.h>
 #include <pcomn_atomic.h>
-
-// Note that PTActiveCounter MUST be properly aligned, hence packpshn/packpop
-#include <packpshn.h>
+#include <pcomn_assert.h>
 
 namespace pcomn {
 
-/*******************************************************************************
-                     class PTActiveCounter
-*******************************************************************************/
-template<atomic_t init = 0, typename ThreadPolicy = atomic_op::MultiThreaded>
-class PTActiveCounter {
-   public:
-      typedef ThreadPolicy thread_policy ;
+template<typename C>
+struct active_counter_base {
+      typedef C count_type ;
 
-      PTActiveCounter(atomic_t initval = init) :
-         _counter(initval)
-      {}
+      constexpr active_counter_base(count_type init = count_type()) : _counter(init) {}
+
+      count_type count() const { return _counter ; }
+
+      count_type reset(count_type new_value = count_type())
+      {
+         count_type old = std::move(_counter) ;
+         _counter = std::move(new_value) ;
+         return std::move(old) ;
+      }
+
+      count_type inc_passive() { return ++_counter ; }
+      count_type dec_passive() { return --_counter ; }
+
+   private:
+      count_type _counter ;
+} ;
+
+template<typename T>
+struct active_counter_base<std::atomic<T>> {
+      typedef T count_type ;
+
+      constexpr active_counter_base(count_type init = count_type()) : _counter(init) {}
+
+      count_type count() const { return _counter.load(std::memory_order_consume) ; }
+
+      count_type reset(count_type new_value = count_type())
+      {
+         return _counter.exchange(std::memory_order_acq_rel) ;
+      }
+
+      count_type inc_passive() { return _counter.fetch_add(1, std::memory_order_acq_rel) + 1 ; }
+      count_type dec_passive() { return _counter.fetch_sub(1, std::memory_order_acq_rel) - 1 ; }
+
+   private:
+      std::atomic<count_type> _counter ;
+} ;
+
+/******************************************************************************/
+/** Counter, possibly atomic, which automatically calls an overloadable action
+ when its value becomes equal to a specified threshold as a result of increment
+ or/and decrement.
+*******************************************************************************/
+template<typename C = std::atomic<int>, typename active_counter_base<C>::count_type init = 0>
+class active_counter : public active_counter_base<C> {
+      typedef active_counter_base<C> ancestor ;
+   public:
+      using typename ancestor::count_type ;
+
+      active_counter(count_type initval = init) : ancestor(initval) {}
 
       /// Do-nothing destructor, just for the sake of polymorphism.
-      virtual ~PTActiveCounter() {}
-
-      atomic_t count() const { return _counter ; }
-
-      atomic_t inc_passive() { return thread_policy::inc(_counter) ; }
-
-      atomic_t dec_passive() { return thread_policy::dec(_counter) ; }
-
-      atomic_t reset(atomic_t new_value) { return thread_policy::xchg(_counter, new_value) ; }
+      virtual ~active_counter() = default ;
 
       /// Increment internal counter and call threshold action.
       /// Increment internal counter and, if it equal to threshold value (parameter),
       /// call inc_action.
       /// @param  threshold Threshold value to call threshold action.
       /// @return Threshold value given as @a threshold.
-      atomic_t inc(atomic_t threshold = 0)
+      count_type inc(count_type threshold = 0)
       {
-         atomic_t result = inc_passive() ;
+         const count_type result = this->inc_passive() ;
          return result == threshold ?
             inc_action(threshold) : result ;
       }
@@ -58,44 +91,30 @@ class PTActiveCounter {
       /// calls dec_action().
       /// @param threshold Threshold value to call threshold action.
       /// @return @a threshold parameter value.
-      atomic_t dec(atomic_t threshold = 0)
+      count_type dec(count_type threshold = 0)
       {
-         atomic_t result = dec_passive() ;
+         const count_type result = this->dec_passive() ;
          return result == threshold ?
             dec_action(threshold) : result ;
       }
 
    protected:
-      virtual atomic_t inc_action(atomic_t threshold) = 0 ;
-      virtual atomic_t dec_action(atomic_t threshold) = 0 ;
-
-   private:
-      atomic_t _counter ;
-} ;
-
-/******************************************************************************/
-/** Automatic scope decrementor
-*******************************************************************************/
-template<typename Atomic, typename ThreadPolicy = atomic_op::MultiThreaded>
-struct auto_decrementer {
-      explicit auto_decrementer(Atomic &counter) : _counter(counter) {}
-      ~auto_decrementer() { ThreadPolicy::dec(_counter) ; }
-   private:
-      Atomic &_counter ;
+      virtual count_type inc_action(count_type threshold) = 0 ;
+      virtual count_type dec_action(count_type threshold) = 0 ;
 } ;
 
 /******************************************************************************/
 /** Unique instance ID
 *******************************************************************************/
-template<typename InstanceType, typename Atomic = uatomic64_t>
+template<typename InstanceType, typename Atomic = uintptr_t>
 struct instance_id {
-      PCOMN_STATIC_CHECK(is_atomic<Atomic>::value) ;
+      PCOMN_STATIC_CHECK(is_atomic_arithmetic<Atomic>::value) ;
 
       typedef Atomic       type ;
       typedef InstanceType instance_type ;
       friend instance_type ;
 
-      operator uatomic64_t() const { return _value ; }
+      operator type() const { return _value ; }
 
    private:
       type _value ;
@@ -106,10 +125,8 @@ struct instance_id {
 } ;
 
 template<typename InstanceType, typename Atomic>
-typename instance_id<InstanceType, Atomic>::type instance_id<InstanceType, Atomic>::_counter ;
+alignas(64) typename instance_id<InstanceType, Atomic>::type instance_id<InstanceType, Atomic>::_counter ;
 
 } // end of namespace pcomn
-
-#include <packpop.h>
 
 #endif /* __PCOMN_COUNTER_H */
