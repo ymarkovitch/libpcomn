@@ -76,6 +76,9 @@ if ! [ adhoc-targets ]
   unittest unittest_uuid ;
   unittest unittest_zstream ;
 
+  compile unittest_hazardptr.cpp ;
+  #unittest unittest_hazardptr ;
+
   if [ os.name ] != NT
   {
     unittest unittest_crypthash ;

@@ -11,14 +11,15 @@
 
  CREATION DATE:   25 Nov 1994
 *******************************************************************************/
-#include <pcommon.h>
 #include <pcomn_counter.h>
-#include <pcomn_diag.h>
+#include <pcomn_assert.h>
 #include <pcomn_meta.h>
+#include <pcommon.h>
 
 #include <typeinfo>
 #include <algorithm>
 #include <memory>
+#include <iostream>
 
 #include <stddef.h>
 
