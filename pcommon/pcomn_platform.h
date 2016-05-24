@@ -390,10 +390,14 @@
 #  endif
 #endif
 
+#ifndef PCOMN_COMPILER
+#error Unknown or unsupported C/C++ compiler. At least GCC 4.8.3, or MSVC++ 19.00, or Intel 15.0 required.
+#endif
+
 /*******************************************************************************
  Only C++11 or better is supported.
  Note MSVC++ does not define a correct __cplusplus macro value, so we explicitly
- test for MSVC version (1800 is Visual Studio 2013 compiler)
+ test for MSVC version (1900 is Visual Studio 2015 compiler)
 *******************************************************************************/
 #if PCOMN_COMPILER_GNU && __GNUC_VER__ < 480
 #  error GNU C/C++ __GNUC__.__GNUC_MINOR__ detected. Versions of GNU C/C++ below 4.8 are not supported.
@@ -705,15 +709,15 @@ inline void __put_byte(ScalarType *data, size_t byte_num, unsigned char byte)
 } // end of namespace pcomn
 #endif
 
-#ifndef PCOMN_COMPILER
-#  error
-   "Unknown or unsupported C/C++ compiler. "    \
-   "The following compilers are supported: GCC 4.8.1 and higher; MSVC++ 19.00 and higher."
-#endif
+/******************************************************************************/
+/** @var PCOMN_CACHELINE_SIZE
+ Typical L1 cacheline size for the architecture the library is compiled for.
+*******************************************************************************/
+const size_t PCOMN_CACHELINE_SIZE = 64 ;
 
-/*******************************************************************************
- PCOMN_PLATFORM_HEADER is a macro to include pcommon headers from platform-dependent
- subdirectories (unix, win32)
+/******************************************************************************/
+/** @def PCOMN_PLATFORM_HEADER(header)
+ A macro to include pcommon headers from platform-dependent subdirectories (unix, win32)
 *******************************************************************************/
 #if defined(PCOMN_PL_POSIX)
 #define PCOMN_PLATFORM_HEADER(header) P_STRINGIFY(unix/header)

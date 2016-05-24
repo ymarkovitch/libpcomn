@@ -13,6 +13,15 @@
 *******************************************************************************/
 /** @file
  Implementation of hazard pointers for lockless concurrent data structures.
+
+  - hazard_pointer\<Element, Tag\> refers to @em  thread-local hazard_manager\<Tag\>,
+    i.e all hazard pointers\<Element\> with the same tag in a thread refer to the same
+    thread-local hazard_manager\<Tag\> in that thread.
+
+  - hazard_manager\<Tag\> refers to @em global hazard_storage\<hazard_traits\<Tag\>\>
+
+  - hazard_storage\<hazard_traits\<Tag\>\>
+    hazard_registry\<log2(hazard_traits\<Tag\>::thread_capacity\>
 *******************************************************************************/
 #include <pcomn_platform.h>
 #include <pcomn_meta.h>
@@ -22,6 +31,15 @@
 #include <pcommon.h>
 
 #include <memory>
+
+#if defined(PCOMN_PL_POSIX)
+#include <unistd.h>
+#include <sys/mman.h>
+#elif defined(PCOMN_PL_MS)
+#include <windows.h>
+#else
+#error The platform is not supported by pcomn_hazardptr.
+#endif
 
 namespace pcomn {
 
@@ -52,7 +70,9 @@ template<>
 struct hazard_traits<void> : hazard_policy<HAZARD_DEFAULT_CAPACITY> {} ;
 
 /******************************************************************************/
-/**
+/** Hazard pointer marks a non-null pointer to a node of some lock-free dynamic
+ object as intended to be further accessed by the current thread without
+ furhter validation.
 
  @note Objects of this class are movable, enabling to return them from functions,
  but they must @em never be passed between threads.
@@ -79,11 +99,14 @@ class hazard_pointer {
          other._ptr = nullptr ;
       }
 
+      /// Mark @a ptr as a hazard pointer.
       explicit hazard_pointer(element_type *ptr) : _ptr(ptr)
       {
          mark_hazard() ;
       }
 
+      /// Unmark a hazard pointer, inform other threads the object pointed to is no more
+      /// in use by the current thread.
       ~hazard_pointer()
       {
          unmark_hazard() ;
@@ -121,12 +144,17 @@ class hazard_pointer {
 /** A per-thread hazard pointer registry
 *******************************************************************************/
 template<unsigned Log2 = 0>
-struct alignas(16) hazard_registry {
+class alignas(PCOMN_CACHELINE_SIZE) hazard_registry {
 
       static_assert(Log2 <= 3,
                     "The capacity of hazard_registry cannot exceed 63 pointers, "
                     "Log2 template argument is too big (Log2 > 3)") ;
+      // Use 4K as a guesstimate: there is no 32- or 64-bit CPU with memory page which is
+      // not multiple of 4K bytes
+      static_assert(!(4*KiB % sizeof(hazard_registry)),
+                    "The sizeof(hazard_registry) must be page size divizor") ;
 
+   public:
       constexpr hazard_registry() : _occupied{}, _hazard{} {}
 
       /// The maximum count of hazard pointers per thread
@@ -181,7 +209,10 @@ class hazard_storage {
    public:
       typedef hazard_registry<Log2> registry_type ;
 
-      explicit hazard_storage(unsigned thread_maxcount = HAZARD_DEFAULT_THREADCOUNT) ;
+      explicit hazard_storage(unsigned thread_maxcount = HAZARD_DEFAULT_THREADCOUNT) :
+         hazard_storage(alloc_slotmem(thread_maxcount ? std::max(thread_maxcount, 2U) : HAZARD_DEFAULT_THREADCOUNT))
+      {}
+
       ~hazard_storage() ;
 
       /// Get the maximum count of registered threads
@@ -196,14 +227,21 @@ class hazard_storage {
       void release_slot(registry_type *) ;
 
    private:
-      const size_t _capacity ; /* Capacity of the storage (in hazard_registry objects) */
+      const size_t          _capacity ; /* Number of registry slots */
+      registry_type * const _registries ; /* Registry slots */
 
-      const std::unique_ptr<uint64_t[]> _map ; /* Registry slots map */
-      std::atomic<size_t>               _map_ubound ;
-      registry_type *                   _thread_registries ; /* Registry slots */
+      const std::unique_ptr<uint64_t[]> _map ;        /* Registry slots map */
+      std::atomic<size_t>               _map_ubound ; /* Upper bound of allocated _map part */
 
+   private:
       uint64_t *map_data() const { return _map.get() ; }
       size_t map_size() const { return _capacity/sizeof(*map_data()) ; }
+
+      explicit hazard_storage(const std::pair<void *, size_t> &allocated) ;
+
+      static std::pair<void *, size_t> alloc_slotmem(size_t bytes) ;
+      static void free_slotmem(void *) ;
+
 } ;
 
 /******************************************************************************/
@@ -244,15 +282,43 @@ class hazard_manager {
  hazard_storage
 *******************************************************************************/
 template<unsigned Log2>
-hazard_storage<Log2>::hazard_storage(unsigned thread_maxcount) :
-   _capacity(thread_maxcount)
-{}
+hazard_storage<Log2>::hazard_storage(const std::pair<void *, size_t> &allocated) :
+   _capacity(allocated.second/sizeof(registry_type)),
+   _registries(static_cast<registry_type *>(ensure_nonzero<std::bad_alloc>(allocated.first)))
+{
+   NOXCHECK(_capacity >= 2) ;
+}
 
 template<unsigned Log2>
 hazard_storage<Log2>::~hazard_storage()
 {
-   delete [] _thread_registries ;
+   PCOMN_STATIC_CHECK(std::is_trivially_destructible<registry_type>::value) ;
+   free_slotmem(_registries) ;
 }
+
+#ifdef PCOMN_PL_POSIX
+template<unsigned Log2>
+__noinline std::pair<void *, size_t> hazard_storage<Log2>::alloc_slotmem(size_t bytes)
+{
+   NOXCHECK(bytes) ;
+   static size_t pagesz ;
+   if (!pagesz)
+      pagesz = sysconf(_SC_PAGESIZE) ;
+
+   const size_t allocsz = (bytes + pagesz - 1)/pagesz*pagesz ;
+   void * const mem = mmap(nullptr, allocsz, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) ;
+   return {ensure_nonzero<std::bad_alloc>(mem), allocsz} ;
+}
+
+template<unsigned Log2>
+__noinline void hazard_storage<Log2>::free_slotmem(void *memptr)
+{
+   PCOMN_VERIFY(memptr != nullptr) ;
+   munmap(memptr, capacity() * sizeof(registry_type)) ;
+}
+#else
+#error Windows version is not implemented yet
+#endif
 
 /*******************************************************************************
  hazard_manager
