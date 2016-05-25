@@ -1,4 +1,4 @@
-/*-*- mode: c++; tab-width: 3; indent-tabs-mode: nil; c-file-style: "ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
+/*-*- mode:c++;tab-width:3;indent-tabs-mode:nil;c-file-style:"ellemtel";c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 #ifndef __PCOMN_MATH_H
 #define __PCOMN_MATH_H
 /*******************************************************************************
@@ -11,7 +11,6 @@
  PROGRAMMED BY:   Yakov Markovitch
  CREATION DATE:   16 Oct 2005
 *******************************************************************************/
-#include <pcomn_float.h>
 #include <math.h>
 
 namespace pcomn {

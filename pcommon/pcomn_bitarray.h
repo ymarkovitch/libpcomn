@@ -1,4 +1,4 @@
-/*-*- mode: c++; tab-width: 3; indent-tabs-mode: nil; c-file-style: "ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
+/*-*- mode:c++;tab-width:3;indent-tabs-mode:nil;c-file-style:"ellemtel";c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 #ifndef __PCOMN_BITARRAY_H
 #define __PCOMN_BITARRAY_H
 /*******************************************************************************

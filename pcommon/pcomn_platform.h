@@ -1,4 +1,4 @@
-/*-*- mode: c++; tab-width: 3; indent-tabs-mode: nil; c-file-style: "ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
+/*-*- mode:c++;tab-width:3;indent-tabs-mode:nil;c-file-style:"ellemtel";c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 #ifndef __PCOMN_PLATFORM_H
 #define __PCOMN_PLATFORM_H
 /*******************************************************************************
@@ -477,12 +477,6 @@ typedef uint64_t  uint64_be ;
 #endif
 
 /*
-   #define PCOMN_NO_LDOUBLE        1
-   Defined if the long double is not supported by the compiler
-
-   #define PCOMN_NO_LDOUBLE_MATHLIB 1
-   Defined if the long double math library is not supported by the compiler
-
    #define PCOMN_NO_STRCASE_CONV   1
    Defined if strupr/strlwr are not supported by the compiler library
 
@@ -492,15 +486,6 @@ typedef uint64_t  uint64_be ;
    #define PCOMN_NONSTD_UNIX_IO    1
    Defined if the compiler library uses UNIX I/O function with underscores (such as _open, etc.)
    instead of standard names
-
-   #define PCOMN_NO_EX_RANDOM      1
-
-   #define PCOMN_NO_UNDERSCORE_CVT_FUN 1
-   Defined if the compiler library defines itoa, ltoa, etc. instead of _itoa, _ltoa, etc.
-
-   #define PCOMN_UNDERSCORE_CVT_FUN 1
-   Defined if the compiler library defines ONLY _itoa, _ltoa (without non-underscore versions)
-
 */
 
 #include <pcomn_config.h>
@@ -551,17 +536,17 @@ template<> struct uint_type<2> { typedef uint16_t type ; } ;
 template<> struct uint_type<4> { typedef uint32_t type ; } ;
 template<> struct uint_type<8> { typedef uint64_t type ; } ;
 
-template<size_t type_size> struct _endiannes_inverter ;
+template<size_t type_size> struct _byte_reverter ;
 
 template<>
-struct _endiannes_inverter<1> {
+struct _byte_reverter<1> {
       template<typename T>
       static T &invert(T &item) { return item ; }
 } ;
 
 #if !defined(PCOMN_COMPILER_GNU) && !defined(PCOMN_COMPILER_MS)
 template<size_t type_size>
-struct _endiannes_inverter {
+struct _byte_reverter {
       template<typename T>
       static T &invert(T &item)
       {
@@ -572,13 +557,13 @@ struct _endiannes_inverter {
          uint_t tmp1 = d[1] ;
          d[0] = tmp1 ;
          d[1] = tmp0 ;
-         _endiannes_inverter<type_size/2>::invert(d[0]) ;
-         _endiannes_inverter<type_size/2>::invert(d[1]) ;
+         _byte_reverter<type_size/2>::invert(d[0]) ;
+         _byte_reverter<type_size/2>::invert(d[1]) ;
          return item ;
       }
 } ;
 #else
-inline uint_type<2>::type builtin_swap_bytes(uint_type<2>::type v)
+inline uint_type<2>::type reverse_bytes(uint_type<2>::type v)
 {
    return
 #ifdef PCOMN_COMPILER_GNU
@@ -589,7 +574,7 @@ inline uint_type<2>::type builtin_swap_bytes(uint_type<2>::type v)
       ;
 }
 
-inline uint_type<4>::type builtin_swap_bytes(uint_type<4>::type v)
+inline uint_type<4>::type reverse_bytes(uint_type<4>::type v)
 {
    return
 #ifdef PCOMN_COMPILER_GNU
@@ -600,7 +585,7 @@ inline uint_type<4>::type builtin_swap_bytes(uint_type<4>::type v)
       ;
 }
 
-inline uint_type<8>::type builtin_swap_bytes(uint_type<8>::type v)
+inline uint_type<8>::type reverse_bytes(uint_type<8>::type v)
 {
    return
 #ifdef PCOMN_COMPILER_GNU
@@ -612,25 +597,31 @@ inline uint_type<8>::type builtin_swap_bytes(uint_type<8>::type v)
 }
 #endif
 
+inline uint_type<1>::type reverse_bytes(uint_type<1>::type v)
+{
+   return v ;
+}
+
 // Both GCC and  Visual Studio compilers have byte swapping intrinsics
 template<size_t type_size>
-struct _endiannes_inverter {
+struct _byte_reverter {
       template<typename T>
       static T &invert(T &item)
       {
          typedef typename uint_type<type_size>::type uint_t ;
          uint_t *d = reinterpret_cast<uint_t *>(&item) ;
-         *d = builtin_swap_bytes(*d) ;
+         *d = reverse_bytes(*d) ;
          return item ;
       }
 } ;
 
-// invert_endianness()  -  invert the parameter's endianness
-//
+/// Invert the parameter's endianness
 template<typename T>
 constexpr inline T &invert_endianness(T &item)
 {
-   return _endiannes_inverter<sizeof item>::invert(item) ;
+   typedef typename uint_type<sizeof(T)>::type uint_t ;
+   return
+      (*reinterpret_cast<uint_t *>(&item) = reverse_bytes(*reinterpret_cast<uint_t *>(&item))), item ;
 }
 
 template<typename T>
@@ -639,7 +630,7 @@ constexpr inline T &to_little_endian(T &item)
 #ifdef PCOMN_CPU_LITTLE_ENDIAN
    return item ;
 #else
-   return _endiannes_inverter<sizeof item>::invert(item) ;
+   return invert_endianness(item) ;
 #endif
 }
 
@@ -649,7 +640,7 @@ constexpr inline T &to_big_endian(T &item)
 #ifdef PCOMN_CPU_BIG_ENDIAN
    return item ;
 #else
-   return _endiannes_inverter<sizeof item>::invert(item) ;
+   return invert_endianness(item) ;
 #endif
 }
 
@@ -664,7 +655,7 @@ constexpr inline T &from_little_endian(T &item)
 #ifdef PCOMN_CPU_LITTLE_ENDIAN
    return item ;
 #else
-   return _endiannes_inverter<sizeof item>::invert(item) ;
+   return invert_endianness(item) ;
 #endif
 }
 
@@ -674,7 +665,7 @@ constexpr inline T &from_big_endian(T &item)
 #ifdef PCOMN_CPU_BIG_ENDIAN
    return item ;
 #else
-   return _endiannes_inverter<sizeof item>::invert(item) ;
+   return invert_endianness(item) ;
 #endif
 }
 
@@ -690,30 +681,30 @@ inline size_t __byte_pos(const Data &, size_t byte_num)
 #ifdef PCOMN_CPU_LITTLE_ENDIAN
    return byte_num ;
 #else
-   return sizeof (Data) - byte_num ;
+   return sizeof(Data) - byte_num ;
 #endif /* PCOMN_CPU_LITTLE_ENDIAN */
 }
 
-template<class ScalarType>
-inline unsigned char __get_byte(const ScalarType *data, size_t byte_num)
+template<typename T>
+inline uint8_t get_byte(const T *data, size_t byte_num)
 {
-   return reinterpret_cast<const unsigned char *>(data)[__byte_pos(*data, byte_num)] ;
+   return reinterpret_cast<const char *>(data)[__byte_pos(*data, byte_num)] ;
 }
 
-template<class ScalarType>
-inline void __put_byte(ScalarType *data, size_t byte_num, unsigned char byte)
+template<typename T>
+inline void put_byte(T *data, size_t byte_num, uint8_t byte)
 {
-   reinterpret_cast<unsigned char *>(data)[__byte_pos(*data, byte_num)] = byte ;
+   reinterpret_cast<const char *>(data)[__byte_pos(*data, byte_num)] = byte ;
 }
-
 } // end of namespace pcomn
-#endif
 
 /******************************************************************************/
 /** @var PCOMN_CACHELINE_SIZE
  Typical L1 cacheline size for the architecture the library is compiled for.
 *******************************************************************************/
 const size_t PCOMN_CACHELINE_SIZE = 64 ;
+
+#endif // __cplusplus
 
 /******************************************************************************/
 /** @def PCOMN_PLATFORM_HEADER(header)

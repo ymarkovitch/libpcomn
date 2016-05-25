@@ -1,4 +1,4 @@
-/*-*- mode:c++; tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel" -*-*/
+/*-*- mode:c++;tab-width:3;indent-tabs-mode:nil;c-file-style:"ellemtel" -*-*/
 #ifndef __PCOMN_CONFIG_H
 #define __PCOMN_CONFIG_H
 /*******************************************************************************
@@ -16,12 +16,6 @@
 #error "Don't include pcomn_config.h directly, include pcomn_platform.h instead"
 #endif
 /*
-   #define PCOMN_NO_LDOUBLE        1
-   Defined if the long double is not supported by the compiler
-
-   #define PCOMN_NO_LDOUBLE_MATHLIB 1
-   Defined if the long double math library is not supported by the compiler
-
    #define PCOMN_NO_STRCASE_CONV   1
    Defined if strupr/strlwr are not supported by the compiler library
 
@@ -31,34 +25,14 @@
    #define PCOMN_NONSTD_UNIX_IO    1
    Defined if the compiler library uses UNIX I/O function with underscores (such as _open, etc.)
    instead of standard names
-
-   #define PCOMN_NO_EX_RANDOM      1
-
-   #define PCOMN_NO_UNDERSCORE_CVT_FUN 1
-   Defined if the compiler library defines itoa, ltoa, etc. instead of _itoa, _ltoa, etc.
-
-   #define PCOMN_UNDERSCORE_CVT_FUN 1
-   Defined if the compiler library defines ONLY _itoa, _ltoa (without non-underscore versions)
-
 */
-
-/*******************************************************************************
- Borland C++ compilers
-*******************************************************************************/
-#if defined(PCOMN_COMPILER_BORLAND)
-
-#  define PCOMN_NONSTD_FP_PREDICATES  1
-#  define PCOMN_NO_UNDERSCORE_CVT_FUN 1
 
 /*******************************************************************************
  Microsoft C++ compilers
 *******************************************************************************/
-#elif defined(PCOMN_COMPILER_MS)
+#if defined(PCOMN_COMPILER_MS)
 
 #  define PCOMN_NONSTD_UNIX_IO        1
-#  define PCOMN_NONSTD_FP_PREDICATES  1
-#  define PCOMN_NO_EX_RANDOM          1
-#  define PCOMN_UNDERSCORE_CVT_FUN    1
 #  define NOMINMAX                    1
 
 #  pragma warning(disable : 4786 4355 4275 4251 4099)
@@ -68,27 +42,16 @@
 *******************************************************************************/
 #elif defined(PCOMN_COMPILER_IBM)
 
-#  define PCOMN_NO_LDOUBLE_MATHLIB    1
 #  define PCOMN_NO_LOCALE_CONV        1
-#  define PCOMN_UNDERSCORE_CVT_FUN    1
 
 #  ifdef PCOMN_PL_AS400
 #     define PCOMN_NO_STRCASE_CONV    1
-#     define PCOMN_NO_LDOUBLE         1
 #  endif
-
-#  define PCOMN_NO_EX_RANDOM          1
 
 #elif defined(PCOMN_COMPILER_GNU)
 
 #  define PCOMN_NO_STRCASE_CONV       1
 #  pragma GCC diagnostic ignored "-Wparentheses"
-
-#endif
-
-#if defined(PCOMN_NO_LDOUBLE) && !defined(PCOMN_NO_LDOUBLE_MATHLIB)
-
-#  define PCOMN_NO_LDOUBLE_MATHLIB    1
 
 #endif
 

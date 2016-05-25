@@ -14,6 +14,8 @@
 #include <pcomn_atomic.h>
 #include <pcomn_assert.h>
 
+#include <utility>
+
 namespace pcomn {
 
 template<typename C>
