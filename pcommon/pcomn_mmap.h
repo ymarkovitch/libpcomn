@@ -307,8 +307,8 @@ template<>
 struct membuf_traits<PMemMapping> {
       typedef PMemMapping type ;
       static size_t size(const PMemMapping &buffer) { return buffer.size() ; }
-      static const void *cptr(const PMemMapping &buffer) { return buffer.data() ; }
-      static void *ptr(PMemMapping &buffer) { return buffer.data() ; }
+      static const void *cdata(const PMemMapping &buffer) { return buffer.data() ; }
+      static void *data(PMemMapping &buffer) { return buffer.data() ; }
 } ;
 } // end of namespace pcomn
 

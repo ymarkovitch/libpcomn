@@ -793,7 +793,7 @@ template<typename B>
 inline typename enable_if_buffer<B, uint32_t>::type
 calc_crc32(uint32_t crc, const B &buffer)
 {
-   return calc_crc32(crc, buf::cptr(buffer), buf::size(buffer)) ;
+   return calc_crc32(crc, buf::cdata(buffer), buf::size(buffer)) ;
 }
 
 template<typename B>
@@ -802,7 +802,7 @@ calc_crc32(uint32_t crc, size_t ignore_tail, const B &buffer)
 {
    const size_t bufsize = buf::size(buffer) ;
    return
-      ignore_tail >= bufsize ? crc : calc_crc32(crc, buf::cptr(buffer), bufsize - ignore_tail) ;
+      ignore_tail >= bufsize ? crc : calc_crc32(crc, buf::cdata(buffer), bufsize - ignore_tail) ;
 }
 
 } // end of namespace pcomn

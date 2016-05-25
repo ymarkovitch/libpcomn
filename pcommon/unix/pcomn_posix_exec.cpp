@@ -159,37 +159,5 @@ netpipe::netpipe(unsigned inport, unsigned outport, bool wait_term) :
    sleep(1) ;
 }
 
-/*******************************************************************************
- Functions
-*******************************************************************************/
-shellcmd_result shellcmd(const char *cmd, RaiseError raise, size_t out_limit)
-{
-   popencmd runner (cmd, 'r') ;
-   char buf[8192] ;
-   std::string stdout_content ;
-
-   for (size_t lastread, remains ;
-        (remains = out_limit - stdout_content.size()) != 0 &&
-        (lastread = fread(buf, 1, std::min(remains, sizeof buf), runner.pipe())) != 0 ;
-        stdout_content.append(buf, lastread)) ;
-
-   const int status = runner.close() ;
-   if (raise && status)
-   {
-      if (stdout_content.empty() && WIFEXITED(status) && WEXITSTATUS(status) == 127)
-         // Shell failure (e.g. "No such file or directory" or like)
-         stdout_content.append("Failure running the shell. Cannot run '").append(cmd).append("'") ;
-      throw_exception<shell_error>(status, stdout_content) ;
-   }
-   return
-      shellcmd_result(status, stdout_content) ;
-}
-
-shellcmd_result vshellcmd(RaiseError raise, size_t out_limit, const char *format, va_list args)
-{
-   PCOMN_ENSURE_ARG(format) ;
-   return shellcmd(strvprintf(format, args), raise, out_limit) ;
-}
-
 } // end of namespace pcomn::sys
 } // end of namespace pcomn

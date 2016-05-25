@@ -403,6 +403,10 @@ static typename membuf_traits<T>::undefined _is_buffer(T**) ;
 template<typename T>
 static typename membuf_traits<T>::type *_is_buffer(T**) ;
 
+template<typename T>
+struct _bufelem_size : std::integral_constant<size_t, sizeof(T)> {} ;
+template<>
+struct _bufelem_size<void> : std::integral_constant<size_t, 1> {} ;
 } // end of namespace pcomn::detail
 /// @endcond
 
@@ -415,6 +419,12 @@ enable_if_buffer : std::enable_if<is_buffer<T>::value, Type> {} ;
 template<typename T, typename Type> struct
 disable_if_buffer : std::enable_if<!is_buffer<T>::value, Type> {} ;
 
+template<typename T, typename Type>
+using enable_if_buffer_t = typename enable_if_buffer<T, Type>::type ;
+
+template<typename T, typename Type>
+using disable_if_buffer_t = typename disable_if_buffer<T, Type>::type ;
+
 /*******************************************************************************
                      template<typename C>
                      struct pbuf_traits
@@ -424,45 +434,59 @@ struct pbuf_traits {
       typedef T type ;
 
       static size_t size(const T &buffer) { return buffer.size() ; }
-      static const void *cptr(const T &buffer) { return buffer.get() ; }
-      static void *ptr(T &buffer) { return buffer.get() ; }
+      static const void *cdata(const T &buffer) { return buffer.get() ; }
+      static void *data(T &buffer) { return buffer.get() ; }
 } ;
 
 template<> struct membuf_traits<shared_buffer>   : pbuf_traits<shared_buffer> {} ;
 template<> struct membuf_traits<cow_buffer>   : pbuf_traits<cow_buffer> {} ;
 template<> struct membuf_traits<basic_buffer> : pbuf_traits<basic_buffer> {} ;
 
-template<typename T>
-struct memvec_traits {
-      typedef T type ;
+template<typename, bool>
+struct memvec_traits : membuf_traits<void> {} ;
 
-      static size_t size(const T &buffer) { return buffer.second ; }
-      static const void *cptr(const T &buffer) { return buffer.first ; }
+template<typename E>
+struct memvec_traits<std::pair<E *, size_t>, true> {
+      typedef std::pair<E *, size_t> type ;
+
+      static constexpr size_t size(const std::pair<E *, size_t> &buffer)
+      {
+         return buffer.second * detail::_bufelem_size<E>::value ;
+      }
+      static constexpr const void *cdata(const std::pair<E *, size_t> &buffer)
+      {
+         return buffer.first ;
+      }
+      template<typename = std::enable_if<!std::is_const<E>::value>>
+      static constexpr void *data(const std::pair<E *, size_t> &buffer)
+      {
+         return buffer.first ;
+      }
 } ;
 
-template<> struct membuf_traits<cmemvec_t> : memvec_traits<cmemvec_t> {} ;
-template<> struct membuf_traits<memvec_t> : memvec_traits<memvec_t> {
-      static void *ptr(const memvec_t &buffer) { return buffer.first ; }
-} ;
+template<typename E>
+struct membuf_traits<std::pair<E *, size_t>> :
+         memvec_traits<std::pair<E *, size_t>, std::is_pod<E>::value>
+{} ;
 
 template<> struct membuf_traits<iovec_t> {
       typedef iovec_t type ;
 
       static size_t size(const iovec_t &buffer) { return buffer.iov_len ; }
-      static const void *cptr(const iovec_t &buffer) { return buffer.iov_base ; }
-      static void *ptr(iovec_t &buffer) { return buffer.iov_base ; }
+      static const void *cdata(const iovec_t &buffer) { return buffer.iov_base ; }
+      static void *data(iovec_t &buffer) { return buffer.iov_base ; }
 } ;
 
 template<size_t n> struct membuf_traits<const char[n]> {
       typedef const void *type ;
 
       static size_t size(const char(&)[n]) { return n ; }
-      static const void *cptr(const char(&buf)[n]) { return buf + 0 ; }
+      static const void *cdata(const char(&buf)[n]) { return buf + 0 ; }
 } ;
 
 template<size_t n> struct membuf_traits<char[n]> : membuf_traits<const char[n]> {
       typedef void *type ;
-      static void *ptr(const char(&buf)[n]) { return buf + 0 ; }
+      static void *data(const char(&buf)[n]) { return buf + 0 ; }
 } ;
 
 /*******************************************************************************
@@ -471,15 +495,15 @@ template<size_t n> struct membuf_traits<char[n]> : membuf_traits<const char[n]> 
 namespace buf {
 
 template<typename T>
-inline const void *cptr(const T &buffer)
+inline const void *cdata(const T &buffer)
 {
-   return ::pcomn::membuf_traits<T>::cptr(buffer) ;
+   return ::pcomn::membuf_traits<T>::cdata(buffer) ;
 }
 
 template<typename T>
-inline void *ptr(T &buffer)
+inline void *data(T &buffer)
 {
-   return ::pcomn::membuf_traits<typename std::remove_const<T>::type>::ptr(buffer) ;
+   return ::pcomn::membuf_traits<typename std::remove_const<T>::type>::data(buffer) ;
 }
 
 template<typename T>
@@ -491,22 +515,22 @@ inline bool eq(const T1 &left, const T2 &right)
    const size_t sz = ::pcomn::buf::size(left) ;
    if (sz != ::pcomn::buf::size(right))
       return false ;
-   const void * const lp = ::pcomn::buf::cptr(left) ;
-   const void * const rp = ::pcomn::buf::cptr(right) ;
+   const void * const lp = ::pcomn::buf::cdata(left) ;
+   const void * const rp = ::pcomn::buf::cdata(right) ;
    return lp == rp || !memcmp(lp, rp, sz) ;
 }
 
 template<typename T>
 inline cmemvec_t cmemvec(const T &buffer)
 {
-   const void * const data = ::pcomn::buf::cptr(buffer) ;
+   const void * const data = ::pcomn::buf::cdata(buffer) ;
    return cmemvec_t(data, ::pcomn::buf::size(buffer)) ;
 }
 
 template<typename T>
 inline cmemvec_t cmemvec(const T &buffer, size_t offs, size_t len = -1)
 {
-   const void * const data = ::pcomn::buf::cptr(buffer) ;
+   const void * const data = ::pcomn::buf::cdata(buffer) ;
    const size_t bufsize = ::pcomn::buf::size(buffer) ;
    const size_t bufoffs = std::min(bufsize, offs) ;
    return cmemvec_t(pcomn::padd(data, bufoffs), std::min(bufsize - bufoffs, len)) ;
@@ -515,14 +539,14 @@ inline cmemvec_t cmemvec(const T &buffer, size_t offs, size_t len = -1)
 template<typename T>
 inline memvec_t memvec(T &buffer)
 {
-   void * const data = ::pcomn::buf::ptr(buffer) ;
+   void * const data = ::pcomn::buf::data(buffer) ;
    return memvec_t(data, ::pcomn::buf::size(buffer)) ;
 }
 
 template<typename T>
 inline memvec_t memvec(T &buffer, size_t offs, size_t len = -1)
 {
-   void * const data = ::pcomn::buf::ptr(buffer) ;
+   void * const data = ::pcomn::buf::data(buffer) ;
    const size_t bufsize = ::pcomn::buf::size(buffer) ;
    const size_t bufoffs = std::min(bufsize, offs) ;
    return memvec_t(pcomn::padd(data, bufoffs), std::min(bufsize - bufoffs, len)) ;
@@ -535,7 +559,5 @@ inline std::ostream &operator<<(std::ostream &os, const pcomn::iovec_t &v)
 {
    return os << pcomn::buf::cmemvec(v) ;
 }
-
-#define PCOMN_ENABLE_CTR_IF_BUFFER(T) typename pcomn::enable_if_buffer<T, pcomn::Instantiate>::type = {}
 
 #endif /* __PCOMN_BUFFER_H */
