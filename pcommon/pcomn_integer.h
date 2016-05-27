@@ -64,9 +64,8 @@ constexpr const T int_traits<T>::ones ;
 template<typename T>
 constexpr const T int_traits<T>::signbit ;
 
-/*******************************************************************************
-                  template<typename T, typename R = T> struct if_integer
- Overload enabler, a la enable_if<>.
+/******************************************************************************/
+/** Overload enabler, a la enable_if<>.
  If T is an integer type, returns (as internal typedef) R as 'type'
 *******************************************************************************/
 template<typename T, typename R = T> struct
@@ -115,6 +114,16 @@ template<typename I>
 inline unsigned bitcount(I i)
 {
    return native_bitcount(i, native_isa_tag()) ;
+}
+
+/// Count 1s in a bit vector
+template<typename InputIterator>
+size_t bitcount(InputIterator data, size_t nelements)
+{
+   size_t cnt = 0 ;
+   for (; nelements-- ; ++data)
+      cnt += bitcount(*data) ;
+   return cnt ;
 }
 
 template<typename I>
@@ -172,6 +181,61 @@ template<typename I>
 constexpr inline if_integer_t<I> rzcnt(I x)
 {
    return native_rzcnt(x, native_isa_tag()) ;
+}
+
+/// Given a bit position, get the position of a cell containing specified bit in the
+/// array of integral-type items.
+template<typename I>
+constexpr inline if_integer_t<I, size_t> cellndx(size_t pos)
+{
+   return pos / int_traits<I>::bitsize ;
+}
+
+/// Given a bit position, get the bit index inside the corresponding cell.
+/// @return 0 <= bitndx(pos) < bisizeof(I)
+template<typename I>
+constexpr inline if_integer_t<I, size_t> bitndx(size_t pos)
+{
+   return pos & (int_traits<I>::bitsize - 1) ;
+}
+
+template<typename I>
+constexpr inline if_integer_t<I> bitmask(size_t pos)
+{
+   return std::integral_constant<I, 1>::value << bitndx<I>(pos) ;
+}
+
+template<typename I>
+constexpr inline if_integer_t<I> tailmask(size_t bitcnt)
+{
+   return ~(~I(1) << bitndx<I>(bitcnt - 1)) ;
+}
+
+/// Get the position of first nonzero bit between 'start' and 'finish'.
+/// If there is no such bit, returns 'finish'
+template<typename I>
+if_integer_t<I, size_t> find_first_bit(const I *bits, size_t start, size_t finish, bool bitval = 1)
+{
+   typedef I cell_type ;
+
+   if (start >= finish)
+      return finish ;
+
+   size_t ndx = cellndx<cell_type>(start) ;
+   bits += ndx ;
+   cell_type cell = *bits >> bitndx<cell_type>(start) ;
+
+   if (!cell)
+   {
+      const size_t to = cellndx<cell_type>(finish) ;
+      do {
+         if (++ndx > to)
+            return finish ;
+         cell = *++bits ;
+      } while (!cell) ;
+      start = ndx * int_traits<cell_type>::bitsize ;
+   }
+   return std::min(start + rzcnt(cell), finish) ;
 }
 
 /******************************************************************************/
@@ -289,6 +353,11 @@ class nzbitpos_iterator : public std::iterator<std::forward_iterator_tag, V> {
          _data = clrrnzb(_data) ;
       }
 } ;
+
+/*******************************************************************************
+
+*******************************************************************************/
+
 
 /*******************************************************************************
  Compile-time calculations

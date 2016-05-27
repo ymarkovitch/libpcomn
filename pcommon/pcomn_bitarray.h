@@ -58,10 +58,10 @@ struct bitarray_base {
       {
          if (!size())
             return 0 ;
-         auto &bitcount = cb(cdata())->cached_bitcount() ;
-         if (bitcount == ~0UL)
-            bitcount = count_ones() ;
-         return bitval ? bitcount : _size - bitcount ;
+         auto &ones = cb(cdata())->cached_bitcount() ;
+         if (ones == ~0UL)
+            ones = bitop::bitcount(cbits(), nelements()) ;
+         return bitval ? ones : _size - ones ;
       }
 
       bool test(size_t pos) const
@@ -200,21 +200,15 @@ struct bitarray_base {
       }
 
       /// Given a bit position, get the position of an element containing specified bit
-      static constexpr size_t cellndx(size_t pos) { return pos / BITS_PER_ELEMENT ; }
+      static constexpr size_t cellndx(size_t pos) { return bitop::cellndx<element_type>(pos) ; }
 
       /// Given a bit position, get the index inside the appropriate chunk in bits[]
       /// such that 0 <= index < BITS_PER_ELEMENT.
-      static constexpr size_t bitndx(size_t pos) { return pos & (BITS_PER_ELEMENT - 1) ; }
+      static constexpr size_t bitndx(size_t pos) { return bitop::bitndx<element_type>(pos) ; }
 
-      static constexpr element_type bitmask(size_t pos)
-      {
-         return std::integral_constant<element_type, 1>::value << bitndx(pos) ;
-      }
+      static constexpr element_type bitmask(size_t pos) { return bitop::bitmask<element_type>(pos) ; }
 
-      static constexpr element_type tailmask(size_t bitcnt)
-      {
-         return ~(~element_type(1) << bitndx(bitcnt - 1)) ;
-      }
+      static constexpr element_type tailmask(size_t bitcnt) { return bitop::tailmask<element_type>(bitcnt) ; }
 
    private:
       /*************************************************************************
@@ -311,8 +305,6 @@ struct bitarray_base {
          cb(data)->cached_bitcount() = ~0UL ;
          return data ;
       }
-
-      size_t count_ones() const ;
 
       const element_type &const_elem(size_t bitpos) const { return cbits()[cellndx(bitpos)] ; }
 
@@ -684,16 +676,6 @@ bitarray_base<Element>::bitarray_base(RandomAccessIterator &start, RandomAccessI
       nzmapdata[nzmapcellndx(pos)] |= nzmapbitmask(pos) ;
       ++cached_count ;
    }
-}
-
-template<typename Element>
-size_t bitarray_base<Element>::count_ones() const
-{
-   size_t cnt = 0 ;
-   for (const element_type *element = cbits(), *end = element + nelements() ; element != end ; ++element)
-      cnt += bitop::bitcount(*element) ;
-
-   return cnt ;
 }
 
 template<typename Element>
