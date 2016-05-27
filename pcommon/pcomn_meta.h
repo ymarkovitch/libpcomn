@@ -106,14 +106,16 @@ constexpr bool empty(const T (&)[N]) noexcept { return false ; }
 template<typename E>
 constexpr bool empty(std::initializer_list<E> v) noexcept { return v.size() == 0 ; }
 
+template<bool v>
+using bool_constant = std::integral_constant<bool, v> ;
+
 }
 
 #endif /* PCOMN_STL_CXX17 */
 
 namespace pcomn {
 
-template<bool v>
-using bool_constant = std::integral_constant<bool, v> ;
+using std::bool_constant ;
 
 template<int v>
 using int_constant = std::integral_constant<int, v> ;
@@ -269,27 +271,6 @@ struct rebind___t {
 template<typename C, typename T, typename... A>
 using rebind_t = decltype(rebind___t<T, A...>::eval(autoval<C *>())) ;
 
-/*******************************************************************************
-                     union max_align
-*******************************************************************************/
-union max_align
-{
-      void (*_function_ptr)() ;
-      int (max_align::*_member_ptr) ;
-      int (max_align::*_member_function_ptr)() ;
-      char        _char ;
-      short       _short ;
-      int         _int ;
-      long        _long ;
-      longlong_t  _long_long ;
-      float       _float ;
-      double      _double ;
-      long double _ldouble ;
-      void *      _ptr ;
-} ;
-
-const size_t max_alignment = std::alignment_of<max_align>::value ;
-
 /******************************************************************************/
 /** Macro to define member type metatesters
 *******************************************************************************/
@@ -321,6 +302,45 @@ PCOMN_DEFINE_TYPE_MEMBER_TEST(pointer) ;
 namespace detail { PCOMN_DEFINE_TYPE_MEMBER_TEST(type) ; }
 template<typename T>
 struct has_type_type : detail::has_type<T> {} ;
+
+/*******************************************************************************
+ Check whether the derived class overloads base class member or not
+*******************************************************************************/
+namespace detail {
+template<typename C, typename R, typename... Args>
+std::integral_constant<bool, true> is_derived_mem_fn_(R (C::*)(Args...) const) ;
+template<typename C, typename R, typename... Args>
+std::integral_constant<bool, true> is_derived_mem_fn_(R (C::*)(Args...)) ;
+template<typename C>
+std::integral_constant<bool, false> is_derived_mem_fn_(...) ;
+
+template<typename C, typename T>
+std::integral_constant<bool, true> is_derived_mem_(T C::*) ;
+template<typename C>
+std::integral_constant<bool, false> is_derived_mem_(...) ;
+}
+
+/******************************************************************************/
+/** Metafunction: check if the member function of a derived class is derived from
+ the base class or overloaded in the derived class.
+
+ @return std::integral_constant<bool,true> if derived, std::integral_constant<bool,false>
+ if overloaded.
+*******************************************************************************/
+template<typename Base, typename Member>
+constexpr decltype(detail::is_derived_mem_fn_<Base>(std::declval<Member>()))
+is_derived_mem_fn(Member &&) { return {} ; }
+
+/******************************************************************************/
+/** Metafunction: check if the member of a derived class is derived from
+ the base class or overloaded in the derived class.
+
+ @return std::integral_constant<bool,true> if derived, std::integral_constant<bool,false>
+ if overloaded.
+*******************************************************************************/
+template<typename Base, typename Member>
+constexpr decltype(detail::is_derived_mem_<Base>(std::declval<Member>()))
+is_derived_mem(Member &&) { return {} ; }
 
 /******************************************************************************/
 /** Uniform pair (i.e. pair<T,T>)

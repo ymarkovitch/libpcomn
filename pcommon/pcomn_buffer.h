@@ -476,7 +476,7 @@ template<> struct membuf_traits<iovec_t> {
 
       static size_t size(const iovec_t &buffer) { return buffer.iov_len ; }
       static const void *cdata(const iovec_t &buffer) { return buffer.iov_base ; }
-      static void *data(iovec_t &buffer) { return buffer.iov_base ; }
+      static void *data(const iovec_t &buffer) { return buffer.iov_base ; }
 } ;
 
 template<size_t n> struct membuf_traits<const char[n]> {
