@@ -65,20 +65,26 @@ template<typename T>
 constexpr const T int_traits<T>::signbit ;
 
 /******************************************************************************/
+/** Type trait checks whether T is an integral type and not bool.
+*******************************************************************************/
+template<typename T>
+struct is_integer : std::bool_constant<std::is_integral<T>::value && !std::is_same<T, bool>::value> {} ;
+
+/******************************************************************************/
 /** Overload enabler, a la enable_if<>.
  If T is an integer type, returns (as internal typedef) R as 'type'
 *******************************************************************************/
 template<typename T, typename R = T> struct
-if_integer : std::enable_if<std::numeric_limits<T>::is_integer, R> {} ;
+if_integer : std::enable_if<is_integer<T>::value, R> {} ;
 
 template<typename T, typename R = T> struct
-if_not_integer : disable_if<std::numeric_limits<T>::is_integer, R> {} ;
+if_not_integer : disable_if<is_integer<T>::value, R> {} ;
 
 template<typename T, typename R = T> struct
-if_signed_int : std::enable_if<(std::numeric_limits<T>::is_integer && std::numeric_limits<T>::is_signed), R> {} ;
+if_signed_int : std::enable_if<(is_integer<T>::value && std::numeric_limits<T>::is_signed), R> {} ;
 
 template<typename T, typename R = T> struct
-if_unsigned_int : std::enable_if<(std::numeric_limits<T>::is_integer && !std::numeric_limits<T>::is_signed), R> {} ;
+if_unsigned_int : std::enable_if<(is_integer<T>::value && !std::numeric_limits<T>::is_signed), R> {} ;
 
 template<typename T, typename R = T>
 using if_integer_t = typename if_integer<T, R>::type ;
