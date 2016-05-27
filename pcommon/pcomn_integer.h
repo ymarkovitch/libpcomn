@@ -13,7 +13,7 @@
  CREATION DATE:   27 Nov 2006
 *******************************************************************************/
 #include <pcomn_meta.h>
-#include <pcomn_macros.h>
+#include <pcomn_bitops.h>
 
 #include <functional>
 #include <iterator>
@@ -35,24 +35,24 @@ template<unsigned v, unsigned s> struct _ct_shl<v, s, false> :
 } // end of namespace pcomn::detail
 /// @endcond
 
-/// Calculate at compile-time the number of bits in a type or value.
-#define bitsizeof(t) (sizeof(t) * CHAR_BIT)
+/******************************************************************************/
+/** A traits class template that abstracts properties for a given integral type.
 
-/*******************************************************************************
-                     template<typename T>
-                     struct int_traits
+The defined property set is such that to allow to implement generic
+bit-manipulation algorithms.
 *******************************************************************************/
 template<typename T>
 struct int_traits {
       PCOMN_STATIC_CHECK(std::is_integral<T>::value) ;
 
-      typedef typename std::make_signed<T>::type    stype ;
-      typedef typename std::make_unsigned<T>::type  utype ;
+      typedef T type ;
+      typedef typename std::make_signed_t<type>    stype ;
+      typedef typename std::make_unsigned_t<type>  utype ;
 
-      static constexpr const bool     is_signed = std::numeric_limits<T>::is_signed ;
-      static constexpr const unsigned bitsize = bitsizeof(T) ;
-      static constexpr const T        ones = (T)~(T)0 ;
-      static constexpr const T        signbit = (T)((T)1 << (bitsize - 1)) ;
+      static constexpr const bool     is_signed = std::numeric_limits<type>::is_signed ;
+      static constexpr const unsigned bitsize = bitsizeof(type) ;
+      static constexpr const type     ones = (type)~type() ;
+      static constexpr const type     signbit = (type)((type)1 << (bitsize - 1)) ;
 } ;
 
 template<typename T>
@@ -100,182 +100,10 @@ inline constexpr if_signed_int_t<T> sign_bit(T value)
  iabs
 *******************************************************************************/
 template<typename T>
-inline typename if_signed_int<T, T>::type iabs(T v)
-{
-   return std::abs(v) ;
-}
-
-#ifdef PCOMN_PL_MS
-
-template<>
-inline int64_t iabs(int64_t v)
-{
-   return _abs64(v) ;
-}
-
-#endif
+inline typename if_signed_int<T, T>::type iabs(T v) { return std::abs(v) ; }
 
 template<typename T>
-inline typename if_unsigned_int<T, T>::type iabs(T v)
-{
-   return v ;
-}
-
-/*******************************************************************************
-                     template<int nbits>
-                     struct bit_traits
- bit_traits<n> describes bit operations on integers of size n bits.
-*******************************************************************************/
-template<int nbits>
-struct bit_traits ;
-
-template<>
-struct bit_traits<8> {
-
-   typedef int8_t  stype ;
-   typedef uint8_t utype ;
-
-   template<typename I>
-   static unsigned bitcount(I value)
-   {
-      unsigned result = static_cast<utype>(value) ;
-      result = (0x55U & result) + (0x55U & (result >> 1U)) ;
-      result = (0x33U & result) + (0x33U & (result >> 2U)) ;
-      result = (result + (result >> 4U)) & 0x0fU ;
-      return result ;
-   }
-
-   template<typename I>
-   static int log2floor(I value)
-   {
-      // At the end, x will have the same most significant 1 as value and all '1's below
-      unsigned x = static_cast<utype>(value) ;
-      x |= (x >> 1) ;
-      x |= (x >> 2) ;
-      x |= (x >> 4) ;
-      return (int)bitcount((I)x) - 1 ;
-   }
-
-   template<typename I>
-   static int log2ceil(I value)
-   {
-      const unsigned correction = static_cast<utype>(value) ;
-      return log2floor(value) + !!(correction & (correction - 1)) ;
-   }
-} ;
-
-template<> struct bit_traits<16> {
-
-   typedef int16_t  stype ;
-   typedef uint16_t utype ;
-
-   template<typename I>
-   static unsigned bitcount(I value)
-   {
-      unsigned result = static_cast<utype>(value) ;
-      result = (0x5555U & result) + (0x5555U & (result >> 1U)) ;
-      result = (0x3333U & result) + (0x3333U & (result >> 2U)) ;
-      result = (result + (result >> 4U)) & 0x0f0fU ;
-      result += result >> 8U ;
-      return result & 0x0000001fU ;
-   }
-
-   template<typename I>
-   static int log2floor(I value)
-   {
-      unsigned x = static_cast<utype>(value) ;
-      x |= (x >> 1) ;
-      x |= (x >> 2) ;
-      x |= (x >> 4) ;
-      x |= (x >> 8) ;
-      return (int)bitcount((I)x) - 1 ;
-   }
-
-   template<typename I>
-   static int log2ceil(I value)
-   {
-      const unsigned correction = static_cast<utype>(value) ;
-      return log2floor(value) + !!(correction & (correction - 1)) ;
-   }
-} ;
-
-template<> struct bit_traits<32> {
-
-   typedef int       stype ;
-   typedef unsigned  utype ;
-
-   template<typename I>
-   static unsigned bitcount(I value)
-   {
-      unsigned result = static_cast<utype>(value) ;
-      result = (0x55555555U & result) + (0x55555555U & (result >> 1U)) ;
-      result = (0x33333333U & result) + (0x33333333U & (result >> 2U)) ;
-      result = (result + (result >> 4U)) & 0x0f0f0f0fU ;
-      result += result >> 8U ;
-      result += result >> 16U ;
-      return result & 0x0000003fU ;
-   }
-
-   template<typename I>
-   static int log2floor(I value)
-   {
-      unsigned x = static_cast<utype>(value) ;
-      x |= (x >> 1) ;
-      x |= (x >> 2) ;
-      x |= (x >> 4) ;
-      x |= (x >> 8) ;
-      x |= (x >> 16) ;
-      return (int)bitcount((I)x) - 1 ;
-   }
-
-   template<typename I>
-   static int log2ceil(I value)
-   {
-      const unsigned correction = static_cast<utype>(value) ;
-      return log2floor(value) + !!(correction & (correction - 1)) ;
-   }
-} ;
-
-template<> struct bit_traits<64> {
-
-   typedef int64_t  stype ;
-   typedef uint64_t utype ;
-
-   template<typename I>
-   static unsigned bitcount(I value)
-   {
-      utype r = static_cast<utype>(value) ;
-      r = (0x5555555555555555ULL & r) + (0x5555555555555555ULL & ((utype)r >> 1U)) ;
-      r = (0x3333333333333333ULL & r) + (0x3333333333333333ULL & ((utype)r >>  2U)) ;
-      r = (r + (r >> 4U)) & 0x0f0f0f0f0f0f0f0fULL ;
-      r += r >> 8U ;
-      r += r >> 16U ;
-      r += r >> 32U ;
-      return
-         static_cast<unsigned>(r) & 0x0000007fU ;
-   }
-
-   template<typename I>
-   static int log2floor(I value)
-   {
-      utype x = value ;
-      x |= (x >> 1) ;
-      x |= (x >> 2) ;
-      x |= (x >> 4) ;
-      x |= (x >> 8) ;
-      x |= (x >> 16) ;
-      x |= (x >> 32) ;
-      return (int)bitcount((I)x) - 1 ;
-   }
-
-   template<typename I>
-   static int log2ceil(I value)
-   {
-      const utype correction = value ;
-      return log2floor(value) + !!(correction & (correction - 1)) ;
-   }
-} ;
-
+inline typename if_unsigned_int<T, T>::type iabs(T v) { return v ; }
 /*******************************************************************************
  namespace pcomn::bitop
  Bit operations (like bit counts, etc.)
@@ -286,7 +114,7 @@ namespace bitop {
 template<typename I>
 inline unsigned bitcount(I i)
 {
-   return bit_traits<int_traits<I>::bitsize>::bitcount(i) ;
+   return native_bitcount(i, native_isa_tag()) ;
 }
 
 template<typename I>
@@ -336,10 +164,19 @@ constexpr inline if_integer_t<I> getrzbseq(I x)
    return static_cast<I>(~(0 - getrnzb(x))) ;
 }
 
-/*******************************************************************************
-                     template<typename I>
-                     class nzbit_iterator
- Iterates over nonzero bits of an integer, from LSB to MSB.
+/// Get Rightmost Zero Bit Count.
+/// 00101000 -> 3
+/// 00101001 -> 0
+/// 0 -> bitsizeof(I)
+template<typename I>
+constexpr inline if_integer_t<I> rzcnt(I x)
+{
+   return native_rzcnt(x, native_isa_tag()) ;
+}
+
+/******************************************************************************/
+/** Iterate over nonzero bits of an integer, from LSB to MSB.
+
  operator *() returns the currently selected nonsero bit.
  E.g.
  for (nzbit_iterator<unsigned> foo_iter (0x20005), foo_end ; foo_iter != foo_end ; ++foo_iter)
@@ -404,13 +241,16 @@ inline nzbit_iterator<if_integer_t<I> > make_nzbit_iterator(I value)
 *************************************************************************/
 template<typename I, typename V = int>
 class nzbitpos_iterator : public std::iterator<std::forward_iterator_tag, V> {
+
       typedef typename int_traits<I>::utype datatype ;
+      typedef std::conditional_t<(sizeof(datatype) >= sizeof(int)), int, typename int_traits<I>::stype> postype ;
+
       typedef std::iterator<std::forward_iterator_tag, V> ancestor ;
    public:
       using typename ancestor::value_type ;
 
       constexpr nzbitpos_iterator() : _data(), _pos(bitsizeof(I)) {}
-      explicit nzbitpos_iterator(I value) : _data((datatype)value), _pos(-1)
+      explicit nzbitpos_iterator(I value) : _data(static_cast<datatype>(value)), _pos()
       {
          advance_pos() ;
       }
@@ -436,22 +276,17 @@ class nzbitpos_iterator : public std::iterator<std::forward_iterator_tag, V> {
          return !(*this == rhs) ;
       }
 
-      constexpr value_type operator*() const { return static_cast<value_type>(_pos) ; }
+      value_type operator*() const { return static_cast<value_type>((int)_pos) ; }
 
    private:
       datatype _data ;
-      int      _pos ;
+      postype  _pos ;
 
       void advance_pos()
       {
-         NOXCHECK(_pos < (int)bitsizeof(I)) ;
-         if (!_data)
-         {
-            _pos = bitsizeof(I) ;
-            return ;
-         }
-         for ( ; ++_pos, !(_data & 1) ; _data >>= 1) ;
-         _data >>= 1 ;
+         NOXCHECK((int)_pos < (int)bitsizeof(I)) ;
+         _pos = rzcnt(_data) ;
+         _data = clrrnzb(_data) ;
       }
 } ;
 

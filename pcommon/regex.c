@@ -45,8 +45,15 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <_pregex.h>
+#include <pbregex.h>
 #include <pcomn_assert.h>
+
+typedef struct {
+      PRegError       lasterror ;
+      regexp_handler  errhandler ;
+} _regex_errproc ;
+
+_regex_errproc *regex_errproc(void) ;
 
 // size_t -> int assignment
 MS_IGNORE_WARNING(4244 4267)

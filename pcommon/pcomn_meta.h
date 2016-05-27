@@ -61,6 +61,9 @@ using add_lvalue_reference_t = typename add_lvalue_reference<T>::type ;
 template<typename T>
 using add_rvalue_reference_t = typename add_rvalue_reference<T>::type ;
 
+template<typename T>
+using add_pointer_t = typename add_pointer<T>::type ;
+
 template<bool B, typename T>
 using enable_if_t = typename enable_if<B, T>::type ;
 template<bool B, typename T, typename F>

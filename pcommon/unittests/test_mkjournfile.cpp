@@ -10,8 +10,10 @@
  CREATION DATE:   12 Dec 2008
 *******************************************************************************/
 #include "test_journal.h"
-#include <pcomn_journmmap.h>
-#include <pcomn_journstorage.h>
+
+#include <pcomn_journal/journmmap.h>
+#include <pcomn_journal/journstorage.h>
+
 #include <pcomn_getopt.h>
 #include <pcomn_version.h>
 #include <pcomn_sys.h>

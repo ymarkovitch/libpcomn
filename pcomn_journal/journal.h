@@ -2,7 +2,7 @@
 #ifndef __PCOMN_JOURNAL_H
 #define __PCOMN_JOURNAL_H
 /*******************************************************************************
- FILE         :   pcomn_journal.h
+ FILE         :   journal.h
  COPYRIGHT    :   Yakov Markovitch, 2008-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
@@ -84,7 +84,8 @@
  @endcode
 
 *******************************************************************************/
-#include <pcomn_journerror.h>
+#include "journerror.h"
+
 #include <pcomn_smartptr.h>
 #include <pcomn_platform.h>
 #include <pcomn_binstream.h>

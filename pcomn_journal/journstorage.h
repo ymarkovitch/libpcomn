@@ -2,7 +2,7 @@
 #ifndef __PCOMN_JOURSTORAGE_H
 #define __PCOMN_JOURSTORAGE_H
 /*******************************************************************************
- FILE         :   pcomn_journstorage.h
+ FILE         :   journstorage.h
  COPYRIGHT    :   Yakov Markovitch, 2008-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
@@ -27,7 +27,8 @@
  operation-tail      ::= OperationTail
 
 *******************************************************************************/
-#include <pcomn_journal.h>
+#include "journal.h"
+
 #include <pcomn_integer.h>
 #include <pcomn_buffer.h>
 #include <pcomn_hash.h>

@@ -2,7 +2,7 @@
 #ifndef __PCOMN_JOURNERROR_H
 #define __PCOMN_JOURNERROR_H
 /*******************************************************************************
- FILE         :   pcomn_journerror.h
+ FILE         :   journerror.h
  COPYRIGHT    :   Yakov Markovitch, 2010-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 

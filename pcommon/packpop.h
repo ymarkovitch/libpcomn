@@ -19,16 +19,8 @@
 #ifdef __BORLANDC__
 #  pragma nopackwarning
 #endif
+#ifdef _MSC_VER >= 800
+#  pragma warning(disable:4103)
+#endif
 
-#if ! (defined(lint) || defined(_lint))
-#  if ( _MSC_VER >= 800 ) || (defined(__BORLANDC__))
-#    pragma warning(disable:4103)
-#    if !(defined( MIDL_PASS )) || defined( __midl )
-#      pragma pack(pop)
-#    else
-#      pragma pack()
-#    endif
-#  else
-#    pragma pack()
-#  endif
-#endif // ! (defined(lint) || defined(_lint))
+#pragma pack(pop)

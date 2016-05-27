@@ -33,26 +33,26 @@ project pcommon
   : requirements
 
   <include>.
+
+  # If VENDOR_PREFIX environment variable is not defined,
+  # the lines below simply disappear
   <include>$(VENDOR_PREFIX)/include
+  <library-path>$(VENDOR_PREFIX)/lib
 
   <toolset>gcc:<cxxflags>-Woverloaded-virtual
   <toolset>gcc:<cflags>-fvisibility=hidden
 
   <toolset>gcc,<variant-tag>release:<cxxflags>-fno-implement-inlines
-  <toolset>gcc:<cflags>-march=core2
-  <toolset>gcc:<cflags>-msse4.1
-
-  <toolset>intel-win:<cflags>-QxSSE4.1
-  <toolset>intel-win:<cflags>-arch:SSE4.1
 
   <toolset>msvc:<define>_SCL_SECURE_NO_WARNINGS
 
   <os>NT:<define>_WIN32_WINNT=0x0600
   <os>NT:<define>WIN32_LEAN_AND_MEAN=1
 
-  # If VENDOR_PREFIX environment variable is not defined,
-  # the line below simply disappears
-  <library-path>$(VENDOR_PREFIX)/lib
+  <acceleration>off:<define>PCOMN_PL_NOACCELERATION
+
+  : usage-requirements
+  <acceleration>off:<define>PCOMN_PL_NOACCELERATION
 
   : default-build debug <link>static <threading>multi
 
@@ -83,10 +83,6 @@ alias pcommon-unix-sources :
   pcomn_crypthash.cpp
   pcomn_shutil.cpp
   pcomn_scheduler.cpp
-  pcomn_journal.cpp
-  pcomn_journstorage.cpp
-  pcomn_journfile.cpp
-  pcomn_journmmap.cpp
   pcomn_posix_exec.cpp
 
   : <toolset>gcc
@@ -116,7 +112,6 @@ lib pcommon :
   pcomn_crc32.c
   pcomn_hash.c
   pcomn_version.c
-  pudate.c
 
   pcomn_trace.cpp
   pcomn_tracecfg.cpp

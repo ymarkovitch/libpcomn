@@ -1,0 +1,28 @@
+#-*- mode: jam; jam-indent-size: 2; tab-width: 2; indent-tabs-mode: nil; -*-
+#------------------------------------------------------------------------------
+# FILE         :  Jamfile.v2
+# COPYRIGHT    :  Yakov Markovitch, 2008-2016. All rights reserved.
+#                 See LICENSE for information on usage/redistribution.
+#
+# DESCRIPTION  :  Jamfile for building PCommon command-line utilities
+#
+# PROGRAMMED BY:  Yakov Markovitch
+# CREATION DATE:  24 Nov 2008
+#------------------------------------------------------------------------------
+project
+  : requirements
+  <library>$(PROJROOT)//pcommon
+  <library>$(PROJROOT)//pcomn_journal
+
+  : default-build debug <link>static <threading>multi
+  ;
+
+
+# Check for --build=EXE and/or --compile=SOURCE command-line options; if there are, build
+# requested utilities instead of those listed below.
+if ! [ adhoc-targets ]
+{
+  # Utilities
+  #exe pcomn-jrninfo : jrninfo.cpp ;
+  exe pcomn-makejrn : makejrn.cpp ;
+}
