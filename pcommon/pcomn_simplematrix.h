@@ -43,7 +43,7 @@ class simple_slice {
       typedef T & reference ;
       typedef reference const_reference ;
 
-      constexpr simple_slice() : _start(), _finish() {}
+      constexpr simple_slice() = default ;
       constexpr simple_slice(const simple_slice &src) : _start(src._start), _finish(src._finish) {}
 
       template<typename U, typename = instance_if_t<std::is_same<T, std::add_const_t<U> >::value> >
@@ -105,8 +105,8 @@ class simple_slice {
       }
 
    private:
-      value_type *_start ;
-      value_type *_finish ;
+      value_type *_start   = nullptr ;
+      value_type *_finish  = nullptr ;
 } ;
 
 /// Slice of a constant array

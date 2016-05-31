@@ -134,7 +134,7 @@ inline Char *inttostr(bool value, Char *buffer, size_t bufsize, int base)
 template<typename Char, typename Integer>
 inline typename ctype_traits<Char>::char_type *
 numtostr(Integer number, Char *buffer, size_t bufsize,
-         typename if_integer<Integer, int>::type base = 0)
+         std::enable_if_t<std::is_integral<Integer>::value, int> base = 0)
 {
    return detail::inttostr(number, buffer, bufsize, base) ;
 }
@@ -144,7 +144,7 @@ numtostr(Integer number, Char *buffer, size_t bufsize,
 template<typename Char, typename Integer, size_t bufsize>
 inline typename ctype_traits<Char>::char_type *
 numtostr(Integer number, Char (&buffer)[bufsize],
-         typename if_integer<Integer, int>::type base = 0)
+         std::enable_if_t<std::is_integral<Integer>::value, int> base = 0)
 {
    return numtostr(number, buffer + 0, bufsize, base) ;
 }
@@ -152,7 +152,7 @@ numtostr(Integer number, Char (&buffer)[bufsize],
 /// @overload
 /// @ingroup NumStrConversion
 template<typename Str, typename Integer>
-inline Str numtostr(Integer number, typename if_integer<Integer, int>::type base = 0)
+inline Str numtostr(Integer number, std::enable_if_t<std::is_integral<Integer>::value, int> base = 0)
 {
    // The buffer is big enough even for base==2
    char buf[sizeof(number) * 8 + 3] ;
@@ -167,7 +167,7 @@ inline Str numtostr(Integer number, typename if_integer<Integer, int>::type base
 /// @return @a out + len(numtostr(@a number))
 template<typename OutputIterator, typename Integer>
 inline OutputIterator numtoiter(Integer number, OutputIterator out,
-                                typename if_integer<Integer, int>::type base = 0)
+                                std::enable_if_t<std::is_integral<Integer>::value, int> base = 0)
 {
    // The buffer is big enough even for base==2
    char buf[sizeof(number) * 8 + 3] ;
@@ -217,7 +217,7 @@ inline Integer ensure_next_digit(Integer n, int c, int sign)
 /// @endcond
 
 template<typename Signed, typename Range>
-inline typename if_signed_int<Signed, Range>::type
+inline if_signed_int_t<Signed, Range>
 strtonum(Range input, Signed &result)
 {
    Signed intermed = 0 ;
@@ -241,7 +241,7 @@ strtonum(Range input, Signed &result)
 }
 
 template<typename Unsigned, typename Range>
-inline typename if_unsigned_int<Unsigned, Range>::type
+inline if_unsigned_int_t<Unsigned, Range>
 strtonum(Range input, Unsigned &result)
 {
    if (input)
@@ -269,8 +269,7 @@ inline Range strtonum(Range input, bool &result)
 }
 
 template<typename Num, typename Range>
-inline typename if_integer<Num, Num>::
-type strtonum(Range input)
+inline if_integer_t<Num> strtonum(Range input)
 {
    Num result = Num() ;
    strtonum(input, result) ;
@@ -283,8 +282,7 @@ type strtonum(Range input)
 /// is true if conversion is successful and false otherwise; in case of conversion
 /// failure, pair.first is 0.
 template<typename Num, typename Range>
-typename if_integer<Num, std::pair<Num, bool> >::
-type strtonum_safe(Range input)
+if_integer_t<Num, std::pair<Num, bool>> strtonum_safe(Range input)
 {
    std::pair<Num, bool> result (Num(), false) ;
    try {

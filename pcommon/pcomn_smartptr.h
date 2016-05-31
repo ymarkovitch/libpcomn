@@ -85,12 +85,12 @@ struct refcount_basic_policy {
       static C inc_ref(T *ptr)
       {
          NOXCHECK(ptr) ;
-         return atomic_op::inc(&(ptr->*counter)) ;
+         return atomic_op::preinc(&(ptr->*counter)) ;
       }
       static C dec_ref(T *ptr)
       {
          NOXCHECK(ptr) ;
-         const C result = atomic_op::dec(&(ptr->*counter)) ;
+         const C result = atomic_op::predec(&(ptr->*counter)) ;
          if (!result)
             refcount_policy<T>::threshold_action(ptr) ;
          return result ;

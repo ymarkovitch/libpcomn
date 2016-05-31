@@ -232,7 +232,7 @@ class _PCOMNEXP Scheduler {
          EV_STOP        = 'S'    /* Stop the scheduler completely */
       } ;
 
-      taskid_t allocate_taskid() { return atomic_op::inc(&_last_allocated_id) ; }
+      taskid_t allocate_taskid() { return atomic_op::preinc(&_last_allocated_id) ; }
 
       task_queue::iterator queue_task(const task_ptr &task) ;
       void queue_and_reschedule(const task_ptr &task) ;

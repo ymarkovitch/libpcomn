@@ -123,7 +123,7 @@ struct instance_id {
 
       static type _counter ;
 
-      instance_id() : _value(atomic_op::inc(&_counter)) {}
+      instance_id() : _value(atomic_op::preinc(&_counter)) {}
 } ;
 
 template<typename InstanceType, typename Atomic>
