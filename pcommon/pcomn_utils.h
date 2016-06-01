@@ -288,35 +288,33 @@ inline bool is_flags_off(T flags, T mask)
 }
 
 template<typename T>
-inline T &set_flags_on(T &flags, const T &fset)
+inline T &set_flags_masked(T &target, const T &flagset, const T &mask)
 {
-   return flags |= fset ;
+   return (target &= ~mask) |= flagset & mask ;
 }
 
 template<typename T>
-inline T &set_flags_off(T &flags, const T &fset)
+inline T &set_flags(T &target, bool value, const T &mask)
 {
-   return flags &= ~fset ;
+   return set_flags_masked(target, (T() - (T)value), mask) ;
 }
 
 template<typename T>
-inline T &set_flags(T &flags, const T &fset, bool onOff)
+inline T &set_flags_on(T &flags, const T &mask)
 {
-   return (onOff) ?
-      set_flags_on(flags, fset) :
-      set_flags_off(flags, fset) ;
+   return flags |= mask ;
 }
 
 template<typename T>
-inline T &set_flags_by_mask(T &flags, const T &fset, const T &mask)
+inline T &set_flags_off(T &flags, const T &mask)
 {
-   return (flags &= ~mask) |= fset & mask ;
+   return flags &= ~mask ;
 }
 
 template<typename T>
-inline T &inv_flags(T &flags, const T &fset)
+inline T &inv_flags(T &flags, const T &mask)
 {
-   return flags ^= fset ;
+   return flags ^= mask ;
 }
 
 template<typename T>

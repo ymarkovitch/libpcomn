@@ -240,7 +240,7 @@ protected:
     unsigned flags(unsigned value, bool on = true)
     {
         unsigned old = _flags ;
-        set_flags(_flags, value, on) ;
+        set_flags(_flags, on, value) ;
         return old ;
     }
 

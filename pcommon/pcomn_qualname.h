@@ -177,7 +177,7 @@ class _PCOMNEXP qualified_name {
 
       unsigned flags(unsigned f, bool onOff = true)
       {
-        return pcomn::set_flags(_flags, f, onOff) ;
+         return pcomn::set_flags(_flags, onOff, f) ;
       }
 
    private:

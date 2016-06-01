@@ -277,7 +277,7 @@ protected:
     bigflag_t flags(bigflag_t value, bool on = true)
     {
         bigflag_t old = _flags ;
-        set_flags(_flags, value, on) ;
+        set_flags(_flags, on, value) ;
         return old ;
     }
 

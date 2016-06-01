@@ -227,9 +227,10 @@ if_integer_t<I, size_t> find_first_bit(const I *bits, size_t start, size_t finis
    if (start >= finish)
       return finish ;
 
+   const cell_type invert = cell_type(bitval) - 1 ;
    size_t ndx = cellndx<cell_type>(start) ;
    bits += ndx ;
-   cell_type cell = *bits >> bitndx<cell_type>(start) ;
+   cell_type cell = (*bits ^ invert) >> bitndx<cell_type>(start) ;
 
    if (!cell)
    {
@@ -237,11 +238,21 @@ if_integer_t<I, size_t> find_first_bit(const I *bits, size_t start, size_t finis
       do {
          if (++ndx > to)
             return finish ;
-         cell = *++bits ;
+         cell = (*++bits ^ invert) ;
       } while (!cell) ;
       start = ndx * int_traits<cell_type>::bitsize ;
    }
    return std::min(start + rzcnt(cell), finish) ;
+}
+
+/// Set bits in the @a target selected by the @a mask to corresponding bits from the
+/// second arguments (@a bits).
+///
+template<typename T>
+constexpr inline std::enable_if_t<ct_and<std::is_integral<T>, ct_not<is_same_unqualified<T, bool>>>::value, T>
+set_bits_masked(T target, T bits, T mask)
+{
+   return target &~ mask | bits & mask ;
 }
 
 /******************************************************************************/

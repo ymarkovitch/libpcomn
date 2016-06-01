@@ -190,7 +190,7 @@ qualified_name &qualified_name::append (const qualified_name &qn, bool full)
       else
       {
          _ndxes[level()] = qn._ndxes[qn.level()] ;
-         pcomn::set_flags_by_mask(_flags, qn.flags(), (unsigned)HasNameLevel) ;
+         pcomn::set_flags_masked(_flags, qn.flags(), (unsigned)HasNameLevel) ;
       }
    }
    return *this ;
