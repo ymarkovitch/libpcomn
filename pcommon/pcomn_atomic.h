@@ -143,7 +143,8 @@ cas(T *value, atomic_value_t<T> old_value, atomic_value_t<T> new_value,
  Fetch-And-Function
  Compare-And-Function
 *******************************************************************************/
-/// Atomic fetch_and_F
+/// Atomic fetch_and_F.
+/// @return Old value
 template<typename T, typename F>
 inline enable_if_atomic_t<atomic_value_t<T>>
 fetch_and_F(T *value, F fn, std::memory_order order = std::memory_order_acq_rel)

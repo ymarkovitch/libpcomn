@@ -6,194 +6,279 @@
  COPYRIGHT    :   Yakov Markovitch, 2000-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
- DESCRIPTION  :   Bit mask of arbitrary lenght.
+ DESCRIPTION  :   Interpret an array of integral types as a bit vector.
 
  CREATION DATE:   25 May 2016
 *******************************************************************************/
 /** @file
-    Bit mask of arbitrary lenght.
+ Template to interpret an array of integral types as a bit vector.
 *******************************************************************************/
 #include <pcomn_assert.h>
-#include <pcomn_integer.h>
 #include <pcomn_meta.h>
+#include <pcomn_integer.h>
 #include <pcomn_atomic.h>
-#include <pcomn_buffer.h>
+
+#include <iostream>
+#include <algorithm>
 
 namespace pcomn {
 
-/*******************************************************************************
-
-*******************************************************************************/
-
-
 /******************************************************************************/
-/** Bit mask of arbitrary length
+/** Pointer to an array of integral types interpreted as a bit vector.
 *******************************************************************************/
-template<typename E, typename Derived>
+template<typename E>
 struct basic_bitvector {
       /// The type of element of an array in which we store bits.
       typedef E element_type ;
 
       // Must be unsigned and not bool
-      PCOMN_STATIC_CHECK(std::is_integral<element_type>::value &&
-                         std::is_unsigned<element_type>::value &&
-                         !std::is_same<bool, std::remove_cv_t<E>>::value) ;
+      PCOMN_STATIC_CHECK(pcomn::is_integer<element_type>::value && std::is_unsigned<element_type>::value) ;
+
+      constexpr basic_bitvector() = default ;
+
+      constexpr basic_bitvector(element_type *e, size_t n) : _elements(e), _nelements(n) {}
+
+      template<size_t n>
+      constexpr basic_bitvector(element_type (&e)[n]) : _elements(e), _nelements(n) {}
+
+      /// Get the number of elements
+      constexpr size_t nelements() const { return _nelements ; }
 
       /// Get the size of vector in bits
-      size_t size() const { return _size ; }
+      constexpr size_t size() const { return nelements()*BITS_PER_ELEMENT ; }
+
+      constexpr element_type *data() const { return _elements ; }
+      constexpr const element_type *cdata() const { return _elements ; }
 
       /// Get the count of 1 or 0 bit in vector
       size_t count(bool bitval = true) const
       {
-         size_t c = Derived::cached_count() ;
-         if (c == ~0UL)
-            Derived::cache_count(c = count_ones()) ;
+         const size_t c = bitop::bitcount(cdata(), nelements()) ;
          return bitval ? c : size() - c ;
       }
 
+      /// Get the value of a bit at specified position.
       bool test(size_t pos) const
       {
-         NOXCHECK(pos < size()) ;
-         return !!(const_elem(pos) & bitmask(pos)) ;
+         return !!(elem(pos) & bitmask(pos)) ;
       }
 
-      /// Indicate if there exists '1' bit in this array
-      bool any() const
+      /// Atomic test
+      bool test(size_t pos, std::memory_order order) const
       {
-         const element_type * const data = cbits() ;
-         return std::any_of(data, data + nelements(), identity()) ;
+         return !!(elem(pos, order) & bitmask(pos)) ;
       }
 
-      /// Indicate if all bits in this array are '1'
-      bool all() const
+      /// Set bit value at the given position.
+      ///
+      /// @return Old value of the bit at @a pos.
+      bool set(size_t pos, bool val = true)
       {
-         if (const size_t n = nelements())
-         {
-            const element_type * const data = cbits() ;
-            return
-               std::all_of(data, data + (n-1), [](element_type e){ return e == ~element_type() ; }) &&
-               (data[n-1] & tailmask()) == tailmask() ;
-         }
-         return true ;
-      }
-
-      void reset()
-      {
-         memset(mbits(), 0, buf::size(_elements)) ;
-         _count = 0 ;
-      }
-
-      void set()
-      {
-         if (const size_t itemcount = nelements())
-         {
-            element_type * const data = mbits() ;
-            memset(data, -1, itemcount * sizeof data) ;
-            data[itemcount - 1] &= tailmask() ;
-            _count = size() ;
-         }
-      }
-
-      void set(size_t pos, bool val = true)
-      {
-         NOXCHECK(pos < size()) ;
-         element_type &data = mutable_elem(pos) ;
+         element_type &data = elem(pos) ;
          const element_type mask = bitmask(pos) ;
-         val ? (data |= mask) : (data &= ~mask) ;
+         const bool old = data & mask ;
+         set_flags(data, val, mask) ;
+         return old ;
       }
 
+      /// Atomically set bit value at the given position.
+      bool set(size_t pos, bool val, std::memory_order order)
+      {
+         const element_type value = element_type() - (element_type)val ;
+         const element_type mask = bitmask(pos) ;
+
+         return
+            atomic_op::fetch_and_F(&elem(pos), [=](element_type oldval)
+            {
+               return bitop::set_bits_masked(oldval, value, mask) ;
+            },
+            order)
+            & mask ;
+      }
+
+      bool set(size_t pos, std::memory_order order) { return set(pos, true, order) ; }
+
+      /// Invert all bits in this vector.
       void flip() ;
 
+      /// Invert a bit at the specified position.
+      ///
+      /// @return The @em new bit value.
       bool flip(size_t pos)
       {
-         NOXCHECK(pos < size()) ;
-         return !!((mutable_elem(pos) ^= bitmask(pos)) & bitmask(pos)) ;
+         return !!((elem(pos) ^= bitmask(pos)) & bitmask(pos)) ;
+      }
+
+      /// Atomically invert a bit at the specified position.
+      ///
+      /// @return The @em new bit value.
+      bool flip(size_t pos, std::memory_order order)
+      {
+         const element_type mask = bitmask(pos) ;
+         return !(atomic_op::bit_xor(&elem(pos), mask, order) & mask) ;
       }
 
       /// Get the position of first nonzero bit between 'start' and 'finish'
       ///
       /// If there is no such bit, returns 'finish'
-      size_t find_first_bit(size_t start, size_t finish) const ;
+      template<bool b>
+      size_t find_first_bit(size_t start, size_t finish = -1) const
+      {
+         return bitop::find_first_bit(cdata(), start, std::min(size(), finish), b) ;
+      }
+
+      /// Given a bit position, get the position of an element containing specified bit
+      static constexpr size_t cellndx(size_t pos) { return bitop::cellndx<element_type>(pos) ; }
+
+      /// Given a bit position, get the index inside the appropriate chunk in bits[]
+      /// such that 0 <= index < BITS_PER_ELEMENT.
+      static constexpr size_t bitndx(size_t pos) { return bitop::bitndx<element_type>(pos) ; }
+
+      static constexpr element_type bitmask(size_t pos) { return bitop::bitmask<element_type>(pos) ; }
+
+      /************************************************************************/
+      /** Random-access constant iterator over bits
+      *************************************************************************/
+      struct iterator : std::iterator<std::random_access_iterator_tag, bool, ptrdiff_t, void, void> {
+            constexpr iterator() = default ;
+            constexpr iterator(const basic_bitvector &v, size_t pos) :
+               _elements(v._elements),
+               _pos(pos)
+            {}
+
+            bool operator*() const { return !!(_elements[cellndx(_pos)] & bitmask(_pos)) ; }
+
+            iterator &operator+=(ptrdiff_t diff)
+            {
+               _pos += diff ;
+               return *this ;
+            }
+            iterator &operator-=(ptrdiff_t diff) { return *this += -diff ; }
+
+            iterator &operator++() { ++_pos ; return *this ; }
+            iterator &operator--() { --_pos ; return *this ; }
+
+            PCOMN_DEFINE_POSTCREMENT_METHODS(iterator) ;
+            PCOMN_DEFINE_NONASSOC_ADDOP_METHODS(iterator, ptrdiff_t) ;
+
+            friend ptrdiff_t operator-(const iterator &x, const iterator &y) { return x.pos() - y.pos() ; }
+
+            friend bool operator==(const iterator &x, const iterator &y) { return x.pos() == y.pos() ; }
+            friend bool operator<(const iterator &x, const iterator &y) { return x.pos() < y.pos() ; }
+
+            PCOMN_DEFINE_RELOP_FUNCTIONS(friend, iterator) ;
+
+         private:
+            const element_type *_elements ;
+            ptrdiff_t           _pos ;
+
+            ptrdiff_t pos() const { return _pos ; }
+      } ;
+
+      /************************************************************************/
+      /** A constant iterator over a bit set, which traverses bit @em positions
+       instead of bit @em values.
+
+       The iterator successively returns positions of 1-bits in a vector.
+      *************************************************************************/
+      struct positional_iterator : std::iterator<std::forward_iterator_tag, ptrdiff_t, ptrdiff_t> {
+
+            constexpr positional_iterator() = default ;
+            constexpr positional_iterator(const basic_bitvector &v, size_t pos) :
+               _vec(&v),
+               _pos(v.find_first_bit<1>(pos))
+            {}
+
+            ptrdiff_t operator*() const { return _pos ; }
+
+            positional_iterator &operator++()
+            {
+               _pos = _vec->find_first_bit<1>(_pos + 1) ;
+               return *this ;
+            }
+            PCOMN_DEFINE_POSTCREMENT(positional_iterator, ++) ;
+
+            bool operator==(const positional_iterator &rhs) const
+            {
+               NOXCHECK(_vec == rhs._vec) ;
+               return _pos == rhs._pos ;
+            }
+            bool operator!=(const positional_iterator &rhs) const { return !(*this == rhs) ; }
+
+         private:
+            const basic_bitvector * _vec ;
+            ptrdiff_t               _pos ;
+      } ;
+
+      typedef iterator const_iterator ;
+
+      iterator begin() const { return iterator(*this, 0) ; }
+      iterator end() const { return iterator(*this, size()) ; }
+      const_iterator cbegin() const { return begin() ; }
+      const_iterator cend() const { return end() ; }
+
+      positional_iterator begin_positional() const { return positional_iterator(*this) ; }
+      positional_iterator end_positional() const { return positional_iterator(*this, size()) ; }
 
    protected:
       /// Bit count per storage element
       static constexpr const size_t BITS_PER_ELEMENT = CHAR_BIT*sizeof(element_type) ;
 
-      constexpr bitvector() : _count(0) {}
-
-      bitvector(bitvector &&other) :
-         _elements(std::move(other._elements))
-      {}
-
-      ~bitvector() = default ;
-
-      /// Given a bit position, get the position of an element containing specified bit
-      ///
-      static constexpr size_t elemndx(size_t pos)
-      {
-         return pos / BITS_PER_ELEMENT ;
-      }
-
-      /// Given a bit position, get the index inside the appropriate chunk in bits[]
-      /// such that 0 <= index < BITS_PER_ELEMENT.
-      ///
-      static constexpr size_t bitndx(size_t pos)
-      {
-         return pos & (BITS_PER_ELEMENT - 1) ;
-      }
-
-      static constexpr element_type bitmask(size_t pos)
-      {
-         return std::integral_constant<element_type, 1>::value << bitndx(pos) ;
-      }
-
-      size_t nelements() const { return buf::size(_elements)/sizeof(element_type) ; }
-
-      size_t count_ones() const ;
-
    private:
-      buffer_type _elements ;
+      element_type * _elements  = nullptr ;
+      size_t         _nelements = 0 ;
 
-   private:
-      static constexpr size_t cached_count() { return ~(size_t()) ; }
-      static void cache_count(size_t) {}
-
-      element_type *mbits()
+      element_type &elem(size_t bitpos) const
       {
-         Derived::cache_count(~(size_t())) ;
-         return static_cast<element_type *>(buf::data(_elements)) ;
+         NOXCHECK(bitpos < size()) ;
+         return *(data() + cellndx(bitpos)) ;
+      }
+      volatile element_type &velem(size_t bitpos) const
+      {
+         return *static_cast<volatile element_type *>(data() + cellndx(bitpos)) ;
       }
 
-      const element_type *cbits() const
+      element_type elem(size_t bitpos, std::memory_order order) const
       {
-         return static_cast<const element_type *>(buf::cdata(_elements)) ;
+         return atomic_op::load(&elem(bitpos), order) ;
       }
-
-      element_type &mutable_elem(size_t bitpos) { return mbits()[elemndx(bitpos)] ; }
-      const element_type &const_elem(size_t bitpos) const { return cbits()[elemndx(bitpos)] ; }
-} ;
-
-/******************************************************************************/
-/** Reference to a POD array of integers or pointers to interpret its memory
- as a bit vector.
-*******************************************************************************/
-template<typename E>
-struct bitvector_reference : bitvector<E, std::pair<void *, size_t>> {
 } ;
 
 /*******************************************************************************
  bitvector
 *******************************************************************************/
-template<typename E, typename B>
-void bitvector<E, B>::flip()
+template<typename E>
+void basic_bitvector<E>::flip()
 {
    const size_t n = nelements() ;
    if (!n)
       return ;
 
-   element_type *data = mbits() ;
-   for (element_type * const end = data + n ; data != end ; ++data)
-      *data ^= ~element_type() ;
+   element_type *e = data() ;
+   for (element_type * const end = e + n ; e != end ; ++e)
+      *e ^= int_traits<element_type>::ones ;
+}
+
+template<typename E>
+inline basic_bitvector<E> make_bitvector(E *data, size_t sz)
+{
+   return {data, sz} ;
+}
+
+template<typename E, size_t n>
+inline basic_bitvector<E> make_bitvector(E (&data)[n])
+{
+   return {data} ;
+}
+
+/*******************************************************************************
+ Stream output
+*******************************************************************************/
+template<typename E>
+inline std::ostream &operator<<(std::ostream &os, const basic_bitvector<E> &data)
+{
+    std::copy(data.begin(), data.end(), std::ostream_iterator<int>(os)) ;
+    return os ;
 }
 
 } // end of namespace pcomn

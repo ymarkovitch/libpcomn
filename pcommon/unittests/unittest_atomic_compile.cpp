@@ -15,17 +15,36 @@ template<typename T>
 T atomic_compile_test()
 {
    T value = T() ;
-   return pcomn::atomic_op::inc(&value) ;
+   const T arg = T() ;
+   pcomn::atomic_op::xchg(&value, arg) ;
+   pcomn::atomic_op::cas(&value, value, arg) ;
+   return value ;
+}
+
+template<typename T>
+T atomic_arith_compile_test()
+{
+   atomic_compile_test<T>() ;
+
+   T value = T() ;
+   pcomn::atomic_op::preinc(&value) ;
+   pcomn::atomic_op::postinc(&value) ;
+   pcomn::atomic_op::predec(&value) ;
+   pcomn::atomic_op::postdec(&value) ;
+   pcomn::atomic_op::add(&value, 2) ;
+   return
+      pcomn::atomic_op::sub(&value, 2) ;
 }
 
 void atomic_compile()
 {
-   atomic_compile_test<int32_t>() ;
-   atomic_compile_test<uint32_t>() ;
-   atomic_compile_test<int64_t>() ;
-   atomic_compile_test<uint64_t>() ;
+   atomic_arith_compile_test<int32_t>() ;
+   atomic_arith_compile_test<uint32_t>() ;
+   atomic_arith_compile_test<int64_t>() ;
+   atomic_arith_compile_test<uint64_t>() ;
+   atomic_arith_compile_test<int *>() ;
+
    atomic_compile_test<void *>() ;
-   atomic_compile_test<int *>() ;
 }
 
 int main(int, char *[])

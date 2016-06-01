@@ -10,19 +10,24 @@
  CREATION DATE:   23 Nov 2006
 *******************************************************************************/
 #include <pcomn_bitarray.h>
+#include <pcomn_bitvector.h>
 #include <pcomn_unittest.h>
 
 #include <initializer_list>
 
 using namespace pcomn ;
 
-static bitarray &set_bits(bitarray &a, std::initializer_list<unsigned> bits, bool value = true)
+template<typename T>
+static T &set_bits(T &a, std::initializer_list<unsigned> bits, bool value = true)
 {
    for (unsigned pos: bits)
       a.set(pos, value) ;
    return a ;
 }
 
+/*******************************************************************************
+ class BitArrayTests
+*******************************************************************************/
 class BitArrayTests : public CppUnit::TestFixture {
 
       void Test_Constructors() ;
@@ -49,6 +54,36 @@ class BitArrayTests : public CppUnit::TestFixture {
       {}
 } ;
 
+/*******************************************************************************
+ class BitVectorTests
+*******************************************************************************/
+class BitVectorTests : public CppUnit::TestFixture {
+
+      void Test_Constructors() ;
+      void Test_Set_Reset_Bits() ;
+      void Test_Bit_Count() ;
+      void Test_Bit_Search() ;
+      void Test_Positional_Iterator() ;
+      void Test_Atomic_Set_Reset_Bits() ;
+      void Test_Atomic_Cas_Bits() ;
+
+      CPPUNIT_TEST_SUITE(BitVectorTests) ;
+
+      CPPUNIT_TEST(Test_Constructors) ;
+      CPPUNIT_TEST(Test_Set_Reset_Bits) ;
+      CPPUNIT_TEST(Test_Bit_Count) ;
+      CPPUNIT_TEST(Test_Bit_Search) ;
+      /*
+      CPPUNIT_TEST(Test_Positional_Iterator) ;
+      */
+      CPPUNIT_TEST(Test_Atomic_Set_Reset_Bits) ;
+
+      CPPUNIT_TEST_SUITE_END() ;
+} ;
+
+/*******************************************************************************
+ BitArrayTests
+*******************************************************************************/
 void BitArrayTests::Test_Constructors()
 {
    bitarray empty ;
@@ -231,6 +266,33 @@ void BitArrayTests::Test_Bit_Count()
    CPPUNIT_LOG_EQ(b1_02.count(true), 1) ;
    CPPUNIT_LOG_EQ(b1_02.count(false), 0) ;
    CPPUNIT_LOG_EQ(b1_02.count(), 1) ;
+
+   bitarray b1_67 (67, true) ;
+   CPPUNIT_LOG_EQ(b1_67.count(true), 67) ;
+   CPPUNIT_LOG_EQ(b1_67.count(false), 0) ;
+
+   CPPUNIT_LOG_RUN(b1_67.set(2, false)) ;
+   CPPUNIT_LOG_IS_FALSE(b1_67.flip(65)) ;
+
+   CPPUNIT_LOG_EQ(b1_67.count(true), 65) ;
+   CPPUNIT_LOG_EQ(b1_67.count(false), 2) ;
+
+   CPPUNIT_LOG_IS_FALSE(b1_67.flip(63)) ;
+
+   CPPUNIT_LOG_EQ(b1_67.count(true), 64) ;
+   CPPUNIT_LOG_EQ(b1_67.count(false), 3) ;
+
+   CPPUNIT_LOG_RUN(b1_67.flip()) ;
+   CPPUNIT_LOG_EQ(b1_67.count(true), 3) ;
+   CPPUNIT_LOG_EQ(b1_67.count(false), 64) ;
+
+   CPPUNIT_LOG_RUN(b1_67.reset()) ;
+   CPPUNIT_LOG_EQ(b1_67.count(true), 0) ;
+   CPPUNIT_LOG_EQ(b1_67.count(false), 67) ;
+
+   CPPUNIT_LOG_RUN(b1_67.set()) ;
+   CPPUNIT_LOG_EQ(b1_67.count(true), 67) ;
+   CPPUNIT_LOG_EQ(b1_67.count(false), 0) ;
 }
 
 void BitArrayTests::Test_Bit_Search()
@@ -322,12 +384,314 @@ void BitArrayTests::Test_Positional_Iterator()
    CPPUNIT_LOG_ASSERT(++bp == ep) ;
 }
 
+/*******************************************************************************
+ BitVectorTests
+*******************************************************************************/
+void BitVectorTests::Test_Constructors()
+{
+   basic_bitvector<uint64_t> empty_64 ;
+   basic_bitvector<uint32_t> empty_32 ;
+
+   CPPUNIT_LOG_IS_NULL(empty_64.data()) ;
+   CPPUNIT_LOG_IS_NULL(empty_32.data()) ;
+   CPPUNIT_LOG_EQ(empty_64.size(), 0) ;
+   CPPUNIT_LOG_EQ(empty_32.size(), 0) ;
+   CPPUNIT_LOG_EQ(empty_64.nelements(), 0) ;
+   CPPUNIT_LOG_EQ(empty_32.nelements(), 0) ;
+
+   CPPUNIT_LOG_EQ(string_cast(empty_64), "") ;
+   CPPUNIT_LOG_EQ(string_cast(empty_32), "") ;
+
+   uint32_t v1[] = { 0, 4 } ;
+   uint64_t v2[] = { 0, 0, 0x8000000000000002ULL } ;
+   const unsigned long long v3[] = { 0x0800000000000055LL } ;
+
+   auto bv1 = make_bitvector(v1) ;
+   auto bv2 = make_bitvector(v2 + 0, 2) ;
+
+   auto bv3 = make_bitvector(v3) ;
+
+   CPPUNIT_LOG_EQ(bv1.size(), 64) ;
+   CPPUNIT_LOG_EQ(bv1.nelements(), 2) ;
+
+   CPPUNIT_LOG_EQ(bv2.size(), 128) ;
+   CPPUNIT_LOG_EQ(bv2.nelements(), 2) ;
+
+   CPPUNIT_LOG_EQ(bv3.size(), 64) ;
+   CPPUNIT_LOG_EQ(bv3.nelements(), 1) ;
+
+   CPPUNIT_LOG_EQ(string_cast(bv1), "0000000000000000000000000000000000100000000000000000000000000000") ;
+   CPPUNIT_LOG_EQ(string_cast(bv2), std::string(128, '0')) ;
+   CPPUNIT_LOG_EQ(string_cast(bv3), "1010101000000000000000000000000000000000000000000000000000010000") ;
+
+   CPPUNIT_LOG_ASSERT(bv3.test(0)) ;
+   CPPUNIT_LOG_IS_FALSE(bv3.test(1)) ;
+   CPPUNIT_LOG_ASSERT(bv3.test(2)) ;
+   CPPUNIT_LOG_IS_FALSE(bv3.test(3)) ;
+
+   CPPUNIT_LOG_IS_FALSE(bv3.test(58)) ;
+   CPPUNIT_LOG_ASSERT(bv3.test(59)) ;
+
+   CPPUNIT_LOG_IS_FALSE(bv1.test(31)) ;
+   CPPUNIT_LOG_IS_FALSE(bv1.test(32)) ;
+   CPPUNIT_LOG_IS_FALSE(bv1.test(33)) ;
+   CPPUNIT_LOG_ASSERT(bv1.test(34)) ;
+}
+
+void BitVectorTests::Test_Set_Reset_Bits()
+{
+   uint32_t v1[] = { 0, 4 } ;
+   uint64_t v2[] = { 0, 0, 0x8000000000000002ULL } ;
+
+   auto bv1 = make_bitvector(v1) ;
+   auto bv2 = make_bitvector(v2 + 0, 2) ;
+   auto bv3 = make_bitvector(v2) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_ASSERT(bv1.flip(1)) ;
+   CPPUNIT_LOG_ASSERT(bv1.test(1)) ;
+   CPPUNIT_LOG_EQ(string_cast(bv1), "0100000000000000000000000000000000100000000000000000000000000000") ;
+
+   CPPUNIT_LOG_IS_FALSE(bv1.set(4)) ;
+   CPPUNIT_LOG_IS_FALSE(bv1.set(63)) ;
+   CPPUNIT_LOG_ASSERT(bv1.set(1, false)) ;
+   CPPUNIT_LOG_EQ(string_cast(bv1), "0000100000000000000000000000000000100000000000000000000000000001") ;
+
+   CPPUNIT_LOG_EQ(string_cast(bv2),
+                  "0000000000000000000000000000000000000000000000000000000000000000"
+                  "0000000000000000000000000000000000000000000000000000000000000000"
+      ) ;
+
+   CPPUNIT_LOG_EQ(string_cast(bv3),
+                  "0000000000000000000000000000000000000000000000000000000000000000"
+                  "0000000000000000000000000000000000000000000000000000000000000000"
+                  "0100000000000000000000000000000000000000000000000000000000000001"
+      ) ;
+
+   CPPUNIT_LOG_IS_FALSE(bv2.set(65)) ;
+   CPPUNIT_LOG_IS_FALSE(bv2.set(66)) ;
+
+   CPPUNIT_LOG_EQ(string_cast(bv2),
+                  "0000000000000000000000000000000000000000000000000000000000000000"
+                  "0110000000000000000000000000000000000000000000000000000000000000"
+      ) ;
+
+   CPPUNIT_LOG_EQ(string_cast(bv3),
+                  "0000000000000000000000000000000000000000000000000000000000000000"
+                  "0110000000000000000000000000000000000000000000000000000000000000"
+                  "0100000000000000000000000000000000000000000000000000000000000001"
+      ) ;
+}
+
+void BitVectorTests::Test_Bit_Count()
+{
+   bitarray empty ;
+   CPPUNIT_LOG_EQ(empty.count(true), 0) ;
+   CPPUNIT_LOG_EQ(empty.count(false), 0) ;
+   CPPUNIT_LOG_EQ(empty.count(), 0) ;
+
+   bitarray b1_01 (1) ;
+   CPPUNIT_LOG_EQ(b1_01.count(true), 0) ;
+   CPPUNIT_LOG_EQ(b1_01.count(false), 1) ;
+   CPPUNIT_LOG_EQ(b1_01.count(), 0) ;
+
+   bitarray b1_02 (1, true) ;
+   CPPUNIT_LOG_EQ(b1_02.count(true), 1) ;
+   CPPUNIT_LOG_EQ(b1_02.count(false), 0) ;
+   CPPUNIT_LOG_EQ(b1_02.count(), 1) ;
+}
+
+void BitVectorTests::Test_Bit_Search()
+{
+   basic_bitvector<uint64_t> empty_64 ;
+   basic_bitvector<uint32_t> empty_32 ;
+
+   uint64_t v0_64[] = { 2 } ;
+   uint32_t v0_32[] = { 2 } ;
+
+   uint32_t v1[] = { 0, 4 } ;
+   uint64_t v2[] = { 0, 0, 0x8000000000000002ULL } ;
+   const unsigned long long v3[] = { 0x0800000000000055LL } ;
+
+   auto bv1 = make_bitvector(v1) ;
+   auto bv2 = make_bitvector(v2 + 0, 2) ;
+
+   auto bv3 = make_bitvector(v3) ;
+
+   auto bv0_64 = make_bitvector(v0_64) ;
+   auto bv0_32 = make_bitvector(v0_32) ;
+
+   CPPUNIT_LOG_EQ(empty_64.find_first_bit<1>(0), 0) ;
+   CPPUNIT_LOG_EQ(empty_64.find_first_bit<1>(0, 0), 0) ;
+   CPPUNIT_LOG_EQ(empty_64.find_first_bit<1>(2, 1), 0) ;
+   CPPUNIT_LOG_EQ(empty_32.find_first_bit<1>(0), 0) ;
+   CPPUNIT_LOG_EQ(empty_32.find_first_bit<1>(0, 0), 0) ;
+   CPPUNIT_LOG_EQ(empty_32.find_first_bit<1>(2, 1), 0) ;
+
+   CPPUNIT_LOG_EQ(empty_64.find_first_bit<0>(0), 0) ;
+   CPPUNIT_LOG_EQ(empty_64.find_first_bit<0>(0, 0), 0) ;
+   CPPUNIT_LOG_EQ(empty_64.find_first_bit<0>(2, 1), 0) ;
+   CPPUNIT_LOG_EQ(empty_32.find_first_bit<0>(0), 0) ;
+   CPPUNIT_LOG_EQ(empty_32.find_first_bit<0>(0, 0), 0) ;
+   CPPUNIT_LOG_EQ(empty_32.find_first_bit<0>(2, 1), 0) ;
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_EQ(bv0_64.find_first_bit<1>(0), 1) ;
+   CPPUNIT_LOG_EQ(bv0_64.find_first_bit<1>(0, 0), 0) ;
+   CPPUNIT_LOG_EQ(bv0_64.find_first_bit<1>(2, 1), 1) ;
+   CPPUNIT_LOG_EQ(bv0_64.find_first_bit<1>(2), 64) ;
+
+   CPPUNIT_LOG_EQ(bv0_64.find_first_bit<0>(0), 0) ;
+   CPPUNIT_LOG_EQ(bv0_64.find_first_bit<0>(0, 0), 0) ;
+   CPPUNIT_LOG_EQ(bv0_64.find_first_bit<0>(2, 1), 1) ;
+   CPPUNIT_LOG_EQ(bv0_64.find_first_bit<0>(1), 2) ;
+   CPPUNIT_LOG_EQ(bv0_64.find_first_bit<0>(2), 2) ;
+
+   CPPUNIT_LOG_EQ(bv0_32.find_first_bit<1>(0), 1) ;
+   CPPUNIT_LOG_EQ(bv0_32.find_first_bit<1>(0, 0), 0) ;
+   CPPUNIT_LOG_EQ(bv0_32.find_first_bit<1>(2, 1), 1) ;
+   CPPUNIT_LOG_EQ(bv0_32.find_first_bit<1>(2), 32) ;
+
+   CPPUNIT_LOG_EQ(bv0_32.find_first_bit<0>(0), 0) ;
+   CPPUNIT_LOG_EQ(bv0_32.find_first_bit<0>(0, 0), 0) ;
+   CPPUNIT_LOG_EQ(bv0_32.find_first_bit<0>(2, 1), 1) ;
+   CPPUNIT_LOG_EQ(bv0_32.find_first_bit<0>(1), 2) ;
+   CPPUNIT_LOG_EQ(bv0_32.find_first_bit<0>(2), 2) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   /*
+   bitarray b1_02 (1, true) ;
+   CPPUNIT_LOG_EQ(b1_02.find_first_bit(0), 0) ;
+   CPPUNIT_LOG_EQ(b1_02.find_first_bit(1), 1) ;
+   CPPUNIT_LOG_EQ(b1_02.find_first_bit(0, 0), 0) ;
+   CPPUNIT_LOG_EQ(b1_02.find_first_bit(2, 1), 1) ;
+
+   bitarray b127_01 (127) ;
+   CPPUNIT_LOG_RUN(b127_01.set(126)) ;
+   CPPUNIT_LOG_EQ(b127_01.find_first_bit(0), 126) ;
+   CPPUNIT_LOG_EQ(b127_01.find_first_bit(126), 126) ;
+   CPPUNIT_LOG_EQ(b127_01.count(), 1) ;
+
+   CPPUNIT_LOG_RUN(b127_01.set(124)) ;
+   CPPUNIT_LOG_EQ(b127_01.find_first_bit(), 124) ;
+   CPPUNIT_LOG_EQ(b127_01.find_first_bit(0, 120), 120) ;
+   CPPUNIT_LOG_EQ(b127_01.find_first_bit(124), 124) ;
+   CPPUNIT_LOG_EQ(b127_01.find_first_bit(125), 126) ;
+
+
+   CPPUNIT_LOG_RUN(b127_01.set(63)) ;
+   CPPUNIT_LOG_EQ(b127_01.count(), 3) ;
+   CPPUNIT_LOG_EQ(b127_01.find_first_bit(), 63) ;
+   CPPUNIT_LOG_EQ(b127_01.find_first_bit(64), 124) ;
+
+   CPPUNIT_LOG_RUN(b127_01.set(64)) ;
+   CPPUNIT_LOG_EQ(b127_01.count(), 4) ;
+   CPPUNIT_LOG_EQ(b127_01.find_first_bit(), 63) ;
+   CPPUNIT_LOG_EQ(b127_01.find_first_bit(64), 64) ;
+
+   CPPUNIT_LOG_RUN(b127_01.set(63, false)) ;
+   CPPUNIT_LOG_EQ(b127_01.count(), 3) ;
+   CPPUNIT_LOG_EQ(b127_01.find_first_bit(), 64) ;
+   */
+}
+
+/*
+void BitVectorTests::Test_Positional_Iterator()
+{
+   bitarray b1 (4096) ;
+   set_bits(b1, {36, 44, 48, 52, 64, 70, 72, 76, 100, 208}) ;
+   auto bp = b1.begin_positional() ;
+   const auto ep = b1.end_positional() ;
+   CPPUNIT_LOG_ASSERT(bp != ep) ;
+   CPPUNIT_LOG_EQ(*bp, 36) ;
+   CPPUNIT_LOG_ASSERT(++bp != ep) ;
+   CPPUNIT_LOG_EQ(*bp, 44) ;
+   CPPUNIT_LOG_ASSERT(++bp != ep) ;
+   CPPUNIT_LOG_EQ(*bp, 48) ;
+   CPPUNIT_LOG_ASSERT(++bp != ep) ;
+   CPPUNIT_LOG_EQ(*bp, 52) ;
+   CPPUNIT_LOG_ASSERT(++bp != ep) ;
+   CPPUNIT_LOG_EQ(*bp, 64) ;
+   CPPUNIT_LOG_ASSERT(++bp != ep) ;
+   CPPUNIT_LOG_EQ(*bp, 70) ;
+   CPPUNIT_LOG_EQ(*bp, 70) ;
+   CPPUNIT_LOG_ASSERT(++bp != ep) ;
+   CPPUNIT_LOG_EQ(*bp, 72) ;
+   CPPUNIT_LOG_ASSERT(++bp != ep) ;
+   CPPUNIT_LOG_EQ(*bp, 76) ;
+   CPPUNIT_LOG_ASSERT(++bp != ep) ;
+   CPPUNIT_LOG_EQ(*bp, 100) ;
+   CPPUNIT_LOG_ASSERT(++bp != ep) ;
+   CPPUNIT_LOG_EQ(*bp, 208) ;
+   CPPUNIT_LOG_ASSERT(++bp == ep) ;
+   CPPUNIT_LOG_ASSERT(bp == ep) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_RUN(b1.reset()) ;
+   CPPUNIT_LOG_RUN(bp = b1.begin_positional()) ;
+   CPPUNIT_LOG_ASSERT(bp == ep) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_RUN(b1.set(4095)) ;
+   CPPUNIT_LOG_RUN(bp = b1.begin_positional()) ;
+   CPPUNIT_LOG_ASSERT(bp != ep) ;
+   CPPUNIT_LOG_EQ(*bp, 4095) ;
+   CPPUNIT_LOG_ASSERT(++bp == ep) ;
+}
+*/
+
+void BitVectorTests::Test_Atomic_Set_Reset_Bits()
+{
+   uint32_t v1[] = { 0, 4 } ;
+   uint64_t v2[] = { 0, 0, 0x8000000000000002ULL } ;
+
+   auto bv1 = make_bitvector(v1) ;
+   auto bv2 = make_bitvector(v2 + 0, 2) ;
+   auto bv3 = make_bitvector(v2) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_ASSERT(bv1.flip(1, std::memory_order_acq_rel)) ;
+   CPPUNIT_LOG_ASSERT(bv1.test(1, std::memory_order_acq_rel)) ;
+   CPPUNIT_LOG_EQ(string_cast(bv1), "0100000000000000000000000000000000100000000000000000000000000000") ;
+
+   CPPUNIT_LOG_IS_FALSE(bv1.set(4, std::memory_order_acq_rel)) ;
+   CPPUNIT_LOG_IS_FALSE(bv1.set(63, std::memory_order_acq_rel)) ;
+   CPPUNIT_LOG_ASSERT(bv1.set(1, false, std::memory_order_acq_rel)) ;
+   CPPUNIT_LOG_EQ(string_cast(bv1), "0000100000000000000000000000000000100000000000000000000000000001") ;
+
+   CPPUNIT_LOG_EQ(string_cast(bv2),
+                  "0000000000000000000000000000000000000000000000000000000000000000"
+                  "0000000000000000000000000000000000000000000000000000000000000000"
+      ) ;
+
+   CPPUNIT_LOG_EQ(string_cast(bv3),
+                  "0000000000000000000000000000000000000000000000000000000000000000"
+                  "0000000000000000000000000000000000000000000000000000000000000000"
+                  "0100000000000000000000000000000000000000000000000000000000000001"
+      ) ;
+
+   CPPUNIT_LOG_IS_FALSE(bv2.set(65, std::memory_order_acq_rel)) ;
+   CPPUNIT_LOG_IS_FALSE(bv2.set(66, std::memory_order_acq_rel)) ;
+
+   CPPUNIT_LOG_EQ(string_cast(bv2),
+                  "0000000000000000000000000000000000000000000000000000000000000000"
+                  "0110000000000000000000000000000000000000000000000000000000000000"
+      ) ;
+
+   CPPUNIT_LOG_EQ(string_cast(bv3),
+                  "0000000000000000000000000000000000000000000000000000000000000000"
+                  "0110000000000000000000000000000000000000000000000000000000000000"
+                  "0100000000000000000000000000000000000000000000000000000000000001"
+      ) ;
+}
+
 int main(int argc, char *argv[])
 {
    pcomn::unit::TestRunner runner ;
    runner.addTest(BitArrayTests::suite()) ;
+   runner.addTest(BitVectorTests::suite()) ;
 
    return
       pcomn::unit::run_tests(runner, argc, argv,
-                             "unittest.diag.ini", "FooTest") ;
+                             "unittest.diag.ini", "Bitarray and bitvector unittests") ;
 }

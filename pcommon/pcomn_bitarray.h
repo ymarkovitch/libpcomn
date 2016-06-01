@@ -682,9 +682,9 @@ template<typename Element>
 inline void bitarray_base<Element>::set(size_t pos, bool val)
 {
    NOXCHECK(pos < size()) ;
-   update_element(mdata(), cellndx(pos), (long long)val - 1LL,
-                  [=](element_type data, element_type mask)
-                  { return ((data ^ mask) | bitmask(pos)) ^ mask ; }) ;
+   update_element(mdata(), cellndx(pos), 0LL - (long long)val,
+                  [=](element_type data, element_type value)
+                  { return bitop::set_bits_masked(data, value, bitmask(pos)) ; }) ;
 }
 
 template<typename Element>

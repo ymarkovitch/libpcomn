@@ -213,6 +213,9 @@ template<> struct bit_traits<8> {
    }
 } ;
 
+/*******************************************************************************
+ Generic bitcount
+*******************************************************************************/
 template<typename I>
 inline size_t native_bitcount(I v, generic_isa_tag)
 {
