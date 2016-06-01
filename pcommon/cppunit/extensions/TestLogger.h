@@ -15,16 +15,23 @@
 #include <cppunit/TestCaller.h>
 #include <cppunit/extensions/HelperMacros.h>
 #include <cppunit/TestAssert.h>
-#include <fstream>
+#include <cppunit/SourceLine.h>
 
 #include <exception>
-#include <iostream>
+#include <fstream>
+#include <type_traits>
+#include <utility>
 
 #undef CPPUNIT_ASSERT_EQUAL
 /// Redefinition of CPPUNIT_ASSERT_EQUAL, uses CppUnit::X::assertEquals
 ///
 #define CPPUNIT_ASSERT_EQUAL(expected, actual)                          \
-   (CppUnit::X::assertEquals((expected), (actual), CPPUNIT_SOURCELINE(), {}))
+   (CppUnit::X::assertEquals((expected), (actual), CPPUNIT_SOURCELINE()))
+
+#undef CPPUNIT_SOURCELINE
+
+#define CPPUNIT_SOURCELINE() \
+   (CppUnit::Log::Logger<>::sourceLine(__FILE__, __LINE__))
 
 #ifdef __GNUC__
 #include <cxxabi.h>
@@ -49,75 +56,77 @@
 /*******************************************************************************
  Logging macros for running tests
 *******************************************************************************/
-#define CPPUNIT_LOGSTREAM (CppUnit::Log::Logger<true>::logStream())
+#define CPPUNIT_LOGSTREAM (CppUnit::Log::Logger<>::logStream())
 
 #define CPPUNIT_LOG(output) ((CPPUNIT_LOGSTREAM << output).flush())
+
+#define CPPUNIT_LOG_MESSAGE(msg) (CppUnit::Log::logMessage((msg)))
 
 #define CPPUNIT_LOG_LINE(output) ((CPPUNIT_LOGSTREAM << output << std::endl))
 
 #define CPPUNIT_LOG_EXPRESSION(output) (CPPUNIT_LOGSTREAM << __LINE__ << (": "#output"=") << CppUnit::assertion_traits<decltype((output))>::toString((output)) << std::endl)
 
-#define CPPUNIT_SETLOG(log) (CppUnit::Log::Logger<true>::setLogStream((log)))
+#define CPPUNIT_SETLOG(log) (CppUnit::Log::Logger<>::setLogStream((log)))
 
 #define CPPUNIT_LOG_ASSERT(condition)                             \
-  (CPPUNIT_LOG(__CPPUNIT_CONCAT_SRC_LINE("TESTING: '") << (#condition) << "'... "),          \
-   CPPUNIT_LOG((CPPUNIT_ASSERT(condition), "OK") << std::endl))
+   (CPPUNIT_LOG_MESSAGE((__CPPUNIT_CONCAT_SRC_LINE("TESTING: '" #condition "'... "))), \
+    CPPUNIT_LOG_MESSAGE((CPPUNIT_ASSERT(condition), "OK\n")))
 
-#define CPPUNIT_LOG_IS_TRUE(condition)                             \
-  (CPPUNIT_LOG(__CPPUNIT_CONCAT_SRC_LINE("TESTING: '") << (#condition) << "' is true... "),   \
-   CPPUNIT_LOG((CPPUNIT_ASSERT(condition), "OK") << std::endl))
+#define CPPUNIT_LOG_IS_TRUE(condition)                                  \
+   (CPPUNIT_LOG_MESSAGE((__CPPUNIT_CONCAT_SRC_LINE("TESTING: '") #condition "' is true... ")), \
+    CPPUNIT_LOG_MESSAGE((CPPUNIT_ASSERT(condition), "OK\n")))
 
 #define CPPUNIT_LOG_BOOL_TRUE(condition)                             \
-  (CPPUNIT_LOG(__CPPUNIT_CONCAT_SRC_LINE("TESTING: '") << (#condition) << "' is true... "),   \
-   CPPUNIT_LOG((CPPUNIT_ASSERT(bool(condition)), "OK") << std::endl))
+  (CPPUNIT_LOG_MESSAGE((__CPPUNIT_CONCAT_SRC_LINE("TESTING: '") #condition "' is true... ")), \
+   CPPUNIT_LOG_MESSAGE((CPPUNIT_ASSERT(bool(condition)), "OK\n")))
 
 #define CPPUNIT_LOG_IS_FALSE(condition)                            \
-  (CPPUNIT_LOG(__CPPUNIT_CONCAT_SRC_LINE("TESTING: '") << (#condition) << "' is false... "),  \
-   CPPUNIT_LOG((CPPUNIT_ASSERT(!(condition)), "OK") << std::endl))
+  (CPPUNIT_LOG_MESSAGE((__CPPUNIT_CONCAT_SRC_LINE("TESTING: '") #condition "' is false... ")), \
+   CPPUNIT_LOG_MESSAGE((CPPUNIT_ASSERT(!(condition)), "OK\n")))
 
 #define CPPUNIT_LOG_BOOL_FALSE(condition)                            \
-  (CPPUNIT_LOG(__CPPUNIT_CONCAT_SRC_LINE("TESTING: '") << (#condition) << "' is false... "),  \
-   CPPUNIT_LOG((CPPUNIT_ASSERT(!bool(condition)), "OK") << std::endl))
+  (CPPUNIT_LOG_MESSAGE((__CPPUNIT_CONCAT_SRC_LINE("TESTING: '") #condition "' is false... ")), \
+   CPPUNIT_LOG_MESSAGE((CPPUNIT_ASSERT(!bool(condition)), "OK\n")))
 
 #define CPPUNIT_LOG_IS_NULL(expression)                           \
-  (CPPUNIT_LOG(__CPPUNIT_CONCAT_SRC_LINE("TESTING: '") << (#expression) << "' is NULL... "), \
-   CPPUNIT_LOG((CPPUNIT_ASSERT((expression) == nullptr), "OK") << std::endl))
+  (CPPUNIT_LOG_MESSAGE((__CPPUNIT_CONCAT_SRC_LINE("TESTING: '") #expression "' is NULL... ")), \
+   CPPUNIT_LOG_MESSAGE((CPPUNIT_ASSERT((expression) == nullptr), "OK\n")))
 
-#define CPPUNIT_LOG_EQUAL(actual, expected)                                   \
-  (CPPUNIT_LOG(__CPPUNIT_CONCAT_SRC_LINE("EXPECTING: (") #actual ") == (" #expected << ")... "),         \
-   CPPUNIT_LOG((CPPUNIT_ASSERT_EQUAL(expected, actual), "OK") << std::endl))
+#define CPPUNIT_LOG_EQUAL(actual, expected)                             \
+  (CPPUNIT_LOG_MESSAGE((__CPPUNIT_CONCAT_SRC_LINE("EXPECTING: (") #actual ") == (" #expected ")... ")), \
+   CPPUNIT_LOG_MESSAGE((CPPUNIT_ASSERT_EQUAL(expected, actual), "OK\n")))
 
 #define CPPUNIT_ASSERT_EQ(expected, actual) \
-   (CppUnit::X::assertEq((expected), (actual), CPPUNIT_SOURCELINE(), {}))
+   (CppUnit::X::assertEq((expected), (actual), CPPUNIT_SOURCELINE()))
 
 #define CPPUNIT_LOG_EQ(actual, expected)                                \
-   (CPPUNIT_LOG(__CPPUNIT_CONCAT_SRC_LINE("EXPECTING: (") #actual ") == (" #expected << ")... "), \
-    CPPUNIT_LOG((CPPUNIT_ASSERT_EQ(expected, actual), "OK") << std::endl))
+   (CPPUNIT_LOG_MESSAGE((__CPPUNIT_CONCAT_SRC_LINE("EXPECTING: (") #actual ") == (" #expected ")... ")), \
+    CPPUNIT_LOG_MESSAGE((CPPUNIT_ASSERT_EQ(expected, actual), "OK\n")))
 
-#define CPPUNIT_LOG_NOT_EQUAL(left, right)                                                  \
-  (CPPUNIT_LOG(__CPPUNIT_CONCAT_SRC_LINE("EXPECTING: (") #left ") != (" #right << ")... "), \
-   CPPUNIT_LOG((CppUnit::X::assertNotEquals(left, right, "(" #left ") != (" #right ")", \
-                                            CPPUNIT_SOURCELINE()), "OK") << std::endl))
+#define CPPUNIT_LOG_NOT_EQUAL(left, right)                              \
+   (CPPUNIT_LOG_MESSAGE((__CPPUNIT_CONCAT_SRC_LINE("EXPECTING: (") #left ") != (" #right ")... ")), \
+    CPPUNIT_LOG((CppUnit::X::assertNotEquals(left, right, "(" #left ") != (" #right ")", \
+                                             CPPUNIT_SOURCELINE()), "OK") << std::endl))
 
 
 #define CPPUNIT_LOG_RUN(expression)                   \
 do {                                                  \
-   CPPUNIT_LOG((__CPPUNIT_CONCAT_SRC_LINE("RUNNING: '") #expression "'... ")) ;  \
+   CPPUNIT_LOG_MESSAGE((__CPPUNIT_CONCAT_SRC_LINE("RUNNING: '") #expression "'... ")) ;  \
    { expression ; }                                   \
-   CPPUNIT_LOG("OK" << std::endl) ;                   \
+   CPPUNIT_LOG_MESSAGE("OK\n") ;                      \
 } while(false)
 
 #define CPPUNIT_LOG_NO_EXCEPTION(expression)          \
 do {                                                  \
-   CPPUNIT_LOG((__CPPUNIT_CONCAT_SRC_LINE("RUNNING: '") #expression "', EXPECTING: no exception... ")) ;  \
+   CPPUNIT_LOG_MESSAGE((__CPPUNIT_CONCAT_SRC_LINE("RUNNING: '") #expression "', EXPECTING: no exception... ")) ;  \
    CPPUNIT_ASSERT_NO_THROW(expression) ;              \
-   CPPUNIT_LOG("OK" << std::endl) ;                   \
+   CPPUNIT_LOG_MESSAGE("OK\n") ;                      \
 } while(false)
 
 
 #define CPPUNIT_LOG_EXCEPTION(expression, expected)                  \
 do {                                                                 \
-   CPPUNIT_LOG((__CPPUNIT_CONCAT_SRC_LINE("RUNNING: '") #expression "', EXPECTING: '" #expected "'... ")) ; \
+   CPPUNIT_LOG_MESSAGE((__CPPUNIT_CONCAT_SRC_LINE("RUNNING: '") #expression "', EXPECTING: '" #expected "'... ")) ; \
    CppUnit::Message __cpput_msg__("expected exception not thrown") ;    \
    __cpput_msg__.addDetail("Expected: " __CPPUNIT_STRINGIFY_DIRECT(expected)) ; \
                                                                         \
@@ -144,7 +153,7 @@ do                                                                      \
       catch(const expected &__x__) { *(___pc___ = &___ac___) = __x__.code() ; } \
       if (!___pc___ || ___ac___ != ___xc___)                            \
          CppUnit::ExpectedExceptionCodeTraits<expected>::expectedException(___xc___, ___pc___); \
-      CPPUNIT_LOG("OK" << std::endl) ;                                  \
+      CPPUNIT_LOG_MESSAGE("OK\n") ;                                     \
    } while(false)
 
 #define CPPUNIT_LOG_EXCEPTION_MSG(expression, expected, expected_msg_substr) \
@@ -176,17 +185,21 @@ do                                                                      \
 
 #define CPPUNIT_FAIL_HANDLER_END()                                      \
    } catch (const CppUnit::Exception &x) {                              \
-      CppUnit::Log::logFailure<true>(x) ;                               \
+      CppUnit::Log::logFailure<>(x) ;                                   \
       _exit(1) ;                                                        \
    }
 
 namespace CppUnit {
 namespace X {
-template<typename T>
-void assertEquals(const T &expected,
-                  const T &actual,
-                  SourceLine sourceLine,
-                  const std::string &message)
+template<typename S, typename T>
+using enable_if_string__t = typename std::enable_if<std::is_convertible<S, std::string>::value, T>::type ;
+
+template<typename T, typename S>
+enable_if_string__t<S, void>
+assertEquals(const T &expected,
+             const T &actual,
+             const SourceLine &sourceLine,
+             S &&message)
 {
   if (assertion_traits<T>::equal(expected,actual))
      return ;
@@ -194,7 +207,14 @@ void assertEquals(const T &expected,
   Asserter::failNotEqual(std::string(1, '\n').append(assertion_traits<T>::toString(expected)),
                          std::string(1, '\n').append(assertion_traits<T>::toString(actual)),
                          sourceLine,
-                         message) ;
+                         std::forward<S>(message)) ;
+}
+
+template<typename T>
+void assertEquals(const T &expected, const T &actual, const SourceLine &sourceLine)
+{
+   static const char * const es = "" ;
+   X::assertEquals(expected, actual, sourceLine, es) ;
 }
 
 /// Asserts that two values are equals.
@@ -215,16 +235,23 @@ void assertEquals(const T &expected,
 /// The last two requirements (serialization and comparison) can be
 /// removed by specializing the CppUnit::assertion_traits.
 ///
-template<typename Actual, typename Expected>
-inline void assertEq(const Expected &expected, const Actual &actual,
-                     CppUnit::SourceLine line, const std::string &msg)
+template<typename Actual, typename Expected, typename S>
+inline enable_if_string__t<S, void> assertEq(const Expected &expected, const Actual &actual,
+                                             const SourceLine &line, S &&msg)
 {
-   X::assertEquals<Actual>(expected, actual, line, msg) ;
+   X::assertEquals<Actual>(expected, actual, line, std::forward<S>(msg)) ;
 }
 
-template <class T>
-inline void assertNotEquals(const T &left, const T &right,
-                            const std::string &expr, CppUnit::SourceLine line)
+template<typename Actual, typename Expected>
+void assertEq(const Expected &expected, const Actual &actual, const SourceLine &line)
+{
+   static const char * const es = "" ;
+   X::assertEq(expected, actual, line, es) ;
+}
+
+template<typename T, typename S>
+enable_if_string__t<S, void> assertNotEquals(const T &left, const T &right,
+                                             S &&expr, const SourceLine &line)
 {
    if (left != right)
       return ;
@@ -238,14 +265,14 @@ inline void assertNotEquals(const T &left, const T &right,
    CppUnit::Asserter::fail(
          CppUnit::Message(
                "not equal assertion failed",
-               CppUnit::Asserter::makeExpected(expr),
+               CppUnit::Asserter::makeExpected(std::string(std::forward<S>(expr))),
                CppUnit::Asserter::makeActual(actual)),
          line) ;
 }
 
 template<typename L, typename R>
-inline void assertNotEq(const L &left, const R &right,
-                        const std::string &expr, CppUnit::SourceLine line)
+void assertNotEq(const L &left, const R &right,
+                 const std::string &expr, const SourceLine &line)
 {
    X::assertNotEquals<L>(left, right, expr, line) ;
 }
@@ -273,7 +300,7 @@ inline const char *demangle(const char *mangled)
 }
 #endif
 
-template<bool = true>
+template<nullptr_t = nullptr>
 struct Logger {
       /// Set global stream for CPPUnit test logging.
       /// The CPPUnit does not own the passed pointer, i.e. does not ever delete
@@ -283,49 +310,62 @@ struct Logger {
       /// without leving a trace.
       static std::ostream *setLogStream(std::ostream *newlog) ;
       static std::ostream &logStream() ;
+      static SourceLine sourceLine(const char *file, int line) ;
    private:
       static std::ostream *log ;
 } ;
 
-template<> class Logger<false> {} ;
+template<nullptr_t n>
+std::ostream *Logger<n>::log = &std::cerr ;
 
-template<bool dummy>
-std::ostream *Logger<dummy>::log = &std::cerr ;
-
-template<bool dummy>
-std::ostream *Logger<dummy>::setLogStream(std::ostream *newlog)
+template<nullptr_t n>
+std::ostream *Logger<n>::setLogStream(std::ostream *newlog)
 {
    std::ostream *result = log ;
    log = newlog ;
    return result ;
 }
 
-template<bool dummy>
-std::ostream &Logger<dummy>::logStream()
+template<nullptr_t n>
+std::ostream &Logger<n>::logStream()
 {
    static std::ofstream nul ("/dev/nul") ;
    return *(log ? log : static_cast<std::ostream *>(&nul)) ;
 }
 
-inline void logExceptionWhat(const char *msg, const std::exception *x)
+template<nullptr_t n>
+SourceLine Logger<n>::sourceLine(const char *file, int line)
 {
-   CPPUNIT_LOG(msg << "\nWhat() : " << x->what() << std::endl) ;
+   return SourceLine(file, line) ;
 }
 
-inline void logExceptionWhat(const char *msg, ...)
+template<typename S>
+void logExceptionWhat(S &&msg, const std::exception *x)
 {
-   CPPUNIT_LOG(msg << std::endl) ;
+   CPPUNIT_LOG(std::forward<S>(msg) << "\nWhat() : " << x->what() << '\n') ;
 }
 
-template<bool dummy>
+template<typename S>
+void logMessage(S &&msg)
+{
+   CPPUNIT_LOG(std::forward<S>(msg)) ;
+}
+
+template<typename S>
+void logExceptionWhat(S &&msg, ...)
+{
+   CPPUNIT_LOG(std::forward<S>(msg) << '\n') ;
+}
+
+template<nullptr_t n = nullptr>
 void logFailure(const Exception &x)
 {
-   Logger<dummy>::logStream() << "\nFAILURE" ;
+   Logger<n>::logStream() << "\nFAILURE" ;
    if (x.sourceLine().isValid())
-      Logger<dummy>::logStream()
+      Logger<n>::logStream()
          << ": " << x.sourceLine().lineNumber() << ' ' << x.sourceLine().fileName() ;
 
-   Logger<dummy>::logStream()
+   Logger<n>::logStream()
       << '\n' << x.message().shortDescription() << '\n' << x.message().details() << std::endl ;
 }
 
