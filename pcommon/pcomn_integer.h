@@ -217,6 +217,12 @@ constexpr inline if_integer_t<I> tailmask(size_t bitcnt)
    return ~(~I(1) << bitndx<I>(bitcnt - 1)) ;
 }
 
+template<typename I>
+constexpr inline if_integer_t<I> bitextend(bool bit)
+{
+   return I() - I(bit) ;
+}
+
 /// Get the position of first nonzero bit between 'start' and 'finish'.
 /// If there is no such bit, returns 'finish'
 template<typename I>
@@ -242,7 +248,7 @@ if_integer_t<I, size_t> find_first_bit(const I *bits, size_t start, size_t finis
       } while (!cell) ;
       start = ndx * int_traits<cell_type>::bitsize ;
    }
-   return std::min(start + rzcnt(cell), finish) ;
+   return std::min<size_t>(start + rzcnt(cell), finish) ;
 }
 
 /// Set bits in the @a target selected by the @a mask to corresponding bits from the
@@ -370,10 +376,6 @@ class nzbitpos_iterator : public std::iterator<std::forward_iterator_tag, V> {
          _data = clrrnzb(_data) ;
       }
 } ;
-
-/*******************************************************************************
-
-*******************************************************************************/
 
 
 /*******************************************************************************

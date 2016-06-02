@@ -63,9 +63,9 @@ class BitVectorTests : public CppUnit::TestFixture {
       void Test_Set_Reset_Bits() ;
       void Test_Bit_Count() ;
       void Test_Bit_Search() ;
+      template<typename I>
       void Test_Positional_Iterator() ;
       void Test_Atomic_Set_Reset_Bits() ;
-      void Test_Atomic_Cas_Bits() ;
 
       CPPUNIT_TEST_SUITE(BitVectorTests) ;
 
@@ -73,9 +73,8 @@ class BitVectorTests : public CppUnit::TestFixture {
       CPPUNIT_TEST(Test_Set_Reset_Bits) ;
       CPPUNIT_TEST(Test_Bit_Count) ;
       CPPUNIT_TEST(Test_Bit_Search) ;
-      /*
-      CPPUNIT_TEST(Test_Positional_Iterator) ;
-      */
+      CPPUNIT_TEST(Test_Positional_Iterator<uint32_t>) ;
+      CPPUNIT_TEST(Test_Positional_Iterator<uint64_t>) ;
       CPPUNIT_TEST(Test_Atomic_Set_Reset_Bits) ;
 
       CPPUNIT_TEST_SUITE_END() ;
@@ -485,20 +484,36 @@ void BitVectorTests::Test_Set_Reset_Bits()
 
 void BitVectorTests::Test_Bit_Count()
 {
-   bitarray empty ;
-   CPPUNIT_LOG_EQ(empty.count(true), 0) ;
-   CPPUNIT_LOG_EQ(empty.count(false), 0) ;
-   CPPUNIT_LOG_EQ(empty.count(), 0) ;
+   basic_bitvector<uint64_t> empty_64 ;
+   basic_bitvector<uint32_t> empty_32 ;
 
-   bitarray b1_01 (1) ;
-   CPPUNIT_LOG_EQ(b1_01.count(true), 0) ;
-   CPPUNIT_LOG_EQ(b1_01.count(false), 1) ;
-   CPPUNIT_LOG_EQ(b1_01.count(), 0) ;
+   CPPUNIT_LOG_EQ(empty_64.count(true), 0) ;
+   CPPUNIT_LOG_EQ(empty_64.count(false), 0) ;
+   CPPUNIT_LOG_EQ(empty_64.count(), 0) ;
 
-   bitarray b1_02 (1, true) ;
-   CPPUNIT_LOG_EQ(b1_02.count(true), 1) ;
-   CPPUNIT_LOG_EQ(b1_02.count(false), 0) ;
-   CPPUNIT_LOG_EQ(b1_02.count(), 1) ;
+   CPPUNIT_LOG_EQ(empty_32.count(true), 0) ;
+   CPPUNIT_LOG_EQ(empty_32.count(false), 0) ;
+   CPPUNIT_LOG_EQ(empty_32.count(), 0) ;
+
+   uint32_t v1[] = { 0, 4 } ;
+   uint64_t v2[] = { 0, 0, 0x8000000000000002ULL } ;
+   const unsigned long long v3[] = { 0x0800000000000055LL } ;
+
+   auto bv1 = make_bitvector(v1) ;
+   auto bv2 = make_bitvector(v2) ;
+   auto bv3 = make_bitvector(v3) ;
+
+   CPPUNIT_LOG_EQ(bv1.count(true), 1) ;
+   CPPUNIT_LOG_EQ(bv1.count(false), 63) ;
+   CPPUNIT_LOG_EQ(bv1.count(), 1) ;
+
+   CPPUNIT_LOG_EQ(bv2.count(true), 2) ;
+   CPPUNIT_LOG_EQ(bv2.count(false), 190) ;
+   CPPUNIT_LOG_EQ(bv2.count(), 2) ;
+
+   CPPUNIT_LOG_EQ(bv3.count(true), 5) ;
+   CPPUNIT_LOG_EQ(bv3.count(false), 59) ;
+   CPPUNIT_LOG_EQ(bv3.count(), 5) ;
 }
 
 void BitVectorTests::Test_Bit_Search()
@@ -515,6 +530,7 @@ void BitVectorTests::Test_Bit_Search()
 
    auto bv1 = make_bitvector(v1) ;
    auto bv2 = make_bitvector(v2 + 0, 2) ;
+   auto bv2_full = make_bitvector(v2) ;
 
    auto bv3 = make_bitvector(v3) ;
 
@@ -559,49 +575,46 @@ void BitVectorTests::Test_Bit_Search()
    CPPUNIT_LOG_EQ(bv0_32.find_first_bit<0>(2), 2) ;
 
    CPPUNIT_LOG(std::endl) ;
-   /*
-   bitarray b1_02 (1, true) ;
-   CPPUNIT_LOG_EQ(b1_02.find_first_bit(0), 0) ;
-   CPPUNIT_LOG_EQ(b1_02.find_first_bit(1), 1) ;
-   CPPUNIT_LOG_EQ(b1_02.find_first_bit(0, 0), 0) ;
-   CPPUNIT_LOG_EQ(b1_02.find_first_bit(2, 1), 1) ;
 
-   bitarray b127_01 (127) ;
-   CPPUNIT_LOG_RUN(b127_01.set(126)) ;
-   CPPUNIT_LOG_EQ(b127_01.find_first_bit(0), 126) ;
-   CPPUNIT_LOG_EQ(b127_01.find_first_bit(126), 126) ;
-   CPPUNIT_LOG_EQ(b127_01.count(), 1) ;
+   CPPUNIT_LOG_EQ(bv1.find_first_bit<1>(), 34) ;
+   CPPUNIT_LOG_EQ(bv1.find_first_bit<0>(), 0) ;
+   CPPUNIT_LOG_EQ(bv1.find_first_bit<1>(34), 34) ;
+   CPPUNIT_LOG_EQ(bv1.find_first_bit<1>(35), 64) ;
 
-   CPPUNIT_LOG_RUN(b127_01.set(124)) ;
-   CPPUNIT_LOG_EQ(b127_01.find_first_bit(), 124) ;
-   CPPUNIT_LOG_EQ(b127_01.find_first_bit(0, 120), 120) ;
-   CPPUNIT_LOG_EQ(b127_01.find_first_bit(124), 124) ;
-   CPPUNIT_LOG_EQ(b127_01.find_first_bit(125), 126) ;
+   CPPUNIT_LOG_EQ(bv3.find_first_bit<1>(), 0) ;
+   CPPUNIT_LOG_EQ(bv3.find_first_bit<1>(1), 2) ;
+   CPPUNIT_LOG_EQ(bv3.find_first_bit<1>(3), 4) ;
+   CPPUNIT_LOG_EQ(bv3.find_first_bit<1>(5), 6) ;
+   CPPUNIT_LOG_EQ(bv3.find_first_bit<1>(7), 59) ;
+   CPPUNIT_LOG_EQ(bv3.find_first_bit<1>(60), 64) ;
 
+   CPPUNIT_LOG_EQ(bv2.size(), 128) ;
+   CPPUNIT_LOG_EQ(bv2.find_first_bit<1>(), 128) ;
+   CPPUNIT_LOG_EQ(bv2.find_first_bit<0>(), 0) ;
 
-   CPPUNIT_LOG_RUN(b127_01.set(63)) ;
-   CPPUNIT_LOG_EQ(b127_01.count(), 3) ;
-   CPPUNIT_LOG_EQ(b127_01.find_first_bit(), 63) ;
-   CPPUNIT_LOG_EQ(b127_01.find_first_bit(64), 124) ;
-
-   CPPUNIT_LOG_RUN(b127_01.set(64)) ;
-   CPPUNIT_LOG_EQ(b127_01.count(), 4) ;
-   CPPUNIT_LOG_EQ(b127_01.find_first_bit(), 63) ;
-   CPPUNIT_LOG_EQ(b127_01.find_first_bit(64), 64) ;
-
-   CPPUNIT_LOG_RUN(b127_01.set(63, false)) ;
-   CPPUNIT_LOG_EQ(b127_01.count(), 3) ;
-   CPPUNIT_LOG_EQ(b127_01.find_first_bit(), 64) ;
-   */
+   CPPUNIT_LOG_EQ(bv2_full.size(), 192) ;
+   CPPUNIT_LOG_EQ(bv2_full.find_first_bit<1>(), 129) ;
+   CPPUNIT_LOG_EQ(bv2_full.find_first_bit<0>(129), 130) ;
+   CPPUNIT_LOG_EQ(bv2_full.find_first_bit<1>(130), 191) ;
 }
 
-/*
+template<typename I>
 void BitVectorTests::Test_Positional_Iterator()
 {
-   bitarray b1 (4096) ;
-   set_bits(b1, {36, 44, 48, 52, 64, 70, 72, 76, 100, 208}) ;
-   auto bp = b1.begin_positional() ;
-   const auto ep = b1.end_positional() ;
+   typedef typename basic_bitvector<I>::positional_iterator positional_iterator ;
+
+   basic_bitvector<I> bv_empty ;
+   CPPUNIT_LOG_ASSERT(bv_empty.begin_positional() == bv_empty.end_positional()) ;
+
+   I vdata[4096/bitsizeof(I)]  = {} ;
+
+   auto bv = make_bitvector(vdata) ;
+
+   set_bits(bv, {36, 44, 48, 52, 64, 70, 72, 76, 100, 208}) ;
+
+   auto bp = bv.begin_positional() ;
+   const auto ep = bv.end_positional() ;
+
    CPPUNIT_LOG_ASSERT(bp != ep) ;
    CPPUNIT_LOG_EQ(*bp, 36) ;
    CPPUNIT_LOG_ASSERT(++bp != ep) ;
@@ -627,18 +640,31 @@ void BitVectorTests::Test_Positional_Iterator()
    CPPUNIT_LOG_ASSERT(bp == ep) ;
 
    CPPUNIT_LOG(std::endl) ;
-   CPPUNIT_LOG_RUN(b1.reset()) ;
-   CPPUNIT_LOG_RUN(bp = b1.begin_positional()) ;
+
+   bp = positional_iterator(bv, 36) ;
+   CPPUNIT_LOG_ASSERT(bp != ep) ;
+   CPPUNIT_LOG_EQ(*bp, 36) ;
+   CPPUNIT_LOG_ASSERT(++bp != ep) ;
+   CPPUNIT_LOG_EQ(*bp, 44) ;
+
+   bp = positional_iterator(bv, 127) ;
+   CPPUNIT_LOG_ASSERT(bp != ep) ;
+   CPPUNIT_LOG_EQ(*bp, 208) ;
+   CPPUNIT_LOG_ASSERT(++bp == ep) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_RUN(std::fill_n(bv.data(), bv.nelements(), 0)) ;
+   CPPUNIT_LOG_RUN(bp = bv.begin_positional()) ;
    CPPUNIT_LOG_ASSERT(bp == ep) ;
 
    CPPUNIT_LOG(std::endl) ;
-   CPPUNIT_LOG_RUN(b1.set(4095)) ;
-   CPPUNIT_LOG_RUN(bp = b1.begin_positional()) ;
+   CPPUNIT_LOG_RUN(bv.set(4095)) ;
+   CPPUNIT_LOG_RUN(bp = bv.begin_positional()) ;
    CPPUNIT_LOG_ASSERT(bp != ep) ;
    CPPUNIT_LOG_EQ(*bp, 4095) ;
    CPPUNIT_LOG_ASSERT(++bp == ep) ;
 }
-*/
 
 void BitVectorTests::Test_Atomic_Set_Reset_Bits()
 {
@@ -682,6 +708,49 @@ void BitVectorTests::Test_Atomic_Set_Reset_Bits()
                   "0000000000000000000000000000000000000000000000000000000000000000"
                   "0110000000000000000000000000000000000000000000000000000000000000"
                   "0100000000000000000000000000000000000000000000000000000000000001"
+      ) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_ASSERT(bv2.flip(1, std::memory_order_relaxed)) ;
+   CPPUNIT_LOG_EQ(string_cast(bv2),
+                  "0100000000000000000000000000000000000000000000000000000000000000"
+                  "0110000000000000000000000000000000000000000000000000000000000000"
+      ) ;
+   CPPUNIT_LOG_IS_FALSE(bv2.flip(65, std::memory_order_relaxed)) ;
+   CPPUNIT_LOG_EQ(string_cast(bv2),
+                  "0100000000000000000000000000000000000000000000000000000000000000"
+                  "0010000000000000000000000000000000000000000000000000000000000000"
+      ) ;
+   CPPUNIT_LOG_ASSERT(bv2.flip(65, std::memory_order_relaxed)) ;
+   CPPUNIT_LOG_EQ(string_cast(bv2),
+                  "0100000000000000000000000000000000000000000000000000000000000000"
+                  "0110000000000000000000000000000000000000000000000000000000000000"
+      ) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_ASSERT(bv2.cas(68, false, true)) ;
+   CPPUNIT_LOG_EQ(string_cast(bv2),
+                  "0100000000000000000000000000000000000000000000000000000000000000"
+                  "0110100000000000000000000000000000000000000000000000000000000000"
+      ) ;
+
+   CPPUNIT_LOG_IS_FALSE(bv2.cas(3, true, true)) ;
+   CPPUNIT_LOG_EQ(string_cast(bv2),
+                  "0100000000000000000000000000000000000000000000000000000000000000"
+                  "0110100000000000000000000000000000000000000000000000000000000000"
+      ) ;
+
+   CPPUNIT_LOG_ASSERT(bv2.cas(3, false, false)) ;
+   CPPUNIT_LOG_EQ(string_cast(bv2),
+                  "0100000000000000000000000000000000000000000000000000000000000000"
+                  "0110100000000000000000000000000000000000000000000000000000000000"
+      ) ;
+
+   CPPUNIT_LOG_ASSERT(bv2.cas(3, false, true, std::memory_order_relaxed)) ;
+   CPPUNIT_LOG_EQ(string_cast(bv2),
+                  "0101000000000000000000000000000000000000000000000000000000000000"
+                  "0110100000000000000000000000000000000000000000000000000000000000"
       ) ;
 }
 

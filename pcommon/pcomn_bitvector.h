@@ -81,10 +81,10 @@ struct basic_bitvector {
          return old ;
       }
 
-      /// Atomically set bit value at the given position.
+      /// Atomically set a bit at the given position to specified value.
       bool set(size_t pos, bool val, std::memory_order order)
       {
-         const element_type value = element_type() - (element_type)val ;
+         const element_type value = bitextend(val) ;
          const element_type mask = bitmask(pos) ;
 
          return
@@ -96,7 +96,16 @@ struct basic_bitvector {
             & mask ;
       }
 
+      /// Atomically set a bit at the given position to 1
       bool set(size_t pos, std::memory_order order) { return set(pos, true, order) ; }
+
+      /// Atomically compare and swap single bit in the array.
+      /// @return The result of the comparison: true if bit at @a pos was equal to
+      /// @a expected, false otherwise.
+      bool cas(size_t pos, bool expected, bool desired, std::memory_order order = std::memory_order_acq_rel)
+      {
+         return atomic_op::bit_cas(&elem(pos), bitextend(expected), bitextend(desired), bitmask(pos), order) ;
+      }
 
       /// Invert all bits in this vector.
       void flip() ;
@@ -122,7 +131,7 @@ struct basic_bitvector {
       ///
       /// If there is no such bit, returns 'finish'
       template<bool b>
-      size_t find_first_bit(size_t start, size_t finish = -1) const
+      size_t find_first_bit(size_t start = 0, size_t finish = -1) const
       {
          return bitop::find_first_bit(cdata(), start, std::min(size(), finish), b) ;
       }
@@ -135,6 +144,8 @@ struct basic_bitvector {
       static constexpr size_t bitndx(size_t pos) { return bitop::bitndx<element_type>(pos) ; }
 
       static constexpr element_type bitmask(size_t pos) { return bitop::bitmask<element_type>(pos) ; }
+
+      static constexpr element_type bitextend(bool bit) { return bitop::bitextend<element_type>(bit) ; }
 
       /************************************************************************/
       /** Random-access constant iterator over bits
@@ -217,7 +228,7 @@ struct basic_bitvector {
       const_iterator cbegin() const { return begin() ; }
       const_iterator cend() const { return end() ; }
 
-      positional_iterator begin_positional() const { return positional_iterator(*this) ; }
+      positional_iterator begin_positional() const { return positional_iterator(*this, 0) ; }
       positional_iterator end_positional() const { return positional_iterator(*this, size()) ; }
 
    protected:

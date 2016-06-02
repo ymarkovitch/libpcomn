@@ -120,23 +120,43 @@ store(T *value, atomic_value_t<T> new_value, std::memory_order order = std::memo
  Compare-And-Swap
  Atomic exchange
 *******************************************************************************/
-/// Atomic set value and return previous
+/// Atomically replace the value pointed to by @a target with the value of @a newvalue
+/// and return the value @a target held previously.
+///
 template<typename T>
 inline enable_if_atomic_t<atomic_value_t<T>>
-xchg(T *value, atomic_value_t<T> new_value, std::memory_order order = std::memory_order_acq_rel)
+xchg(T *target, atomic_value_t<T> newvalue, std::memory_order order = std::memory_order_acq_rel)
 {
-   return reinterpret_cast<atomic_type_t<T> *>(value)
-      ->exchange(new_value, order) ;
+   return reinterpret_cast<atomic_type_t<T> *>(target)
+      ->exchange(newvalue, order) ;
 }
 
-/// Atomic compare-and-swap operation
+/// Atomically compare the value of target object with argument and perform atomic
+/// exchange if those are equal or atomic load if not.
+///
+/// Atomically compare the value pointed to by @a target with *expected_value,
+/// and if those are bitwise-equal, replace *target with @a new_value
+/// (read-modify-write). Otherwise, load *target into *expected.
+///
+/// @return The result of the comparison: true if *target was equal to *expected_value
+/// (and thus *target is replaced), false otherwise.
+///
 template<typename T>
 inline enable_if_atomic_t<T, bool>
-cas(T *value, atomic_value_t<T> old_value, atomic_value_t<T> new_value,
+cas(T *target, atomic_value_t<T> *expected_value, atomic_value_t<T> new_value,
     std::memory_order order = std::memory_order_acq_rel)
 {
-   return reinterpret_cast<atomic_type_t<T> *>(value)
-      ->compare_exchange_strong(old_value, new_value, order) ;
+   return reinterpret_cast<atomic_type_t<T> *>(target)
+      ->compare_exchange_strong(*expected_value, new_value, order) ;
+}
+
+/// @overload
+template<typename T>
+inline enable_if_atomic_t<T, bool>
+cas(T *target, atomic_value_t<T> expected_value, atomic_value_t<T> new_value,
+    std::memory_order order = std::memory_order_acq_rel)
+{
+   return cas(target, &expected_value, new_value, order) ;
 }
 
 /*******************************************************************************
@@ -149,11 +169,10 @@ template<typename T, typename F>
 inline enable_if_atomic_t<atomic_value_t<T>>
 fetch_and_F(T *value, F fn, std::memory_order order = std::memory_order_acq_rel)
 {
-   for(;;)
+   for (atomic_value_t<T> oldval = *value ;;)
    {
-      atomic_value_t<T> oldval = *value ;
-      atomic_value_t<T> newval = fn(oldval) ;
-      if (cas(value, oldval, newval, order))
+      const atomic_value_t<T> newval = fn(oldval) ;
+      if (cas(value, &oldval, newval, order))
          return oldval ;
    }
 }
@@ -163,8 +182,8 @@ template<typename T, typename F, typename C>
 inline enable_if_atomic_t<T, bool>
 compare_and_F(T *value, C comparator, F fn, std::memory_order order = std::memory_order_acq_rel)
 {
-   for(atomic_value_t<T> oldval ; comparator(oldval = *value) ; )
-      if (cas(value, oldval, fn(oldval), order))
+   for(atomic_value_t<T> oldval = *value ; comparator(oldval) ; )
+      if (cas(value, &oldval, fn(oldval), order))
          return true ;
    return false ;
 }
@@ -222,49 +241,50 @@ postdec(T *value, std::memory_order order = std::memory_order_acq_rel)
 
 template<typename T>
 inline enable_if_atomic_arithmetic_t<atomic_value_t<T>>
-bit_and(T *value, atomic_value_t<T> operand, std::memory_order order = std::memory_order_acq_rel)
+bit_and(T *value, atomic_value_t<T> bits, std::memory_order order = std::memory_order_acq_rel)
 {
-   return reinterpret_cast<atomic_type_t<T> *>(value)->fetch_and(operand, order) ;
+   return reinterpret_cast<atomic_type_t<T> *>(value)->fetch_and(bits, order) ;
 }
 
 template<typename T>
 inline enable_if_atomic_arithmetic_t<atomic_value_t<T>>
-bit_or(T *value, atomic_value_t<T> operand, std::memory_order order = std::memory_order_acq_rel)
+bit_or(T *value, atomic_value_t<T> bits, std::memory_order order = std::memory_order_acq_rel)
 {
-   return reinterpret_cast<atomic_type_t<T> *>(value)->fetch_or(operand, order) ;
+   return reinterpret_cast<atomic_type_t<T> *>(value)->fetch_or(bits, order) ;
 }
 
 template<typename T>
 inline enable_if_atomic_arithmetic_t<atomic_value_t<T>>
-bit_xor(T *value, atomic_value_t<T> operand, std::memory_order order = std::memory_order_acq_rel)
+bit_xor(T *value, atomic_value_t<T> bits, std::memory_order order = std::memory_order_acq_rel)
 {
-   return reinterpret_cast<atomic_type_t<T> *>(value)->fetch_xor(operand, order) ;
+   return reinterpret_cast<atomic_type_t<T> *>(value)->fetch_xor(bits, order) ;
 }
 
+template<typename T>
+inline enable_if_atomic_arithmetic_t<atomic_value_t<T>>
+bit_set(T *value, atomic_value_t<T> bits, atomic_value_t<T> mask, std::memory_order order = std::memory_order_acq_rel)
+{
+   bits &= mask ;
+   return fetch_and_F(value, [=](atomic_value_t<T> v){ return v &~ mask | bits ; }, order) ;
+}
+
+/// Atomically compare selected set of bits of target object with the same set of bits of
+/// the expected value and perform atomic set of that set of bits from desired value if
+/// those are equal.
+///
 template<typename T>
 inline enable_if_atomic_arithmetic_t<T, bool>
-cas_mask(T *value, atomic_value_t<T> oldvalue, atomic_value_t<T> newvalue, atomic_value_t<T> mask,
-         std::memory_order order = std::memory_order_acq_rel)
+bit_cas(T *target, atomic_value_t<T> expected_bits, atomic_value_t<T> new_bits, atomic_value_t<T> mask,
+        std::memory_order order = std::memory_order_acq_rel)
 {
    typedef atomic_value_t<T> type ;
 
-   oldvalue &= mask ;
-   newvalue &= mask ;
-   return compare_and_F(value,
-                        [=](type v){ return v & mask == oldvalue ; },
-                        [=](type v){ return v &~ mask | newvalue ; },
+   expected_bits &= mask ;
+   new_bits &= mask ;
+   return compare_and_F(target,
+                        [=](type v){ return (v & mask) == expected_bits ; },
+                        [=](type v){ return v &~ mask | new_bits ; },
                         order) ;
-}
-
-template<typename T>
-inline enable_if_atomic_arithmetic_t<T>
-fetch_and_mask(T *value, atomic_value_t<T> newvalue, atomic_value_t<T> mask,
-               std::memory_order order = std::memory_order_acq_rel)
-{
-   typedef atomic_value_t<T> type ;
-
-   newvalue &= mask ;
-   return fetch_and_F(value, [=](type v){ return v &~ mask | newvalue ; }, order) ;
 }
 
 } // end of namespace pcomn::atomic_op
