@@ -17,6 +17,7 @@
 #include <pcomn_meta.h>
 #include <pcomn_integer.h>
 #include <pcomn_atomic.h>
+#include <pcommon.h>
 
 #include <iostream>
 #include <algorithm>
@@ -27,9 +28,12 @@ namespace pcomn {
 /** Pointer to an array of integral types interpreted as a bit vector.
 *******************************************************************************/
 template<typename E>
-struct basic_bitvector {
+struct basic_bitvector ;
+
+template<typename E>
+struct basic_bitvector<const E> {
       /// The type of element of an array in which we store bits.
-      typedef E element_type ;
+      typedef const E element_type ;
 
       // Must be unsigned and not bool
       PCOMN_STATIC_CHECK(pcomn::is_integer<element_type>::value && std::is_unsigned<element_type>::value) ;
@@ -41,14 +45,14 @@ struct basic_bitvector {
       template<size_t n>
       constexpr basic_bitvector(element_type (&e)[n]) : _elements(e), _nelements(n) {}
 
-      /// Get the number of elements
+      /// Get the number of elements in of this vector.
       constexpr size_t nelements() const { return _nelements ; }
 
-      /// Get the size of vector in bits
+      /// Get the size of this vector in bits.
       constexpr size_t size() const { return nelements()*BITS_PER_ELEMENT ; }
 
       constexpr element_type *data() const { return _elements ; }
-      constexpr const element_type *cdata() const { return _elements ; }
+      constexpr element_type *cdata() { return _elements ; }
 
       /// Get the count of 1 or 0 bit in vector
       size_t count(bool bitval = true) const
@@ -67,64 +71,6 @@ struct basic_bitvector {
       bool test(size_t pos, std::memory_order order) const
       {
          return !!(elem(pos, order) & bitmask(pos)) ;
-      }
-
-      /// Set bit value at the given position.
-      ///
-      /// @return Old value of the bit at @a pos.
-      bool set(size_t pos, bool val = true)
-      {
-         element_type &data = elem(pos) ;
-         const element_type mask = bitmask(pos) ;
-         const bool old = data & mask ;
-         set_flags(data, val, mask) ;
-         return old ;
-      }
-
-      /// Atomically set a bit at the given position to specified value.
-      bool set(size_t pos, bool val, std::memory_order order)
-      {
-         const element_type value = bitextend(val) ;
-         const element_type mask = bitmask(pos) ;
-
-         return
-            atomic_op::fetch_and_F(&elem(pos), [=](element_type oldval)
-            {
-               return bitop::set_bits_masked(oldval, value, mask) ;
-            },
-            order)
-            & mask ;
-      }
-
-      /// Atomically set a bit at the given position to 1
-      bool set(size_t pos, std::memory_order order) { return set(pos, true, order) ; }
-
-      /// Atomically compare and swap single bit in the array.
-      /// @return The result of the comparison: true if bit at @a pos was equal to
-      /// @a expected, false otherwise.
-      bool cas(size_t pos, bool expected, bool desired, std::memory_order order = std::memory_order_acq_rel)
-      {
-         return atomic_op::bit_cas(&elem(pos), bitextend(expected), bitextend(desired), bitmask(pos), order) ;
-      }
-
-      /// Invert all bits in this vector.
-      void flip() ;
-
-      /// Invert a bit at the specified position.
-      ///
-      /// @return The @em new bit value.
-      bool flip(size_t pos)
-      {
-         return !!((elem(pos) ^= bitmask(pos)) & bitmask(pos)) ;
-      }
-
-      /// Atomically invert a bit at the specified position.
-      ///
-      /// @return The @em new bit value.
-      bool flip(size_t pos, std::memory_order order)
-      {
-         const element_type mask = bitmask(pos) ;
-         return !(atomic_op::bit_xor(&elem(pos), mask, order) & mask) ;
       }
 
       /// Get the position of first nonzero bit between 'start' and 'finish'
@@ -235,23 +181,119 @@ struct basic_bitvector {
       /// Bit count per storage element
       static constexpr const size_t BITS_PER_ELEMENT = CHAR_BIT*sizeof(element_type) ;
 
-   private:
-      element_type * _elements  = nullptr ;
-      size_t         _nelements = 0 ;
-
       element_type &elem(size_t bitpos) const
       {
          NOXCHECK(bitpos < size()) ;
          return *(data() + cellndx(bitpos)) ;
       }
-      volatile element_type &velem(size_t bitpos) const
-      {
-         return *static_cast<volatile element_type *>(data() + cellndx(bitpos)) ;
-      }
 
       element_type elem(size_t bitpos, std::memory_order order) const
       {
          return atomic_op::load(&elem(bitpos), order) ;
+      }
+
+   private:
+      element_type * _elements  = nullptr ;
+      size_t         _nelements = 0 ;
+} ;
+
+/******************************************************************************/
+/** Pointer to an array of integral types interpreted as a bit vector.
+*******************************************************************************/
+template<typename E>
+struct basic_bitvector : basic_bitvector<const E> {
+   private:
+      typedef basic_bitvector<const E> ancestor ;
+   public:
+      /// The type of element of an array in which we store bits.
+      typedef E element_type ;
+
+      using ancestor::cellndx ;
+      using ancestor::bitndx ;
+      using ancestor::bitmask ;
+      using ancestor::bitextend ;
+      using ancestor::nelements ;
+
+      constexpr basic_bitvector() = default ;
+      constexpr basic_bitvector(element_type *e, size_t n) : ancestor(e, n) {}
+      template<size_t n>
+      constexpr basic_bitvector(element_type (&e)[n]) : ancestor(e) {}
+
+      constexpr element_type *data() const
+      {
+         return const_cast<element_type *>(ancestor::data()) ;
+      }
+
+      /// Set bit value at the given position.
+      ///
+      /// @return Old value of the bit at @a pos.
+      bool set(size_t pos, bool val = true) const
+      {
+         element_type &data = elem(pos) ;
+         const element_type mask = bitmask(pos) ;
+         const bool old = data & mask ;
+         set_flags(data, val, mask) ;
+         return old ;
+      }
+
+      /// Atomically set a bit at the given position to specified value.
+      bool set(size_t pos, bool val, std::memory_order order) const
+      {
+         const element_type value = bitextend(val) ;
+         const element_type mask = bitmask(pos) ;
+
+         return
+            atomic_op::fetch_and_F(&elem(pos), [=](element_type oldval)
+            {
+               return bitop::set_bits_masked(oldval, value, mask) ;
+            },
+            order)
+            & mask ;
+      }
+
+      /// Atomically set a bit at the given position to 1
+      bool set(size_t pos, std::memory_order order) const
+      {
+         return set(pos, true, order) ;
+      }
+
+      /// Atomically compare and swap single bit in the array.
+      /// @return The result of the comparison: true if bit at @a pos was equal to
+      /// @a expected, false otherwise.
+      bool cas(size_t pos, bool expected, bool desired, std::memory_order order = std::memory_order_acq_rel) const
+      {
+         return atomic_op::bit_cas(&elem(pos), bitextend(expected), bitextend(desired), bitmask(pos), order) ;
+      }
+
+      /// Invert all bits in this vector.
+      void flip() const ;
+
+      /// Invert a bit at the specified position.
+      ///
+      /// @return The @em new bit value.
+      bool flip(size_t pos) const
+      {
+         return !!((elem(pos) ^= bitmask(pos)) & bitmask(pos)) ;
+      }
+
+      /// Atomically invert a bit at the specified position.
+      ///
+      /// @return The @em new bit value.
+      bool flip(size_t pos, std::memory_order order) const
+      {
+         const element_type mask = bitmask(pos) ;
+         return !(atomic_op::bit_xor(&elem(pos), mask, order) & mask) ;
+      }
+
+   private:
+      element_type &elem(size_t bitpos) const
+      {
+         return const_cast<element_type &>(ancestor::elem(bitpos)) ;
+      }
+
+      element_type elem(size_t bitpos, std::memory_order order) const
+      {
+         return ancestor::elem(bitpos) ;
       }
 } ;
 
@@ -259,7 +301,7 @@ struct basic_bitvector {
  bitvector
 *******************************************************************************/
 template<typename E>
-void basic_bitvector<E>::flip()
+void basic_bitvector<E>::flip() const
 {
    const size_t n = nelements() ;
    if (!n)

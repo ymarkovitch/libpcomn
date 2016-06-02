@@ -47,7 +47,7 @@ namespace pcomn {
 /******************************************************************************/
 /** Implementation of pcomn::bitarray.
 *******************************************************************************/
-template<typename Element = unsigned long>
+template<typename Element = uintptr_t>
 struct bitarray_base {
 
       /// Get the size of array (in bits)
@@ -358,7 +358,7 @@ struct bitarray_base {
 /** Like std::bitset, but has its size specified at runtime.
  Implemented with copy-on-write, has O(1) copy and assignment.
 *******************************************************************************/
-class bitarray : private bitarray_base<unsigned long> {
+class bitarray : private bitarray_base<uintptr_t> {
       typedef bitarray_base<unsigned long> ancestor ;
    public:
       class                      bit_reference ;

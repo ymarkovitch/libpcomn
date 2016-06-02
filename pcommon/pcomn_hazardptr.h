@@ -28,6 +28,7 @@
 #include <pcomn_integer.h>
 #include <pcomn_assert.h>
 #include <pcomn_atomic.h>
+#include <pcomn_bitvector.h>
 #include <pcommon.h>
 
 #include <memory>
@@ -205,7 +206,7 @@ class alignas(PCOMN_CACHELINE_SIZE) hazard_registry {
 /** Lockless storage for hazard registries.
 *******************************************************************************/
 template<unsigned Log2 = 0>
-class hazard_storage {
+class alignas(PCOMN_CACHELINE_SIZE) hazard_storage {
    public:
       typedef hazard_registry<Log2> registry_type ;
 
@@ -216,7 +217,7 @@ class hazard_storage {
       ~hazard_storage() ;
 
       /// Get the maximum count of registered threads
-      size_t capacity() const { return _capacity ; }
+      size_t capacity() const { return _slots_map.size() ; }
 
       /// Allocate a hazard registry.
       /// @note thread-safe
@@ -227,16 +228,13 @@ class hazard_storage {
       void release_slot(registry_type *) ;
 
    private:
-      const size_t          _capacity ; /* Number of registry slots */
-      registry_type * const _registries ; /* Registry slots */
+      registry_type * const             _registries ; /* Registry slots */
+      const std::unique_ptr<uint64_t[]> _map_data ;   /* Registry slots bitmap data */
+      const basic_bitvector<uint64_t>   _slots_map ;  /* Registry slots bitmap */
 
-      const std::unique_ptr<uint64_t[]> _map ;        /* Registry slots map */
-      std::atomic<size_t>               _map_ubound ; /* Upper bound of allocated _map part */
+      alignas(PCOMN_CACHELINE_SIZE) std::atomic<size_t> _map_ubound = {} ; /* Upper bound of allocated slots */
 
    private:
-      uint64_t *map_data() const { return _map.get() ; }
-      size_t map_size() const { return _capacity/sizeof(*map_data()) ; }
-
       explicit hazard_storage(const std::pair<void *, size_t> &allocated) ;
 
       static std::pair<void *, size_t> alloc_slotmem(size_t bytes) ;
@@ -267,15 +265,15 @@ class hazard_manager {
       }
 
    private:
-      typedef hazard_storage<bitop::ct_log2floor<traits_type::thread_capacity>::value> storage_type ;
+      typedef hazard_storage<bitop::ct_log2floor<traits_type::thread_capacity>::value> pointer_storage ;
 
       /// Get the hazard pointer manager for this thread + tags
       static hazard_manager &manager() ;
       /// Get the global hazard pointer storage for this tag
-      static storage_type &storage() { return _storage ; }
+      static pointer_storage &storage() { return _storage ; }
 
    private:
-      static storage_type _storage ; /* Global hazard pointer storage for tag_type */
+      static pointer_storage _storage ; /* Global hazard pointer storage for tag_type */
 } ;
 
 /*******************************************************************************
@@ -283,10 +281,9 @@ class hazard_manager {
 *******************************************************************************/
 template<unsigned Log2>
 hazard_storage<Log2>::hazard_storage(const std::pair<void *, size_t> &allocated) :
-   _capacity(allocated.second/sizeof(registry_type)),
    _registries(static_cast<registry_type *>(ensure_nonzero<std::bad_alloc>(allocated.first)))
 {
-   NOXCHECK(_capacity >= 2) ;
+   NOXCHECK(capacity() >= 2) ;
 }
 
 template<unsigned Log2>
