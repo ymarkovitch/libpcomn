@@ -32,14 +32,13 @@
 #include <pcommon.h>
 
 #include <memory>
+#include <new>
 
-#if defined(PCOMN_PL_POSIX)
-#include <unistd.h>
-#include <sys/mman.h>
-#elif defined(PCOMN_PL_MS)
-#include <windows.h>
-#else
-#error The platform is not supported by pcomn_hazardptr.
+#include <stdlib.h>
+
+#ifdef PCOMN_PL_MS
+// For _aligned_malloc/_aligned_free
+#include <malloc.h>
 #endif
 
 namespace pcomn {
@@ -52,6 +51,24 @@ constexpr int32_t HAZARD_BADCALL = 0xBADDCA11 ;
 constexpr size_t HAZARD_DEFAULT_CAPACITY = 7 ;
 
 constexpr size_t HAZARD_DEFAULT_THREADCOUNT = 128 ;
+
+/*******************************************************************************
+ Forward declarations
+*******************************************************************************/
+template<typename, typename>
+class hazard_pointer ;
+
+template<typename>
+class hazard_manager ;
+
+template<unsigned>
+class hazard_registry ;
+
+template<unsigned>
+class hazard_storage ;
+
+template<unsigned L>
+std::unique_ptr<hazard_storage<L>> new_hazard_storage(unsigned thread_maxcount = 0) ;
 
 /******************************************************************************/
 /** Describes various hazard pointer policies
@@ -150,10 +167,6 @@ class alignas(PCOMN_CACHELINE_SIZE) hazard_registry {
       static_assert(Log2 <= 3,
                     "The capacity of hazard_registry cannot exceed 63 pointers, "
                     "Log2 template argument is too big (Log2 > 3)") ;
-      // Use 4K as a guesstimate: there is no 32- or 64-bit CPU with memory page which is
-      // not multiple of 4K bytes
-      static_assert(!(4*KiB % sizeof(hazard_registry)),
-                    "The sizeof(hazard_registry) must be page size divizor") ;
 
    public:
       constexpr hazard_registry() : _occupied{}, _hazard{} {}
@@ -204,17 +217,36 @@ class alignas(PCOMN_CACHELINE_SIZE) hazard_registry {
 
 /******************************************************************************/
 /** Lockless storage for hazard registries.
+
+ Cannot be placed onto the stack, the only method to create hazard_storage object
+ is with new_hazard_storage() call.
 *******************************************************************************/
 template<unsigned Log2 = 0>
 class alignas(PCOMN_CACHELINE_SIZE) hazard_storage {
+
+      PCOMN_NONCOPYABLE(hazard_storage) ;
+      PCOMN_NONASSIGNABLE(hazard_storage) ;
+
+      typedef basic_bitvector<uint64_t> slots_bitmap ;
+
    public:
       typedef hazard_registry<Log2> registry_type ;
 
-      explicit hazard_storage(unsigned thread_maxcount = HAZARD_DEFAULT_THREADCOUNT) :
-         hazard_storage(alloc_slotmem(thread_maxcount ? std::max(thread_maxcount, 2U) : HAZARD_DEFAULT_THREADCOUNT))
-      {}
+      void operator delete(void *ptr) { deallocate(ptr) ; }
 
-      ~hazard_storage() ;
+      /// Constructor function.
+      /// The actual constructor is private, to disable placing hazard_storage onto the
+      /// stack.
+      template<unsigned L>
+      friend std::unique_ptr<hazard_storage<L>>
+      new_hazard_storage(unsigned thread_maxcount)
+      {
+         typedef hazard_storage<L> storage ;
+         if (!thread_maxcount)
+            thread_maxcount = HAZARD_DEFAULT_THREADCOUNT ;
+
+         return std::unique_ptr<storage>(new ((int)thread_maxcount) storage(thread_maxcount)) ;
+      }
 
       /// Get the maximum count of registered threads
       size_t capacity() const { return _slots_map.size() ; }
@@ -228,18 +260,73 @@ class alignas(PCOMN_CACHELINE_SIZE) hazard_storage {
       void release_slot(registry_type *) ;
 
    private:
-      registry_type * const             _registries ; /* Registry slots */
-      const std::unique_ptr<uint64_t[]> _map_data ;   /* Registry slots bitmap data */
-      const basic_bitvector<uint64_t>   _slots_map ;  /* Registry slots bitmap */
+      const slots_bitmap      _slots_map ;  /* Registry slots bitmap */
+      registry_type * const   _registries ; /* Registry slots */
 
       alignas(PCOMN_CACHELINE_SIZE) std::atomic<size_t> _map_ubound = {} ; /* Upper bound of allocated slots */
 
    private:
-      explicit hazard_storage(const std::pair<void *, size_t> &allocated) ;
+      explicit hazard_storage(unsigned slotcount) ;
 
-      static std::pair<void *, size_t> alloc_slotmem(size_t bytes) ;
-      static void free_slotmem(void *) ;
+      // Allocate memory enough to place sequentially the hazard_storage object, registry
+      // slots map data, and registry slots themselves, accounting for alignment.
+      void *operator new(size_t sz, int thread_maxcount) { return allocate(thread_maxcount) ; }
+      void operator delete(void *ptr, int) { deallocate(ptr) ; }
 
+      // Given requested slots count, get the actual count aligned to slots_bitmap's
+      // bitcount granularity.
+      static constexpr size_t slotcount(unsigned requested_count)
+      {
+         return
+            (requested_count + slots_bitmap::bits_per_element() - 1)
+            / slots_bitmap::bits_per_element()
+            * slots_bitmap::bits_per_element() ;
+      }
+
+      static void *allocate(unsigned thread_maxcount)
+      {
+         NOXCHECK(thread_maxcount != 0) ;
+         const size_t slot_count = slotcount(thread_maxcount) ;
+         const size_t memsize =
+            sizeof(hazard_storage) +
+            slotdata_offset(slot_count) +
+            sizeof(registry_type) * slot_count ;
+
+         void * const mem =
+         #ifndef PCOMN_PL_MS
+            aligned_alloc(alignof(hazard_storage), memsize)
+         #else
+            _aligned_malloc(memsize, alignof(hazard_storage))
+         #endif
+            ;
+         return ensure_nonzero<std::bad_alloc>(mem) ;
+      }
+
+      static void deallocate(void *ptr)
+      {
+         if (!ptr)
+            return ;
+         #ifndef PCOMN_PL_MS
+         free(ptr) ;
+         #else
+         _aligned_free(ptr) ;
+         #endif
+      }
+
+      const slots_bitmap &slots_map() const { return _slots_map ; }
+
+      // The raw data area immediately follows the memory cuupied by hazard_storage
+      // object itself
+      void *raw_data() { return this + 1 ; }
+
+      // Offset in bytes from the end of hazard_storage object memory to the start of
+      // registry slots memory
+      static constexpr size_t slotdata_offset(size_t registry_slotcount)
+      {
+         return
+            (slots_bitmap::cellndx(registry_slotcount) * sizeof(typename slots_bitmap::element_type) +
+             alignof(registry_type) - 1)/alignof(registry_type)*alignof(registry_type) ;
+      }
 } ;
 
 /******************************************************************************/
@@ -280,42 +367,17 @@ class hazard_manager {
  hazard_storage
 *******************************************************************************/
 template<unsigned Log2>
-hazard_storage<Log2>::hazard_storage(const std::pair<void *, size_t> &allocated) :
-   _registries(static_cast<registry_type *>(ensure_nonzero<std::bad_alloc>(allocated.first)))
-{
-   NOXCHECK(capacity() >= 2) ;
-}
+hazard_storage<Log2>::hazard_storage(unsigned requested_slotcount) :
 
-template<unsigned Log2>
-hazard_storage<Log2>::~hazard_storage()
-{
-   PCOMN_STATIC_CHECK(std::is_trivially_destructible<registry_type>::value) ;
-   free_slotmem(_registries) ;
-}
+   // Slots map starts immediately past the end of hazard_storage object itself
+   _slots_map(static_cast<typename slots_bitmap::element_type *>(raw_data()),
+              slots_bitmap::cellndx(slotcount(requested_slotcount))),
 
-#ifdef PCOMN_PL_POSIX
-template<unsigned Log2>
-__noinline std::pair<void *, size_t> hazard_storage<Log2>::alloc_slotmem(size_t bytes)
+   // Array of registries starts after the slots map, accounting for alignment
+   _registries(static_cast<registry_type *>(padd<void>(raw_data(), slotdata_offset(slots_map().size()))))
 {
-   NOXCHECK(bytes) ;
-   static size_t pagesz ;
-   if (!pagesz)
-      pagesz = sysconf(_SC_PAGESIZE) ;
-
-   const size_t allocsz = (bytes + pagesz - 1)/pagesz*pagesz ;
-   void * const mem = mmap(nullptr, allocsz, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) ;
-   return {ensure_nonzero<std::bad_alloc>(mem), allocsz} ;
+   PCOMN_VERIFY(requested_slotcount > 0) ;
 }
-
-template<unsigned Log2>
-__noinline void hazard_storage<Log2>::free_slotmem(void *memptr)
-{
-   PCOMN_VERIFY(memptr != nullptr) ;
-   munmap(memptr, capacity() * sizeof(registry_type)) ;
-}
-#else
-#error Windows version is not implemented yet
-#endif
 
 /*******************************************************************************
  hazard_manager

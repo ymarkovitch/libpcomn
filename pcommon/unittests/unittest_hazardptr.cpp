@@ -12,12 +12,16 @@
 #include <pcomn_hazardptr.h>
 #include <pcomn_unittest.h>
 
+using namespace pcomn ;
+
 class HazardPointerTests : public CppUnit::TestFixture {
 
+      void Test_HazardStorage_Init() ;
       void Test_HazardPointer_Init() ;
 
       CPPUNIT_TEST_SUITE(HazardPointerTests) ;
 
+      CPPUNIT_TEST(Test_HazardStorage_Init) ;
       CPPUNIT_TEST(Test_HazardPointer_Init) ;
 
       CPPUNIT_TEST_SUITE_END() ;
@@ -26,6 +30,15 @@ class HazardPointerTests : public CppUnit::TestFixture {
 /*******************************************************************************
  HazardPointerTests
 *******************************************************************************/
+void HazardPointerTests::Test_HazardStorage_Init()
+{
+   //typedef hazard_storage<0> storage_type ;
+
+   auto st1 = new_hazard_storage<0>() ;
+
+   CPPUNIT_LOG_EQ(st1->capacity(), HAZARD_DEFAULT_THREADCOUNT) ;
+}
+
 void HazardPointerTests::Test_HazardPointer_Init()
 {
 }
