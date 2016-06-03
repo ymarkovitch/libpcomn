@@ -53,25 +53,25 @@ void TextIOTests::Test_Reading()
    std::istringstream is("line 1\nline 2\r\n\rline 3 read with small buffer\n") ;
 
    pcomn::universal_text_reader<std::istream> reader(is) ;
-   CPPUNIT_LOG_EQUAL(reader.eoltype(), (bigflag_t)eol_Undefined) ;
+   CPPUNIT_LOG_EQUAL(reader.eoltype(), (unsigned)eol_Undefined) ;
 
    std::string buf ;
    CPPUNIT_LOG_RUN(reader.readline(buf)) ;
    CPPUNIT_LOG_EQUAL(buf, std::string("line 1\n")) ;
-   CPPUNIT_LOG_EQUAL(reader.eoltype(), (bigflag_t)eol_LF) ;
+   CPPUNIT_LOG_EQUAL(reader.eoltype(), (unsigned)eol_LF) ;
 
    CPPUNIT_LOG_RUN(reader.readline(buf="")) ;
    CPPUNIT_LOG_EQUAL(buf, std::string("line 2\n")) ;
-   CPPUNIT_LOG_EQUAL(reader.eoltype(), (bigflag_t)eol_LF) ;
+   CPPUNIT_LOG_EQUAL(reader.eoltype(), (unsigned)eol_LF) ;
 
    CPPUNIT_LOG_RUN(reader.readline(buf="")) ;
    CPPUNIT_LOG_EQUAL(buf, std::string("\n")) ;
-   CPPUNIT_LOG_EQUAL(reader.eoltype(), (bigflag_t)(eol_CRLF | eol_LF)) ;
+   CPPUNIT_LOG_EQUAL(reader.eoltype(), (unsigned)(eol_CRLF | eol_LF)) ;
 
    char small_buff[13] ;
    CPPUNIT_LOG_EQUAL(reader.readline(small_buff, sizeof small_buff), sizeof small_buff - 1) ;
    // new line flag - CR sets when the next line start reading
-   CPPUNIT_LOG_EQUAL(reader.eoltype(), (bigflag_t)(eol_CRLF | eol_LF | eol_CR)) ;
+   CPPUNIT_LOG_EQUAL(reader.eoltype(), (unsigned)(eol_CRLF | eol_LF | eol_CR)) ;
    CPPUNIT_LOG_ASSERT(strcmp(small_buff, "line 3 read ") == 0) ;
    CPPUNIT_LOG_EQUAL(reader.readline(small_buff, sizeof small_buff), sizeof small_buff - 1) ;
    CPPUNIT_LOG_ASSERT(strcmp(small_buff, "with small b") == 0) ;
@@ -89,11 +89,11 @@ void TextIOTests::Test_ReadingFile()
    CPPUNIT_LOG_ASSERT(is) ;
    CPPUNIT_LOG_RUN(reader.readline(buf)) ;
    CPPUNIT_LOG_EQUAL(buf, std::string("string 1\n")) ;
-   CPPUNIT_LOG_EQUAL(reader.eoltype(), (bigflag_t)eol_Undefined) ;
+   CPPUNIT_LOG_EQUAL(reader.eoltype(), (unsigned)eol_Undefined) ;
 
    CPPUNIT_LOG_RUN(reader.readline(buf="")) ;
    CPPUNIT_LOG_EQUAL(buf, std::string("string 2\n")) ;
-   CPPUNIT_LOG_EQUAL(reader.eoltype(), (bigflag_t)eol_CRLF) ;
+   CPPUNIT_LOG_EQUAL(reader.eoltype(), (unsigned)eol_CRLF) ;
 }
 
 #ifdef PCOMN_PL_MS

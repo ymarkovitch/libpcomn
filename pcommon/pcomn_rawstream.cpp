@@ -42,7 +42,7 @@ void raw_ios::_throw_failure()
    throw failure_exception(errmsg, error_state) ;
 }
 
-void raw_ios::exceptions(bigflag_t state)
+void raw_ios::exceptions(unsigned state)
 {
    _exceptions = state ;
    if (is_open())
@@ -100,7 +100,7 @@ raw_istream &raw_istream::read(void *buffer, size_t size)
          return *this ;
       }
       // Throw pending exceptions, if present
-      bigflag_t newstate = rdstate() ;
+      unsigned newstate = rdstate() ;
       if (_last_read < size)
          newstate |= failbit ;
       if (newstate)
@@ -135,7 +135,7 @@ raw_ostream &raw_ostream::write(const void *buffer, size_t size)
          return *this ;
       }
       // Throw pending exceptions, if present
-      resetstate(rdstate() | (_last_written < size ? (bigflag_t)failbit : 0)) ;
+      resetstate(rdstate() | (_last_written < size ? (unsigned)failbit : 0)) ;
    }
    return *this ;
 }

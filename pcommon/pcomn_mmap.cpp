@@ -65,12 +65,12 @@ intptr_t PMemMappedFile::_mmfile_t::get_handle(const char *filename)
 /*******************************************************************************
  PMemMapping
 *******************************************************************************/
-void *PMemMapping::ensure_map_file(filesize_t from, bigflag_t mode)
+void *PMemMapping::ensure_map_file(filesize_t from, unsigned mode)
 {
    // Align the beginning of mapping to a page boundary
    const filesize_t aligned_from = from & ~pagemask() ;
    // Normalize mapping open mode
-   const bigflag_t normalized_mode =
+   const unsigned normalized_mode =
       (mode & O_RDWR) ? O_RDWR : ((mode & O_WRONLY) ? O_WRONLY : O_RDONLY) ;
 
    ensure_precondition

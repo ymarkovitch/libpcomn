@@ -18,8 +18,8 @@
 
 namespace pcomn {
 
-_PCOMNEXP int message_box_va(HWND owner, bigflag_t style, const char *title, const char *fmt, va_list argptr) ;
-_PCOMNEXP int message_box(HWND owner, bigflag_t style, const char *title, const char *fmt, ...) ;
+_PCOMNEXP int message_box_va(HWND owner, unsigned style, const char *title, const char *fmt, va_list argptr) ;
+_PCOMNEXP int message_box(HWND owner, unsigned style, const char *title, const char *fmt, ...) ;
 
 _PCOMNEXP char *sys_error_text(int err, char *buf, size_t size) ;
 

@@ -172,7 +172,7 @@ PDiagBase::Properties **PDiagBase::end()
    return diag_props.groups+diag_props.num ;
 }
 
-void PDiagBase::mode(bigflag_t flg, bool onOff)
+void PDiagBase::mode(unsigned flg, bool onOff)
 {
    if (onOff)
       global_mode |= flg ;
@@ -180,7 +180,7 @@ void PDiagBase::mode(bigflag_t flg, bool onOff)
       global_mode &= ~flg ;
 }
 
-bigflag_t PDiagBase::mode() { return global_mode ; }
+unsigned PDiagBase::mode() { return global_mode ; }
 
 /*******************************************************************************
  PDiagBase: trace context initialization and locking

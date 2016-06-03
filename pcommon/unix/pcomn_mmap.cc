@@ -45,7 +45,7 @@ filesize_t PMemMapping::full_file_size() const
    return ensure_ge<system_error>(sys::filesize(handle()), (fileoff_t)0) ;
 }
 
-void *PMemMapping::map_file(filesize_t aligned_from, bigflag_t normalized_mode)
+void *PMemMapping::map_file(filesize_t aligned_from, unsigned normalized_mode)
 {
    NOXCHECK(_sizedata > aligned_from) ;
    NOXCHECK(!(aligned_from & pagemask())) ;

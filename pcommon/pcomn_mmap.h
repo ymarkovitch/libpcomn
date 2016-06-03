@@ -56,12 +56,12 @@ class PMemMappedFile {
       /// shrinks. If @a mode is O_RDONLY, the file is not expanded.
       ///
       explicit PMemMappedFile(int file, filesize_t size = (filesize_t)-1,
-                              bigflag_t mode = O_RDONLY) :
+                              unsigned mode = O_RDONLY) :
          _mmfile(new _mmfile_t(file, size, mode))
       {}
 
       explicit PMemMappedFile(const char *filename, filesize_t size = (filesize_t)-1,
-                              bigflag_t mode = O_RDONLY) :
+                              unsigned mode = O_RDONLY) :
          _mmfile(new _mmfile_t(filename, size, mode))
       {}
 
@@ -70,7 +70,7 @@ class PMemMappedFile {
       /// Differs from the generic constructor in that the @a file parameter should
       /// be a HANDLE returned from Win32 file API (e.g. CreateFile).
       PMemMappedFile(void *file, filesize_t size = (filesize_t)-1,
-                     bigflag_t mode = O_RDONLY) :
+                     unsigned mode = O_RDONLY) :
          // Set the sign bit of 'file' argument to indicate this is a Windows file handle
          _mmfile(new _mmfile_t((intptr_t)file | ~(~(uintptr_t()) >> 1), size, mode))
       {}
@@ -90,7 +90,7 @@ class PMemMappedFile {
       /// @internal
       filesize_t requested_size() const { return mmfile()._reqsize ; }
 
-      bigflag_t filemode() const { return mmfile()._mode ; }
+      unsigned filemode() const { return mmfile()._mode ; }
 
       void swap(PMemMappedFile &other)
       {
@@ -98,13 +98,13 @@ class PMemMappedFile {
       }
    private:
       struct _PCOMNEXP _mmfile_t : public PRefCount {
-            _mmfile_t(intptr_t file, filesize_t size, bigflag_t mode) :
+            _mmfile_t(intptr_t file, filesize_t size, unsigned mode) :
                _mode(normalize_mode(mode)),
                _reqsize(size),
                _handle(get_handle(file))
             {}
 
-            _mmfile_t(const char *filename, filesize_t size, bigflag_t mode) :
+            _mmfile_t(const char *filename, filesize_t size, unsigned mode) :
                _mode(normalize_mode(mode)),
                _reqsize(size),
                _handle(get_handle(filename))
@@ -112,7 +112,7 @@ class PMemMappedFile {
 
             ~_mmfile_t() ;
 
-            const bigflag_t   _mode ;     /* File protection flags (read/write permissions, O_READ, O_WRITE) */
+            const unsigned   _mode ;     /* File protection flags (read/write permissions, O_READ, O_WRITE) */
             const filesize_t  _reqsize ;  /* The initial size of file mapping */
             const intptr_t    _handle ;   /* File mapping descriptor (on Unix - file descriptor) */
 
@@ -120,7 +120,7 @@ class PMemMappedFile {
             intptr_t get_handle(intptr_t file) ;
             intptr_t get_handle(const char *filename) ;
 
-            static bigflag_t normalize_mode(bigflag_t mode)
+            static unsigned normalize_mode(unsigned mode)
             {
                return (mode & O_RDWR) ? O_RDWR : ((mode & O_WRONLY) ? O_WRONLY : O_RDONLY) ;
             }
@@ -140,7 +140,7 @@ class PMemMappedFile {
 
  Should be implemented by the platform:
    filesize_t PMemMapping::full_file_size() const ;
-   void *PMemMapping::map_file(filesize_t aligned_from, bigflag_t normalized_mode) ;
+   void *PMemMapping::map_file(filesize_t aligned_from, unsigned normalized_mode) ;
    void PMemMapping::unmap_file() ;
 *******************************************************************************/
 /** Memory mapping.
@@ -180,7 +180,7 @@ class PMemMapping : public PMemMappedFile {
       /// 32-bit systems files can be 64-bit, thus file offsets can be out of size_t
       /// limits. It is much safer to use fileoff_t, which always reflects the actual file
       /// offset type.
-      PMemMapping(const PMemMappedFile &mmfile, filesize_t from, filesize_t to, bigflag_t mode = O_RDONLY) :
+      PMemMapping(const PMemMappedFile &mmfile, filesize_t from, filesize_t to, unsigned mode = O_RDONLY) :
          ancestor(mmfile),
          _sizedata(to),
          _pointer(ensure_map_file(from, mode))
@@ -192,7 +192,7 @@ class PMemMapping : public PMemMappedFile {
       ///
       /// The resulting mapping starts from the beginning of @a mmfile and spans
       /// mmfile.size() bytes.
-      PMemMapping(const PMemMappedFile &mmfile, bigflag_t mode = O_RDONLY) :
+      PMemMapping(const PMemMappedFile &mmfile, unsigned mode = O_RDONLY) :
          ancestor(mmfile),
          _sizedata((size_t)-1),
          _pointer(ensure_map_file(0, mode))
@@ -208,14 +208,14 @@ class PMemMapping : public PMemMappedFile {
       /// Both the file and the mapping are opened in @a mode. If @a mode is writable
       /// (either O_RDWR or O_WRONLY) and the opened file has size less than @a to,
       /// the file is automatically extended.
-      PMemMapping(const char *filename, filesize_t from, filesize_t to, bigflag_t mode = O_RDONLY) :
+      PMemMapping(const char *filename, filesize_t from, filesize_t to, unsigned mode = O_RDONLY) :
          ancestor(filename, to, mode),
          _sizedata(to),
          _pointer(ensure_map_file(from, mode))
       {}
 
       /// @overload
-      PMemMapping(int fd, filesize_t from, filesize_t to, bigflag_t mode = O_RDONLY) :
+      PMemMapping(int fd, filesize_t from, filesize_t to, unsigned mode = O_RDONLY) :
          ancestor(fd, to, mode),
          _sizedata(to),
          _pointer(ensure_map_file(from, mode))
@@ -225,14 +225,14 @@ class PMemMapping : public PMemMappedFile {
       /// @param filename  the name of a file to open.
       /// @param mode      the protection flags from the <fcntl.h>
       /// Both the file and the mapping are opened in @a mode.
-      explicit PMemMapping(const char *filename, bigflag_t mode = O_RDONLY) :
+      explicit PMemMapping(const char *filename, unsigned mode = O_RDONLY) :
          ancestor(filename, -1, mode),
          _sizedata((size_t)-1),
          _pointer(ensure_map_file(0, mode))
       {}
 
       /// @overload
-      explicit PMemMapping(int fd, bigflag_t mode = O_RDONLY) :
+      explicit PMemMapping(int fd, unsigned mode = O_RDONLY) :
          ancestor(fd, -1, mode),
          _sizedata((size_t)-1),
          _pointer(ensure_map_file(0, mode))
@@ -286,10 +286,10 @@ class PMemMapping : public PMemMappedFile {
       size_t _sizedata ;
       void * _pointer ;
 
-      _PCOMNEXP void *ensure_map_file(filesize_t from, bigflag_t mode) ;
+      _PCOMNEXP void *ensure_map_file(filesize_t from, unsigned mode) ;
       _PCOMNEXP void unmap_file() ;
 
-      void *map_file(filesize_t aligned_from, bigflag_t normalized_mode) ;
+      void *map_file(filesize_t aligned_from, unsigned normalized_mode) ;
       filesize_t full_file_size() const ;
 } ;
 

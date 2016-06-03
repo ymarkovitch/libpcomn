@@ -70,7 +70,7 @@ class Context {
       // Constructor.
       // Gets the default key context/container for the RSA_FULL provider type
       //
-      Context(const char *name = NULL, bigflag_t flags = 0)
+      Context(const char *name = NULL, unsigned flags = 0)
       {
          HCRYPTPROV provider = 0 ;
          BOOL result ;
@@ -94,8 +94,8 @@ class Context {
       shared_intrusive_ptr<ContextHandle> _handle ;
 
       static BOOL _open_context(HCRYPTPROV &provider,
-                                     const char *name,
-                                     bigflag_t effective)
+                                const char *name,
+                                unsigned effective)
       {
          return CryptAcquireContextA(&provider,
                                      name,

@@ -127,31 +127,31 @@ void RawStreamTests::Test_StdStream_Exceptions()
    CPPUNIT_LOG_RUN(is.owns(true)) ;
    CPPUNIT_LOG_ASSERT(is.open(new std::ifstream(PCOMN_NULL_FILE_NAME)).is_open()) ;
    CPPUNIT_LOG_RUN(is.exceptions(pcomn::raw_ios::eofbit)) ;
-   CPPUNIT_LOG_EQUAL(is.exceptions(), (bigflag_t)pcomn::raw_ios::eofbit) ;
+   CPPUNIT_LOG_EQUAL(is.exceptions(), (unsigned)pcomn::raw_ios::eofbit) ;
    CPPUNIT_LOG_EXCEPTION_CODE(is.read(buf, sizeof buf - 1), pcomn::failure_exception, pcomn::raw_ios::eofbit) ;
    CPPUNIT_LOG_IS_FALSE(is.bad()) ;
    CPPUNIT_LOG_IS_TRUE(is.eof()) ;
    CPPUNIT_LOG_IS_FALSE(is.good()) ;
    CPPUNIT_LOG_IS_TRUE(is.fail()) ;
    CPPUNIT_LOG_EQUAL(is.last_read(), (size_t)0) ;
-   CPPUNIT_LOG_EQUAL(is.rdstate(), (bigflag_t)(pcomn::raw_ios::eofbit | pcomn::raw_ios::failbit)) ;
+   CPPUNIT_LOG_EQUAL(is.rdstate(), (unsigned)(pcomn::raw_ios::eofbit | pcomn::raw_ios::failbit)) ;
 
    CPPUNIT_LOG(std::endl) ;
    CPPUNIT_LOG_ASSERT(is.open(new std::ifstream(PCOMN_NULL_FILE_NAME)).is_open()) ;
    CPPUNIT_LOG_RUN(is.exceptions(pcomn::raw_ios::failbit)) ;
-   CPPUNIT_LOG_EQUAL(is.exceptions(), (bigflag_t)(pcomn::raw_ios::failbit)) ;
+   CPPUNIT_LOG_EQUAL(is.exceptions(), (unsigned)(pcomn::raw_ios::failbit)) ;
    CPPUNIT_LOG_EXCEPTION_CODE(is.read(buf, sizeof buf - 1), pcomn::failure_exception, pcomn::raw_ios::failbit) ;
    CPPUNIT_LOG_EQUAL(is.last_read(), (size_t)0) ;
-   CPPUNIT_LOG_EQUAL(is.rdstate(), (bigflag_t)(pcomn::raw_ios::failbit|pcomn::raw_ios::eofbit)) ;
+   CPPUNIT_LOG_EQUAL(is.rdstate(), (unsigned)(pcomn::raw_ios::failbit|pcomn::raw_ios::eofbit)) ;
 
    CPPUNIT_LOG(std::endl) ;
    CPPUNIT_LOG_ASSERT(is.open(new std::ifstream(PCOMN_NULL_FILE_NAME)).is_open()) ;
    CPPUNIT_LOG_RUN(is.exceptions(pcomn::raw_ios::eofbit)) ;
    CPPUNIT_LOG_RUN(is.stream().exceptions(std::ios_base::failbit)) ;
-   CPPUNIT_LOG_EQUAL(is.exceptions(), (bigflag_t)(pcomn::raw_ios::eofbit)) ;
+   CPPUNIT_LOG_EQUAL(is.exceptions(), (unsigned)(pcomn::raw_ios::eofbit)) ;
    CPPUNIT_LOG_EXCEPTION(is.read(buf, sizeof buf - 1), std::ios_base::failure) ;
    CPPUNIT_LOG_EQUAL(is.last_read(), (size_t)0) ;
-   CPPUNIT_LOG_EQUAL(is.rdstate(), (bigflag_t)(pcomn::raw_ios::failbit|pcomn::raw_ios::eofbit)) ;
+   CPPUNIT_LOG_EQUAL(is.rdstate(), (unsigned)(pcomn::raw_ios::failbit|pcomn::raw_ios::eofbit)) ;
 
    CPPUNIT_LOG(std::endl) ;
    CPPUNIT_LOG_ASSERT(is.open(new std::ifstream(PCOMN_NULL_FILE_NAME)).is_open()) ;
@@ -159,7 +159,7 @@ void RawStreamTests::Test_StdStream_Exceptions()
    CPPUNIT_LOG_RUN(is.stream().exceptions(std::ios_base::failbit)) ;
    CPPUNIT_LOG_ASSERT(!is.read(buf, sizeof buf - 1)) ;
    CPPUNIT_LOG_EQUAL(is.last_read(), (size_t)0) ;
-   CPPUNIT_LOG_EQUAL(is.rdstate(), (bigflag_t)(pcomn::raw_ios::failbit|pcomn::raw_ios::eofbit)) ;
+   CPPUNIT_LOG_EQUAL(is.rdstate(), (unsigned)(pcomn::raw_ios::failbit|pcomn::raw_ios::eofbit)) ;
    CPPUNIT_LOG_ASSERT(is.is_open()) ;
    CPPUNIT_LOG_RUN(is.close()) ;
    CPPUNIT_LOG_IS_FALSE(is.is_open()) ;
@@ -182,14 +182,14 @@ void RawStreamTests::Test_StdStream_Exceptions()
    CPPUNIT_LOG_RUN(buf[1] = buf[0] = 0) ;
    CPPUNIT_LOG_ASSERT(is.open(new std::ifstream(THE_ANSWER)).is_open()) ;
    CPPUNIT_LOG_RUN(is.exceptions(pcomn::raw_ios::eofbit)) ;
-   CPPUNIT_LOG_EQUAL(is.exceptions(), (bigflag_t)pcomn::raw_ios::eofbit) ;
+   CPPUNIT_LOG_EQUAL(is.exceptions(), (unsigned)pcomn::raw_ios::eofbit) ;
    CPPUNIT_LOG_EXCEPTION_CODE(is.read(buf, sizeof buf - 1), pcomn::failure_exception, pcomn::raw_ios::eofbit) ;
    CPPUNIT_LOG_IS_FALSE(is.bad()) ;
    CPPUNIT_LOG_IS_TRUE(is.eof()) ;
    CPPUNIT_LOG_IS_FALSE(is.good()) ;
    CPPUNIT_LOG_IS_TRUE(is.fail()) ;
    CPPUNIT_LOG_EQUAL(is.last_read(), (size_t)2) ;
-   CPPUNIT_LOG_EQUAL(is.rdstate(), (bigflag_t)(pcomn::raw_ios::eofbit | pcomn::raw_ios::failbit)) ;
+   CPPUNIT_LOG_EQUAL(is.rdstate(), (unsigned)(pcomn::raw_ios::eofbit | pcomn::raw_ios::failbit)) ;
 }
 
 void RawStreamTests::Test_FStream()
@@ -250,31 +250,31 @@ void RawStreamTests::Test_FStream_Exceptions()
 
    CPPUNIT_LOG_ASSERT(is.is_open()) ;
    CPPUNIT_LOG_ASSERT(!!is) ;
-   CPPUNIT_LOG_EQUAL(is.rdstate(), (bigflag_t)pcomn::raw_ios::goodbit) ;
+   CPPUNIT_LOG_EQUAL(is.rdstate(), (unsigned)pcomn::raw_ios::goodbit) ;
    CPPUNIT_LOG_RUN(is.exceptions(pcomn::raw_ios::eofbit)) ;
-   CPPUNIT_LOG_EQUAL(is.exceptions(), (bigflag_t)pcomn::raw_ios::eofbit) ;
+   CPPUNIT_LOG_EQUAL(is.exceptions(), (unsigned)pcomn::raw_ios::eofbit) ;
    CPPUNIT_LOG_EXCEPTION_CODE(is.read(buf, sizeof buf - 1), pcomn::failure_exception, pcomn::raw_ios::eofbit) ;
    CPPUNIT_LOG_IS_FALSE(is.bad()) ;
    CPPUNIT_LOG_IS_TRUE(is.eof()) ;
    CPPUNIT_LOG_IS_FALSE(is.good()) ;
    CPPUNIT_LOG_IS_TRUE(is.fail()) ;
    CPPUNIT_LOG_EQUAL(is.last_read(), (size_t)0) ;
-   CPPUNIT_LOG_EQUAL(is.rdstate(), (bigflag_t)(pcomn::raw_ios::eofbit | pcomn::raw_ios::failbit)) ;
+   CPPUNIT_LOG_EQUAL(is.rdstate(), (unsigned)(pcomn::raw_ios::eofbit | pcomn::raw_ios::failbit)) ;
 
    CPPUNIT_LOG(std::endl) ;
    CPPUNIT_LOG_ASSERT(is.open(PCOMN_NULL_FILE_NAME).is_open()) ;
    CPPUNIT_LOG_RUN(is.exceptions(pcomn::raw_ios::failbit)) ;
-   CPPUNIT_LOG_EQUAL(is.exceptions(), (bigflag_t)(pcomn::raw_ios::failbit)) ;
+   CPPUNIT_LOG_EQUAL(is.exceptions(), (unsigned)(pcomn::raw_ios::failbit)) ;
    CPPUNIT_LOG_EXCEPTION_CODE(is.read(buf, sizeof buf - 1), pcomn::failure_exception, pcomn::raw_ios::failbit) ;
    CPPUNIT_LOG_EQUAL(is.last_read(), (size_t)0) ;
-   CPPUNIT_LOG_EQUAL(is.rdstate(), (bigflag_t)(pcomn::raw_ios::failbit|pcomn::raw_ios::eofbit)) ;
+   CPPUNIT_LOG_EQUAL(is.rdstate(), (unsigned)(pcomn::raw_ios::failbit|pcomn::raw_ios::eofbit)) ;
 
    CPPUNIT_LOG(std::endl) ;
    CPPUNIT_LOG_ASSERT(is.open(PCOMN_NULL_FILE_NAME).is_open()) ;
    CPPUNIT_LOG_RUN(is.exceptions(pcomn::raw_ios::goodbit)) ;
    CPPUNIT_LOG_ASSERT(!is.read(buf, sizeof buf - 1)) ;
    CPPUNIT_LOG_EQUAL(is.last_read(), (size_t)0) ;
-   CPPUNIT_LOG_EQUAL(is.rdstate(), (bigflag_t)(pcomn::raw_ios::failbit|pcomn::raw_ios::eofbit)) ;
+   CPPUNIT_LOG_EQUAL(is.rdstate(), (unsigned)(pcomn::raw_ios::failbit|pcomn::raw_ios::eofbit)) ;
    CPPUNIT_LOG_ASSERT(is.is_open()) ;
    CPPUNIT_LOG_RUN(is.close()) ;
 
@@ -282,7 +282,7 @@ void RawStreamTests::Test_FStream_Exceptions()
    CPPUNIT_LOG_IS_FALSE(is.is_open()) ;
    CPPUNIT_LOG_ASSERT(!is.read(buf, sizeof buf - 1)) ;
    CPPUNIT_LOG_EQUAL(is.last_read(), (size_t)0) ;
-   CPPUNIT_LOG_EQUAL(is.rdstate(), (bigflag_t)(pcomn::raw_ios::closebit)) ;
+   CPPUNIT_LOG_EQUAL(is.rdstate(), (unsigned)(pcomn::raw_ios::closebit)) ;
    CPPUNIT_LOG_IS_FALSE(is.is_open()) ;
    CPPUNIT_LOG_RUN(is.exceptions(pcomn::raw_ios::badbit)) ;
    CPPUNIT_LOG_EXCEPTION_CODE(is.read(buf, sizeof buf - 1),
@@ -418,7 +418,7 @@ void RawStreamTests::Test_CacheStream()
    CPPUNIT_LOG_ASSERT(cacher.read(buf, 1).fail()) ;
    CPPUNIT_LOG_EQUAL(cacher.seek(-1, pcomn::raw_ios::cur), (pos_type)0) ;
    CPPUNIT_LOG_EQUAL(cacher.seek(6), (pos_type)6) ;
-   CPPUNIT_LOG_EQUAL(cacher.rdstate(), (bigflag_t)0) ;
+   CPPUNIT_LOG_EQUAL(cacher.rdstate(), (unsigned)0) ;
    CPPUNIT_LOG(std::endl) ;
 
    CPPUNIT_LOG_EQUAL(cacher.cache_startpos(), (pos_type)6) ;
@@ -426,7 +426,7 @@ void RawStreamTests::Test_CacheStream()
    CPPUNIT_LOG_EQUAL(cacher.tell(), (pos_type)6) ;
    CPPUNIT_LOG_EQUAL(testdata.tell(), (pos_type)6) ;
    CPPUNIT_LOG_EQUAL(cacher.read(buf, 6).last_read(), (size_t)6) ;
-   CPPUNIT_LOG_EQUAL(cacher.rdstate(), (bigflag_t)0) ;
+   CPPUNIT_LOG_EQUAL(cacher.rdstate(), (unsigned)0) ;
    CPPUNIT_LOG_EQUAL(cacher.cache_startpos(), (pos_type)12) ;
    CPPUNIT_LOG_EQUAL(cacher.cache_endpos(), (pos_type)12) ;
    CPPUNIT_LOG_EQUAL(testdata.tell(), (pos_type)12) ;
@@ -458,7 +458,7 @@ void RawStreamTests::Test_CacheStream()
 
    CPPUNIT_LOG_EQUAL(cacher.seek(10, pcomn::raw_ios::beg), (pos_type)10) ;
    CPPUNIT_LOG_EQUAL(cacher.read(buf, 1).last_read(), (size_t)0) ;
-   CPPUNIT_LOG_EQUAL(cacher.rdstate(), (bigflag_t)pcomn::raw_ios::failbit) ;
+   CPPUNIT_LOG_EQUAL(cacher.rdstate(), (unsigned)pcomn::raw_ios::failbit) ;
 
    CPPUNIT_LOG_EQUAL(cacher.seek(48, pcomn::raw_ios::beg), (pos_type)48) ;
    CPPUNIT_LOG_EQUAL(cacher.tell(), (pos_type)48) ;
@@ -483,7 +483,7 @@ void RawStreamTests::Test_CacheStream()
    CPPUNIT_LOG_EQUAL(cacher.tell(), (pos_type)36) ;
    CPPUNIT_LOG_EQUAL(testdata.tell(), (pos_type)12000) ;
    CPPUNIT_LOG_EQUAL(cacher.read(buf, 1).last_read(), (size_t)0) ;
-   CPPUNIT_LOG_EQUAL(cacher.rdstate(), (bigflag_t)pcomn::raw_ios::failbit) ;
+   CPPUNIT_LOG_EQUAL(cacher.rdstate(), (unsigned)pcomn::raw_ios::failbit) ;
    CPPUNIT_LOG_EQUAL(cacher.tell(), (pos_type)36) ;
    CPPUNIT_LOG_EQUAL(testdata.tell(), (pos_type)12000) ;
    CPPUNIT_LOG_EQUAL(cacher.seek(6, pcomn::raw_ios::cur), cacher.cache_startpos()) ;
@@ -580,8 +580,8 @@ void RawStreamTests::Test_CacheStream_Eof()
    CPPUNIT_LOG_EQUAL(cacher.read(buf, 7).last_read(), (size_t)6) ;
    CPPUNIT_LOG_RUN(cacher.stop_caching()) ;
    CPPUNIT_LOG_EQUAL(cacher.seek(0), (pos_type)0) ;
-   CPPUNIT_LOG_EQUAL(cacher.rdstate(), (bigflag_t)0) ;
-   CPPUNIT_LOG_EQUAL(testdata.rdstate(), (bigflag_t)0) ;
+   CPPUNIT_LOG_EQUAL(cacher.rdstate(), (unsigned)0) ;
+   CPPUNIT_LOG_EQUAL(testdata.rdstate(), (unsigned)0) ;
    pcomn::unit::checked_read_sequence(cacher, 0, 10000) ;
    CPPUNIT_LOG_EQUAL(cacher.read(buf, 1).last_read(), (size_t)0) ;
    CPPUNIT_LOG_ASSERT(cacher.eof()) ;

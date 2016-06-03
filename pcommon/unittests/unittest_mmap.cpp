@@ -81,7 +81,7 @@ void MMapTests::Test_MemMapFile()
 
    CPPUNIT_LOG_RUN(fd = pcomn::ensure_ge<pcomn::system_error>(open(name, O_RDONLY), 0)) ;
    CPPUNIT_LOG_RUN(MMFile.reset(new pcomn::PMemMappedFile(fd))) ;
-   CPPUNIT_LOG_EQUAL(MMFile->filemode(), (bigflag_t)O_RDONLY) ;
+   CPPUNIT_LOG_EQ(MMFile->filemode(), O_RDONLY) ;
    CPPUNIT_LOG_ASSERT(fd != MMFile->handle()) ;
    CPPUNIT_LOG_ASSERT(MMFile->handle() > 0) ;
    CPPUNIT_LOG_RUN(fd = 0) ;

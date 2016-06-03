@@ -32,12 +32,12 @@
 namespace pcomn {
 
 struct flag_name {
-      constexpr flag_name(unsigned f, unsigned m, const char *txt) : flag(f), mask(m), text(txt) {}
-      constexpr flag_name(unsigned f, const char *txt) : flag(f), mask(0), text(txt) {}
+      constexpr flag_name(uintptr_t f, uintptr_t m, const char *txt) : flag(f), mask(m), text(txt) {}
+      constexpr flag_name(uintptr_t f, const char *txt) : flag(f), mask(0), text(txt) {}
       constexpr flag_name() : flag(), mask(), text() {}
 
-      unsigned    flag ;
-      unsigned    mask ;
+      uintptr_t   flag ;
+      uintptr_t   mask ;
       const char *text ;
 } ;
 
@@ -54,7 +54,7 @@ struct oflags {
       /// space is used
       /// @param  width field width for every printed flag; 0 means the width is variable
       /// to fit the flag's name
-      oflags(bigflag_t flags, const flag_name *desc, const char *delim, int width = 0) :
+      oflags(uintptr_t flags, const flag_name *desc, const char *delim, int width = 0) :
          _desc(desc),
          _delim(delim ? delim : " "),
          _flags(flags),
@@ -62,7 +62,7 @@ struct oflags {
       {}
 
       /// @overload
-      oflags(bigflag_t flags, const flag_name *desc, int width = 0) :
+      oflags(uintptr_t flags, const flag_name *desc, int width = 0) :
          _desc(desc),
          _delim(" "),
          _flags(flags),
@@ -81,7 +81,7 @@ struct oflags {
    private:
       const flag_name * _desc ;
       const char *      _delim ;
-      bigflag_t         _flags ;
+      uintptr_t         _flags ;
       int               _width ;
 } ;
 

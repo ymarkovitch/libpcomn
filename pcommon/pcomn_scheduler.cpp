@@ -83,7 +83,7 @@ Scheduler::task_ptr Scheduler::create_task(const TaskPtr &task, size_t)
 
 Scheduler::taskid_t
 Scheduler::schedule_task(const TaskPtr &taskptr, int64_t init_expiration, int64_t repeat_interval,
-                         flags32_t flags, size_t stacksize)
+                         uint32_t flags, size_t stacksize)
 {
    TRACEPX(PCOMN_Scheduler, DBGL_ALWAYS, SCOPEMEMFNOUT(taskptr << init_expiration << repeat_interval
                                                        << flags << stacksize) << ", this=" << *this) ;

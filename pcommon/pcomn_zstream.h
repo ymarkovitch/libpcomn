@@ -267,7 +267,7 @@ class _PCOMNEXP rawstream_zstreambuf : public basic_zstreambuf {
       int error(bool clear) override
       {
          using pcomn::raw_ios ;
-         bigflag_t state = _stream.rdstate() ;
+         uintptr_t state = _stream.rdstate() ;
          int result =
             (!(state & raw_ios::badbit) &
              (!(state & raw_ios::failbit) | !!(state & raw_ios::eofbit))) ? 0 : -1 ;

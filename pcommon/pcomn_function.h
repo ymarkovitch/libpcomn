@@ -43,13 +43,6 @@ struct select2nd {
       }
 } ;
 
-/// Get integer value of flags() method of the class.
-template<class T>
-struct get_flags : std::unary_function<T, bigflag_t>
-{
-   bigflag_t operator() (const T &t) const { return t.flags() ; }
-} ;
-
 /*******************************************************************************
 
 *******************************************************************************/

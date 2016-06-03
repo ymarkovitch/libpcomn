@@ -15,114 +15,23 @@
 #include <pcomn_def.h>
 
 #include <stdio.h>
+#include <stddef.h>
 #include <stdarg.h>
 #include <stdlib.h>
 
-/*******************************************************************************
- Typedefs for different flag set types
-*******************************************************************************/
-typedef uint64_t  flags64_t ;
-typedef uint32_t  flags32_t ;
-typedef uint16_t  flags16_t ;
-typedef uint8_t   flags8_t ;
-
-typedef uintptr_t flags_t ;
-
-typedef flags32_t bigflag_t ;
-
-struct ___offsTest { char _c ; double _l ; } ;
-
-/*******************************************************************************
- C++ part
-*******************************************************************************/
 #ifdef __cplusplus
 #include <stdexcept>
 #include <system_error>
 
-/*******************************************************************************
- Debug macros
-*******************************************************************************/
 #ifdef PCOMN_COMPILER_GNU
-#include <cxxabi.h>
-#include <array>
-#include <string.h>
-
-namespace pcomn {
-
-inline const char *demangle(const char *mangled, char *buf, size_t buflen)
-{
-   int status = 0 ;
-   return abi::__cxa_demangle(mangled, buf, &buflen, &status) ;
-}
-
-template<typename T>
-inline const char *demangled_typename_(std::true_type, char *buf, size_t buflen)
-{
-  demangle(typeid(typename std::add_pointer<typename std::remove_reference<T>::type>::type).name(),
-           buf, buflen) ;
-  if (buflen > 1)
-  {
-    const size_t len = strlen(buf) ;
-    if (len && buf[len - 1] == '*')
-      buf[len - 1] = 0 ;
-  }
-  return buf ;
-}
-
-template<typename T>
-inline const char *demangled_typename_(std::false_type, char *buf, size_t buflen)
-{
-  return demangle(typeid(T).name(), buf, buflen) ;
-}
-
-template<typename T>
-inline const char *demangled_typename(char *buf, size_t buflen)
-{
-  return demangled_typename_<T>
-    (std::integral_constant<bool,
-     std::is_class<typename std::remove_reference<T>::type>::value ||
-     std::is_union<typename std::remove_reference<T>::type>::value>(),
-     buf, buflen) ;
-}
-}
-
 #define PCOMN_DEMANGLE(name) (::pcomn::demangle((name), std::array<char, 1024>().begin(), 1024))
 #define PCOMN_CLASSNAME(type, ...) (pcomn::demangled_typename<type, ##__VA_ARGS__>(std::array<char, 1024>().begin(), 1024))
-
 #else
-
-namespace pcomn {
-
-template<typename T>
-inline const char *demangled_typename_(std::false_type)
-{
-  return typeid(T).name() ;
-}
-
-template<typename T>
-inline const char *demangled_typename_(std::true_type)
-{
-   return demangled_typename_<typename std::add_pointer<typename std::remove_reference<T>::type>::type>(std::false_type()) ;
-}
-
-template<typename T>
-inline const char *demangled_typename()
-{
-  return demangled_typename_<T>
-    (std::integral_constant<bool,
-     std::is_class<typename std::remove_reference<T>::type>::value ||
-     std::is_union<typename std::remove_reference<T>::type>::value>()) ;
-}
-
-}
-
 #define PCOMN_DEMANGLE(name) (name)
-#define PCOMN_CLASSNAME(type) (pcomn::demangled_typename<type >())
-
+#define PCOMN_CLASSNAME(type, ...) (pcomn::demangled_typename<type, ##__VA_ARGS__>())
 #endif
 
 #define PCOMN_TYPENAME(type_or_value) PCOMN_DEMANGLE(typeid(type_or_value).name())
-
 #define PCOMN_DEREFTYPENAME(value) ((value) ? PCOMN_TYPENAME(*(value)) : PCOMN_TYPENAME((value)))
 
 #define HEXOUT(k) "0x" << std::hex << (k) << std::dec
@@ -142,59 +51,6 @@ inline const char *demangled_typename()
 #define PCOMN_PROGRAM_SHORTNAME (strrchr(*__argv, '\\') ? strrchr(*__argv, '\\') + 1 : *__argv)
 #define PCOMN_PROGRAM_FULLNAME  (*__argv)
 #endif
-
-/// @macro PCOMN_NONCONST_OFFSETOF(TYPE, MEMBER)
-/// offsetof() for non-POD objects
-///
-/// According to the ISO C++ Standard, offsetof() for non-POD types is incorrect. As a
-/// result, some compilers (particularly, GCC 4.x) issue warnings in such cases.
-/// While not fatal, it is quite disturbing. To avoid GCC complaints, we don't use NULL
-/// as a "straw pointer". I suppose, 256 holds for _any_ alignment requirements.
-#if defined(PCOMN_COMPILER_GNU)
-#define PCOMN_NONCONST_OFFSETOF(TYPE, MEMBER)                           \
-   (static_cast<size_t>(                                                \
-      reinterpret_cast<size_t>(                                         \
-         &reinterpret_cast <const volatile char &>(reinterpret_cast<TYPE *>(256)->MEMBER))) - 256)
-#else
-#define PCOMN_NONCONST_OFFSETOF(TYPE, MEMBER) (offsetof(TYPE, MEMBER))
-#endif
-
-/*******************************************************************************
- pcomn namespace
-*******************************************************************************/
-namespace pcomn {
-
-/******************************************************************************/
-/** Base class for boolean tags
-*******************************************************************************/
-struct bool_value {
-      constexpr bool_value() : _value(false) {}
-      explicit constexpr bool_value(bool value) : _value(value) {}
-      explicit constexpr operator bool() const { return _value ; }
-   private:
-      const bool _value ;
-} ;
-
-/******************************************************************************/
-/** A tag type to specify whether to raise exception on error for functions
- that allow to indicate failure with a special return value.
-*******************************************************************************/
-struct RaiseError : bool_value { using bool_value::bool_value ; } ;
-
-static const RaiseError DONT_RAISE_ERROR (false) ;
-static const RaiseError RAISE_ERROR      (true) ;
-
-
-/******************************************************************************/
-/** Not-a-pointer: something, which is both not NULL and is not a valid pointer
-*******************************************************************************/
-template<typename T = void>
-struct not_a_pointer { static constexpr T * const value = reinterpret_cast<T *>(~(intptr_t())) ; } ;
-
-template<typename T>
-constexpr T * const not_a_pointer<T>::value ;
-
-constexpr void * const NaP = not_a_pointer<>::value ;
 
 /*******************************************************************************
  Argument-checking exception-throw macros
@@ -223,6 +79,142 @@ constexpr void * const NaP = not_a_pointer<>::value ;
 
 #define PCOMN_ASSERT_ARGX(assertion, exception) \
    (::pcomn::ensure_arg_assertion<exception>((assertion), #assertion, __FUNCTION__))
+
+namespace pcomn {
+
+/******************************************************************************/
+/** Base class for boolean tags
+*******************************************************************************/
+struct bool_value {
+      constexpr bool_value() : _value(false) {}
+      explicit constexpr bool_value(bool value) : _value(value) {}
+      explicit constexpr operator bool() const { return _value ; }
+   private:
+      const bool _value ;
+} ;
+
+/******************************************************************************/
+/** A tag type to specify whether to raise exception on error for functions
+ that allow to indicate failure with a special return value.
+*******************************************************************************/
+struct RaiseError : bool_value { using bool_value::bool_value ; } ;
+
+static const RaiseError DONT_RAISE_ERROR (false) ;
+static const RaiseError RAISE_ERROR      (true) ;
+
+/******************************************************************************/
+/** Not-a-pointer: something, which is both not NULL and is not a valid pointer
+*******************************************************************************/
+template<typename T = void>
+struct not_a_pointer { static constexpr T * const value = reinterpret_cast<T *>(~(intptr_t())) ; } ;
+
+template<typename T>
+constexpr T * const not_a_pointer<T>::value ;
+
+constexpr void * const NaP = not_a_pointer<>::value ;
+
+/*******************************************************************************
+ void * pointer arithmetics
+*******************************************************************************/
+template<typename T>
+constexpr inline T *padd(T *p, ptrdiff_t offset)
+{
+   return (T *)((char *)p + offset) ;
+}
+
+constexpr inline ptrdiff_t pdiff(const void *p1, const void *p2)
+{
+   return (const char *)p1 - (const char *)p2 ;
+}
+
+template<typename T>
+inline T *&preinc(T *&p, ptrdiff_t offset)
+{
+   return p = padd(p, offset) ;
+}
+
+template<typename T>
+inline T *postinc(T *&p, ptrdiff_t offset)
+{
+   T *old = p ;
+   preinc(p, offset) ;
+   return old ;
+}
+
+template<typename T>
+constexpr inline T *rebase(T *ptr, const void *oldbase, const void *newbase)
+{
+    return ptr ? (T *)padd(newbase, pdiff(ptr, oldbase)) : nullptr ;
+}
+
+/*******************************************************************************
+ Flagset processing functions
+*******************************************************************************/
+template<typename T>
+constexpr inline bool is_flags_equal(T flags, T test, T mask)
+{
+   return !((flags ^ test) & mask) ;
+}
+
+template<typename T>
+constexpr inline bool is_flags_on(T flags, T mask)
+{
+   return is_flags_equal(flags, mask, mask) ;
+}
+
+template<typename T>
+constexpr inline bool is_flags_off(T flags, T mask)
+{
+   return is_flags_equal<T>(~flags, mask, mask) ;
+}
+
+template<typename T>
+inline T &set_flags_masked(T &target, const T &flagset, const T &mask)
+{
+   return (target &= ~mask) |= flagset & mask ;
+}
+
+template<typename T>
+inline T &set_flags(T &target, bool value, const T &mask)
+{
+   return set_flags_masked(target, (T() - (T)value), mask) ;
+}
+
+template<typename T>
+inline T &set_flags_on(T &flags, const T &mask)
+{
+   return flags |= mask ;
+}
+
+template<typename T>
+inline T &set_flags_off(T &flags, const T &mask)
+{
+   return flags &= ~mask ;
+}
+
+template<typename T>
+inline T &inv_flags(T &flags, const T &mask)
+{
+   return flags ^= mask ;
+}
+
+template<typename T>
+constexpr inline T is_inverted(const T &flag, const T &mask, long test)
+{
+   return !(flag & mask) ^ !test ;
+}
+
+template<typename T>
+constexpr inline T flag_if(T flag, bool cond)
+{
+   return (T)(static_cast<T>(-(long)!!cond) & flag) ;
+}
+
+template<typename T>
+constexpr inline T sign(T val)
+{
+   return (val < 0) ? -1 : (!!val) ;
+}
 
 /*******************************************************************************
  Out-of-line exception throw
@@ -370,40 +362,29 @@ inline void ensure_precondition(bool precondition, const M &message)
 
 /******************************************************************************/
 /** A destruction policy for use by std::unique_ptr for objects allocated
- with malloc
-
+ with malloc.
  Uses ::free() to deallocate memory.
 *******************************************************************************/
 struct malloc_delete {
       void operator()(const void *ptr) const noexcept { ::free(const_cast<void *>(ptr)) ; }
 } ;
 
-/*******************************************************************************
- friend_cast<>
- Hack which allows public access to protected class members.
- Works for most sane compilers (at least for all widely used).
+/******************************************************************************/
+/** Swap wrapper that calls std::swap on the arguments, but may also use ADL
+ (Argument-Dependent Lookup, Koenig lookup) to use a specialised form.
+
+ Use this instead of std::swap to enable namespace-level swap functions, defined in the
+ same namespaces as classes they defined for. Note that if there is no such function
+ for T, this wrapper will fallback to std::swap().
 *******************************************************************************/
-/// @cond
-namespace detail {
-template <class Friend, class Befriended>
-class FriendOf : public Befriended { friend Friend ; } ;
-} // end of namespace pcomn::detail
-/// @endcond
+template<typename T>
+inline void pcomn_swap(T &a, T &b)
+{
+   using std::swap ;
+   swap(a, b) ;
+}
+
 } // end of namespace pcomn
-
-template <class Friend, class T>
-inline pcomn::detail::FriendOf<Friend, T> *friend_cast(T *object)
-{
-   return static_cast<pcomn::detail::FriendOf<Friend, T> *>(object) ;
-}
-
-template <class Friend, class T>
-inline pcomn:: detail::FriendOf<Friend, T> *friend_cast(T *object, const Friend &)
-{
-   return friend_cast<Friend>(object) ;
-}
-
-constexpr int P_CURRENT_ALIGNMENT = sizeof (___offsTest)-sizeof(double) ;
 
 /*******************************************************************************
 
@@ -488,28 +469,82 @@ constexpr int P_CURRENT_ALIGNMENT = sizeof (___offsTest)-sizeof(double) ;
    __VA_ARGS__ inline auto pend(type &x) -> decltype(&*std::end(x)) { return std::end(x) ; } \
    __VA_ARGS__ inline auto pend(const type &x) -> decltype(&*std::end(x)) { return std::end(x) ; }
 
-/******************************************************************************/
-/** Swap wrapper that calls std::swap on the arguments, but may also use ADL
- (Argument-Dependent Lookup, Koenig lookup) to use a specialised form.
 
- Use this instead of std::swap to enable namespace-level swap functions, defined in the
- same namespaces as classes they defined for. Note that if there is no such function
- for T, this wrapper will fallback to std::swap().
+/*******************************************************************************
+ Demangling
 *******************************************************************************/
-template<typename T>
-inline void pcomn_swap(T &a, T &b)
+#ifdef PCOMN_COMPILER_GNU
+#include <cxxabi.h>
+#include <array>
+#include <string.h>
+#endif
+
+namespace pcomn {
+
+#ifdef PCOMN_COMPILER_GNU
+
+inline const char *demangle(const char *mangled, char *buf, size_t buflen)
 {
-   using std::swap ;
-   swap(a, b) ;
+   int status = 0 ;
+   return abi::__cxa_demangle(mangled, buf, &buflen, &status) ;
 }
 
-#else    // no __cplusplus
+template<typename T>
+inline const char *demangled_typename_(std::true_type, char *buf, size_t buflen)
+{
+  demangle(typeid(typename std::add_pointer<typename std::remove_reference<T>::type>::type).name(),
+           buf, buflen) ;
+  if (buflen > 1)
+  {
+    const size_t len = strlen(buf) ;
+    if (len && buf[len - 1] == '*')
+      buf[len - 1] = 0 ;
+  }
+  return buf ;
+}
 
-#define _max(a,b)    (((a) > (b)) ? (a) : (b))
-#define _min(a,b)    (((a) < (b)) ? (a) : (b))
+template<typename T>
+inline const char *demangled_typename_(std::false_type, char *buf, size_t buflen)
+{
+  return demangle(typeid(T).name(), buf, buflen) ;
+}
 
-#define P_CURRENT_ALIGNMENT (sizeof (___offsTest)-sizeof(double))
+template<typename T>
+inline const char *demangled_typename(char *buf, size_t buflen)
+{
+  return demangled_typename_<T>
+    (std::integral_constant<bool,
+     std::is_class<typename std::remove_reference<T>::type>::value ||
+     std::is_union<typename std::remove_reference<T>::type>::value>(),
+     buf, buflen) ;
+}
 
-#endif   // __cplusplus
+#else // end of PCOMN_COMPILER_GNU
 
+template<typename T>
+inline const char *demangled_typename_(std::false_type)
+{
+  return typeid(T).name() ;
+}
+
+template<typename T>
+inline const char *demangled_typename_(std::true_type)
+{
+   return demangled_typename_<typename std::add_pointer<typename std::remove_reference<T>::type>::type>(std::false_type()) ;
+}
+
+template<typename T>
+inline const char *demangled_typename()
+{
+  return demangled_typename_<T>
+    (std::integral_constant<bool,
+     std::is_class<typename std::remove_reference<T>::type>::value ||
+     std::is_union<typename std::remove_reference<T>::type>::value>()) ;
+}
+
+#endif // PCOMN_COMPILER_GNU
+
+} // end of pcomn namespace
+
+#endif /* __cplusplus */
 #endif /* __PCOMMON_H */

@@ -199,7 +199,7 @@ template<class Thread>
 class PTFiberThread : public Thread, protected Fiber {
 
    protected:
-      PTFiberThread(bigflag_t flags = 0, int stack_size = 0, BasicThread::Priority pty = PtyNormal) :
+      PTFiberThread(unsigned flags = 0, int stack_size = 0, BasicThread::Priority pty = PtyNormal) :
          Thread(false, stack_size, pty),
          Fiber(*static_cast<Thread *>(this))
       {

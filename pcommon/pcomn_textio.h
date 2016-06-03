@@ -73,7 +73,7 @@ class _PCOMNEXP text_reader {
       /// @return The bit mask consisting of EOLType flags.
       /// @note There can be several flags set at the same time, since the input
       ///       can have "mixed" newlines.
-      bigflag_t eoltype() const { return _eoltype ; }
+      unsigned eoltype() const { return _eoltype ; }
 
       /// Indicates whether the end-of-file is reached.
       bool eof() const { return _lastchar < 0 ; }
@@ -172,10 +172,10 @@ class _PCOMNEXP text_reader {
       {}
 
    private:
-      bigflag_t   _eoltype ;
-      size_t      _lastread_txt ;
-      size_t      _lastread_bin ;
-      int         _lastchar ;
+      unsigned _eoltype ;
+      size_t   _lastread_txt ;
+      size_t   _lastread_bin ;
+      int      _lastchar ;
 
       virtual int get_char() = 0 ;
 

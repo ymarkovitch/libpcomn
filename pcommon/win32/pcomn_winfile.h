@@ -23,7 +23,7 @@ namespace pcomn {
 *******************************************************************************/
 class PWin32TempFile {
    public:
-      explicit PWin32TempFile(const char *prefix = "~comn", bigflag_t flags = 0)
+      explicit PWin32TempFile(const char *prefix = "~comn", unsigned flags = 0)
       {
          _handle = CreateFile(malloc_ptr<char[]>(tempnam(NULL, const_cast<char *>(prefix))).get(),
                               GENERIC_READ | GENERIC_WRITE,

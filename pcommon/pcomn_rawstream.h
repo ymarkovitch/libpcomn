@@ -57,8 +57,8 @@ class _PCOMNEXP raw_ios {
          failbit = std::ios_base::failbit,
          goodbit = std::ios_base::goodbit
       } ;
-      static const bigflag_t statebit = badbit | eofbit | failbit ;
-      static const bigflag_t closebit = ~(bigflag_t)0 ;
+      static const unsigned statebit = badbit | eofbit | failbit ;
+      static const unsigned closebit = ~(unsigned)0 ;
 
       /*************************************************************************
        Seek direction
@@ -97,16 +97,16 @@ class _PCOMNEXP raw_ios {
       explicit operator bool() const { return !fail() ; }
 
       /// Get status flags (eofbit, badbit, etc.).
-      bigflag_t rdstate() const { return _state ; }
+      unsigned rdstate() const { return _state ; }
 
-      bigflag_t setstate(bigflag_t state, bool onoff = true)
+      unsigned setstate(unsigned state, bool onoff = true)
       {
          if (is_open())
             resetstate(onoff ? (rdstate() | state) : (rdstate() & ~state)) ;
          return rdstate() ;
       }
 
-      virtual void resetstate(bigflag_t state = goodbit)
+      virtual void resetstate(unsigned state = goodbit)
       {
          _state = state ;
          _check_throw() ;
@@ -114,8 +114,8 @@ class _PCOMNEXP raw_ios {
 
       /// Set bits that cause throwing of std::ios_bas::failure.
       /// This function is like std::ios_base::exceptions()
-      void exceptions(bigflag_t state) ;
-      bigflag_t exceptions() const { return _exceptions ; }
+      void exceptions(unsigned state) ;
+      unsigned exceptions() const { return _exceptions ; }
 
       pos_type seek(off_type off, seekdir dir = beg)
       {
@@ -130,7 +130,7 @@ class _PCOMNEXP raw_ios {
       pos_type tell() { return seek(0, cur) ; }
 
    protected:
-      bigflag_t setstate_nothrow(bigflag_t state, bool onoff)
+      unsigned setstate_nothrow(unsigned state, bool onoff)
       {
          return onoff ? (_state |= state) : (_state &= ~state) ;
       }
@@ -141,13 +141,13 @@ class _PCOMNEXP raw_ios {
       virtual void do_close() ;
       virtual pos_type seekoff(off_type, seekdir) ;
       virtual void throw_failure() {}
-      virtual bigflag_t external_state() const { return 0 ; }
+      virtual unsigned external_state() const { return 0 ; }
 
       class sentry ;
       friend class sentry ;
       class sentry {
          public:
-            sentry(raw_ios &io, bigflag_t mask_exceptions = ~0) :
+            sentry(raw_ios &io, unsigned mask_exceptions = ~0) :
                _io(io),
                _throwable(io._throwable)
             {
@@ -157,16 +157,16 @@ class _PCOMNEXP raw_ios {
 
          private:
             raw_ios &   _io ;
-            bigflag_t   _throwable ;
+            unsigned   _throwable ;
 
             void *operator new(size_t) throw() { return NULL ; }
             void operator delete(void *, size_t) {}
       } ;
 
    private:
-      bigflag_t _state ;
-      bigflag_t _exceptions ;
-      bigflag_t _throwable ;
+      unsigned _state ;
+      unsigned _exceptions ;
+      unsigned _throwable ;
 
       void _check_throw()
       {
@@ -315,7 +315,7 @@ class raw_stream_wrapper : public RawStream {
 
       void do_close() ;
 
-      bigflag_t external_state() const { return stream().rdstate() ; }
+      unsigned external_state() const { return stream().rdstate() ; }
 
    private:
       wrapped_stream_t *_stream ;   /* A pointer to a wrapped stream */
@@ -358,7 +358,7 @@ class raw_basic_stream : public raw_stream_wrapper<Stream, RawStream> {
    public:
       typedef typename ancestor::wrapped_stream_t wrapped_stream_t ;
 
-      void resetstate(bigflag_t state = raw_ios::goodbit) ;
+      void resetstate(unsigned state = raw_ios::goodbit) ;
 
    protected:
       raw_basic_stream(wrapped_stream_t *stream, bool owns) :
@@ -422,7 +422,7 @@ raw_ios::pos_type raw_basic_stream<Stream, RawStream>::seekoff(raw_ios::off_type
 }
 
 template <class Stream, class RawStream>
-void raw_basic_stream<Stream, RawStream>::resetstate(bigflag_t state)
+void raw_basic_stream<Stream, RawStream>::resetstate(unsigned state)
 {
    ancestor::resetstate(state) ;
    this->stream().clear((std::ios_base::iostate)state) ;
@@ -473,7 +473,7 @@ class _PCOMNEXP raw_fstreambase : public RawStream {
          _file(std::fopen(pcomn::str::cstr(name), mode)),
          _owns(!!_file)
       {
-         ancestor::resetstate(fptr() ? (bigflag_t)raw_ios::goodbit : (bigflag_t)raw_ios::closebit) ;
+         ancestor::resetstate(fptr() ? (unsigned)raw_ios::goodbit : (unsigned)raw_ios::closebit) ;
       }
 
       ~raw_fstreambase()
@@ -488,7 +488,7 @@ class _PCOMNEXP raw_fstreambase : public RawStream {
          this->close() ;
          _file = file ;
          _owns = owns && file ;
-         ancestor::resetstate(_file ? (bigflag_t)raw_ios::goodbit : raw_ios::closebit) ;
+         ancestor::resetstate(_file ? (unsigned)raw_ios::goodbit : raw_ios::closebit) ;
       }
 
       void open(const char *name, const char *mode)
@@ -498,7 +498,7 @@ class _PCOMNEXP raw_fstreambase : public RawStream {
 
       FILE *fptr() const { return _file ; }
 
-      void resetstate(bigflag_t state)
+      void resetstate(unsigned state)
       {
          ancestor::resetstate(state) ;
          if ((state & raw_ios::statebit) && fptr())
@@ -508,9 +508,9 @@ class _PCOMNEXP raw_fstreambase : public RawStream {
       raw_ios::pos_type seekoff(raw_ios::off_type offs, raw_ios::seekdir dir) ;
       void do_close() ;
 
-      bigflag_t external_state() const
+      unsigned external_state() const
       {
-         const bigflag_t state = feof(fptr()) ? (bigflag_t)raw_ios::eofbit : (bigflag_t)0 ;
+         const unsigned state = feof(fptr()) ? (unsigned)raw_ios::eofbit : (unsigned)0 ;
          return ferror(fptr()) ? (state | raw_ios::badbit) : state ;
       }
 
@@ -777,7 +777,7 @@ class _PCOMNEXP raw_icachestream : public raw_istream {
       /// Get the past-the-end position of the cached region.
       pos_type cache_endpos() const { return _bufend ; }
 
-      void resetstate(bigflag_t state = raw_ios::goodbit)
+      void resetstate(unsigned state = raw_ios::goodbit)
       {
          ancestor::resetstate(state) ;
          source().resetstate(state) ;
@@ -787,7 +787,7 @@ class _PCOMNEXP raw_icachestream : public raw_istream {
       pos_type seekoff(off_type offs, seekdir dir) ;
       size_t do_read(void *buffer, size_t bufsize) ;
       void do_close() ;
-      bigflag_t external_state() const { return source().rdstate() ; }
+      unsigned external_state() const { return source().rdstate() ; }
 
    private:
       raw_istream *  _source ;

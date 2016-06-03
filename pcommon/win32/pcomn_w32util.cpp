@@ -18,7 +18,7 @@
 
 namespace pcomn {
 
-int message_box_va(HWND owner, bigflag_t style, const char *title, const char *fmt, va_list argptr)
+int message_box_va(HWND owner, unsigned style, const char *title, const char *fmt, va_list argptr)
 {
    char *text = (char *)memset (new char[2048], 0, 2048) ;
    vsprintf (text, fmt, argptr) ;
@@ -27,7 +27,7 @@ int message_box_va(HWND owner, bigflag_t style, const char *title, const char *f
    return result ;
 }
 
-int message_box(HWND owner, bigflag_t style, const char *title, const char *fmt, ...)
+int message_box(HWND owner, unsigned style, const char *title, const char *fmt, ...)
 {
    va_list argptr ;
    int result ;

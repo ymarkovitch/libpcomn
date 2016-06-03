@@ -86,7 +86,7 @@ class _PCOMNEXP Scheduler {
       /// scheduled using a combination of one-shot and periodic behaviour.
       taskid_t schedule(const std::function<void()> &task_fn,
                         int64_t init_expiration, int64_t repeat_interval,
-                        flags32_t flags = 0)
+                        uint32_t flags = 0)
       {
          return
             schedule_task(make_job(task_fn), init_expiration, repeat_interval, flags, 0) ;
@@ -122,7 +122,7 @@ class _PCOMNEXP Scheduler {
 
       taskid_t schedule_task(const TaskPtr &task,
                              int64_t init_expiration, int64_t repeat_interval,
-                             flags32_t flags, size_t stacksize) ;
+                             uint32_t flags, size_t stacksize) ;
 
       virtual task_ptr create_task(const TaskPtr &task, size_t stacksize) ;
 
@@ -278,7 +278,7 @@ class _PCOMNEXP AsyncScheduler : public Scheduler {
       /// @param  worker_stacksize  Worker thread stack size
       taskid_t schedule(const TaskPtr &task,
                         int64_t init_expiration, int64_t repeat_interval,
-                        flags32_t flags = 0, size_t worker_stacksize = 0)
+                        uint32_t flags = 0, size_t worker_stacksize = 0)
       {
          return
             schedule_task(task, init_expiration, repeat_interval, flags, worker_stacksize) ;
@@ -287,7 +287,7 @@ class _PCOMNEXP AsyncScheduler : public Scheduler {
       /// @overload
       taskid_t schedule(const std::function<void()> &task_fn,
                         int64_t init_expiration, int64_t repeat_interval,
-                        flags32_t flags = 0, size_t worker_stacksize = 0)
+                        uint32_t flags = 0, size_t worker_stacksize = 0)
       {
          return
             schedule(make_job(task_fn), init_expiration, repeat_interval, flags, worker_stacksize) ;

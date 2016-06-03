@@ -131,10 +131,10 @@ class _PCOMNEXP PDiagBase {
 
       /// Set tracing mode.
       /// The 'flags' parameter is a bit combination of diag::DiagMode flags
-      static void mode(bigflag_t flags, bool onOff = true) ;
+      static void mode(unsigned flags, bool onOff = true) ;
 
       /// Get tracing mode.
-      static bigflag_t mode() ;
+      static unsigned mode() ;
 
       /// Get group properties by its full name.
       static Properties *get(const char *name) ;
@@ -371,10 +371,10 @@ bool diag_isenabled_supergroup(const char *name)
 }
 
 inline
-void diag_setmode(bigflag_t mode, bool onoff) { ::diag::PDiagBase::mode(mode, onoff) ; }
+void diag_setmode(unsigned mode, bool onoff) { ::diag::PDiagBase::mode(mode, onoff) ; }
 
 inline
-bigflag_t diag_getmode() { return ::diag::PDiagBase::mode() ; }
+unsigned diag_getmode() { return ::diag::PDiagBase::mode() ; }
 
 inline
 bool diag_isenabled_diag() { return !(diag_getmode() & ::diag::DisableDebugOutput) ; }
@@ -447,7 +447,7 @@ DECLARE_DIAG_GROUP(Def, _PCOMNEXP) ;
 #define DIAG_SETLEVEL(GRP, LVL)        ((void)0)
 #define DIAG_GETLEVEL(GRP)             (0U)
 #define DIAG_SETMODE(mode, onoff)      ((void)0)
-#define DIAG_GETMODE()                 ((bigflag_t)::diag::DisableDebugOutput)
+#define DIAG_GETMODE()                 ((unsigned)::diag::DisableDebugOutput)
 #define DIAG_SETLOG(fd)                ((void)0)
 #define DIAG_READPROFILE()             ((void)0)
 #define DIAG_WRITEPROFILE()            ((void)0)

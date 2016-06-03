@@ -20,8 +20,6 @@
 #include <pcomn_integer.h>
 
 #include <iostream>
-#include <sstream>
-#include <iomanip>
 #include <utility>
 #include <functional>
 #include <vector>
@@ -213,12 +211,6 @@ inline T *&clear_deletev(T *&vec)
 }
 
 template<typename T>
-inline int compare_values(const T &t1, const T &t2)
-{
-   return (t1 < t2) ? -1 : (t2 != t1) ;
-}
-
-template<typename T>
 inline T &fill_mem(T &t, int value = 0)
 {
    return *(T *)memset(&t, value, sizeof t) ;
@@ -233,108 +225,8 @@ inline const T &assign_by_ptr(T *ptr, const T &value)
 }
 
 /*******************************************************************************
- void * pointer arithmetics
+ Ranges handling
 *******************************************************************************/
-template<typename T>
-inline T *padd(T *p, ptrdiff_t offset)
-{
-   return (T *)((char *)p + offset) ;
-}
-
-inline ptrdiff_t pdiff(const void *p1, const void *p2)
-{
-   return (const char *)p1 - (const char *)p2 ;
-}
-
-template<typename T>
-inline T *&preinc(T *&p, ptrdiff_t offset)
-{
-   return p = padd(p, offset) ;
-}
-
-template<typename T>
-inline T *postinc(T *&p, ptrdiff_t offset)
-{
-   T *old = p ;
-   preinc(p, offset) ;
-   return old ;
-}
-
-template<typename T>
-inline T *rebase(T *ptr, const void *oldbase, const void *newbase)
-{
-    return ptr ? (T *)padd(newbase, pdiff(ptr, oldbase)) : (T *)NULL ;
-}
-
-/*******************************************************************************
- Flagset processing functions
-*******************************************************************************/
-template<typename T>
-inline bool is_flags_equal(T flags, T test, T mask)
-{
-   return !((flags ^ test) & mask) ;
-}
-
-template<typename T>
-inline bool is_flags_on(T flags, T mask)
-{
-   return is_flags_equal(flags, mask, mask) ;
-}
-
-template<typename T>
-inline bool is_flags_off(T flags, T mask)
-{
-   return is_flags_equal<T>(~flags, mask, mask) ;
-}
-
-template<typename T>
-inline T &set_flags_masked(T &target, const T &flagset, const T &mask)
-{
-   return (target &= ~mask) |= flagset & mask ;
-}
-
-template<typename T>
-inline T &set_flags(T &target, bool value, const T &mask)
-{
-   return set_flags_masked(target, (T() - (T)value), mask) ;
-}
-
-template<typename T>
-inline T &set_flags_on(T &flags, const T &mask)
-{
-   return flags |= mask ;
-}
-
-template<typename T>
-inline T &set_flags_off(T &flags, const T &mask)
-{
-   return flags &= ~mask ;
-}
-
-template<typename T>
-inline T &inv_flags(T &flags, const T &mask)
-{
-   return flags ^= mask ;
-}
-
-template<typename T>
-inline T is_inverted(const T &flag, const T &mask, long test)
-{
-   return !(flag & mask) ^ !test ;
-}
-
-template<typename T>
-inline T sign(T val)
-{
-   return (val < 0) ? -1 : (!!val) ;
-}
-
-template<typename T>
-inline T flag_if(T flag, bool cond)
-{
-   return (T)(static_cast<T>(-(long)!!cond) & flag) ;
-}
-
 template<typename T, typename U>
 inline std::enable_if_t<std::is_convertible<U, T>::value, T>
 xchange(T &dest, const U &src)

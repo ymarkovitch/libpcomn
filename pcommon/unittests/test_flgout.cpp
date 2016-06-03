@@ -51,7 +51,7 @@ int main(int argc, char **argv)
       return 1 ;
    }
 
-   bigflag_t f = strtoul(argv[1], NULL, 0) ;
+   unsigned f = strtoul(argv[1], NULL, 0) ;
 
    std::cout << std::endl << "Flag print test." << std::endl << "Flags: " << HEXOUT(f) << std::endl
              << pcomn::flgout(f, flgdesc) << std::endl ;

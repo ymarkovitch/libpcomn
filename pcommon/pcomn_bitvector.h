@@ -45,11 +45,13 @@ struct basic_bitvector<const E> {
       template<size_t n>
       constexpr basic_bitvector(element_type (&e)[n]) : _elements(e), _nelements(n) {}
 
+      static constexpr size_t bits_per_element() { return bitsizeof(element_type) ; }
+
       /// Get the number of elements in of this vector.
       constexpr size_t nelements() const { return _nelements ; }
 
       /// Get the size of this vector in bits.
-      constexpr size_t size() const { return nelements()*BITS_PER_ELEMENT ; }
+      constexpr size_t size() const { return nelements()*bits_per_element() ; }
 
       constexpr element_type *data() const { return _elements ; }
       constexpr element_type *cdata() { return _elements ; }
@@ -86,7 +88,7 @@ struct basic_bitvector<const E> {
       static constexpr size_t cellndx(size_t pos) { return bitop::cellndx<element_type>(pos) ; }
 
       /// Given a bit position, get the index inside the appropriate chunk in bits[]
-      /// such that 0 <= index < BITS_PER_ELEMENT.
+      /// such that 0 <= index < bits_per_element().
       static constexpr size_t bitndx(size_t pos) { return bitop::bitndx<element_type>(pos) ; }
 
       static constexpr element_type bitmask(size_t pos) { return bitop::bitmask<element_type>(pos) ; }
@@ -178,9 +180,6 @@ struct basic_bitvector<const E> {
       positional_iterator end_positional() const { return positional_iterator(*this, size()) ; }
 
    protected:
-      /// Bit count per storage element
-      static constexpr const size_t BITS_PER_ELEMENT = CHAR_BIT*sizeof(element_type) ;
-
       element_type &elem(size_t bitpos) const
       {
          NOXCHECK(bitpos < size()) ;
