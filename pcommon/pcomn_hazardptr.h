@@ -35,6 +35,7 @@
 #include <new>
 
 #include <stdlib.h>
+#include <string.h>
 
 #ifdef PCOMN_PL_MS
 // For _aligned_malloc/_aligned_free
@@ -170,6 +171,7 @@ class alignas(PCOMN_CACHELINE_SIZE) hazard_registry {
 
    public:
       constexpr hazard_registry() : _occupied{}, _hazard{} {}
+      ~hazard_registry() = default ;
 
       /// The maximum count of hazard pointers per thread
       static constexpr size_t capacity() { return  (8 << (int)Log2) - 1 ; }
@@ -263,8 +265,6 @@ class alignas(PCOMN_CACHELINE_SIZE) hazard_storage {
       const slots_bitmap      _slots_map ;  /* Registry slots bitmap */
       registry_type * const   _registries ; /* Registry slots */
 
-      alignas(PCOMN_CACHELINE_SIZE) std::atomic<size_t> _map_ubound = {} ; /* Upper bound of allocated slots */
-
    private:
       explicit hazard_storage(unsigned slotcount) ;
 
@@ -283,37 +283,19 @@ class alignas(PCOMN_CACHELINE_SIZE) hazard_storage {
             * slots_bitmap::bits_per_element() ;
       }
 
-      static void *allocate(unsigned thread_maxcount)
-      {
-         NOXCHECK(thread_maxcount != 0) ;
-         const size_t slot_count = slotcount(thread_maxcount) ;
-         const size_t memsize =
-            sizeof(hazard_storage) +
-            slotdata_offset(slot_count) +
-            sizeof(registry_type) * slot_count ;
+      // Allocate continuous memory regison aligned to cacheline size and sufficient for
+      // continuous placement of hazard_storage object itself, the slot bitmap, and
+      // registry slots themselvels.
+      // The allocated memory must be filled with zeros.
+      static void *allocate(unsigned thread_maxcount) ;
 
-         void * const mem =
-         #ifndef PCOMN_PL_MS
-            aligned_alloc(alignof(hazard_storage), memsize)
-         #else
-            _aligned_malloc(memsize, alignof(hazard_storage))
-         #endif
-            ;
-         return ensure_nonzero<std::bad_alloc>(mem) ;
-      }
-
-      static void deallocate(void *ptr)
-      {
-         if (!ptr)
-            return ;
-         #ifndef PCOMN_PL_MS
-         free(ptr) ;
-         #else
-         _aligned_free(ptr) ;
-         #endif
-      }
+      // Deallocate meory region allocated with allocate(); ignore nullptr
+      static void deallocate(void *ptr) ;
 
       const slots_bitmap &slots_map() const { return _slots_map ; }
+
+      registry_type *slots() { return _registries ; }
+      const registry_type *slots() const { return _registries ; }
 
       // The raw data area immediately follows the memory cuupied by hazard_storage
       // object itself
@@ -377,6 +359,73 @@ hazard_storage<Log2>::hazard_storage(unsigned requested_slotcount) :
    _registries(static_cast<registry_type *>(padd<void>(raw_data(), slotdata_offset(slots_map().size()))))
 {
    PCOMN_VERIFY(requested_slotcount > 0) ;
+}
+
+template<unsigned L>
+void *hazard_storage<L>::allocate(unsigned thread_maxcount)
+{
+   NOXCHECK(thread_maxcount != 0) ;
+   const size_t slot_count = slotcount(thread_maxcount) ;
+   const size_t memsize =
+      sizeof(hazard_storage) +
+      slotdata_offset(slot_count) +
+      sizeof(registry_type) * slot_count ;
+
+   void * const mem =
+#ifndef PCOMN_PL_MS
+      aligned_alloc(alignof(hazard_storage), memsize)
+#else
+      _aligned_malloc(memsize, alignof(hazard_storage))
+#endif
+      ;
+   // Check and zero-fill
+   return memset(ensure_nonzero<std::bad_alloc>(mem), 0, memsize) ;
+}
+
+template<unsigned L>
+void hazard_storage<L>::deallocate(void *ptr)
+{
+   if (!ptr)
+      return ;
+#ifndef PCOMN_PL_MS
+   free(ptr) ;
+#else
+   _aligned_free(ptr) ;
+#endif
+}
+
+template<unsigned L>
+typename hazard_storage<L>::registry_type *hazard_storage<L>::allocate_slot()
+{
+   do
+   {
+      bool failed_attempts = false ;
+      // Search the slots map for 0 bit (i.e. free slot position)
+      for (auto p = slots_map().begin_positional(), e = end_positional() ; p != e ; ++p)
+      {
+      }
+   }
+   while (failed_attempts) ;
+
+   PCOMN_THROWF(implimit_error,
+                "attempt to allocate more than %u hazard registry slots. "
+                "Reduce thread count or increase hazard storage capacity.", (unsigned)capacity()) ;
+}
+
+template<unsigned L>
+void hazard_storage<L>::release_slot(registry_type *slot)
+{
+   PCOMN_VERIFY(slot != nullptr) ;
+   PCOMN_ENSURE(!((uintptr_t)slot & (alignof(*slot) - 1)),
+                "Invalid alignment of a hazard registry pointer") ;
+
+   const size_t slotpos = slot - slots() ;
+
+   PCOMN_ENSURE(slotpos < capacity(),
+                "Attempt to release a hazard registry pointer that does not belong to the storage.") ;
+
+   memset(slot, 0, sizeof *slot) ;
+   slots_map().set(slotpos, false, std::memory_order_release) ;
 }
 
 /*******************************************************************************

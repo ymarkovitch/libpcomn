@@ -399,8 +399,7 @@ public:
     }
 
     template<typename S>
-    typename enable_if_strchar<S, char, size_t>::type
-    transmit(const S &buffer, int timeout = -1)
+    enable_if_strchar_t<S, char, size_t> transmit(const S &buffer, int timeout = -1)
     {
         return transmit(str::cstr(buffer), str::len(buffer), timeout) ;
     }

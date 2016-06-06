@@ -710,15 +710,15 @@ class mutable_strbuf : public shared_string<Char, CharTraits, Storage> {
          swap(src._ref) ;
       }
 
-      template<typename S>
-      mutable_strbuf(const S &s, PCOMN_ENABLE_CTR_IF_STRCHAR(S, char_type)) :
+      template<typename S, enable_if_strchar_t<S, char_type, nullptr_t> = nullptr>
+      mutable_strbuf(const S &s) :
          ancestor(str::cstr(s), str::len(s)),
          _capacity(allocated_capacity(ancestor::size()))
       {}
 
       template<typename S>
       mutable_strbuf(const S &s, size_type from_pos,
-                     typename enable_if_strchar<S, char_type, size_type>::type length) :
+                     enable_if_strchar_t<S, char_type, size_type> length) :
          ancestor(str::cstr(s) + ensure_le<std::out_of_range>(from_pos,
                                                               (size_type)str::len(s),
                                                               "String position is out of range"),
@@ -812,7 +812,7 @@ class mutable_strbuf : public shared_string<Char, CharTraits, Storage> {
       }
 
       template<typename S>
-      typename enable_if_strchar<S, char_type, mutable_strbuf &>::type
+      enable_if_strchar_t<S, char_type, mutable_strbuf &>
       operator+=(const S &rhs)
       {
          return append(str::cstr(rhs), str::len(rhs)) ;
@@ -927,8 +927,8 @@ class immutable_string : public shared_string<Char, CharTraits, Storage> {
          ancestor(str)
       {}
 
-      template<typename S>
-      immutable_string(const S &s, PCOMN_ENABLE_CTR_IF_STRCHAR(S, char_type)) :
+      template<typename S, enable_if_strchar_t<S, char_type, nullptr_t> = nullptr>
+      immutable_string(const S &s) :
          ancestor(str::cstr(s), str::len(s))
       {}
 
@@ -940,7 +940,7 @@ class immutable_string : public shared_string<Char, CharTraits, Storage> {
 
       template<typename S>
       immutable_string(const S &s, size_type from_pos,
-                       typename enable_if_strchar<S, char_type, size_type>::type length) :
+                       enable_if_strchar_t<S, char_type, size_type> length) :
          ancestor(str::cstr(s) + ensure_le<std::out_of_range>(from_pos,
                                                               (size_type)str::len(s),
                                                               "String position is out of range"),
@@ -1009,7 +1009,7 @@ class immutable_string : public shared_string<Char, CharTraits, Storage> {
       }
 
       template<typename S>
-      typename enable_if_strchar<S, char_type, immutable_string &>::type
+      enable_if_strchar_t<S, char_type, immutable_string &>
       operator=(const S &src)
       {
          immutable_string tmp (str::cstr(src), 0, str::len(src)) ;

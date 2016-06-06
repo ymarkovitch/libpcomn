@@ -65,8 +65,8 @@ class short_string {
 
       short_string(const short_string &s) { memcpy(_buf, s._buf, sizeof _buf) ; }
 
-      template<typename S>
-      short_string(const S &s, PCOMN_ENABLE_CTR_IF_STRCHAR(S, char_type))
+      template<typename S, typename = enable_if_strchar_t<S, char_type, nullptr_t>>
+      short_string(const S &s)
       {
          *this = s ;
          _buf[Capacity] = 0 ;
@@ -120,7 +120,7 @@ class short_string {
       }
 
       template<typename S>
-      typename enable_if_strchar<S, char_type, int>::type
+      enable_if_strchar_t<S, char_type, int>
       compare(const S &s) const
       {
          const size_type s_sz = str::len(s) ;
@@ -140,7 +140,7 @@ class short_string {
       }
 
       template<typename S>
-      typename enable_if_strchar<S, char_type, short_string &>::type
+      enable_if_strchar_t<S, char_type, short_string &>
       operator=(const S &src)
       {
          ctype_traits<char_type>::strncpy(_buf, str::cstr(src), Capacity) ;

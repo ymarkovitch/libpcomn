@@ -1016,14 +1016,14 @@ std::string full_file(FILE *file)
 }
 
 template<typename S>
-__noinline typename pcomn::enable_if_strchar<S, char, std::string>::type
+__noinline pcomn::enable_if_strchar_t<S, char, std::string>
 full_file(const S &name)
 {
    return full_file(pcomn::FILE_safehandle(fopen(pcomn::str::cstr(name), "r")).handle()) ;
 }
 
 template<typename S>
-__noinline typename pcomn::enable_if_strchar<S, char, string_vector>::type
+__noinline enable_if_strchar_t<S, char, string_vector>
 file_lines(const S &name)
 {
    std::ifstream file (pcomn::str::cstr(name)) ;

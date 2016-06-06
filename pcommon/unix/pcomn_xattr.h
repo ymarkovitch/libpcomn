@@ -50,7 +50,7 @@ enum XAttrSetMode {
 
 /// Check if file extended attributes is supported for given path
 template<typename S>
-inline typename enable_if_strchar<S, char, bool>::type
+enable_if_strchar_t<S, char, bool>
 xattr_supported(const S &filename)
 {
    PCOMN_CHECK_XA_SUPPORTED(getxattr, pcomn::str::cstr(filename)) ;
@@ -72,7 +72,7 @@ xattr_get(const S1 &path, const S2 &name, void *value, size_t size)
 }
 
 template<typename S>
-inline typename enable_if_strchar<S, char, ssize_t>::type
+enable_if_strchar_t<S, char, ssize_t>
 xattr_get(int fd, const S &name, void *value, size_t size)
 {
    return ::fgetxattr(fd, pcomn::str::cstr(name), value, size) ;
@@ -136,7 +136,7 @@ xattr_set(XAttrSetMode mode, const S1 &path, const S2 &name, const void *value, 
 }
 
 template<typename S>
-inline typename enable_if_strchar<S, char, bool>::type
+enable_if_strchar_t<S, char, bool>
 xattr_set(XAttrSetMode mode, int fd, const S &name, const void *value, size_t size)
 {
    if (::fsetxattr(fd, pcomn::str::cstr(name), value, size, mode))
@@ -170,7 +170,7 @@ xattr_del(const S1 &path, const S2 &name)
 }
 
 template<typename S>
-inline typename enable_if_strchar<S, char, bool>::type
+enable_if_strchar_t<S, char, bool>
 xattr_del(int fd, const S &name)
 {
    if (!::fremovexattr(fd, pcomn::str::cstr(name)))

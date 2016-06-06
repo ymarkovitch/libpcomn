@@ -198,7 +198,7 @@ abspath(const S &path)
 }
 
 template<typename R>
-typename enable_if_strchar<R, char, R>::type
+enable_if_strchar_t<R, char, R>
 abspath(const basic_strslice<char> &path)
 {
    auto_buffer<PATH_MAX + 1> buf (path.size() + 1) ;
@@ -215,7 +215,7 @@ normpath(const S &path)
 }
 
 template<typename R>
-typename enable_if_strchar<R, char, R>::type
+enable_if_strchar_t<R, char, R>
 normpath(const basic_strslice<char> &path)
 {
    auto_buffer<PATH_MAX + 1> buf (path.size() + 1) ;
@@ -232,7 +232,7 @@ realpath(const S &path)
 }
 
 template<typename R>
-typename enable_if_strchar<R, char, R>::type
+enable_if_strchar_t<R, char, R>
 realpath(const basic_strslice<char> &path)
 {
    auto_buffer<PATH_MAX + 1> buf (path.size() + 1) ;

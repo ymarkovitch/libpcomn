@@ -140,19 +140,20 @@ struct basic_bitvector<const E> {
 
        The iterator successively returns positions of 1-bits in a vector.
       *************************************************************************/
+      template<bool bitval>
       struct positional_iterator : std::iterator<std::forward_iterator_tag, ptrdiff_t, ptrdiff_t> {
 
             constexpr positional_iterator() = default ;
             constexpr positional_iterator(const basic_bitvector &v, size_t pos) :
                _vec(&v),
-               _pos(v.find_first_bit<1>(pos))
+               _pos(v.find_first_bit<bitval>(pos))
             {}
 
             ptrdiff_t operator*() const { return _pos ; }
 
             positional_iterator &operator++()
             {
-               _pos = _vec->find_first_bit<1>(_pos + 1) ;
+               _pos = _vec->find_first_bit<bitval>(_pos + 1) ;
                return *this ;
             }
             PCOMN_DEFINE_POSTCREMENT(positional_iterator, ++) ;
@@ -176,8 +177,10 @@ struct basic_bitvector<const E> {
       const_iterator cbegin() const { return begin() ; }
       const_iterator cend() const { return end() ; }
 
-      positional_iterator begin_positional() const { return positional_iterator(*this, 0) ; }
-      positional_iterator end_positional() const { return positional_iterator(*this, size()) ; }
+      template<bool bitval = 1>
+      positional_iterator<bitval> begin_positional() const { return positional_iterator<bitval>(*this, 0) ; }
+      template<bool bitval = 1>
+      positional_iterator<bitval> end_positional() const { return positional_iterator<bitval>(*this, size()) ; }
 
    protected:
       element_type &elem(size_t bitpos) const

@@ -176,8 +176,7 @@ class _PCOMNEXP binary_ostream {
       }
 
       template<typename S>
-      typename enable_if_strchar<S, char, size_t>::type
-      write(const S &s)
+      enable_if_strchar_t<S, char, size_t> write(const S &s)
       {
          return write(str::cstr(s), str::len(s)) ;
       }
@@ -557,7 +556,7 @@ class binary_ostrstream : public virtual binary_ostream {
 
       template<class S>
       explicit binary_ostrstream(const S &initval,
-                                 typename enable_if_strchar<S, char, unsigned>::type reserve = 0) :
+                                 enable_if_strchar_t<S, char, unsigned> reserve = 0) :
          _data(str::cstr(initval), str::len(initval))
       {
          if (reserve)

@@ -867,6 +867,4 @@ operator<<(std::basic_ostream<char, StreamTraits> &os,
 
 namespace pcomn { using std::hasher ; } // end of namespace pcomn
 
-#define PCOMN_ENABLE_CTR_IF_STRCHAR(S, C) pcomn::enable_if_strchar_t<S, C, pcomn::Instantiate> = {}
-
 #endif /* __PCOMN_STRING_H */

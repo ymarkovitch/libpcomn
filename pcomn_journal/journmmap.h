@@ -283,7 +283,7 @@ class _PCOMNEXP MMapStorage : public Storage {
       /// @a filename.
       /// @param[out] id            The buffer for id value extracted from @a filename.
       template<typename S>
-      static typename enable_if_strchar<S, char, FilenameKind>::type
+      static enable_if_strchar_t<S, char, FilenameKind>
       parse_filename(const S &filename, std::string *journal_name = NULL, uint64_t *id = NULL)
       {
          return parse_internal(str::cstr(filename), journal_name, id) ;
@@ -505,7 +505,7 @@ class _PCOMNEXP MMapStorage : public Storage {
             template<typename S>
             CheckpointFile(int dirfd, const S &filename,
                            int64_t segid, generation_t generation,
-                           typename enable_if_strchar<S, char, unsigned>::type mask) :
+                           enable_if_strchar_t<S, char, unsigned> mask) :
 
                ancestor(dirfd, str::cstr(filename), segid, generation, mask, true),
                _data_end(data_begin())
@@ -540,7 +540,7 @@ class _PCOMNEXP MMapStorage : public Storage {
             template<typename S>
             SegmentFile(int dirfd, const S &filename,
                         int64_t segid, generation_t generation,
-                        typename enable_if_strchar<S, char, unsigned>::type mask) :
+                        enable_if_strchar_t<S, char, unsigned> mask) :
 
                ancestor(dirfd, str::cstr(filename), segid, generation, mask, false)
             {}

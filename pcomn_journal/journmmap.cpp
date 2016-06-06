@@ -44,7 +44,7 @@ static const size_t MAX_ALLOCA = 16384 ; /* Alloca limit (allocate larger memory
 static const magic_t ZERO_MAGIC = {{}} ;
 
 template<typename S>
-typename enable_if_strchar<S, char, std::string>::type
+enable_if_strchar_t<S, char, std::string>
 backup_name(const S &path, unsigned n, const char *add_ext = NULL)
 {
    if (!add_ext)

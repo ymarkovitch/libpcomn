@@ -22,6 +22,8 @@
 #ifdef __cplusplus
 #include <stdexcept>
 #include <system_error>
+#include <type_traits>
+#include <utility>
 
 #ifdef PCOMN_COMPILER_GNU
 #define PCOMN_DEMANGLE(name) (::pcomn::demangle((name), std::array<char, 1024>().begin(), 1024))
@@ -80,7 +82,41 @@
 #define PCOMN_ASSERT_ARGX(assertion, exception) \
    (::pcomn::ensure_arg_assertion<exception>((assertion), #assertion, __FUNCTION__))
 
+/// Throw an exception with a formatted message.
+/// @hideinitializer @ingroup ExceptionMacros
+#define PCOMN_THROWF(exception, format, ...)  (pcomn::throwf<exception>(format, ##__VA_ARGS__))
+
+/// Throw an exception with a formatted message if a specified condition holds.
+/// @hideinitializer @ingroup ExceptionMacros
+#define PCOMN_THROW_IF(condition, exception, format, ...)   \
+do {                                                        \
+   if (condition)                                           \
+      PCOMN_THROWF(exception, format, ##__VA_ARGS__) ;      \
+} while(false)
+
 namespace pcomn {
+
+const size_t PCOMN_MSGBUFSIZE = 1024 ;
+
+/******************************************************************************/
+/** Exception class: indicates some functionality is not implemented yet.
+*******************************************************************************/
+class not_implemented_error : public std::logic_error {
+   public:
+      explicit not_implemented_error(const std::string &functionality) :
+         std::logic_error(functionality + " is not implemented")
+      {}
+} ;
+
+/******************************************************************************/
+/** Exception class: indicates that some implementation-defined limit exceeded.
+*******************************************************************************/
+class implimit_error : public std::logic_error {
+   public:
+      explicit implimit_error(const std::string &limit_description) :
+         std::logic_error("Implementation limit exceeded: " + limit_description)
+      {}
+} ;
 
 /******************************************************************************/
 /** Base class for boolean tags
@@ -217,6 +253,92 @@ constexpr inline T sign(T val)
 }
 
 /*******************************************************************************
+ Ranges handling
+*******************************************************************************/
+template<typename T>
+constexpr inline bool inrange(const T &value, const T &left, const T &right)
+{
+   return !(value < left || right < value) ;
+}
+
+template<typename T>
+constexpr inline bool xinrange(const T &value, const T &left, const T &right)
+{
+   return !(value < left) && value < right ;
+}
+
+template<typename T, typename R>
+constexpr inline bool inrange(const T &value, const std::pair<R, R> &range)
+{
+   return inrange<R>(value, range.first, range.second) ;
+}
+
+template<typename T, typename R>
+constexpr inline bool xinrange(const T &value, const std::pair<R, R> &range)
+{
+   return xinrange<R>(value, range.first, range.second) ;
+}
+
+template<typename T>
+constexpr inline ptrdiff_t range_length(const std::pair<T, T> &range)
+{
+   return range.second - range.first ;
+}
+
+template<typename T>
+constexpr inline bool range_empty(const std::pair<T, T> &range)
+{
+   return range.second == range.first ;
+}
+
+template<typename T, typename U>
+inline typename std::enable_if<std::is_convertible<U, T>::value, T>::type
+xchange(T &dest, const U &src)
+{
+   T old (std::move(dest)) ;
+   dest = src ;
+   return old ;
+}
+
+template<typename  T>
+inline const T& midval(const T& minVal, const T& maxVal, const T& val)
+{
+   return std::min(maxVal, std::max(minVal, val)) ;
+}
+
+template<typename T>
+inline void ordered_swap(T &op1, T &op2)
+{
+   using std::swap ;
+   if (op2 < op1)
+      swap(op1, op2) ;
+}
+
+template<typename T, typename Compare>
+inline void ordered_swap(T &op1, T &op2, Compare comp)
+{
+   using std::swap ;
+   if (comp(op2, op1))
+      swap(op1, op2) ;
+}
+
+template<typename T>
+inline std::pair<T, T> ordered_pair(T &&op1, T &&op2)
+{
+   return (op1 < op2)
+      ? std::pair<T, T>(std::forward<T>(op1), std::forward<T>(op2))
+      : std::pair<T, T>(std::forward<T>(op2), std::forward<T>(op1)) ;
+}
+
+template<typename T, typename Compare>
+inline std::pair<T, T> ordered_pair(T &&op1, T &&op2, Compare &&comp)
+{
+   return std::forward<Compare>(comp)(op1, op2)
+      ? std::pair<T, T>(std::forward<T>(op1), std::forward<T>(op2))
+      : std::pair<T, T>(std::forward<T>(op2), std::forward<T>(op1)) ;
+}
+
+/*******************************************************************************
  Out-of-line exception throw
 *******************************************************************************/
 template<class X, typename... XArgs>
@@ -235,6 +357,25 @@ __noreturn __noinline
 void throw_system_error(int errno_code, const Msg &msg)
 {
    throw_exception<std::system_error>(errno_code, std::system_category(), msg) ;
+}
+
+/// Throw exception with formatted message
+///
+template<class X, size_t bufsize = PCOMN_MSGBUFSIZE>
+__noreturn __noinline
+void throwf(const char *, ...) PCOMN_ATTR_PRINTF(1, 2) ;
+
+template<class X, size_t bufsize>
+__noreturn __noinline
+void throwf(const char *format, ...)
+{
+   char buf[bufsize] ;
+   va_list parm ;
+   va_start(parm, format) ;
+   vsnprintf(buf, sizeof buf, format, parm) ;
+   va_end(parm) ;
+
+   throw X(buf) ;
 }
 
 template<class X, typename... XArgs>
@@ -358,6 +499,20 @@ template<typename M>
 inline void ensure_precondition(bool precondition, const M &message)
 {
    ensure<std::invalid_argument>(precondition, message) ;
+}
+
+/*******************************************************************************
+ Allocation errors handling
+*******************************************************************************/
+template<bool> inline __noreturn void handle_bad_alloc() { throw_exception<std::bad_alloc>() ; }
+template<> inline void handle_bad_alloc<false>() {}
+
+template<typename T>
+inline T *ensure_allocated(T *p)
+{
+   if (!p)
+      handle_bad_alloc<true>() ;
+   return p ;
 }
 
 /******************************************************************************/

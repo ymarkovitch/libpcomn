@@ -71,8 +71,8 @@ struct basic_cstrptr<C, void> : basic_cstrptr_base<C> {
       constexpr basic_cstrptr(const basic_cstrptr &) = default ;
       constexpr basic_cstrptr(nullptr_t) : basic_cstrptr() {}
 
-      template<typename S>
-      constexpr basic_cstrptr(const S &s, PCOMN_ENABLE_CTR_IF_STRCHAR(S, C)) :
+      template<typename S, enable_if_strchar_t<S, C, nullptr_t> = nullptr>
+      constexpr basic_cstrptr(const S &s) :
          basic_cstrptr_base<C>(str::cstr(s))
       {}
 

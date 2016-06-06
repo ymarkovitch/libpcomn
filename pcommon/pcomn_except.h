@@ -22,20 +22,6 @@
 /*******************************************************************************
  Exception throwing convenience macros
 *******************************************************************************/
-const size_t PCOMN_MSGBUFSIZE = 1024 ;
-
-/// Throw an exception with a formatted message.
-/// @hideinitializer @ingroup ExceptionMacros
-#define PCOMN_THROWF(exception, format, ...)  (pcomn::throwf<exception >(format, ##__VA_ARGS__))
-
-/// Throw an exception with a formatted message if a specified condition holds.
-/// @hideinitializer @ingroup ExceptionMacros
-#define PCOMN_THROW_IF(condition, exception, format, ...)   \
-do {                                                        \
-   if (condition)                                           \
-      PCOMN_THROWF(exception, format, ##__VA_ARGS__) ;      \
-} while(false)
-
 /// Throw an exception with an ostream-formatted message
 /// @hideinitializer @ingroup ExceptionMacros
 #define PCOMN_THROW_S(exception, msg, ...)                              \
@@ -147,28 +133,6 @@ template<class V, class E>
 __noinline compound_exception<V, E>::compound_exception(const char *begin, const char *end) :
     V(), E(std::string(begin, end))
 {}
-
-/******************************************************************************/
-/** Exception class: indicates some functionality is not implemented yet.
-*******************************************************************************/
-class _PCOMNEXP not_implemented_error : public std::logic_error {
-   public:
-      explicit not_implemented_error(const std::string &functionality) :
-         std::logic_error(functionality + " is not implemented")
-      {}
-} ;
-
-/*******************************************************************************
-                     class implimit_error
-*******************************************************************************/
-/** Indicates that some implementation-defined limit exceeded.
-*******************************************************************************/
-class _PCOMNEXP implimit_error : public std::logic_error {
-   public:
-      explicit implimit_error(const std::string &limit_description) :
-         std::logic_error("Implementation limit exceeded: " + limit_description)
-      {}
-} ;
 
 /******************************************************************************/
 /** The base class for errors that can occur in OS/system library environment,
@@ -381,24 +345,6 @@ inline void ensure_enoerr(int result, const char *function_name, const char *cal
       throw_syserror<true>(function_name, call_name_or_message, result) ;
 }
 
-/******************************************************************************/
-/** Throw exception with formatted message
-*******************************************************************************/
-template<class X, size_t bufsize = PCOMN_MSGBUFSIZE>
-__noreturn __noinline void throwf(const char *, ...) PCOMN_ATTR_PRINTF(1, 2) ;
-template<class X, size_t bufsize>
-__noreturn __noinline
-void throwf(const char *format, ...)
-{
-   char buf[bufsize] ;
-   va_list parm ;
-   va_start(parm, format) ;
-   vsnprintf(buf, sizeof buf, format, parm) ;
-   va_end(parm) ;
-
-   throw X(buf) ;
-}
-
 template<class X>
 __noreturn __noinline void throw_sysreason(int errno_, const char *, ...) PCOMN_ATTR_PRINTF(2, 3) ;
 template<class X>
@@ -422,20 +368,6 @@ void throw_sysreason(int errno_, const char *format, ...)
    throw_exception<X>(buf) ;
 }
 
-/*******************************************************************************
- Allocation errors handling
-*******************************************************************************/
-template<bool> inline void handle_bad_alloc() { throw_exception<std::bad_alloc>() ; }
-template<> inline void handle_bad_alloc<false>() {}
-
-template<typename T>
-inline T *ensure_allocated(T *p)
-{
-   if (!p)
-      handle_bad_alloc<true>() ;
-   return p ;
-}
-
-} // End of namespace pcomn
+} // end of namepace pcomn
 
 #endif /* __PCOMN_EXCEPT_H */

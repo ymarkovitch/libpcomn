@@ -82,14 +82,14 @@ struct basic_strslice {
          _begin(other.begin()), _end(other.end())
       {}
 
-      template<typename S>
-      basic_strslice(const S &s, PCOMN_ENABLE_CTR_IF_STRCHAR(S, char_type)) :
+      template<typename S, enable_if_strchar_t<S, char_type, nullptr_t> = nullptr>
+      basic_strslice(const S &s) :
          _begin(str::cstr(s)), _end(_begin + str::len(s))
       {}
 
       template<typename S>
       basic_strslice(const S &s, size_t from,
-                     typename pcomn::enable_if_strchar<S, char_type, size_t>::type to = (size_t)-1) :
+                     enable_if_strchar_t<S, char_type, size_t> to = (size_t)-1) :
          _begin(str::cstr(s)), _end(_begin)
       {
          const size_t len = str::len(s) ;
@@ -98,7 +98,7 @@ struct basic_strslice {
       }
 
       template<typename S>
-      basic_strslice(const S &str, typename enable_if_strchar<S, C, const reg_match &>::type range) ;
+      basic_strslice(const S &str, enable_if_strchar_t<S, C, const reg_match &> range) ;
 
       basic_strslice(const basic_strslice &str, const reg_match &range) ;
 
@@ -292,24 +292,24 @@ inline bool lti(const basic_strslice<C> &lhs, const basic_strslice<C> &rhs)
  basic_strslice vs string equality compare and weak ordering
 *******************************************************************************/
 template<typename C, typename S>
-inline typename enable_if_strchar<S, C, bool>::type
+inline enable_if_strchar_t<S, C, bool>
 operator==(const basic_strslice<C> &lhs, const S &rhs) { return lhs == basic_strslice<C>(rhs) ; }
 
 template<typename C, typename S>
-inline typename enable_if_strchar<S, C, bool>::type
+inline enable_if_strchar_t<S, C, bool>
 operator==(const S &lhs, const basic_strslice<C> &rhs) { return rhs == lhs ; }
 
 template<typename C, typename S>
-inline typename enable_if_strchar<S, C, bool>::type
+inline enable_if_strchar_t<S, C, bool>
 operator<(const basic_strslice<C> &lhs, const S &rhs) { return lhs < basic_strslice<C>(rhs) ; }
 
 template<typename C, typename S>
-inline typename enable_if_strchar<S, C, bool>::type
+inline enable_if_strchar_t<S, C, bool>
 operator<(const S &lhs, const basic_strslice<C> &rhs) { return basic_strslice<C>(lhs) < rhs ; }
 
 #define PCOMN_STRSLICE_RELOP_PREFIX                      \
    template<typename C, typename S>                      \
-   inline typename enable_if_strchar<S, C, bool>::type
+   inline enable_if_strchar_t<S, C, bool>
 
 #define PCOMN_DEFINE_STRSLICE_RELOP_FUNCTIONS(ltype, rtype)             \
    PCOMN_STRSLICE_RELOP_PREFIX operator!=(const ltype &lhs, const rtype &rhs) { return !(lhs == rhs) ; } \
@@ -324,11 +324,11 @@ PCOMN_DEFINE_STRSLICE_RELOP_FUNCTIONS(basic_strslice<C>, S) ;
 #undef PCOMN_STRSLICE_RELOP_PREFIX
 
 template<typename C, typename S>
-inline typename enable_if_strchar<S, C, bool>::type
+inline enable_if_strchar_t<S, C, bool>
 eqi(const basic_strslice<C> &lhs, const S &rhs) { return eqi(lhs, basic_strslice<C>(rhs)) ; }
 
 template<typename C, typename S>
-inline typename enable_if_strchar<S, C, bool>::type
+inline enable_if_strchar_t<S, C, bool>
 eqi(const S &lhs, const basic_strslice<C> &rhs) { return eqi(rhs, lhs) ; }
 
 template<typename S1, typename S2>
@@ -340,11 +340,11 @@ eqi(const S1 &lhs, const S2 &rhs)
 }
 
 template<typename C, typename S>
-inline typename enable_if_strchar<S, C, bool>::type
+inline enable_if_strchar_t<S, C, bool>
 lti(const basic_strslice<C> &lhs, const S &rhs) { return lti(lhs, basic_strslice<C>(rhs)) ; }
 
 template<typename C, typename S>
-inline typename enable_if_strchar<S, C, bool>::type
+inline enable_if_strchar_t<S, C, bool>
 lti(const S &lhs, const basic_strslice<C> &rhs) { return lti(basic_strslice<C>(lhs), rhs) ; }
 
 template<typename S1, typename S2>

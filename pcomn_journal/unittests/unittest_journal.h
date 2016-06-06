@@ -42,7 +42,7 @@ class JournalFixture : public pcomn::unit::TestFixture<JOURNAL_FIXTURE> {
       }
 
       template<typename S>
-      typename pcomn::enable_if_strchar<S, char, std::string>::type
+      pcomn::enable_if_strchar_t<S, char, std::string>
       journalPath(const S &path)
       {
          return  (*pcomn::str::cstr(path) == PCOMN_PATH_NATIVE_DELIM)
@@ -53,21 +53,21 @@ class JournalFixture : public pcomn::unit::TestFixture<JOURNAL_FIXTURE> {
       int dirfd() const { return _dirfd.handle() ; }
 
       template<typename S>
-      static typename pcomn::enable_if_strchar<S, char, struct stat>::type
+      static pcomn::enable_if_strchar_t<S, char, struct stat>
       filestat(const S &path)
       {
          return pcomn::sys::filestat(pcomn::str::cstr(path), pcomn::RAISE_ERROR) ;
       }
 
       template<typename S>
-      static typename pcomn::enable_if_strchar<S, char, struct stat>::type
+      static pcomn::enable_if_strchar_t<S, char, struct stat>
       linkstat(const S &path)
       {
          return pcomn::sys::linkstat(pcomn::str::cstr(path)) ;
       }
 
       template<typename S>
-      static typename pcomn::enable_if_strchar<S, char, std::string>::type
+      static pcomn::enable_if_strchar_t<S, char, std::string>
       linkdata(const S &path)
       {
          const size_t sz = PATH_MAX + 1 ;
@@ -77,7 +77,7 @@ class JournalFixture : public pcomn::unit::TestFixture<JOURNAL_FIXTURE> {
       }
 
       template<typename S>
-      static typename pcomn::enable_if_strchar<S, char, std::set<std::string> >::type
+      static pcomn::enable_if_strchar_t<S, char, std::set<std::string>>
       ls(const S &path)
       {
          typedef std::set<std::string> result_type ;

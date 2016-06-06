@@ -354,14 +354,14 @@ public:
     size_t respond(unsigned code) { return respond(code, NULL, 0) ; }
 
     template<typename S>
-    typename enable_if_strchar<S, char, size_t>::type
+    enable_if_strchar_t<S, char, size_t>
     respond(HTTPResponse &response, const S &str)
     {
         return respond(response, str::cstr(str), str::len(str)) ;
     }
 
     template<typename S>
-    typename enable_if_strchar<S, char, size_t>::type
+    enable_if_strchar_t<S, char, size_t>
     respond(unsigned code, const S &str)
     {
         return respond(code, str::cstr(str), str::len(str)) ;

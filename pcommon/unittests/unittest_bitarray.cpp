@@ -601,7 +601,7 @@ void BitVectorTests::Test_Bit_Search()
 template<typename I>
 void BitVectorTests::Test_Positional_Iterator()
 {
-   typedef typename basic_bitvector<I>::positional_iterator positional_iterator ;
+   typedef typename basic_bitvector<I>::template positional_iterator<true> positional_iterator ;
 
    basic_bitvector<I> bv_empty ;
    CPPUNIT_LOG_ASSERT(bv_empty.begin_positional() == bv_empty.end_positional()) ;

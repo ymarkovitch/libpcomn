@@ -50,7 +50,7 @@ class _PCOMNEXP regex_matcher {
       /// Find the first occurence of the regex in a string.
       /// @return The range, corresponding to the matched text.
       template<typename S>
-      typename enable_if_strchar<S, char_type, reg_match>::type
+      enable_if_strchar_t<S, char_type, reg_match>
       match(const S &string_to_match) const
       {
          reg_match result ;
@@ -77,7 +77,7 @@ class _PCOMNEXP regex_matcher {
       /// @return The pointer to a @a subx item following the last matched one
       /// (past-the-end iterator a la STL).
       template<typename S>
-      typename enable_if_strchar<S, char_type, reg_match *>::type
+      enable_if_strchar_t<S, char_type, reg_match *>
       match(const S &string_to_match, reg_match *begin_subexp, size_t subexp_maxcount) const
       {
          return pattern().exec_match(str::cstr(string_to_match), NULL, begin_subexp, subexp_maxcount).second ;
@@ -90,7 +90,7 @@ class _PCOMNEXP regex_matcher {
 
       /// @overload
       template<typename S, size_t m>
-      typename enable_if_strchar<S, char_type, reg_match *>::type
+      enable_if_strchar_t<S, char_type, reg_match *>
       match(const S &string_to_match, reg_match (&subexp)[m]) const
       {
          return pattern().exec_match(str::cstr(string_to_match), NULL, subexp, m).second ;
@@ -110,7 +110,7 @@ class _PCOMNEXP regex_matcher {
 
       /// @overload
       template<typename S>
-      typename enable_if_strchar<S, char_type, bool>::type
+      enable_if_strchar_t<S, char_type, bool>
       is_matched(const S &str, reg_match *begin_subexp, size_t num) const
       {
          return pattern().exec_match(str::cstr(str), NULL, begin_subexp, num).first ;
@@ -123,7 +123,7 @@ class _PCOMNEXP regex_matcher {
 
       /// @overload
       template<typename S, size_t m>
-      typename enable_if_strchar<S, char_type, bool>::type
+      enable_if_strchar_t<S, char_type, bool>
       is_matched(const S &str, reg_match (&subexp)[m]) const
       {
          return pattern().exec_match(str::cstr(str), NULL, subexp, m).first ;
@@ -140,7 +140,7 @@ class _PCOMNEXP regex_matcher {
       /// no subexpressions matched, only the whole expression; -1 means there is
       /// no match at all.
       template<typename S>
-      typename enable_if_strchar<S, char_type, int>::type
+      enable_if_strchar_t<S, char_type, int>
       last_submatch_ndx(const S &string_to_match) const
       {
          reg_match sexp[MAXNUMEXP] ;
@@ -237,8 +237,8 @@ class _PCOMNEXP regex : public regex_matcher {
 
       /// Compile the regexp from the given string.
       /// @throw regex_error, if there are errors in the regular expression.
-      template<typename S>
-      regex(const S &str, PCOMN_ENABLE_CTR_IF_STRCHAR(S, char_type)) :
+      template<typename S, enable_if_strchar_t<S, char_type, nullptr_t> = nullptr>
+      regex(const S &str) :
          ancestor(create_pattern(str::cstr(str)))
       {}
 
@@ -266,12 +266,12 @@ class _PCOMNEXP wildcard_matcher {
 
       template<typename S>
       wildcard_matcher(const S &pattern,
-                       typename enable_if_strchar<S, char_type, bool>::type unix_neg_charclass = true) :
+                       enable_if_strchar_t<S, char_type, bool> unix_neg_charclass = true) :
          _regexp(translate_to_regexp(pcomn::str::cstr(pattern), unix_neg_charclass))
       {}
 
       template<typename S>
-      typename enable_if_strchar<S, char_type, bool>::type
+      enable_if_strchar_t<S, char_type, bool>
       match(const S &s) const { return _regexp.is_matched(s) ; }
 
       /// @overload
@@ -392,7 +392,7 @@ namespace pcomn {
 
 template<typename C>
 template<typename S>
-inline basic_strslice<C>::basic_strslice(const S &str, typename enable_if_strchar<S, C, const reg_match &>::type range)
+inline basic_strslice<C>::basic_strslice(const S &str, enable_if_strchar_t<S, C, const reg_match &> range)
 {
    if (!PSUBEXP_EMPTY(range))
    {

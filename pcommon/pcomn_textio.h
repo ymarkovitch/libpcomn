@@ -117,7 +117,7 @@ class _PCOMNEXP text_reader {
 
       /// Read the whole data from the source device, as a string.
       template<typename S>
-      typename enable_if_strchar<S, char, S>::type read()
+      enable_if_strchar_t<S, char, S> read()
       {
          S result ;
          read_data(result, -1, false) ;
@@ -156,7 +156,7 @@ class _PCOMNEXP text_reader {
       /// Read the next line from the source device, as a string.
       /// Retains newline.
       template<typename S>
-      typename enable_if_strchar<S, char, S>::type readline()
+      enable_if_strchar_t<S, char, S> readline()
       {
          S result ;
          read_data(result, -1, true) ;
@@ -361,21 +361,21 @@ class _PCOMNEXP text_writer {
       }
 
       template<typename S>
-      typename enable_if_strchar<S, char, size_t>::type
+      enable_if_strchar_t<S, char, size_t>
       write(const S &buf, size_t count)
       {
          return write_data(pcomn::str::cstr(buf), count) ;
       }
 
       template<typename S>
-      typename enable_if_strchar<S, char, size_t>::type
+      enable_if_strchar_t<S, char, size_t>
       write(const S &buf)
       {
          return write_data(pcomn::str::cstr(buf), pcomn::str::len(buf)) ;
       }
 
       template<typename S>
-      typename enable_if_strchar<S, char, size_t>::type
+      enable_if_strchar_t<S, char, size_t>
       writeline(const S &buf, size_t count)
       {
          const size_t result = write(buf, count) ;
@@ -383,7 +383,7 @@ class _PCOMNEXP text_writer {
       }
 
       template<typename S>
-      typename enable_if_strchar<S, char, size_t>::type
+      enable_if_strchar_t<S, char, size_t>
       writeline(const S &buf)
       {
          return writeline(buf, pcomn::str::len(buf)) ;

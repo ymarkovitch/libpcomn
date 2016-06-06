@@ -116,7 +116,7 @@ _PCOMNEXP std::string urlencode(const char *begin, const char *end) ;
 
 /// @ingroup URIManip
 template<typename S>
-inline typename enable_if_strchar<S, char, std::string>::type
+enable_if_strchar_t<S, char, std::string>
 urlencode(const S &str)
 {
    const char * const begin = str::cstr(str) ;
@@ -137,7 +137,7 @@ _PCOMNEXP std::string urldecode(const char *begin, const char *end) ;
 
 /// @ingroup URIManip
 template<typename S>
-inline typename enable_if_strchar<S, char, std::string>::type
+enable_if_strchar_t<S, char, std::string>
 urldecode(const S &urlencoded_string)
 {
    const char * const begin = str::cstr(urlencoded_string) ;
@@ -176,7 +176,7 @@ _PCOMNEXP std::string query_decode(const char *begin_query, const char *end_quer
 
 template<typename S>
 inline std::string query_decode(const S &query_string,
-                                typename enable_if_strchar<S, char, query_dictionary>::type  &result)
+                                enable_if_strchar_t<S, char, query_dictionary> &result)
 {
    const char * const begin = str::cstr(query_string) ;
    return query_decode(begin, begin + str::len(query_string), result) ;

@@ -9,11 +9,13 @@
  PROGRAMMED BY:   Yakov Markovitch
  CREATION DATE:   25 Dec 2001
 *******************************************************************************/
+#include <pcomn_binascii.h>
+#include <pcommon.h>
+
+#include <algorithm>
+
 #include <string.h>
 #include <stdlib.h>
-#include <pcomn_binascii.h>
-#include <pcomn_utils.h>
-#include <algorithm>
 
 /*******************************************************************************
  Base64 encoding/decoding routines

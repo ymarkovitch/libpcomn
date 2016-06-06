@@ -150,7 +150,7 @@ void *generate_seqn(void *buf, int begin, int end)
 }
 
 template<unsigned n, typename S>
-typename pcomn::enable_if_strchar<S, char, void>::type
+pcomn::enable_if_strchar_t<S, char, void>
 generate_seqn_file(const S &filename, int begin, int end)
 {
    std::ofstream os (pcomn::str::cstr(filename)) ;
@@ -159,7 +159,7 @@ generate_seqn_file(const S &filename, int begin, int end)
 }
 
 template<unsigned n, typename S>
-typename pcomn::enable_if_strchar<S, char, void>::type
+pcomn::enable_if_strchar_t<S, char, void>
 generate_seqn_file(const S &filename, int end = 0)
 {
    generate_seqn_file<n>(filename, 0, end) ;
@@ -193,7 +193,7 @@ checked_read_seqn(IStream &is, int from, int to)
 }
 
 template<unsigned n, typename S>
-typename pcomn::enable_if_strchar<S, char, void>::type
+pcomn::enable_if_strchar_t<S, char, void>
 checked_read_seqn_file(const S &filename, int begin, int end)
 {
    std::ifstream is (pcomn::str::cstr(filename)) ;
@@ -226,7 +226,7 @@ void checked_read_seqn(const void *buf, int from, int to)
 #undef PCOMN_CHECK_TESTSEQ_BOUNDS
 
 template<typename S>
-typename pcomn::enable_if_strchar<S, char, void>::type
+pcomn::enable_if_strchar_t<S, char, void>
 generate_file(const S &filename, const pcomn::strslice &content)
 {
    std::ofstream os (pcomn::str::cstr(filename)) ;

@@ -14,7 +14,7 @@
 /** @file
  Process exec/spawn/popen routines for UNIX/Linux platform
 *******************************************************************************/
-#include <pcomn_def.h>
+#include <pcommon.h>
 
 #include <stdlib.h>
 #include <stdio.h>

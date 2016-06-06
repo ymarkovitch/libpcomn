@@ -536,8 +536,7 @@ class _PCOMNEXP raw_ifstream : public raw_fstreambase<raw_istream> {
       {}
 
       template<typename S>
-      explicit raw_ifstream(const S &name,
-                            typename enable_if_strchar<S, char, double>::type = 0) :
+      explicit raw_ifstream(const S &name, enable_if_strchar_t<S, char, double> = 0) :
          ancestor(name, "rb")
       {}
 
@@ -548,8 +547,7 @@ class _PCOMNEXP raw_ifstream : public raw_fstreambase<raw_istream> {
       }
 
       template<typename S>
-      typename enable_if_strchar<S, char, raw_ifstream &>::type
-      open(const S &name)
+      enable_if_strchar_t<S, char, raw_ifstream &> open(const S &name)
       {
          ancestor::open(pcomn::str::cstr(name), "rb") ;
          return *this ;
@@ -576,8 +574,7 @@ class _PCOMNEXP raw_ofstream : public raw_fstreambase<raw_ostream> {
       {}
 
       template<typename S>
-      explicit raw_ofstream(const S &name,
-                            typename enable_if_strchar<S, char, bool>::type append = 0) :
+      explicit raw_ofstream(const S &name, enable_if_strchar_t<S, char, bool> append = 0) :
          ancestor(name, append ? "w+b" : "wb")
       {}
 
@@ -588,7 +585,7 @@ class _PCOMNEXP raw_ofstream : public raw_fstreambase<raw_ostream> {
       }
 
       template<typename S>
-      typename enable_if_strchar<S, char, raw_ifstream &>::type
+      enable_if_strchar_t<S, char, raw_ifstream &>
       open(const S &name, bool append = false)
       {
          ancestor::open(pcomn::str::cstr(name), append ? "w+b" : "wb") ;
@@ -606,8 +603,7 @@ class raw_guarded_ofstream : public raw_ofstream {
       typedef raw_ofstream ancestor ;
    public:
       template<typename S>
-      explicit raw_guarded_ofstream(const S &name,
-                                    typename enable_if_strchar<S, char, bool>::type append = 0) :
+      explicit raw_guarded_ofstream(const S &name, enable_if_strchar_t<S, char, bool> append = 0) :
          ancestor(name, append),
          _filename(pcomn::str::cstr(name)),
          _lock(fptr() && !append)
