@@ -177,10 +177,19 @@ struct basic_bitvector<const E> {
       const_iterator cbegin() const { return begin() ; }
       const_iterator cend() const { return end() ; }
 
-      template<bool bitval = 1>
-      positional_iterator<bitval> begin_positional() const { return positional_iterator<bitval>(*this, 0) ; }
-      template<bool bitval = 1>
-      positional_iterator<bitval> end_positional() const { return positional_iterator<bitval>(*this, size()) ; }
+      template<bool bitval>
+      positional_iterator<bitval> begin_positional(std::bool_constant<bitval>) const
+      {
+         return positional_iterator<bitval>(*this, 0) ;
+      }
+      template<bool bitval>
+      positional_iterator<bitval> end_positional(std::bool_constant<bitval>) const
+      {
+         return positional_iterator<bitval>(*this, size()) ;
+      }
+
+      positional_iterator<true> begin_positional() const { return begin_positional(std::true_type()) ; }
+      positional_iterator<true> end_positional() const { return end_positional(std::true_type()) ; }
 
    protected:
       element_type &elem(size_t bitpos) const

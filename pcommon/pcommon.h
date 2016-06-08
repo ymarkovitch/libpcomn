@@ -293,11 +293,11 @@ constexpr inline bool range_empty(const std::pair<T, T> &range)
 
 template<typename T, typename U>
 inline typename std::enable_if<std::is_convertible<U, T>::value, T>::type
-xchange(T &dest, const U &src)
+xchange(T &dest, U &&src)
 {
    T old (std::move(dest)) ;
-   dest = src ;
-   return old ;
+   dest = std::forward<U>(src) ;
+   return std::move(old) ;
 }
 
 template<typename  T>
