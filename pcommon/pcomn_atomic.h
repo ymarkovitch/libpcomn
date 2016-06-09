@@ -25,6 +25,7 @@
 #include <pcomn_platform.h>
 
 #include <atomic>
+#include <utility>
 #include <type_traits>
 
 #include <stddef.h>
@@ -167,26 +168,37 @@ cas(T *target, atomic_value_t<T> expected_value, atomic_value_t<T> new_value,
 /// @return Old value
 template<typename T, typename F>
 inline enable_if_atomic_t<atomic_value_t<T>>
-fetch_and_F(T *value, F fn, std::memory_order order = std::memory_order_acq_rel)
+fetch_and_F(T *value, F &&fn, std::memory_order order = std::memory_order_acq_rel)
 {
    for (atomic_value_t<T> oldval = *value ;;)
    {
-      const atomic_value_t<T> newval = fn(oldval) ;
+      const atomic_value_t<T> newval = std::forward<F>(fn)(oldval) ;
       if (cas(value, &oldval, newval, order))
          return oldval ;
    }
 }
 
-/// Atomic compare_and_F
+/// Atomic check_and_F
 template<typename T, typename F, typename C>
-inline enable_if_atomic_t<T, bool>
-compare_and_F(T *value, C comparator, F fn, std::memory_order order = std::memory_order_acq_rel)
+inline enable_if_atomic_t<T, std::pair<bool, atomic_value_t<T>>>
+check_and_F(T *value, C &&check, F &&fn, std::memory_order order = std::memory_order_acq_rel)
 {
-   for(atomic_value_t<T> oldval = *value ; comparator(oldval) ; )
-      if (cas(value, &oldval, fn(oldval), order))
-         return true ;
-   return false ;
+   atomic_value_t<T> oldval = *value ;
+   while(std::forward<C>(check)(oldval))
+      if (cas(value, &oldval, std::forward<F>(fn)(oldval), order))
+         return {true, oldval} ;
+   return {false, oldval} ;
 }
+
+template<typename T, typename C>
+inline enable_if_atomic_t<T, std::pair<bool, atomic_value_t<T>>>
+check_and_swap(T *target, C &&check, atomic_value_t<T> new_value,
+               std::memory_order order = std::memory_order_acq_rel)
+{
+   return
+      check_and_F(target, std::forward<C>(check), [=](atomic_value_t<T>){ return new_value ; }, order) ;
+}
+
 
 /*******************************************************************************
  Atomic arithmetic and bit operations
@@ -281,10 +293,10 @@ bit_cas(T *target, atomic_value_t<T> expected_bits, atomic_value_t<T> new_bits, 
 
    expected_bits &= mask ;
    new_bits &= mask ;
-   return compare_and_F(target,
-                        [=](type v){ return (v & mask) == expected_bits ; },
-                        [=](type v){ return v &~ mask | new_bits ; },
-                        order) ;
+   return check_and_F(target,
+                      [=](type v){ return (v & mask) == expected_bits ; },
+                      [=](type v){ return v &~ mask | new_bits ; },
+                      order).first ;
 }
 
 } // end of namespace pcomn::atomic_op
