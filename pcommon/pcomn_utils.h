@@ -23,7 +23,6 @@
 #include <utility>
 #include <functional>
 #include <vector>
-#include <typeinfo>
 #include <memory>
 #include <typeindex>
 #include <algorithm>
@@ -180,12 +179,6 @@ inline Val valmap_find_value(const std::pair<Name, Val> *valmap, const Char *nam
 /*******************************************************************************
  Utility functions
 *******************************************************************************/
-template<typename T>
-inline T *clone_object(const T *obj)
-{
-   return obj ? new T(*obj) : nullptr ;
-}
-
 /// Delete the scalar object a pointer points to and assign nullptr to the pointer
 ///
 /// This function nullifies the passed pointer @em first and @em then deletes an object
@@ -208,12 +201,6 @@ inline T *&clear_deletev(T *&vec)
    vec = 0 ;
    delete [] temp ;
    return vec ;
-}
-
-template<typename T>
-inline T &fill_mem(T &t, int value = 0)
-{
-   return *(T *)memset(&t, value, sizeof t) ;
 }
 
 template<class T>

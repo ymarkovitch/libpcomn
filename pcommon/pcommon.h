@@ -524,6 +524,8 @@ struct malloc_delete {
       void operator()(const void *ptr) const noexcept { ::free(const_cast<void *>(ptr)) ; }
 } ;
 
+} // end of namespace pcomn
+
 /******************************************************************************/
 /** Swap wrapper that calls std::swap on the arguments, but may also use ADL
  (Argument-Dependent Lookup, Koenig lookup) to use a specialised form.
@@ -538,8 +540,6 @@ inline void pcomn_swap(T &a, T &b)
    using std::swap ;
    swap(a, b) ;
 }
-
-} // end of namespace pcomn
 
 /*******************************************************************************
 

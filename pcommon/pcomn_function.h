@@ -15,8 +15,8 @@
 #include <pcomn_meta.h>
 #include <pcomn_macros.h>
 
-#include <stdexcept>
 #include <functional>
+#include <tuple>
 
 namespace pcomn {
 
@@ -25,55 +25,21 @@ struct identity {
       T &&operator() (T &&t) const { return std::forward<T>(t) ; }
 } ;
 
-struct select1st {
-      template<typename T1, typename T2>
-      std::add_lvalue_reference_t<std::add_const_t<T1> >
-      operator()(const std::pair<T1, T2> &x) const
+template<size_t n>
+struct select {
+      template<typename T>
+      auto operator()(T &&x) const -> decltype(std::get<n>(std::forward<T>(x)))
       {
-         return x.first ;
+         return std::get<n>(std::forward<T>(x)) ;
       }
 } ;
 
-struct select2nd {
-      template<typename T1, typename T2>
-      std::add_lvalue_reference_t<std::add_const_t<T2> >
-      operator()(const std::pair<T1, T2> &x) const
-      {
-         return x.second ;
-      }
-} ;
-
-/*******************************************************************************
-
-*******************************************************************************/
-
-template<class T1, class T2, class Cvt, class Cmp>
-class symm_comp {
-   public:
-      bool operator () (const T1 &t1, const T2 &t2) const
-      {
-         return Cmp() (Cvt()(t1), t2) ;
-      }
-
-      bool operator () (const T2 &t1, const T1 &t2) const
-      {
-         return Cmp() (t1, Cvt()(t2)) ;
-      }
-} ;
+typedef select<0> select1st ;
+typedef select<1> select2nd ;
 
 /*******************************************************************************
  Predicate functors.
 *******************************************************************************/
-/// Logical "yes": I've always missed this in STL!
-template<class T>
-struct logical_yes : std::unary_function<T, bool>
-{
-   bool operator() (const T &object) const
-   {
-      return !!object ;
-   }
-} ;
-
 /// Predicate adaptor, the opposite to std::unary_negate.
 /// Reevaluates the result of Predicate (which must not necessary return bool value)
 /// as a boolean value.
@@ -196,66 +162,6 @@ inline disable_if_t<is_dereferenceable<T>::value, T &> &dereference(T &v)
 }
 
 /*******************************************************************************
-                     template<typename Seed, typename Op>
-                     struct generator
-*******************************************************************************/
-template<typename Seed, typename Op>
-struct generator {
-      typedef Seed   result_type ;
-      typedef Op     op_type ;
-
-      generator(const op_type &op) : _functor(op), _seed() {}
-      generator(const op_type &op, const result_type &seed) : _functor(op), _seed(seed) {}
-
-      result_type &operator ()() { return _seed = _functor(_seed) ; }
-
-   private:
-      op_type     _functor ;
-      result_type _seed ;
-} ;
-
-template<typename T, typename Diff = T>
-struct incr : std::unary_function<T, T>
-{
-   incr(const Diff &diff) : _diff(diff) {}
-   T &operator() (T &value) const { return value += _diff ; }
-
-   private:
-      Diff _diff ;
-} ;
-
-template<class T>
-inline int threeway_compare(const T &t1, const T &t2)
-{
-   return t1 < t2 ? -1 : t2 < t1 ;
-}
-
-template<class T>
-struct threeway_cmp : std::binary_function<const T, const T, int>
-{
-   int operator() (const T &t1, const T &t2) const
-   {
-      return threeway_compare(t1, t2) ;
-   }
-} ;
-
-/******************************************************************************/
-/** A function object that tests whether some value lies in some (open) range
-*******************************************************************************/
-template<typename T>
-struct is_xinrange : std::unary_function<const T, bool> {
-      is_xinrange() : _range() {}
-      is_xinrange(const T &begin, const T &end) : _range(begin, end) {}
-
-      bool operator()(const T &v) const
-      {
-         return !(v < _range.first) && v < _range.second ;
-      }
-private:
-    std::pair<T, T> _range ;
-} ;
-
-/*******************************************************************************
                      template<class Container, typename Key>
                      struct container_item
 *******************************************************************************/
@@ -318,29 +224,19 @@ struct container_inserter {
 } ;
 
 /*******************************************************************************
-                     struct clone_any
+ clone
 *******************************************************************************/
-struct clone_any {
+template<typename T>
+inline T *clone_object(const T *obj)
+{
+   return obj ? new T(*obj) : nullptr ;
+}
+
+struct clone {
       template<typename T>
       T *operator()(const T *source) const
       {
          return clone_object(source) ;
-      }
-} ;
-
-template<typename T>
-struct clone : public std::unary_function<const T *, T *> {
-      T *operator()(const T *source) const
-      {
-         return clone_object(source) ;
-      }
-} ;
-
-template<typename T>
-struct is_empty : public std::unary_function<const T, bool> {
-      bool operator()(const T &value) const
-      {
-         return value.empty(value) ;
       }
 } ;
 
@@ -368,54 +264,6 @@ mem_data_ref_t<R, T> mem_data(R T::*p) { return mem_data_ref_t<R, T>(p) ; }
 
 template<typename T, typename R>
 mem_data_ptr_t<R, T *> mem_data_ptr(R T::*p) { return mem_data_ptr_t<R, T *>(p) ; }
-
-/*******************************************************************************
- rbinder1st
- rbinder2nd
-*******************************************************************************/
-template<class Op>
-struct rbinder1st : std::unary_function<typename Op::second_argument_type, typename Op::result_type> {
-
-      rbinder1st(const Op &o, const typename Op::first_argument_type &a) : op(o), arg1(a) {}
-
-      typename Op::result_type
-      operator() (clvref_t<typename Op::second_argument_type> arg2) const
-      {
-         return op(arg1, arg2) ;
-      }
-
-   protected:
-      Op op ;
-      typename Op::first_argument_type arg1 ;
-} ;
-
-template<class Op>
-struct rbinder2nd : std::unary_function<typename Op::first_argument_type, typename Op::result_type> {
-
-      rbinder2nd(const Op &o, const typename Op::second_argument_type &a) : op(o), arg2(a) {}
-
-      typename Op::result_type
-      operator() (clvref_t<typename Op::first_argument_type> arg1) const
-      {
-         return op(arg1, arg2) ;
-      }
-
-   protected:
-      Op op ;
-      typename Op::second_argument_type arg2 ;
-} ;
-
-template<class Op, class Arg>
-inline rbinder1st<Op> rbind1st(const Op &op, const Arg &arg)
-{
-   return rbinder1st<Op>(op, typename Op::first_argument_type(arg)) ;
-}
-
-template<class Op, class Arg>
-inline rbinder2nd<Op> rbind2nd(const Op &op, const Arg &arg)
-{
-   return rbinder2nd<Op>(op, typename Op::second_argument_type(arg)) ;
-}
 
 /*******************************************************************************
  make_function

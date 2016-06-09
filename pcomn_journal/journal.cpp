@@ -284,7 +284,7 @@ void Journallable::apply_restored(const Operation &op)
       // Needn't lock, needn't store
       op.apply(*this) ;
 
-      atomic_op::inc(&_changecnt) ;
+      atomic_op::preinc(&_changecnt) ;
    }
    catch (const std::runtime_error &x)
    {
@@ -328,7 +328,7 @@ void Journallable::apply_created(const Operation &op)
 
       op.apply(*this) ;
 
-      atomic_op::inc(&_changecnt) ;
+      atomic_op::preinc(&_changecnt) ;
    }
    catch (const std::exception &x) {
       LOGPXERR_CALL(PCOMN_FAIL, PCOMN_Journal, STDEXCEPTOUT(x) << "\nwhile applying " << op
@@ -404,7 +404,7 @@ Port *Journallable::set_journal(Port *new_journal)
    }
 }
 
-generation_t Journallable::take_checkpoint(bigflag_t flags)
+generation_t Journallable::take_checkpoint(unsigned flags)
 {
    TRACEPX(PCOMN_Journal, DBGL_ALWAYS, "Take checkpoint of " << *this << ", flags " << HEXOUT(flags)) ;
 
@@ -448,7 +448,7 @@ void Journallable::dispatch_checkpoint_exception(const std::exception *x,
    dispatch_exception(x, ST_CHECKPOINT) ;
 }
 
-generation_t Journallable::take_checkpoint_unlocked(bigflag_t flags)
+generation_t Journallable::take_checkpoint_unlocked(unsigned flags)
 {
    TRACEPX(PCOMN_Journal, DBGL_ALWAYS, "Unsafe take checkpoint of "
            << *this << ", flags " << HEXOUT(flags)) ;

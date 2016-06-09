@@ -315,7 +315,7 @@ static const helper_data &http_helper()
 /*******************************************************************************
  HTTPMessage
 *******************************************************************************/
-HTTPMessage::HTTPMessage(bigflag_t flags) :
+HTTPMessage::HTTPMessage(unsigned flags) :
     _flags(flags & MSGFUserDefinedFlags),
     _http_version(1, 1),
     _content_length(0)
@@ -490,14 +490,14 @@ void HTTPMessage::content(const std::string &type)
 /*******************************************************************************
  HTTPRequest
 *******************************************************************************/
-HTTPRequest::HTTPRequest(binary_ibufstream &stream, bigflag_t flags) :
+HTTPRequest::HTTPRequest(binary_ibufstream &stream, unsigned flags) :
     ancestor(flags),
     _method(HTTP_EXTENSION)
 {
     parse(stream) ;
 }
 
-HTTPRequest::HTTPRequest(Method method, const URI &req_uri, bigflag_t flags) :
+HTTPRequest::HTTPRequest(Method method, const URI &req_uri, unsigned flags) :
     ancestor(flags),
     _method(method),
     _method_name(get_method_name(method))
@@ -560,14 +560,14 @@ void HTTPRequest::final_check()
 /*******************************************************************************
  HTTPResponse
 *******************************************************************************/
-HTTPResponse::HTTPResponse(unsigned response_code, const std::string &response_text, bigflag_t flags) :
+HTTPResponse::HTTPResponse(unsigned response_code, const std::string &response_text, unsigned flags) :
     ancestor(flags),
     _code(0)
 {
     code(response_code, response_text) ;
 }
 
-HTTPResponse::HTTPResponse(binary_ibufstream &stream, bigflag_t flags) :
+HTTPResponse::HTTPResponse(binary_ibufstream &stream, unsigned flags) :
     ancestor(flags),
     _code(0)
 {

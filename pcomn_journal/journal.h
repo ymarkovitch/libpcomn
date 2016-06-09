@@ -472,7 +472,7 @@ class _PCOMNEXP Journallable {
       /// Take a checkpoint and save it into the journal.
       ///
       /// ST_ACTIVE -> ST_CHECKPOINT
-      generation_t take_checkpoint(bigflag_t flags = 0) ;
+      generation_t take_checkpoint(unsigned flags = 0) ;
 
       State state() const { return _state ; }
 
@@ -558,7 +558,7 @@ class _PCOMNEXP Journallable {
       bool load_operation(opcode_t opcode, opversion_t opversion,
                           const void *opdata, size_t data_size) ;
 
-      generation_t take_checkpoint_unlocked(bigflag_t flags) ;
+      generation_t take_checkpoint_unlocked(unsigned flags) ;
 
       void apply_restored(const Operation &op) ;
       void apply_created(const Operation &op) ;

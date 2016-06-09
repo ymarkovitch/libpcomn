@@ -336,7 +336,7 @@ void RawStreamTests::Test_MemStream()
    char obuf[800] ;
    char a = 'a' ;
 
-   fill_mem(obuf) ;
+   memset(obuf, 0, sizeof obuf) ;
 
    raw_omemstream oempty1 (0) ;
    raw_omemstream oempty2 (obuf, 0) ;

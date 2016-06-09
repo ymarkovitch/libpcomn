@@ -209,7 +209,7 @@ public:
 
     /// Get message flags.
     /// The flags are values from HTTPMessage::Flags, ORed together.
-    bigflag_t flags() const { return _flags ; }
+    unsigned flags() const { return _flags ; }
 
     /// Add/set/remove HTTP header.
     /// @param header The name of header. This parameter is case-insensitive, it is
@@ -266,7 +266,7 @@ public:
     }
 
 protected:
-    HTTPMessage(bigflag_t flags = 0) ;
+    HTTPMessage(unsigned flags = 0) ;
 
     virtual std::string get_first_line() const { return _first_line ; }
     virtual void final_check() {}
@@ -274,16 +274,16 @@ protected:
     void parse(binary_ibufstream &stream) ;
     void set_n_check_version(const char *str, const reg_match &major, const reg_match &minor) ;
 
-    bigflag_t flags(bigflag_t value, bool on = true)
+    unsigned flags(unsigned value, bool on = true)
     {
-        bigflag_t old = _flags ;
+        unsigned old = _flags ;
         set_flags(_flags, on, value) ;
         return old ;
     }
 
 private:
     headers_dictionary  _headers ;
-    bigflag_t           _flags ;
+    unsigned           _flags ;
     std::pair<unsigned, unsigned> _http_version ;
     std::string         _first_line ;
     std::string         _last_line ;
@@ -328,14 +328,14 @@ public:
     /// This constructor is usually used by the HTTP server, to read a request from the
     /// connection.
     /// @param stream   An input stream to parse a request from.
-    HTTPRequest(binary_ibufstream &stream, bigflag_t flags = 0) ;
+    HTTPRequest(binary_ibufstream &stream, unsigned flags = 0) ;
 
     /// Constructor: create a request with given HTTP method, URL and flags.
     /// This constructor is usually used by the HTTP client, to prepare a request to a server.
     /// @param method
     /// @param uri
     /// @param flags
-    HTTPRequest(Method method, const URI &uri, bigflag_t flags = 0) ;
+    HTTPRequest(Method method, const URI &uri, unsigned flags = 0) ;
 
     Method method() const { return _method ; }
     const std::string &method_name() const { return _method_name ; }
@@ -350,7 +350,7 @@ public:
     const query_dictionary &query_fields() const { return _query_fields ; }
 
     using ancestor::flags ;
-    bigflag_t flags(bigflag_t value, bool on = true)
+    unsigned flags(unsigned value, bool on = true)
     {
         return ancestor::flags(value & MSGFUseRelativeURI, on) ;
     }
@@ -384,12 +384,12 @@ public:
     /// @param flags
     explicit HTTPResponse(unsigned response_code,
                           const std::string &response_text = std::string(),
-                          bigflag_t flags = 0) ;
+                          unsigned flags = 0) ;
 
     /// Constructor reads a response from the communication stream.
     /// According to principle "be as strict as possible to itself and as tolerant as possible to others",
     /// allows client by default to accept any correctly-formed headers (not only standard ones).
-    explicit HTTPResponse(binary_ibufstream &stream, bigflag_t flags = MSGFAllowArbitraryHeaders) ;
+    explicit HTTPResponse(binary_ibufstream &stream, unsigned flags = MSGFAllowArbitraryHeaders) ;
 
     /// Get the response code.
     /// Returns "pure" HTTP response code (i.e. w/o HTTP_RSPFLAG_CLOSE or any other flag bits).

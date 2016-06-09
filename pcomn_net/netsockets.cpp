@@ -64,7 +64,7 @@ void basic_socket::init_network()
     if (!initialized)
     {
         struct sigaction ignore ;
-        fill_mem(ignore) ;
+        ignore = {} ;
         ignore.sa_handler = SIG_IGN ;
         // Prevent socket applications from being killed due to a peer closed a socket!
         sigaction(SIGPIPE, &ignore, NULL) ;

@@ -149,7 +149,7 @@ struct OperationTail {
 template<typename Header>
 inline Header &init_header(Header &header)
 {
-   fill_mem(header, 0) ;
+   header = {} ;
    header.structure_size = sizeof header ;
    return header ;
 }
@@ -157,8 +157,7 @@ inline Header &init_header(Header &header)
 template<typename Tail>
 inline Tail &init_tail(Tail &header)
 {
-   fill_mem(header, 0) ;
-   return header ;
+   return (header = {}) ;
 }
 
 /*******************************************************************************

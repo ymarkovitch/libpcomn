@@ -246,7 +246,7 @@ protected:
 
 private:
     svr::BasicConnection &  _connection ;        /* The communications connection we are sitting upon */
-    bigflag_t               _flags ;
+    unsigned                _flags ;
     int                     _messages_received ; /* The number of received messages */
     int                     _messages_sent ;     /* The number of sent messages */
     size_t                  _pending_in ;
