@@ -184,7 +184,7 @@ constexpr inline if_integer_t<I> getrzbseq(I x)
 /// 00101001 -> 0
 /// 0 -> bitsizeof(I)
 template<typename I>
-constexpr inline if_integer_t<I> rzcnt(I x)
+constexpr inline if_integer_t<I, size_t> rzcnt(I x)
 {
    return native_rzcnt(x, native_isa_tag()) ;
 }
@@ -377,6 +377,17 @@ class nzbitpos_iterator : public std::iterator<std::forward_iterator_tag, V> {
       }
 } ;
 
+template<typename T>
+inline if_integer_t<T, nzbitpos_iterator<T>> bitpos_begin(T value, bool v = true)
+{
+   return nzbitpos_iterator<T>(value ^ ((T)v - (T)1)) ;
+}
+
+template<typename T>
+constexpr inline if_integer_t<T, nzbitpos_iterator<T>> bitpos_end(T)
+{
+   return nzbitpos_iterator<T>() ;
+}
 
 /*******************************************************************************
  Compile-time calculations

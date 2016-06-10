@@ -41,6 +41,10 @@ void HazardPointerTests::Test_HazardStorage_Init()
 
 void HazardPointerTests::Test_HazardPointer_Init()
 {
+   hazard_pointer<double> pd0 ;
+   hazard_pointer<std::vector<int>> pvi0 (nullptr) ;
+   std::vector<int> v ;
+   hazard_pointer<std::vector<int>> pvi1 (&v) ;
 }
 
 /*******************************************************************************
