@@ -119,7 +119,7 @@ class alignas(PCOMN_CACHELINE_SIZE) hazard_registry {
       /// The maximum count of hazard pointers per thread
       static constexpr size_t capacity()
       {
-         return  (8 << (int)Log2) - (sizeof _occupied + sizeof _pending_cleanup)/sizeof(void*) ;
+         return (8 << (int)Log2) - (sizeof _occupied + sizeof _pending_retired)/sizeof(void*) ;
       }
 
       /// Register a hazard pointer.
@@ -170,13 +170,13 @@ class alignas(PCOMN_CACHELINE_SIZE) hazard_registry {
 
    private:
       uint64_t             _occupied = 0 ;
-      cleanup_container *  _pending_cleanup = nullptr ; /* Pointers marked for cleanup */
+      cleanup_container *  _pending_retired = nullptr ; /* Pointers marked for cleanup */
       const void *         _hazard[capacity()] = {} ;   /* Currently marked hazards */
 
-      cleanup_container &pending_cleanup()
+      cleanup_container &pending_retired()
       {
-         NOXCHECK(_pending_cleanup) ;
-         return *_pending_cleanup ;
+         NOXCHECK(_pending_retired) ;
+         return *_pending_retired ;
       }
 
       static constexpr uint64_t slotbit(size_t pos) { return (uint64_t)1 << pos ; }
@@ -474,18 +474,18 @@ class alignas(PCOMN_CACHELINE_SIZE) hazard_storage {
          NOXCHECK(is_slotaddr_valid(&slot)) ;
          // No hazards may be marked at this point
          NOXCHECK(!slot._occupied) ;
-         if (!slot._pending_cleanup)
-            slot._pending_cleanup = new cleanup_container ;
+         if (!slot._pending_retired)
+            slot._pending_retired = new cleanup_container ;
          return slot ;
       }
 
       void fini_registry(registry_type &slot)
       {
-         if (flush_pending(slot.pending_cleanup(), &slot) == 0)
+         if (flush_pending(slot.pending_retired(), &slot) == 0)
          {
             // All pending entries are successfully cleaned up
-            delete slot._pending_cleanup ;
-            slot._pending_cleanup = nullptr ;
+            delete slot._pending_retired ;
+            slot._pending_retired = nullptr ;
          }
       }
 
@@ -499,11 +499,11 @@ class alignas(PCOMN_CACHELINE_SIZE) hazard_storage {
       // remove those entries from pending.
       // Return the count of remaining pending entries.
       // skip_slot may be NULL.
-      size_t finalize_pending(cleanup_container &pending, registry_type *skip_slot) noexcept ;
+      size_t retire_pending(cleanup_container &pending, registry_type *skip_slot) noexcept ;
 
       // Flush those pending pointers that are not present in gathered hazards
-      static cleanup_container &finalize_safe(cleanup_container &pending,
-                                              hazard_filter &observed_hazards) ;
+      static cleanup_container &retire_safe(cleanup_container &pending,
+                                            hazard_filter &observed_hazards) ;
 
       // Append (presumably currently marked) hazard to a filter
       static void note_hazard(void *hazard, hazard_filter &observed_hazards)
@@ -519,7 +519,7 @@ class alignas(PCOMN_CACHELINE_SIZE) hazard_storage {
          cleanup_container *inherited = nullptr ;
          if (slots_map().cas(slot_index, false, true, std::memory_order_acquire))
          {
-            inherited = xchange((slots() + slot_index)->_pending_cleanup, nullptr) ;
+            inherited = xchange((slots() + slot_index)->_pending_retired, nullptr) ;
             slots_map().set(slot_index, false, std::memory_order_release) ;
          }
          return inherited ;
@@ -582,8 +582,8 @@ class hazard_manager {
       {
          if (!object)
             return ;
-         pending_cleanup().emplace_back(object, std::forward(reclaimer)) ;
-         probably_finalize_pending() ;
+         pending_retired().emplace_back(object, std::forward(reclaimer)) ;
+         probably_retire_pending() ;
       }
 
       /// Register an object for posponed reclamation using std::default_deleter as
@@ -609,20 +609,20 @@ class hazard_manager {
 
       static std::atomic<storage_type *> _global_storage ; /* Global hazard_storage for tag_type */
 
-      cleanup_container &pending_cleanup()
+      cleanup_container &pending_retired()
       {
-         return registry().pending_cleanup() ;
+         return registry().pending_retired() ;
       }
 
-      void probably_finalize_pending()
+      void probably_retire_pending()
       {
          if (pending_threshold_exceeded())
-            storage().finalize_pending(pending_cleanup(), &registry()) ;
+            storage().retire_pending(pending_retired(), &registry()) ;
       }
 
       bool pending_threshold_exceeded() const
       {
-         const size_t pending_count = pending_cleanup().size() ;
+         const size_t pending_count = pending_retired().size() ;
          return
             pending_count > 8 &&
             pending_count > storage()._top_alloc.load(std::memory_order_relaxed) ;
@@ -742,7 +742,7 @@ void hazard_storage<L>::release_slot(registry_type *slot)
 }
 
 template<unsigned L>
-size_t hazard_storage<L>::finalize_pending(cleanup_container &pending, registry_type *skip_slot) noexcept
+size_t hazard_storage<L>::retire_pending(cleanup_container &pending, registry_type *skip_slot) noexcept
 {
    using namespace std ;
 
@@ -761,14 +761,14 @@ size_t hazard_storage<L>::finalize_pending(cleanup_container &pending, registry_
                   bitpos_end(slot->_occupied),
                   [&](void *hazard) { note_hazard(hazard, observed_hazards) ; }) ;
 
-      else if (slot->_pending_cleanup)
+      else if (slot->_pending_retired)
          // Some pointers remain pending after slot deallocation, help other threads that
-         // were unable to finalize all its pending pointers when finalizing itself
+         // were unable to retire all its pending pointers when finalizing itself
          if (cleanup_container * const inherited = attempt_inherit_pending(slot - slots()))
          {
             // Not completely exception-safe: adding items for inherited to pending may,
             // in principle, entail bad_alloc; ignore this near zero possibility,
-            // terminate if worst comes to worst (finalize_pending is noexcept)
+            // terminate if worst comes to worst (retire_pending is noexcept)
             pending.insert(pending.end(),
                            make_move_iterator(inherited->begin()),
                            make_move_iterator(inherited->end())) ;
@@ -777,13 +777,13 @@ size_t hazard_storage<L>::finalize_pending(cleanup_container &pending, registry_
    }
    complete_hazard_filter(observed_hazards) ;
    return
-      finalize_safe(pending, observed_hazards).
+      retire_safe(pending, observed_hazards).
       size() ;
 }
 
 template<unsigned L>
 typename hazard_storage<L>::cleanup_container &
-hazard_storage<L>::finalize_safe(cleanup_container &pending, hazard_filter &observed_hazards)
+hazard_storage<L>::retire_safe(cleanup_container &pending, hazard_filter &observed_hazards)
 {
    pending.erase
       (std::partition(pending.begin(), pending.end(), [&](void *p)
