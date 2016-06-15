@@ -10,8 +10,8 @@
 #------------------------------------------------------------------------------
 project
   : requirements
-  <library>$(PROJSHARE)/pcomn_http
-  <library>$(PROJSHARE)/cmdline
+  <library>$(PROJROOT)//pcomn_http
+  <library>$(PROJROOT)//pcomn_cmdline
   <library>$(PROJROOT)//cppunit
 
   : default-build debug <link>static <threading>multi

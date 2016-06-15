@@ -10,10 +10,10 @@
 #------------------------------------------------------------------------------
 project
   : requirements
-  <library>$(PROJSHARE)/pcomn_csvr <threading>multi
+  <library>$(PROJROOT)//pcomn_net <threading>multi
 
   : usage-requirements
-  <library>$(PROJSHARE)/pcomn_net
+  <library>$(PROJROOT)//pcomn_net
 ;
 
 lib pcomn_http :

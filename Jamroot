@@ -50,9 +50,13 @@ lib cppunit : : <os>LINUX <os>LINUX:<link>shared ;
 lib cppunit : : <os>NT <os>NT:<link>static ;
 lib cppunit : : <os>NT <os>NT:<link>static <variant>debug <name>cppunitd ;
 
-lib ncurses : : <link>shared ;
-lib crypto  : : <link>shared ;
+lib crypto   : : <os>LINUX:<link>shared ;
+alias crypto : : <os>NT ;
 
+lib ssl   : : <os>LINUX:<link>shared ;
+alias ssl : : <os>NT ;
+
+lib ncurses : : <os>LINUX <os>LINUX:<link>shared ;
 lib readline  : : <os>LINUX <os>LINUX:<link>shared : : <library>ncurses ;
 lib readline : : <os>NT <name>editline ;
 lib readline : : <os>NT <variant>debug <name>editlined ;
@@ -110,7 +114,6 @@ rule proj-lib ( name : dir ? )
 proj-lib pcommon ;
 
 proj-lib pcomn_journal ;
-proj-lib pcomn_http ;
 proj-lib pcomn_net ;
 proj-lib pcomn_shell ;
 proj-lib pcomn_ssl ;

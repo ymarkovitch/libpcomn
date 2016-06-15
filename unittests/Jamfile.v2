@@ -19,7 +19,6 @@ project unittests
 local skip = pcomn_continuations|pcomn_rpc ;
 
 for local unittest in
-  pcommon/tests
   [ MATCH $(ROOTPATH)/(.+/unittests)/.*
   : [ path.glob $(ROOTPATH) : */*/unittests/Jamfile.v2 ]
     [ path.glob $(ROOTPATH) : */unittests/Jamfile.v2 ] ]

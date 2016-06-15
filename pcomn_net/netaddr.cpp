@@ -15,6 +15,8 @@
 #include <pcomn_meta.h>
 #include <pcomn_atomic.h>
 #include <pcomn_string.h>
+#include <pcomn_strslice.h>
+#include <pcomn_range.h>
 
 #ifdef PCOMN_PL_POSIX
 /*******************************************************************************
