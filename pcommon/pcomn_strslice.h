@@ -15,7 +15,6 @@
 #include <pcomn_string.h>
 #include <pcomn_utils.h>
 #include <pcomn_hash.h>
-#include <pcomn_range.h>
 
 #include <iostream>
 #include <algorithm>
@@ -477,27 +476,6 @@ inline C *strslicecpy(C (&dest)[n], const basic_strslice<C> &slice)
    return strslicecpy(dest, slice, n) ;
 }
 
-/// Implementation of valmap_find_value<> with strslice @a name argument (see
-/// valmap_find_value() in pcomn_utils.h)
-template<typename Char, typename Val, typename Name>
-const Val *valmap_find_value(const std::pair<Name, Val> *valmap, const basic_strslice<Char> &name)
-{
-   if (std::find(name.begin(), name.end(), 0) == name.end())
-      // No embedded zeros
-      for (const size_t sz = name.size() ; valmap->first ; ++valmap)
-         if (!std::char_traits<Char>::compare(valmap->first, name.begin(), sz) && !valmap->first[sz])
-            return &valmap->second ;
-
-   return NULL ;
-}
-
-template<typename Char, typename Val, typename Name>
-inline Val valmap_find_value(const std::pair<Name, Val> *valmap, const basic_strslice<Char> &name, const Val &defval)
-{
-   const Val * const found = valmap_find_value(valmap, name) ;
-   return found ? *found : defval ;
-}
-
 template<typename C>
 inline basic_strslice<C> &to_lower_inplace(basic_strslice<C> &s)
 {
@@ -509,6 +487,45 @@ template<typename C>
 inline basic_strslice<C> &to_upper_inplace(basic_strslice<C> &s)
 {
    convert_inplace(s.begin(), ctype_traits<C>::toupper, 0, s.size()) ;
+}
+
+/*******************************************************************************
+ Name/value pair functions
+*******************************************************************************/
+template<typename V, typename N>
+const N &valmap_find_name(const std::pair<N, V> *valmap, V &&value)
+{
+   while(valmap->first && valmap->second != std::forward<V>(value))
+      ++valmap ;
+   return valmap->first ;
+}
+
+template<typename V, typename N>
+inline N valmap_find_name(const std::pair<N, V> *valmap, V &&value, const N &default_name)
+{
+   const N &found = valmap_find_name(valmap, std::forward<V>(value)) ;
+   return found ? found : default_name ;
+}
+
+/// Implementation of valmap_find_value<> with strslice @a name argument (see
+/// valmap_find_value() in pcomn_utils.h)
+template<typename C, typename V, typename N>
+const V *valmap_find_value(const std::pair<N, V> *valmap, const basic_strslice<C> &name)
+{
+   if (std::find(name.begin(), name.end(), 0) == name.end())
+      // No embedded zeros
+      for (const size_t sz = name.size() ; valmap->first ; ++valmap)
+         if (!std::char_traits<C>::compare(valmap->first, name.begin(), sz) && !valmap->first[sz])
+            return &valmap->second ;
+
+   return nullptr ;
+}
+
+template<typename C, typename V, typename N>
+inline V valmap_find_value(const std::pair<N, V> *valmap, const basic_strslice<C> &name, const V &default_value)
+{
+   const V * const found = valmap_find_value(valmap, name) ;
+   return found ? *found : default_value ;
 }
 
 /*******************************************************************************
@@ -669,22 +686,6 @@ template<typename C>
 inline size_t hasher(const basic_strslice<C> &slice)
 {
    return hashFNV(slice.begin(), slice.size()) ;
-}
-
-/******************************************************************************/
-/** Range of characters over pcomn::strslice
-*******************************************************************************/
-template<typename C>
-class strslice_range : public iterator_range<const C *> {
-   public:
-      constexpr strslice_range() {}
-      strslice_range(const pcomn::basic_strslice<C> &s) : iterator_range<const C *>(s.begin(), s.end()) {}
-} ;
-
-template<typename C>
-inline strslice_range<C> make_strslice_range(const basic_strslice<C> &s)
-{
-   return strslice_range<C>(s) ;
 }
 
 /*******************************************************************************

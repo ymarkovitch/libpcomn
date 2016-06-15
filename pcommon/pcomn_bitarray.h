@@ -36,6 +36,7 @@
 
 #include <algorithm>
 #include <iterator>
+#include <vector>
 #include <iostream>
 
 #include <limits.h>

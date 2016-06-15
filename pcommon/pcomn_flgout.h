@@ -15,6 +15,7 @@
  Manipulators and traits for human-readable stream output of enum values and bit flags
 *******************************************************************************/
 #include <pcomn_omanip.h>
+#include <pcomn_meta.h>
 #include <pcomn_macros.h>
 #include <pcommon.h>
 
@@ -115,9 +116,14 @@ typedef oflags flgout ;
 template<typename Enum, nullptr_t = nullptr> struct enum_names ;
 
 template<typename Enum>
-inline const char *enum_name(Enum value)
+const char *enum_name(Enum value)
 {
-   return valmap_find_name(enum_names<Enum>::values, value) ;
+   return
+      std::find_if(std::begin(enum_names<Enum>::values),
+                   std::end(enum_names<Enum>::values),
+                   [=](const decltype(*enum_names<Enum>::values) &p)
+                   { return p.first && p.second == value ; })
+      ->first ;
 }
 
 template<typename Enum>
@@ -186,11 +192,6 @@ std::ostream &print_enum(std::ostream &os, Enum value)
    return os << "<UNKNOWN>(" << (long long)value << ')' ;
 }
 
-template<typename Enum>
-inline auto oenum(Enum value) PCOMN_MAKE_OMANIP(print_enum<Enum>, value) ;
-
 } // end of namespace pcomn
-
-namespace diag { using pcomn::oenum ; }
 
 #endif /* __PFLGOUT_H */

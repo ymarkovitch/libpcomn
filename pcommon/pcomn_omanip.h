@@ -28,8 +28,11 @@
 #include <pcomn_platform.h>
 #include <pcomn_iterator.h>
 
-#include <iostream>
 #include <iomanip>
+#include <vector>
+#include <memory>
+#include <typeindex>
+#include <utility>
 #include <functional>
 #include <type_traits>
 
@@ -111,13 +114,13 @@ std::ostream &print_sequence(InputIterator begin, InputIterator end, std::ostrea
 
 template<typename InputIterator, typename Delim, typename Fn>
 std::ostream &print_sequence(InputIterator begin, InputIterator end, std::ostream &os,
-                             const Delim &delimiter, Fn &&fn)
+                             Delim &&delimiter, Fn &&fn)
 {
    int count = -1 ;
    for (; begin != end ; ++begin)
    {
       if (++count)
-         os << delimiter ;
+         os << std::forward<Delim>(delimiter) ;
       std::forward<Fn>(fn)(os, *begin) ;
    }
    return os ;
@@ -128,6 +131,9 @@ inline std::ostream &print_sequence(InputIterator begin, InputIterator end, std:
 {
    return print_sequence(begin, end, os, ", ") ;
 }
+
+template<typename Enum>
+std::ostream &print_enum(std::ostream &, Enum) ;
 
 /*******************************************************************************
  Various ostream manipulators
@@ -264,6 +270,10 @@ template<typename T>
 inline auto ocall(T &&functor)
    PCOMN_MAKE_OMANIP(&detail::o_callfun, std::forward<T>(functor)) ;
 
+template<typename Enum>
+inline auto oenum(Enum value)
+   PCOMN_MAKE_OMANIP(print_enum<Enum>, value) ;
+
 /******************************************************************************/
 /** Apply pcomn::omanip<F> manipulator object to an output stream
 *******************************************************************************/
@@ -272,7 +282,73 @@ inline std::ostream &operator<<(std::ostream &os, const omanip<F> &manip)
 {
    return manip(os) ;
 }
-} // end of namespace pcomn
+
+/******************************************************************************
+ std::ostream output for various classes, including std namespace members
+******************************************************************************/
+template<typename> class simple_slice ;
+template<typename> class simple_vector ;
+template<typename, size_t> class static_vector ;
+template<typename> struct matrix_slice ;
+template<typename, bool> struct simple_matrix ;
+
+template<typename T>
+inline std::ostream &operator<<(std::ostream &os, const simple_slice<T> &v)
+{
+   return os << oseqdelim(v.begin(), v.end(), ' ') ;
+}
+
+template<typename T>
+inline std::ostream &operator<<(std::ostream &os, const simple_vector<T> &v)
+{
+   return os << oseqdelim(v.begin(), v.end(), ' ') ;
+}
+
+template<typename T, size_t n>
+inline std::ostream &operator<<(std::ostream &os, const static_vector<T,n> &v)
+{
+   return os << oseqdelim(v.begin(), v.end(), ' ') ;
+}
+
+} // end of pcomn namespace
+
+/*******************************************************************************
+ Half-legal imlementation of formatted output for several standard library
+ objects.
+ These are half-legal because injected into std:: namespace which is bad
+ according to Standard, but we'll make do with it.
+*******************************************************************************/
+// We need std namespace to ensure proper Koenig lookup
+namespace std {
+
+template<typename T1, typename T2>
+ostream &operator<<(ostream &os, const pair<T1,T2> &p)
+{
+   return os << '{' << p.first << ',' << p.second << '}' ;
+}
+
+template<typename T, typename A>
+inline ostream &operator<<(ostream &os, const vector<T,A> &v)
+{
+   return os << pcomn::oseqdelim(v.begin(), v.end(), ' ') ;
+}
+
+template<typename T, typename D>
+inline ostream &operator<<(ostream &os, const unique_ptr<T,D> &v)
+{
+   return os << v.get() ;
+}
+
+inline ostream &operator<<(ostream &os, const type_index &v)
+{
+   return os << PCOMN_DEMANGLE(v.name()) ;
+}
+
+inline ostream &operator<<(ostream &os, nullptr_t)
+{
+   return os << "NULL" ;
+}
+} // end of namespace std
 
 
 #endif /* __PCOMN_OMANIP_H */

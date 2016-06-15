@@ -675,3 +675,28 @@ inline O r_transform(R &&r, O out, UnaryFunction fn)
 } // end of namespace pcomn
 
 #endif /* __PCOMN_RANGE_H */
+
+#if !defined(__PCOMN_STRSLICE_RANGE_H) && defined(__PCOMN_STRSLICE_H)
+#define __PCOMN_STRSLICE_RANGE_H
+
+namespace pcomn {
+
+/******************************************************************************/
+/** Range of characters over pcomn::strslice
+*******************************************************************************/
+template<typename C>
+class strslice_range : public iterator_range<const C *> {
+   public:
+      constexpr strslice_range() {}
+      strslice_range(const pcomn::basic_strslice<C> &s) : iterator_range<const C *>(s.begin(), s.end()) {}
+} ;
+
+template<typename C>
+inline strslice_range<C> make_strslice_range(const basic_strslice<C> &s)
+{
+   return strslice_range<C>(s) ;
+}
+
+} // end of namespace pcomn
+
+#endif /* __PCOMN_STRSLICE_RANGE_H */

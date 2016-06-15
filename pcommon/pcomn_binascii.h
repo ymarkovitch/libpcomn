@@ -34,7 +34,6 @@ _PCOMNEXP size_t b2a_base64(const void *source, size_t srclen,
 
 #ifdef __cplusplus
 
-#include <pcomn_safeptr.h>
 #include <pcomn_buffer.h>
 
 /// Get the length of BASE64 string from data length

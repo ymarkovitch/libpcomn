@@ -730,6 +730,8 @@ inline ofncall_ operator<<(std::ostream &os, const ofncall &manip)
 
 inline std::ostream &operator<<(std::ostream &os, EndArgs) { return os ; }
 
+using pcomn::oenum ;
+
 } // end of namespace diag
 
 namespace pcomn {

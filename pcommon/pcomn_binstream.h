@@ -15,7 +15,7 @@
     Simple binary I/O streams. even simpler than pcomn::raw_ios.
 
  PCommon streams provide "ranges" (http://rangelib.synesis.com.au/). If you want to use
- pcommon iostreams with STLSoft rangelib, include pcommon_iostream.h somewhere after
+ pcommon iostreams with STLSoft rangelib, include pcommon_binstream.h somewhere after
  pcomn_range.h in include sequence. It can safely be included both before pcomn_range.h
  and after in the same include sequence; the only requirement is that it is
  included after pcomn_range.h at least once.
@@ -27,7 +27,6 @@
 #include <pcomn_except.h>
 #include <pcomn_string.h>
 #include <pcomn_safeptr.h>
-#include <pcomn_range.h>
 #include <pcomn_simplematrix.h>
 
 #include <string>
@@ -742,6 +741,18 @@ inline char *readline(binary_ibufstream &is, char (&buf)[n], EOLMode eolmode = e
 /// @note Retains '\n' in the result. If @a eoltype is eol_CRLF, replaces final CRLF with LF.
 std::string readline(binary_ibufstream &is, EOLMode eolmode = eolmode_LF) ;
 
+} // end of namespace pcomn
+
+#endif /* __PCOMN_BINSTREAM_H */
+
+/*******************************************************************************
+ Provide pcomn::io::writer specializations for binary streams
+*******************************************************************************/
+#if !defined(__PCOMN_BINSTREAM_RANGE_H) && defined(__PCOMN_RANGE_H)
+#define __PCOMN_BINSTREAM_RANGE_H
+
+namespace pcomn {
+
 /*******************************************************************************
  PCommon streams provide "ranges" (http://rangelib.synesis.com.au/).
  If you want to use pcommon iostreams with STLSoft rangelib, include pcommon_iostream.h
@@ -818,14 +829,13 @@ class istream_range : public istream_range_tag {
 
 } // end of namespace pcomn
 
-#endif /* __PCOMN_BINSTREAM_H */
+#endif /* __PCOMN_BINSTREAM_RANGE_H */
 
 /*******************************************************************************
  Provide pcomn::io::writer specializations for binary streams
 *******************************************************************************/
-#ifdef __PCOMN_IODEVICE_H
-#ifndef __PCOMN_IOSTREAM_IODEVICE_H
-#define __PCOMN_IOSTREAM_IODEVICE_H
+#if !defined(__PCOMN_BINSTREAM_IODEVICE_H) && defined(__PCOMN_IODEVICE_H)
+#define __PCOMN_BINSTREAM_IODEVICE_H
 
 namespace pcomn {
 namespace io {
@@ -875,5 +885,4 @@ inline io::reader<istream_over_iterator<InputIterator> > get_reader(istream_over
 
 } // end of namespace pcomn
 
-#endif /* __PCOMN_IOSTREAM_IODEVICE_H */
-#endif /* __PCOMN_IODEVICE_H */
+#endif /* __PCOMN_BINSTREAM_IODEVICE_H */

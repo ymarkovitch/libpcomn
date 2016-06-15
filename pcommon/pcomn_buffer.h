@@ -559,7 +559,7 @@ inline memvec_t memvec(T &buffer, size_t offs, size_t len = -1)
 
 inline std::ostream &operator<<(std::ostream &os, const pcomn::iovec_t &v)
 {
-   return os << pcomn::buf::cmemvec(v) ;
+   return os << '{' << v.iov_base << ',' << v.iov_len << '}' ;
 }
 
 #endif /* __PCOMN_BUFFER_H */

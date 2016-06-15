@@ -10,6 +10,7 @@
  CREATION DATE:   25 Dec 2001
 *******************************************************************************/
 #include <pcomn_binascii.h>
+#include <pcomn_utils.h>
 #include <pcommon.h>
 
 #include <algorithm>
@@ -155,8 +156,9 @@ std::ostream &b2a_base64(std::ostream &os,
 {
    if (!line_length)
       line_length = 80 ;
-   pcomn::PTVSafePtr<char> outbuf (new char[line_length]) ;
-   for (size_t remains = datasize ; remains && os ; os << outbuf << std::endl)
+   pcomn::auto_buffer<256> outbuf (line_length) ;
+
+   for (size_t remains = datasize ; remains && os ; os << outbuf.get() << std::endl)
       remains = b2a_base64(pcomn::padd(data, (datasize - remains)),
                            remains, outbuf.get(), line_length) ;
    return os ;

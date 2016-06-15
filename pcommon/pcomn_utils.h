@@ -15,16 +15,13 @@
 *******************************************************************************/
 #include <pcommon.h>
 #include <pcomn_assert.h>
-#include <pcomn_omanip.h>
 #include <pcomn_meta.h>
 #include <pcomn_integer.h>
 
 #include <iostream>
 #include <utility>
 #include <functional>
-#include <vector>
 #include <memory>
-#include <typeindex>
 #include <algorithm>
 
 #include <stddef.h>
@@ -137,44 +134,6 @@ class finalizer {
       T & _var ;
       finalizer_type _finalize ;
 } ;
-
-/*******************************************************************************
- Name/value pair functions
-*******************************************************************************/
-template<typename Val, typename Name>
-Name valmap_find_name(const std::pair<Name, Val> *valmap, Val value)
-{
-   while(valmap->first && valmap->second != value)
-      ++valmap ;
-   return valmap->first ;
-}
-
-template<typename Val, typename Name>
-inline Name valmap_find_name(const std::pair<Name, Val> *valmap, Val value, const Name &defname)
-{
-   const Name &found = valmap_find_name(valmap, value) ;
-   return found ? found : defname ;
-}
-
-template<typename Char, typename Val, typename Name>
-const Val *valmap_find_value(const std::pair<Name, Val> *valmap, const Char *name)
-{
-   typedef std::char_traits<Char> traits ;
-   // incrementing name_len allow as to compare real buffers
-   // with the last \0 symbol
-   size_t name_len = traits::length(name) + 1 ;
-   for (; valmap->first ; ++valmap)
-      if (!traits::compare(valmap->first, name, name_len))
-         return &valmap->second ;
-   return NULL ;
-}
-
-template<typename Char, typename Val, typename Name>
-inline Val valmap_find_value(const std::pair<Name, Val> *valmap, const Char *name, const Val &defval)
-{
-   const Val * const found = valmap_find_value(valmap, name) ;
-   return found ? *found : defval ;
-}
 
 /*******************************************************************************
  Utility functions
@@ -438,30 +397,6 @@ struct tagged_ptr_union {
 template<typename T1, typename T2, typename... T>
 using tagged_cptr_union = tagged_ptr_union<const T1, const T2, const T ...> ;
 
-/*******************************************************************************
- ptr_cast<> - convert any pointerlike object to a pointer
-*******************************************************************************/
-template<typename Pointer, typename PointerLike>
-inline Pointer ptr_cast(const PointerLike &pointer)
-{
-   return &*const_cast<PointerLike &>(pointer) ;
-}
-
-/// Convert a parameter to a constant reference
-/// Useful to pass an rvalue (e.g. a temporary object) to a template function accepting
-/// a non-const template reference.
-/// For instance:
-/// template<typename T> void foo(T &t) ;
-/// foo(std::string("Hello, world!")) ; // Error, compiler will deduce T as
-///                                     // std::string and won't allow passing
-///                                     // a temporary by a non-const reference
-/// foo(pcomn::vcref(std::string("Hello, world!"))) ; // OK
-template<typename T>
-inline const T &vcref(const T &value)
-{
-   return value ;
-}
-
 /******************************************************************************/
 /**
 *******************************************************************************/
@@ -681,72 +616,5 @@ std::string string_cast(T &&arg)
 }
 
 } // end of pcomn namespace
-
-
-/*******************************************************************************
- *
- * std::ostream output for various classes, including std namespace members
- *
-*******************************************************************************/
-namespace pcomn {
-
-template<typename> class simple_slice ;
-template<typename> class simple_vector ;
-template<typename, size_t> class static_vector ;
-template<typename> struct matrix_slice ;
-template<typename, bool> struct simple_matrix ;
-
-template<typename T>
-inline std::ostream &operator<<(std::ostream &os, const simple_slice<T> &v)
-{
-   return os << oseqdelim(v.begin(), v.end(), ' ') ;
-}
-
-template<typename T>
-inline std::ostream &operator<<(std::ostream &os, const simple_vector<T> &v)
-{
-   return os << oseqdelim(v.begin(), v.end(), ' ') ;
-}
-
-template<typename T, size_t n>
-inline std::ostream &operator<<(std::ostream &os, const static_vector<T,n> &v)
-{
-   return os << oseqdelim(v.begin(), v.end(), ' ') ;
-}
-
-} // end of pcomn namespace
-
-
-// We need std namespace to ensure proper Koenig lookup
-namespace std {
-
-template<typename T1, typename T2>
-inline ostream &operator<<(ostream &os, const pair<T1,T2> &p)
-{
-   return os << '{' << p.first << ',' << p.second << '}' ;
-}
-
-template<typename T, typename A>
-inline ostream &operator<<(ostream &os, const vector<T, A> &v)
-{
-   return os << pcomn::oseqdelim(v.begin(), v.end(), ' ') ;
-}
-
-template<typename T, typename D>
-inline ostream &operator<<(ostream &os, const unique_ptr<T, D> &v)
-{
-   return os << v.get() ;
-}
-
-inline ostream &operator<<(ostream &os, const type_index &v)
-{
-   return os << PCOMN_DEMANGLE(v.name()) ;
-}
-
-inline ostream &operator<<(ostream &os, nullptr_t)
-{
-   return os << "NULL" ;
-}
-} // end of namespace std
 
 #endif /* __PCOMN_UTILS_H */
