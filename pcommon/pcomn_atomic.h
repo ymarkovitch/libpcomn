@@ -90,6 +90,10 @@ template<typename T, typename R = T>
 using enable_if_atomic_arithmetic_t =
    typename std::enable_if<is_atomic_arithmetic<atomic_value_t<T>>::value, R>::type ;
 
+template<typename T, typename R = T>
+using enable_if_atomic_ptr_t =
+   typename std::enable_if<is_atomic<atomic_value_t<T>>::value && std::is_pointer<atomic_value_t<T>>::value, R>::type ;
+
 /******************************************************************************/
 /** @namespace pcomn::atomic_op
  Atomic operations
@@ -199,7 +203,6 @@ check_and_swap(T *target, C &&check, atomic_value_t<T> new_value,
       check_and_F(target, std::forward<C>(check), [=](atomic_value_t<T>){ return new_value ; }, order) ;
 }
 
-
 /*******************************************************************************
  Atomic arithmetic and bit operations
 *******************************************************************************/
@@ -297,6 +300,45 @@ bit_cas(T *target, atomic_value_t<T> expected_bits, atomic_value_t<T> new_bits, 
                       [=](type v){ return (v & mask) == expected_bits ; },
                       [=](type v){ return v &~ mask | new_bits ; },
                       order).first ;
+}
+
+/*******************************************************************************
+ Tagged pointers
+*******************************************************************************/
+/// Set the least significant bit of a pointer to 1.
+/// The pointed-to type must have alignment at least 2; it is checked at compile time.
+template<typename T>
+inline enable_if_atomic_ptr_t<atomic_value_t<T>>
+tag_ptr(T *pptr, std::memory_order order)
+{
+   const uintptr_t tag = 1 ;
+   uintptr_t * const data_ptr = reinterpret_cast<uintptr_t *>(pptr) ;
+   return reinterpret_cast<atomic_value_t<T>>
+      (bit_or(data_ptr, tag, order)) ;
+}
+
+/// Set the least significant log2(alignment) bits of a pointer to 0.
+/// The pointed-to type must have alignment at least 2; it is checked at compile time.
+template<typename T>
+inline enable_if_atomic_ptr_t<atomic_value_t<T>>
+untag_ptr(T *pptr, std::memory_order order)
+{
+   const uintptr_t mask = alignof(T) - 1 ;
+   uintptr_t * const data_ptr = reinterpret_cast<uintptr_t *>(pptr) ;
+   return reinterpret_cast<atomic_value_t<T>>
+      (bit_and(data_ptr, mask, order)) ;
+}
+
+/// Invert the least significant bit of a pointer.
+/// The pointed-to type must have alignment at least 2; it is checked at compile time.
+template<typename T>
+inline enable_if_atomic_ptr_t<atomic_value_t<T>>
+fliptag_ptr(T *pptr, std::memory_order order)
+{
+   const uintptr_t tag = 1 ;
+   uintptr_t * const data_ptr = reinterpret_cast<uintptr_t *>(pptr) ;
+   return reinterpret_cast<atomic_value_t<T>>
+      (bit_xor(data_ptr, tag, order)) ;
 }
 
 } // end of namespace pcomn::atomic_op
