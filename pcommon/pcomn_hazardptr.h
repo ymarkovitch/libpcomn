@@ -14,7 +14,7 @@
 /** @file
  Implementation of hazard pointers for lockless concurrent data structures.
 
-  - hazard_pointer\<Element, Tag\> refers to @em  thread-local hazard_manager\<Tag\>,
+  - hazard_ptr\<Element, Tag\> refers to @em  thread-local hazard_manager\<Tag\>,
     i.e all hazard pointers\<Element\> with the same tag in a thread refer to the same
     thread-local hazard_manager\<Tag\> in that thread.
 
@@ -59,7 +59,7 @@ constexpr size_t HAZARD_DEFAULT_THREADCOUNT = 128 ;
  Forward declarations
 *******************************************************************************/
 template<typename, typename>
-class hazard_pointer ;
+class hazard_ptr ;
 
 template<typename>
 class hazard_manager ;
@@ -129,7 +129,7 @@ class alignas(PCOMN_CACHELINE_SIZE) hazard_registry {
       /// @return Hazard pointer index, which must be passed to unregister_hazard(); on
       /// attempt to register more than max_size pointers, returns 0xBADDCA11.
       ///
-      /// @note The returned index is valid only for the calling thread, hazard_pointer
+      /// @note The returned index is valid only for the calling thread, hazard_ptr
       /// objects can @em not be passed between threads.
       ///
       int register_hazard(const void *ptr)
@@ -162,7 +162,7 @@ class alignas(PCOMN_CACHELINE_SIZE) hazard_registry {
 
       const void *hazard(int slot) const
       {
-         NOXCHECK((size_t)slot >= capacity()) ;
+         NOXCHECK((size_t)slot < capacity()) ;
          return _hazard[slot] ;
       }
 
@@ -194,18 +194,21 @@ constexpr const hazard_registry<L> hazard_registry<L>::zero ;
  but they must @em never be passed between threads.
 *******************************************************************************/
 template<typename E, typename T = void>
-class hazard_pointer {
-      PCOMN_NONCOPYABLE(hazard_pointer) ;
-      PCOMN_NONASSIGNABLE(hazard_pointer) ;
+class hazard_ptr {
+      PCOMN_NONCOPYABLE(hazard_ptr) ;
+      PCOMN_NONASSIGNABLE(hazard_ptr) ;
    public:
       typedef E                        element_type ;
       typedef T                        tag_type ;
       typedef hazard_manager<tag_type> manager_type ;
       typedef typename manager_type::registry_type registry_type ;
 
-      constexpr hazard_pointer() = default ;
+      /// The default constructor creates a hazard pointer with nullptr value.
+      constexpr hazard_ptr() = default ;
+      /// The same as the default constructor.
+      constexpr hazard_ptr(nullptr_t, manager_type & = *(manager_type *)nullptr) {}
 
-      hazard_pointer(hazard_pointer &&other) :
+      hazard_ptr(hazard_ptr &&other) :
          _registry(other._registry),
          _slot(other._slot)
       {
@@ -213,41 +216,58 @@ class hazard_pointer {
       }
 
       template<typename U, typename = std::enable_if_t<std::is_convertible<U *, T *>::value, void>>
-      hazard_pointer(hazard_pointer<U, T> &&other) :
+      hazard_ptr(hazard_ptr<U, T> &&other) :
          _registry(other._registry),
          _slot(other._slot)
       {
          other.zero_itself() ;
       }
 
-      /// Mark @a ptr as a hazard pointer.
-      explicit hazard_pointer(element_type *ptr, manager_type &manager = thread_manager()) :
-         _registry(&manager.registry()),
+      /// Mark object at @a ptr as being accessed to prevent its retirement.
+      ///
+      /// When the pointer is marked as being in a hazard state, the collection of memory
+      /// the pointer points to is prevented until the pointer is unmarked by hazard_ptr
+      /// destructor or hazard_ptr::reset.
+      explicit hazard_ptr(element_type *ptr, manager_type &m = manager()) :
+         _registry(&m.registry()),
          _slot(mark_hazard(ptr))
       {}
 
-      explicit hazard_pointer(element_type **pptr, manager_type &manager = thread_manager()) :
-         hazard_pointer(*PCOMN_ENSURE_ARG(pptr), manager)
+      /// Load a pointer @and mark it as being at hazard in one atomic operation.
+      explicit hazard_ptr(element_type **pptr, manager_type &m = manager()) :
+         hazard_ptr(*PCOMN_ENSURE_ARG(pptr), m)
       {
          for (element_type *p = get() ;
               p && (p = atomic_op::load(pptr, std::memory_order_acquire)) != get() ; unmark_hazard())
             mark_hazard(p) ;
       }
 
-      constexpr hazard_pointer(nullptr_t, manager_type & = *(manager_type *)nullptr) {}
+      explicit hazard_ptr(std::atomic<element_type *> *pptr, manager_type &m = manager()) :
+         hazard_ptr(reinterpret_cast<element_type **>(pptr), m)
+      {}  ;
 
       /// Unmark a hazard pointer, inform other threads the object pointed to is no more
       /// in use by the current thread.
-      ~hazard_pointer()
+      ~hazard_ptr()
       {
          unmark_hazard() ;
       }
 
-      element_type *get() const { return registry().hazard(_slot) ; }
+      element_type *get() const
+      {
+         return static_cast<element_type *>(const_cast<void *>(registry().hazard(_slot))) ;
+      }
       element_type *operator->() const { return get() ; }
       element_type &operator*() const { return *get() ; }
 
       explicit operator bool() const { return !!get() ; }
+
+      friend bool operator==(const hazard_ptr &x, const hazard_ptr &y) { return x.get() == y.get() ; }
+      friend bool operator==(element_type *x, const hazard_ptr &y) { return x == y.get() ; }
+      friend bool operator==(const hazard_ptr &x, element_type *y) { return y == x ; }
+      friend bool operator!=(const hazard_ptr &x, const hazard_ptr &y) { return !(x == y) ; }
+      friend bool operator!=(element_type *x, const hazard_ptr &y) { return !(x == y) ; }
+      friend bool operator!=(const hazard_ptr &x, element_type *y) { return !(x == y) ; }
 
       /// Mark the pointer as safe for reclaim.
       /// Since after this call the plain pointer this object has held is eventually
@@ -258,14 +278,15 @@ class hazard_pointer {
          zero_itself() ;
       }
 
-   private:
-      registry_type *_registry = &zero_registry() ;
-      int            _slot = 0 ; /* Slot index in hazard registry */
-
-      static manager_type &thread_manager()
+      /// Get the default thread-local hazard pointer manager
+      static manager_type &manager()
       {
          return hazard_manager<T>::manager() ;
       }
+
+   private:
+      registry_type *_registry = &zero_registry() ;
+      int            _slot = 0 ; /* Slot index in hazard registry */
 
       static constexpr registry_type &zero_registry()
       {
@@ -423,7 +444,7 @@ class alignas(PCOMN_CACHELINE_SIZE) hazard_storage {
    private:
       typedef typename registry_type::cleanup_container cleanup_container ;
       // There must be Bloom filter, actually
-      typedef std::vector<void *> hazard_filter ;
+      typedef std::vector<const void *> hazard_filter ;
 
       explicit hazard_storage(unsigned slotcount) ;
 
@@ -506,7 +527,7 @@ class alignas(PCOMN_CACHELINE_SIZE) hazard_storage {
                                             hazard_filter &observed_hazards) ;
 
       // Append (presumably currently marked) hazard to a filter
-      static void note_hazard(void *hazard, hazard_filter &observed_hazards)
+      static void note_hazard(const void *hazard, hazard_filter &observed_hazards)
       {
          if (!hazard)
             return ;
@@ -555,7 +576,7 @@ class alignas(PCOMN_CACHELINE_SIZE) hazard_storage {
 template<typename Tag>
 class hazard_manager {
       template<typename E, typename U>
-      friend class hazard_pointer ;
+      friend class hazard_ptr ;
 
       static constexpr size_t storage_capacity_bits()
       {
@@ -571,6 +592,8 @@ class hazard_manager {
 
       /// Get the hazard registry allocated for this manager.
       registry_type &registry() { return _registry ; }
+      /// @overload
+      const registry_type &registry() const { return _registry ; }
 
       /// Get the thread-local hazard pointer manager
       static hazard_manager &manager() ;
@@ -582,7 +605,7 @@ class hazard_manager {
       {
          if (!object)
             return ;
-         pending_retired().emplace_back(object, std::forward(reclaimer)) ;
+         pending_retired().emplace_back(object, std::forward<F>(reclaimer)) ;
          probably_retire_pending() ;
       }
 
@@ -595,24 +618,23 @@ class hazard_manager {
       }
 
    private:
-      /// Get the global hazard pointer storage for this tag.
-      storage_type &storage() { return _storage ; }
-
-      /// Atomically allocate and set _global_storage, if not yet allocated.
-      static storage_type &ensure_global_storage() ;
-
-      typedef typename registry_type::cleanup_container cleanup_container ;
-
-   private:
       storage_type &    _storage ;
       registry_type &   _registry ;
 
       static std::atomic<storage_type *> _global_storage ; /* Global hazard_storage for tag_type */
 
-      cleanup_container &pending_retired()
-      {
-         return registry().pending_retired() ;
-      }
+   private:
+      typedef typename registry_type::cleanup_container cleanup_container ;
+
+      /// Atomically allocate and set _global_storage, if not yet allocated.
+      static storage_type &ensure_global_storage() ;
+
+      /// Get the global hazard pointer storage for this tag.
+      storage_type &storage() { return _storage ; }
+      const storage_type &storage() const { return _storage ; }
+
+      cleanup_container &pending_retired() { return _registry.pending_retired() ; }
+      const cleanup_container &pending_retired() const { return _registry.pending_retired() ; }
 
       void probably_retire_pending()
       {
@@ -757,9 +779,9 @@ size_t hazard_storage<L>::retire_pending(cleanup_container &pending, registry_ty
 
       else if (*allocstat)
          // Gather hazards marked by this registry
-         for_each(bitpos_begin(slot->_occupied),
-                  bitpos_end(slot->_occupied),
-                  [&](void *hazard) { note_hazard(hazard, observed_hazards) ; }) ;
+         for_each(bitop::bitpos_begin(slot->_occupied),
+                  bitop::bitpos_end(slot->_occupied),
+                  [&](unsigned slotndx) { note_hazard(slot->hazard(slotndx), observed_hazards) ; }) ;
 
       else if (slot->_pending_retired)
          // Some pointers remain pending after slot deallocation, help other threads that

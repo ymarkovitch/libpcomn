@@ -239,12 +239,6 @@ using clvref_t = lvref_t<typename std::add_const<T>::type> ;
 template<typename T>
 using parmtype_t = typename std::conditional<(std::is_arithmetic<T>::value || std::is_pointer<T>::value), T, clvref_t<T> >::type ;
 
-template<typename T>
-using cref_wrapper = std::reference_wrapper<const T> ;
-
-template<typename T>
-using ref_wrapper = std::reference_wrapper<std::remove_const_t<T> > ;
-
 /******************************************************************************/
 /** Deduce the return type of a function call expression at compile time @em and,
  if the deduced type is a reference type, provides the member typedef type which

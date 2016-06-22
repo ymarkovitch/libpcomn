@@ -20,6 +20,9 @@
 
 namespace pcomn {
 
+/******************************************************************************/
+/** Functor to pass through its argument; effectively calls std::forward<T>.
+*******************************************************************************/
 struct identity {
       template<typename T>
       T &&operator() (T &&t) const { return std::forward<T>(t) ; }
@@ -162,8 +165,29 @@ inline disable_if_t<is_dereferenceable<T>::value, T &> &dereference(T &v)
 }
 
 /*******************************************************************************
-                     template<class Container, typename Key>
-                     struct container_item
+
+*******************************************************************************/
+template<typename T>
+using cref_wrapper = std::reference_wrapper<const T> ;
+
+template<typename T>
+using ref_wrapper = std::reference_wrapper<std::remove_const_t<T> > ;
+
+/// Checks if the passed type is an instance of std::reference_wrapper template.
+///
+/// If T is std::reference_wrapper<U>, possibly cv-qualified, provides the member
+/// constant value equal true and member typedef element_type equal to U.
+/// For any other type, value is false and element_type is not defined.
+template<typename>
+struct is_reference_wrapper : std::false_type {} ;
+
+template<typename U>
+struct is_reference_wrapper<std::reference_wrapper<U>> : std::true_type {
+      typedef U element_type ;
+} ;
+
+/*******************************************************************************
+ container_item
 *******************************************************************************/
 template<class Container, typename Key>
 struct container_item_base :
@@ -186,7 +210,9 @@ struct container_item : public container_item_base<Container, Key> {
       Container *_container ;
 } ;
 
-/*******************************************************************************
+/******************************************************************************/
+/** Functor which inserts its call argument into the container passed to the
+ functor's constructor.
 
 *******************************************************************************/
 template<typename Container>
@@ -206,9 +232,9 @@ struct container_inserter {
       Container &container() const { return _container ; }
 
       template<typename T>
-      const container_inserter &operator()(const T &item) const
+      const container_inserter &operator()(T &&item) const
       {
-         container().insert(container().end(), item) ;
+         container().insert(container().end(), std::forward<T>(item)) ;
          return *this ;
       }
 
