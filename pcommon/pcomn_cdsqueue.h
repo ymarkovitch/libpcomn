@@ -140,20 +140,23 @@ class concurrent_dynqueue :
 template<typename T, typename A>
 concurrent_dynqueue<T, A>::~concurrent_dynqueue()
 {
-   if (_head == &_dummy_node)
+   if (_tail == &_dummy_node)
    {
       NOXCHECK(_tail == _head) ;
       return ;
    }
+   node_type *node = _head->_next ;
+   auto &allocator = this->node_allocator() ;
+   if (_head != &_dummy_node)
+      node_allocator_traits::deallocate(allocator, _head, 1) ;
+   else
+      NOXCHECK(node) ;
 
-   for (;;)
+   for ( ; node ; node = _head)
    {
-      node_type *node = _head ;
-      _head = _head->_next ;
-      node_allocator_traits::deallocate(this->node_allocator(), node, 1) ;
-      if (!_head)
-         return ;
-      node_allocator_traits::destroy(this->node_allocator(), _head) ;
+      _head = node->_next ;
+      node_allocator_traits::destroy(allocator, node) ;
+      node_allocator_traits::deallocate(allocator, node, 1) ;
    }
 }
 

@@ -84,6 +84,18 @@ void ConcurrentDynQueueTests::Test_CdsQueue_SingleThread()
    CPPUNIT_LOG_EQ(q1.pop_default(), std::make_pair("", false)) ;
 
    CPPUNIT_LOG(std::endl) ;
+   {
+      strcdsq q2 ;
+      CPPUNIT_LOG_RUN(q2.push("Quux")) ;
+      CPPUNIT_LOG_RUN(q2.push_back("Bar")) ;
+      CPPUNIT_LOG_RUN(q2.emplace(16, '+')) ;
+   }
+
+   CPPUNIT_LOG(std::endl) ;
+   strcdsq q3 ;
+   CPPUNIT_LOG_RUN(q3.push("Quux")) ;
+   CPPUNIT_LOG_RUN(q3.push_back("Bar")) ;
+   CPPUNIT_LOG_RUN(q3.emplace(16, '+')) ;
 }
 
 /*******************************************************************************
