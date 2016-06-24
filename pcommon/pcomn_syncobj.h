@@ -65,27 +65,28 @@ namespace pcomn {
 /** Simple binary Dijkstra semaphore; nonrecursive mutex that allow both self-locking
  and unlocking by another thread (not only by the "owner" thread that acquired the lock).
 *******************************************************************************/
-class event_mutex {
-      PCOMN_NONCOPYABLE(event_mutex) ;
-      PCOMN_NONASSIGNABLE(event_mutex) ;
+/*
+class binary_semaphore {
+      PCOMN_NONCOPYABLE(binary_semaphore) ;
+      PCOMN_NONASSIGNABLE(binary_semaphore) ;
    public:
-      event_mutex() : _native_lock(), _acquired{} {}
+      binary_semaphore() = default ;
 
-      explicit event_mutex(bool acquire) : event_mutex()
+      explicit binary_semaphore(bool acquire) : binary_semaphore()
       {
          if (acquire)
             lock() ;
       }
 
-      ~event_mutex() { NOXCHECK(!_acquired) ; }
+      ~binary_semaphore() = default ;
 
       /// Acquire lock.
       /// If the lock is held by @em any thread (including itself), wait for it to be
       /// released.
       void lock()
       {
-         _native_lock.lock() ;
-         _acquired = true ;
+        if (_acquired.fetch_add(1, std::memory_order_acquire) > 0)
+           _native_lock.lock() ;
       }
 
       /// Try to acquire lock.
@@ -111,9 +112,10 @@ class event_mutex {
       }
 
    private:
-      NativeThreadLock _native_lock ;
-      std::atomic<int> _acquired ;
+      NativeThreadLock        _native_lock ;
+      std::atomic<intptr_t>   _acquired ;
 } ;
+*/
 
 /*******************************************************************************
  C++14 Standard Library has shared_mutex and shared_lock
@@ -137,7 +139,7 @@ class shared_mutex {
       bool try_lock_shared() { return _lock.try_lock_shared() ; }
       void unlock_shared() { _lock.unlock_shared() ; }
    private:
-      NativeRWMutex _lock ;
+      native_rw_mutex _lock ;
 } ;
 
 /******************************************************************************/

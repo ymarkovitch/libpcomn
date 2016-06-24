@@ -4,7 +4,7 @@
  COPYRIGHT    :   Yakov Markovitch, 2011-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
- DESCRIPTION  :   Unittests for NativeFileMutex
+ DESCRIPTION  :   Unittests for native_file_mutex
 
  PROGRAMMED BY:   Yakov Markovitch
  CREATION DATE:   14 Nov 2011
@@ -76,7 +76,7 @@ void NativeFileLockTests::Test_Exclusive_File_Lock()
                pcomn::binary_ofdstream stream (fd, true) ;
                msleep(500) ;
                CPPUNIT_LOG("CHILD: -------- Creating mutex" << std::endl) ;
-               pcomn::NativeFileMutex mutex (fd, false) ;
+               native_file_mutex mutex (fd, false) ;
 
                CPPUNIT_LOG_EQUAL(mutex.fd(), fd) ;
                CPPUNIT_LOG_IS_FALSE(mutex.owned()) ;
@@ -111,14 +111,14 @@ void NativeFileLockTests::Test_Exclusive_File_Lock()
          }
    } ;
 
-   CPPUNIT_LOG_EXCEPTION(pcomn::NativeFileMutex(-1, false), std::invalid_argument) ;
-   CPPUNIT_LOG_EXCEPTION(pcomn::NativeFileMutex(NULL), std::invalid_argument) ;
-   CPPUNIT_LOG_EXCEPTION(pcomn::NativeFileMutex("/tmppp/hello.world", O_RDONLY), pcomn::system_error) ;
+   CPPUNIT_LOG_EXCEPTION(native_file_mutex(-1, false), std::invalid_argument) ;
+   CPPUNIT_LOG_EXCEPTION(native_file_mutex(NULL), std::invalid_argument) ;
+   CPPUNIT_LOG_EXCEPTION(native_file_mutex("/tmppp/hello.world", O_RDONLY), pcomn::system_error) ;
 
    forkcmd writer_child ;
    local::run_child(*this, writer_child) ;
 
-   pcomn::NativeFileMutex mx (at_data_dir("seq100.lst"), O_APPEND|O_WRONLY|O_CREAT|O_EXCL) ;
+   native_file_mutex mx (at_data_dir("seq100.lst"), O_APPEND|O_WRONLY|O_CREAT|O_EXCL) ;
    CPPUNIT_LOG_ASSERT(mx.fd() >= 0) ;
    CPPUNIT_LOG_ASSERT(mx.owned()) ;
 
@@ -161,8 +161,8 @@ void NativeFileLockTests::Test_Exclusive_File_Lock()
 
 void NativeFileLockTests::Test_Shared_File_Lock()
 {
-   pcomn::NativeFileMutex mx_1 (at_data_dir("test.lock"), O_CREAT|O_WRONLY) ;
-   pcomn::NativeFileMutex mx_2 (at_data_dir("test.lock")) ;
+   native_file_mutex mx_1 (at_data_dir("test.lock"), O_CREAT|O_WRONLY) ;
+   native_file_mutex mx_2 (at_data_dir("test.lock")) ;
 
    CPPUNIT_LOG_ASSERT(mx_1.try_lock()) ;
    CPPUNIT_LOG_IS_FALSE(mx_2.try_lock()) ;
@@ -182,7 +182,7 @@ void NativeFileLockTests::Test_Shared_File_Lock()
       pcomn::binary_ofdstream stream (mx_1.fd(), false) ;
       generate_seqn<8>(stream, 0, 50) ;
    }
-   pcomn::NativeFileMutex mx_3 (mx_1, O_RDONLY) ;
+   native_file_mutex mx_3 (mx_1, O_RDONLY) ;
    pcomn::binary_ifdstream stream (mx_3.fd(), false) ;
    checked_read_seqn<8>(stream, 0, 50) ;
 

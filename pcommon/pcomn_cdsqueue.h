@@ -41,7 +41,7 @@ struct dynqueue_node : dynqueue_node_nextptr<T> {
 }
 
 /******************************************************************************/
-/** Lock-free dynamic-memory FIFO queue.
+/** Lock-free dynamic-memory list-based FIFO queue.
 
  @note Implemented as Michael&Scott queue. While Ladan-Mozes/Shavit queue
  is better due single CAS on both ends (M&S requires single CAS at pop, 2 CASes
@@ -78,6 +78,100 @@ class concurrent_dynqueue :
       /// destructed in exclusive mode, it is illegal to concurrently access the queue
       /// being destroyed.
       ~concurrent_dynqueue() ;
+
+      void push(const value_type &value)
+      {
+         emplace(value) ;
+      }
+      void push(value_type &&value)
+      {
+         emplace(std::move(value)) ;
+      }
+
+      template<typename... Args>
+      void emplace(Args &&...args)
+      {
+         push_node(make_node(std::forward<Args>(args)...)) ;
+      }
+
+      /// Alias for push() to allow for std::back_insert_iterator
+      void push_back(const value_type &value) { push(value) ; }
+      /// @overload
+      void push_back(value_type &&value) { push(std::move(value)) ; }
+
+      bool pop(value_type &result) ;
+
+      template<typename... Args>
+      std::pair<value_type, bool> pop_default(Args &&...defargs) ;
+
+      bool empty() const { return _head == _tail ; }
+
+   private:
+      detail::dynqueue_node_nextptr<T> _dummy_node = {nullptr} ;
+
+      node_type *_head = static_cast<node_type *>(&_dummy_node) ;
+      node_type *_tail = static_cast<node_type *>(&_dummy_node) ;
+
+   private:
+      // Allocate and construct a queue node
+      template<typename... Args>
+      node_type *make_node(Args &&... args)
+      {
+         node_allocator_type &allocator = this->node_allocator() ;
+         std::unique_ptr<node_type, node_dealloc> p {this->allocate_node(), node_dealloc(allocator)} ;
+
+         node_allocator_traits::construct(allocator, p.get(), std::forward<Args>(args)...) ;
+         return p.release() ;
+      }
+
+      void retire_node(node_type *node)
+      {
+         if (node != &_dummy_node)
+            ancestor::retire_node(node) ;
+      }
+
+      void push_node(node_type *new_node) noexcept ;
+      node_hazard_ptr pop_node() ;
+} ;
+
+/******************************************************************************/
+/** Lock-free dynamic-memory FIFO queue.
+
+ @note Implemented as Michael&Scott queue. While Ladan-Mozes/Shavit queue
+ is better due single CAS on both ends (M&S requires single CAS at pop, 2 CASes
+ at push), it needs a @em new (unique) dummy node every time the queue gots empty,
+ which @em is the case when average push attempts rate is lower than pop attempts rate.
+*******************************************************************************/
+template<typename T, typename Allocator = std::allocator<T>>
+class concurrent_dualqueue :
+         private concurrent_container<T, detail::dynqueue_node<T>, Allocator> {
+
+      PCOMN_NONCOPYABLE(concurrent_dualqueue) ;
+      PCOMN_NONASSIGNABLE(concurrent_dualqueue) ;
+
+      typedef concurrent_container<T, detail::dynqueue_node<T>, Allocator> ancestor ;
+
+      using typename ancestor::node_type ;
+      using typename ancestor::node_hazard_ptr ;
+
+      using typename ancestor::allocator_type ;
+      using typename ancestor::node_allocator_type ;
+      using typename ancestor::node_allocator_traits ;
+      using typename ancestor::value_allocator_type ;
+      using typename ancestor::node_dealloc ;
+
+   public:
+      typedef T value_type ;
+
+      concurrent_dualqueue() = default ;
+
+      /// The destructor pops and @em immediately destroys and deallocates all nodes
+      /// remaining in the queue.
+      ///
+      /// No hazard pointers and safe memory reclamation here: it is assumed a queue is
+      /// destructed in exclusive mode, it is illegal to concurrently access the queue
+      /// being destroyed.
+      ~concurrent_dualqueue() ;
 
       void push(const value_type &value)
       {

@@ -26,6 +26,7 @@
 #include <limits.h>
 
 namespace pcomn {
+namespace sys {
 
 /******************************************************************************/
 /** Simple binary Dijkstra semaphore; nonrecursive mutex that allow both self-locking
@@ -51,17 +52,15 @@ class NativeThreadLock final {
       SRWLOCK _lock ;
 } ;
 
-typedef NativeThreadLock NativeNonrecursiveMutex ;
-
 #define PCOMN_HAS_NATIVE_RWMUTEX 1
 /******************************************************************************/
 /** Read-write mutex on  POSIX Threads.
 *******************************************************************************/
-class NativeRWMutex {
-      PCOMN_NONCOPYABLE(NativeRWMutex) ;
-      PCOMN_NONASSIGNABLE(NativeRWMutex) ;
+class native_rw_mutex {
+      PCOMN_NONCOPYABLE(native_rw_mutex) ;
+      PCOMN_NONASSIGNABLE(native_rw_mutex) ;
    public:
-      constexpr NativeRWMutex() : _lock(SRWLOCK_INIT) {}
+      constexpr native_rw_mutex() : _lock(SRWLOCK_INIT) {}
 
       void lock() { AcquireSRWLockExclusive(&_lock) ; }
       bool try_lock() { return TryAcquireSRWLockExclusive(&_lock) ; }
@@ -86,25 +85,25 @@ class NativeRWMutex {
 /******************************************************************************/
 /** File lock; provides read-write mutex logic
 *******************************************************************************/
-class NativeFileMutex {
-      PCOMN_NONASSIGNABLE(NativeFileMutex) ;
+class native_file_mutex {
+      PCOMN_NONASSIGNABLE(native_file_mutex) ;
    public:
-      NativeFileMutex(int fd, bool owned) :
+      native_file_mutex(int fd, bool owned) :
          _fh(get_oshandle(fd)),
          _fd(owned ? fd : (fd | ((unsigned)INT_MAX + 1)))
       {
          _locksz = 0 ;
       }
 
-      explicit NativeFileMutex(const char *filename, int flags = O_CREAT|O_RDONLY, int mode = 0600) :
-         NativeFileMutex(openfile(PCOMN_ENSURE_ARG(filename), flags, mode), true)
+      explicit native_file_mutex(const char *filename, int flags = O_CREAT|O_RDONLY, int mode = 0600) :
+         native_file_mutex(openfile(PCOMN_ENSURE_ARG(filename), flags, mode), true)
       {}
 
-      explicit NativeFileMutex(const std::string &filename, int flags = O_CREAT|O_RDONLY, int mode = 0600) :
-         NativeFileMutex(filename.c_str(), flags, mode)
+      explicit native_file_mutex(const std::string &filename, int flags = O_CREAT|O_RDONLY, int mode = 0600) :
+         native_file_mutex(filename.c_str(), flags, mode)
       {}
 
-      ~NativeFileMutex()
+      ~native_file_mutex()
       {
          NOXVERIFY(!owned() || close(fd()) >= 0) ;
       }
@@ -177,11 +176,12 @@ class NativeFileMutex {
       static int openfile(const char *name, int flags, int mode)
       {
          const int d = ::open(name, flags, mode) ;
-         PCOMN_CHECK_POSIX(d, "NativeFileMutex cannot open '%s' for locking", name) ;
+         PCOMN_CHECK_POSIX(d, "native_file_mutex cannot open '%s' for locking", name) ;
          return d ;
       }
 } ;
 
+} // end of namespace pcomn::sys
 } // end of namespace pcomn
 
 #endif /* __PCOMN_NATIVE_SYNCOBJ_H */

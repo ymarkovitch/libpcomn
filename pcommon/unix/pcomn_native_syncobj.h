@@ -13,7 +13,8 @@
 #include <pcommon.h>
 #include <pcomn_assert.h>
 #include <pcomn_except.h>
-#include <pcomn_meta.h>
+#include <pcomn_atomic.h>
+
 #ifndef PCOMN_PL_UNIX
 #error This header supports only Unix.
 #endif
@@ -23,99 +24,74 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/file.h>
+
 #include <fcntl.h>
 #include <limits.h>
 #include <unistd.h>
 
-// This is very pthreads-implementation-specific, but we use it only for debugging anyway
-#if defined(__GLIBC__)
-// The lock should be unlocked
-#define __PCOMN_CHECK_UNCLOCKED(pthread_mutex) NOXCHECK(!(pthread_mutex).__data.__owner)
-#else
-#define __PCOMN_CHECK_UNCLOCKED(pthread_mutex)
+#ifde PCOMN_PL_LINUX
+// Futex support
+#include <sys/syscall.h>
+#include <sys/time.h>
 #endif
 
 namespace pcomn {
-
-class NativeBasicMutex {
-      PCOMN_NONCOPYABLE(NativeBasicMutex) ;
-      PCOMN_NONASSIGNABLE(NativeBasicMutex) ;
-   public:
-      void lock()
-      {
-         const int result = pthread_mutex_lock(&_lock) ;
-         NOXCHECK(!result) ;
-         PCOMN_ENSURE_ENOERR(result, "pthread_mutex_lock") ;
-      }
-
-      bool try_lock()
-      {
-         const int result = pthread_mutex_trylock(&_lock) ;
-         if (result == EBUSY)
-            return false ;
-         NOXCHECK(!result) ;
-         PCOMN_ENSURE_ENOERR(result, "pthread_mutex_trylock") ;
-         return true ;
-      }
-
-      bool unlock()
-      {
-         // Release should never _ever_ throw exceptions, it is very likely be called
-         // from destructors.
-         return pthread_mutex_unlock(&_lock) == 0 ;
-      }
-
-   protected:
-      pthread_mutex_t _lock ;
-
-      explicit NativeBasicMutex(const pthread_mutex_t &initializer) :
-         _lock(initializer)
-      {}
-
-      ~NativeBasicMutex()
-      {
-         #ifdef __PCOMN_DEBUG
-         const int mutex_destroy_errcode =
-         #endif
-            pthread_mutex_destroy(&_lock) ;
-
-         // Violating this check most likely means destroying a still locked mutex
-         NOXCHECK(mutex_destroy_errcode != EBUSY) ;
-         NOXCHECK(!mutex_destroy_errcode) ;
-      }
-} ;
+namespace sys {
 
 #ifdef PCOMN_PL_LINUX
+
+inline int futex(void *addr1, int32_t op, int32_t val1, struct timespec *timeout, void *addr2, int32_t val3)
+{
+  return syscall(SYS_futex, addr1, op, val1, timeout, addr2, val3) ;
+}
+
+inline int futex(int32_t *self, int32_t op, int32_t value)
+{
+  return futex(self, op, value, NULL, NULL, 0) ;
+}
+
+inline int futex(int32_t *self, int32_t op, int32_t value, int32_t val2)
+{
+  return futex(self, op, value, (struct timespec *)(intptr_t)val2, NULL, 0) ;
+}
+
+#define PCOMN_HAS_NATIVE_LATCH 1
 /******************************************************************************/
 /** Simple binary Dijkstra semaphore; nonrecursive mutex that allow both self-locking
  and unlocking by another thread (not only by the thread that had acquired the lock).
 *******************************************************************************/
-class NativeThreadLock : public NativeBasicMutex {
-      typedef NativeBasicMutex ancestor ;
-
-      static const pthread_mutex_t &initializer()
-      {
-         // Don't use PTHREAD_MUTEX_ERRORCHECK! We _need_ it to be able to lock itself and
-         // to be unlocked by nonowner.
-         static const pthread_mutex_t initializer_data = PTHREAD_MUTEX_INITIALIZER ;
-         return initializer_data ;
-      }
-
+class native_latch {
+      PCOMN_NONCOPYABLE(native_latch) ;
+      PCOMN_NONASSIGNABLE(native_latch) ;
    public:
-      NativeThreadLock() :
-         ancestor(initializer())
-      {}
+      explicit constexpr native_latch(bool snap_locked = false) : _futex(snap_locked) {}
+      ~native_latch() { unlock() ; }
 
-      ~NativeThreadLock()
+      void wait()
       {
-         // This lock _may_ be destroyed in the locked state.
-         // The code below is very Linux-pthreads specific, but this implementation of
-         // NativeThreadLock is Linux-specific anyway
-         NOXVERIFY(!_lock.__data.__lock || pthread_mutex_unlock(&_lock) == 0) ;
+         int32_t v = atomic_op::load(&_futex, std::memory_order_acq_rel) ;
+         if (v & 1)
+            while (_futex == v && futex(&_futex, FUTEX_WAIT_PRIVATE, v) == EINTR) ;
       }
-} ;
 
-typedef NativeThreadLock NativeNonrecursiveMutex ;
+      void lock()
+      {
+         using atomic_op ;
+         for (int32_t v = load(&_futex, std::memory_order_acq) ;
+              !(v & 1) && !cas(&_futex, v, v+1) ;) ;
+      }
+
+      void unlock()
+      {
+         using atomic_op ;
+         int32_t v = load(&_futex, std::memory_order_acq) ;
+         if ((v & 1) && cas(&_futex, v, v+1) ;)
+            futex(&_futex, FUTEX_WAKE_PRIVATE, INT_MAX) ;
+      }
+
+   private:
+      volatile int32_t _futex ; /* LSBit==0: open, LSBit==1: closed */
+} ;
 
 #else
 #error PCommon synchronization objects are currently supported only for Linux and Windows.
@@ -125,17 +101,13 @@ typedef NativeThreadLock NativeNonrecursiveMutex ;
 /******************************************************************************/
 /** Read-write mutex for POSIX Threads.
 *******************************************************************************/
-class NativeRWMutex {
-      PCOMN_NONCOPYABLE(NativeRWMutex) ;
-      PCOMN_NONASSIGNABLE(NativeRWMutex) ;
+class native_rw_mutex {
+      PCOMN_NONCOPYABLE(native_rw_mutex) ;
+      PCOMN_NONASSIGNABLE(native_rw_mutex) ;
    public:
-      NativeRWMutex()
-      {
-         static const pthread_rwlock_t initializer = PTHREAD_RWLOCK_INITIALIZER ;
-         _lock = initializer ;
-      }
+      constexpr native_rw_mutex() = default ;
 
-      ~NativeRWMutex()
+      ~native_rw_mutex()
       {
          const int destroy_errcode =
             pthread_rwlock_destroy(&_lock) ;
@@ -179,7 +151,7 @@ class NativeRWMutex {
       bool unlock_shared() { return release_lock() ; }
 
    private:
-      pthread_rwlock_t _lock ;
+      pthread_rwlock_t _lock = PTHREAD_RWLOCK_INITIALIZER ;
 
       bool release_lock()
       {
@@ -192,28 +164,28 @@ class NativeRWMutex {
 /******************************************************************************/
 /** File lock; provides read-write mutex logic
 *******************************************************************************/
-class NativeFileMutex {
-      PCOMN_NONASSIGNABLE(NativeFileMutex) ;
+class native_file_mutex {
+      PCOMN_NONASSIGNABLE(native_file_mutex) ;
    public:
-      explicit NativeFileMutex(const char *filename, int flags = O_CREAT|O_RDONLY, int mode = 0600) :
+      explicit native_file_mutex(const char *filename, int flags = O_CREAT|O_RDONLY, int mode = 0600) :
          _fd(openfile(PCOMN_ENSURE_ARG(filename), flags, mode))
       {}
 
-      explicit NativeFileMutex(const std::string &filename, int flags = O_CREAT|O_RDONLY, int mode = 0600) :
+      explicit native_file_mutex(const std::string &filename, int flags = O_CREAT|O_RDONLY, int mode = 0600) :
          _fd(openfile(filename.c_str(), flags, mode))
       {}
 
-      NativeFileMutex(int fd, bool owned) :
+      native_file_mutex(int fd, bool owned) :
          _fd(owned ? fd : (fd | ((unsigned)INT_MAX + 1)))
       {
          PCOMN_ASSERT_ARG(fd >= 0) ;
       }
 
-      NativeFileMutex(const NativeFileMutex &other, int flags) :
+      native_file_mutex(const native_file_mutex &other, int flags) :
          _fd(reopenfile(other.fd(), flags))
       {}
 
-      ~NativeFileMutex()
+      ~native_file_mutex()
       {
          NOXVERIFY(!owned() || close(fd()) >= 0) ;
       }
@@ -253,17 +225,18 @@ class NativeFileMutex {
       static int openfile(const char *name, int flags, int mode)
       {
          const int d = ::open(name, flags, mode) ;
-         PCOMN_CHECK_POSIX(d, "NativeFileMutex cannot open '%s' for locking", name) ;
+         PCOMN_CHECK_POSIX(d, "native_file_mutex cannot open '%s' for locking", name) ;
          return d ;
       }
       static int reopenfile(int fd, int flags)
       {
          char name[64] ;
          snprintf(name, sizeof name, "/proc/self/fd/%d", fd) ;
-         return PCOMN_ENSURE_POSIX(open(name, flags), "NativeFileMutex::reopenfile") ;
+         return PCOMN_ENSURE_POSIX(open(name, flags), "native_file_mutex::reopenfile") ;
       }
 } ;
 
+} // end of namespace pcomn::sys
 } // end of namespace pcomn
 
 #endif /* __PCOMN_NATIVE_SYNCOBJ_H */
