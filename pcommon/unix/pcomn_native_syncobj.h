@@ -10,6 +10,12 @@
  PROGRAMMED BY:   Yakov Markovitch
  CREATION DATE:   16 Feb 2008
 *******************************************************************************/
+/** @file
+ Define native synchronization objects, like read-write mutex, etc., for Unix.
+
+  @li PCOMN_HAS_NATIVE_PROMISE
+  @li PCOMN_HAS_NATIVE_RWMUTEX
+*******************************************************************************/
 #include <pcommon.h>
 #include <pcomn_assert.h>
 #include <pcomn_except.h>
@@ -29,7 +35,7 @@
 #include <limits.h>
 #include <unistd.h>
 
-#ifde PCOMN_PL_LINUX
+#ifdef PCOMN_PL_LINUX
 // Futex support
 #include <sys/syscall.h>
 #include <sys/time.h>
@@ -55,47 +61,52 @@ inline int futex(int32_t *self, int32_t op, int32_t value, int32_t val2)
   return futex(self, op, value, (struct timespec *)(intptr_t)val2, NULL, 0) ;
 }
 
-#define PCOMN_HAS_NATIVE_LATCH 1
+#define PCOMN_HAS_NATIVE_PROMISE 1
 /******************************************************************************/
-/** Simple binary Dijkstra semaphore; nonrecursive mutex that allow both self-locking
- and unlocking by another thread (not only by the thread that had acquired the lock).
+/** Promise lock is a binary semaphore with only possible state change from locked
+ to unlocked.
+
+ The promise lock is constructed either in locked (default) or unlocked state and
+ has two members: wait() and unlock().
+
+ If promise lock is in locked state, all wait() callers are blocked until the it is
+ switched to unlocked state; in unlocked state, wait() is no-op.
+
+ unlock() is idempotent and can be called arbitrary number of times (i.e., the invariant
+ is "after calling unlock() the lock is in unlocked state no matter what state it's been
+ before in").
+
+ @note The promise lock is @em not mutex in the sense there is no "ownership" of
+ the lock: @em any thread may call unlock().
 *******************************************************************************/
-class native_latch {
-      PCOMN_NONCOPYABLE(native_latch) ;
-      PCOMN_NONASSIGNABLE(native_latch) ;
+class native_promise_lock {
+      PCOMN_NONCOPYABLE(native_promise_lock) ;
+      PCOMN_NONASSIGNABLE(native_promise_lock) ;
    public:
-      explicit constexpr native_latch(bool snap_locked = false) : _futex(snap_locked) {}
-      ~native_latch() { unlock() ; }
+      explicit constexpr native_promise_lock(bool initially_locked = true) :
+         _locked(initially_locked)
+      {}
+
+      ~native_promise_lock() { unlock() ; }
 
       void wait()
       {
-         int32_t v = atomic_op::load(&_futex, std::memory_order_acq_rel) ;
-         if (v & 1)
-            while (_futex == v && futex(&_futex, FUTEX_WAIT_PRIVATE, v) == EINTR) ;
-      }
-
-      void lock()
-      {
-         using atomic_op ;
-         for (int32_t v = load(&_futex, std::memory_order_acq) ;
-              !(v & 1) && !cas(&_futex, v, v+1) ;) ;
+         while (atomic_op::load(&_locked, std::memory_order_acq_rel)
+                && futex(&_locked, FUTEX_WAIT_PRIVATE, 1) == EINTR) ;
       }
 
       void unlock()
       {
          using atomic_op ;
-         int32_t v = load(&_futex, std::memory_order_acq) ;
-         if ((v & 1) && cas(&_futex, v, v+1) ;)
+         if (load(&_locked, std::memory_order_acq) && cas(&_locked, 1, 0, std::memory_order_release))
             futex(&_futex, FUTEX_WAKE_PRIVATE, INT_MAX) ;
       }
 
    private:
-      volatile int32_t _futex ; /* LSBit==0: open, LSBit==1: closed */
+      int32_t _locked ;
 } ;
 
-#else
-#error PCommon synchronization objects are currently supported only for Linux and Windows.
-#endif
+#endif // PCOMN_PL_LINUX
 
 #define PCOMN_HAS_NATIVE_RWMUTEX 1
 /******************************************************************************/
