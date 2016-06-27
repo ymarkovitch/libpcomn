@@ -90,7 +90,6 @@
 #include <pcomn_platform.h>
 #include <pcomn_binstream.h>
 #include <pcomn_syncobj.h>
-#include <pcomn_synccomplex.h>
 #include <pcomn_diag.h>
 #include <pcomn_buffer.h>
 #include <pcomn_flgout.h>

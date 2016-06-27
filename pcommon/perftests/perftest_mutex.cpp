@@ -10,7 +10,6 @@
  CREATION DATE:   7 Jan 2009
 *******************************************************************************/
 #include <pcomn_syncobj.h>
-#include <pcomn_synccomplex.h>
 #include <pcomn_stopwatch.h>
 
 #include <stdio.h>

@@ -61,62 +61,6 @@
 
 namespace pcomn {
 
-/******************************************************************************/
-/** Simple binary Dijkstra semaphore; nonrecursive mutex that allow both self-locking
- and unlocking by another thread (not only by the "owner" thread that acquired the lock).
-*******************************************************************************/
-/*
-class binary_semaphore {
-      PCOMN_NONCOPYABLE(binary_semaphore) ;
-      PCOMN_NONASSIGNABLE(binary_semaphore) ;
-   public:
-      binary_semaphore() = default ;
-
-      explicit binary_semaphore(bool acquire) : binary_semaphore()
-      {
-         if (acquire)
-            lock() ;
-      }
-
-      ~binary_semaphore() = default ;
-
-      /// Acquire lock.
-      /// If the lock is held by @em any thread (including itself), wait for it to be
-      /// released.
-      void lock()
-      {
-        if (_acquired.fetch_add(1, std::memory_order_acquire) > 0)
-           _native_lock.lock() ;
-      }
-
-      /// Try to acquire lock.
-      /// This call never blocks.
-      /// @return true, if this thread has successfully acquired the lock; false, if the
-      /// lock is already held by any thread, including itself.
-      bool try_lock()
-      {
-         if (!_acquired && _native_lock.try_lock())
-         {
-            _acquired = true ;
-            return true ;
-         }
-         return false ;
-      }
-
-      /// Release the lock.
-      void unlock()
-      {
-         NOXCHECK(_acquired) ;
-         _native_lock.unlock()  ;
-         _acquired = false ;
-      }
-
-   private:
-      NativeThreadLock        _native_lock ;
-      std::atomic<intptr_t>   _acquired ;
-} ;
-*/
-
 /*******************************************************************************
  C++14 Standard Library has shared_mutex and shared_lock
 *******************************************************************************/
@@ -139,7 +83,7 @@ class shared_mutex {
       bool try_lock_shared() { return _lock.try_lock_shared() ; }
       void unlock_shared() { _lock.unlock_shared() ; }
    private:
-      native_rw_mutex _lock ;
+      sys::native_rw_mutex _lock ;
 } ;
 
 /******************************************************************************/
@@ -247,6 +191,69 @@ class shared_lock {
 typedef std::shared_timed_mutex shared_mutex ;
 using std::shared_lock ;
 #endif // PCOMN_HAS_SHARED_MUTEX
+
+/******************************************************************************/
+/** Identifier dispenser: requests range of integral numbers, then (atomically)
+ allocates successive numbers from the range upon request.
+
+ @param AtomicInt       Atomic integer type
+ @param RangeProvider   Callable type; if r is RangeProvider then calling r without
+ arguments must be valid and its result must be convertible to
+ @p std::pair<AtomicInt,AtomicInt> (i.e. @p (std::pair<AtomicInt,AtomicInt>)r() must be
+ a valid expression)
+
+ @note range.second designates the "past-the-end" point in the range, the same way as
+ STL containers/algorithms do, so for a nonempty range @p range.first<range.second
+ RangeProvider @em must return @em only nonemty ranges. The starting point of a new range
+ must @em follow the end of the previous range (not necessary immediately, gaps are
+ allowed).
+*******************************************************************************/
+template<typename AtomicInt, typename RangeProvider>
+class ident_dispenser {
+      PCOMN_STATIC_CHECK(is_atomic<AtomicInt>::value) ;
+   public:
+      typedef AtomicInt type ;
+
+      ident_dispenser(const RangeProvider &provider, type incval = 1) :
+         _increment(PCOMN_ENSURE_ARG(incval)),
+         _next_id(0),
+         _range(0, 0),
+         _provider(provider)
+      {}
+
+      type increment() const { return _increment ; }
+
+      /// Atomically allocate new ID.
+      type allocate_id()
+      {
+         type id ;
+         do if ((id = _next_id) < _range.first || id >= _range.second)
+            {
+               PCOMN_SCOPE_LOCK(range_guard, _rangelock) ;
+
+               if ((id = _next_id) < _range.first || id >= _range.second)
+               {
+                  const std::pair<type, type> newrange = _provider() ;
+                  PCOMN_VERIFY(newrange.first >= _range.second && newrange.second > newrange.first) ;
+                  _next_id = newrange.first ;
+                  // Issue a memory barrier
+                  atomic_op::load(&_next_id, std::memory_order_acq_rel) ;
+
+                  _range = newrange ;
+               }
+            }
+         while (!atomic_op::cas(&_next_id, id, id + _increment)) ;
+
+         return id ;
+      }
+
+   private:
+      std::mutex              _rangelock ;
+      const type              _increment ;
+      type                    _next_id ;
+      std::pair<type, type>   _range ;
+      RangeProvider           _provider ;
+} ;
 
 } // end of namespace pcomn
 

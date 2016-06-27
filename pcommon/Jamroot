@@ -82,7 +82,6 @@ alias user32 : : <os>LINUX ;
 alias pcommon-unix-sources :
   pcomn_crypthash.cpp
   pcomn_shutil.cpp
-  pcomn_scheduler.cpp
   pcomn_posix_exec.cpp
 
   : <toolset>gcc
@@ -133,7 +132,6 @@ lib pcommon :
   pcomn_sys.cpp
   pcomn_textio.cpp
   pcomn_thread.cpp
-  pcomn_threadpool.cpp
   pcomn_uri.cpp
   pcomn_uuid.cpp
 

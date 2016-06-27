@@ -37,6 +37,7 @@
 
 #ifdef PCOMN_PL_LINUX
 // Futex support
+#include <linux/futex.h>
 #include <sys/syscall.h>
 #include <sys/time.h>
 #endif
@@ -97,9 +98,10 @@ class native_promise_lock {
 
       void unlock()
       {
-         using atomic_op ;
-         if (load(&_locked, std::memory_order_acq) && cas(&_locked, 1, 0, std::memory_order_release))
-            futex(&_futex, FUTEX_WAKE_PRIVATE, INT_MAX) ;
+         if (atomic_op::load(&_locked, std::memory_order_acquire) &&
+             atomic_op::cas(&_locked, 1, 0, std::memory_order_release))
+
+            futex(&_locked, FUTEX_WAKE_PRIVATE, INT_MAX) ;
       }
 
    private:

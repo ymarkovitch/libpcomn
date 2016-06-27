@@ -9,7 +9,7 @@
  CREATION DATE:   13 Nov 2008
 *******************************************************************************/
 #include <pcomn_except.h>
-#include <pcomn_synccomplex.h>
+#include <pcomn_syncobj.h>
 #include <pcomn_stopwatch.h>
 #include <pcomn_meta.h>
 #include <pcomn_thread.h>

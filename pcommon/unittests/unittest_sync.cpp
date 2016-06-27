@@ -11,7 +11,6 @@
 *******************************************************************************/
 #include <pcomn_unittest.h>
 #include <pcomn_syncobj.h>
-#include <pcomn_synccomplex.h>
 
 #include <stdlib.h>
 
@@ -35,21 +34,13 @@ class MutexTests : public CppUnit::TestFixture {
 
 void MutexTests::Test_Scoped_Lock()
 {
-   pcomn::event_mutex nrmutex ;
    std::recursive_mutex rmutex ;
 
-   CPPUNIT_LOG_ASSERT(nrmutex.try_lock()) ;
-   CPPUNIT_LOG_RUN(nrmutex.unlock()) ;
    CPPUNIT_LOG_ASSERT(rmutex.try_lock()) ;
    CPPUNIT_LOG_RUN(rmutex.unlock()) ;
    {
-      PCOMN_SCOPE_LOCK(guard1, nrmutex) ;
       PCOMN_SCOPE_LOCK(guard2, rmutex) ;
-
-      CPPUNIT_LOG_IS_FALSE(nrmutex.try_lock()) ;
    }
-   CPPUNIT_LOG_ASSERT(nrmutex.try_lock()) ;
-   CPPUNIT_LOG_RUN(nrmutex.unlock()) ;
 }
 
 void MutexTests::Test_Scoped_ReadWriteLock()

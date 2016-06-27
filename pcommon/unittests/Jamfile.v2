@@ -61,7 +61,6 @@ if ! [ adhoc-targets ]
   unittest unittest_integer ;
   unittest unittest_iostream ;
   unittest unittest_iterator ;
-  #unittest unittest_keyedmutex ;
   unittest unittest_mmap ;
   unittest unittest_rawstream ;
   unittest unittest_regex ;
@@ -79,6 +78,7 @@ if ! [ adhoc-targets ]
   compile unittest_hazardptr.cpp ;
   #unittest unittest_hazardptr ;
   unittest unittest_cdsqueue.cpp ;
+  unittest unittest_synccomplex ;
 
   if [ os.name ] != NT
   {
@@ -86,8 +86,6 @@ if ! [ adhoc-targets ]
     unittest unittest_exec ;
 
     unittest unittest_filesys ;
-    unittest unittest_synccomplex ;
-    unittest unittest_mxmutex ;
   }
   #if [ os.name ] = LINUX
   #{

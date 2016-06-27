@@ -4,13 +4,14 @@
  COPYRIGHT    :   Yakov Markovitch, 2009-2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
- DESCRIPTION  :   Unittests for the keyed mutex.
+ DESCRIPTION  :   Unittests for the some obscure synchronization objects:
+                  identifier dispenser, keyed mutex, etc..
 
  PROGRAMMED BY:   Yakov Markovitch
  CREATION DATE:   22 Feb 2009
 *******************************************************************************/
 #include <pcomn_unittest.h>
-#include <pcomn_synccomplex.h>
+#include <pcomn_syncobj.h>
 #include <pcomn_thread.h>
 #include <pcomn_stopwatch.h>
 
@@ -89,7 +90,7 @@ class IdDispenserThread : public pcomn::BasicThread {
       typedef pcomn::BasicThread ancestor ;
    public:
       typedef std::vector<AtomicInt> result_type ;
-      typedef pcomn::PTIdentDispenser<AtomicInt, RangeProvider> dispenser_type ;
+      typedef pcomn::ident_dispenser<AtomicInt, RangeProvider> dispenser_type ;
 
       IdDispenserThread(result_type &result, dispenser_type &dispenser, unsigned count) :
          _result(result),
@@ -123,7 +124,7 @@ void IdentDispenserTests::Test_IdentDispenser_SingleThread()
 {
    typedef std::vector<AtomicInt> result_type ;
 
-   pcomn::PTIdentDispenser<AtomicInt, TestRangeProvider<int> >
+   pcomn::ident_dispenser<AtomicInt, TestRangeProvider<int> >
       Dispenser (TestRangeProvider<int>(0, 1111)) ;
 
    result_type Result (1000) ;
@@ -140,7 +141,7 @@ void IdentDispenserTests::Test_IdentDispenser_MultiThread()
 {
    typedef IdDispenserThread<AtomicInt, TestRangeProvider<int> > TestThread ;
 
-   pcomn::PTIdentDispenser<AtomicInt, TestRangeProvider<int> >
+   pcomn::ident_dispenser<AtomicInt, TestRangeProvider<int> >
       Dispenser (TestRangeProvider<int>(0, 509)) ;
 
    const size_t setsize = 32 ;
