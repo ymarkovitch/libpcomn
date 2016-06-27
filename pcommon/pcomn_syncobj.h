@@ -192,6 +192,56 @@ typedef std::shared_timed_mutex shared_mutex ;
 using std::shared_lock ;
 #endif // PCOMN_HAS_SHARED_MUTEX
 
+#if PCOMN_HAS_NATIVE_PROMISE
+/******************************************************************************/
+/** Promise lock is a binary semaphore with only possible state change from locked
+ to unlocked.
+
+ The promise lock is constructed either in locked (default) or unlocked state and
+ has two members: wait() and unlock().
+
+ If promise lock is in locked state, all wait() callers are blocked until the it is
+ switched to unlocked state; in unlocked state, wait() is no-op.
+
+ unlock() is idempotent and can be called arbitrary number of times (i.e., the invariant
+ is "after calling unlock() the lock is in unlocked state no matter what state it's been
+ before in").
+
+ @note The promise lock is @em not mutex in the sense there is no "ownership" of
+ the lock: @em any thread may call unlock().
+*******************************************************************************/
+class promise_lock : private sys::native_promise_lock {
+      typedef sys::native_promise_lock ancestor ;
+      PCOMN_NONCOPYABLE(promise_lock) ;
+      PCOMN_NONASSIGNABLE(promise_lock) ;
+   public:
+      explicit constexpr promise_lock(bool initially_locked = true) :
+         ancestor(initially_locked)
+      {}
+
+      ~promise_lock() = default ;
+
+      using ancestor::wait ;
+      using ancestor::unlock ;
+} ;
+
+#else // No native_promise_lock, fallback to standard (inefficient)
+class promise_lock : private std::mutex {
+      typedef std::mutex ancestor ;
+      PCOMN_NONCOPYABLE(promise_lock) ;
+      PCOMN_NONASSIGNABLE(promise_lock) ;
+   public:
+      explicit constexpr promise_lock(bool initially_locked = true) :
+         _locked(initially_locked)
+      {}
+
+      ~promise_lock() = default ;
+
+   private:
+      std::cond
+} ;
+#endif // PCOMN_HAS_NATIVE_PROMISE
+
 /******************************************************************************/
 /** Identifier dispenser: requests range of integral numbers, then (atomically)
  allocates successive numbers from the range upon request.

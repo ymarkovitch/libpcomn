@@ -45,6 +45,14 @@
 namespace pcomn {
 namespace sys {
 
+#ifdef PCOMN_PL_X86
+/// Emit pause instruction to prevent excess processor bus usage.
+/// For busy wait loops.
+inline void pause_cpu() { asm volatile("pause\n": : :"memory") ; }
+#else
+inline void pause_cpu() {}
+#endif
+
 #ifdef PCOMN_PL_LINUX
 
 inline int futex(void *addr1, int32_t op, int32_t val1, struct timespec *timeout, void *addr2, int32_t val3)
@@ -106,6 +114,78 @@ class native_promise_lock {
 
    private:
       int32_t _locked ;
+} ;
+
+#define PCOMN_HAS_NATIVE_BENAFORE 1
+/******************************************************************************/
+/** Classic binary Dijkstra semaphore; nonrecursive lock that allow both self-locking
+ and unlocking by any thread (not only by the "owner" thread that acquired the lock).
+*******************************************************************************/
+class binary_semaphore {
+      PCOMN_NONCOPYABLE(binary_semaphore) ;
+      PCOMN_NONASSIGNABLE(binary_semaphore) ;
+      static constexpr const int32_t ST_UNLOCKED = 0 ;
+      static constexpr const int32_t ST_LOCKED   = 1 ;
+      static constexpr const int32_t ST_LOCKWAIT = 2 ;
+   public:
+      constexpr binary_semaphore() :
+         _state(ST_UNLOCKED)
+      {}
+      explicit constexpr binary_semaphore(bool acquire) :
+         _state(!!acquire)
+      {}
+
+      ~binary_semaphore() { NOXCHECK(_state != ST_LOCKWAIT) ; }
+
+      /// Acquire lock.
+      /// If the lock is held by @em any thread (including itself), wait for it to be
+      /// released.
+      void lock()
+      {
+         int32_t expected = ST_UNLOCKED ;
+         // Attempt to swap ST_UNLOCKED -> ST_LOCKED; on success, we are the first
+         if (atomic_op::cas(&_state, &expected, ST_LOCKED, std::memory_order_acquire))
+            // Locked, no contention; here _state is always ST_LOCKED
+            return ;
+
+         // Contended
+         int32_t contended = atomic_op::xchg(&_state, ST_LOCKWAIT, std::memory_order_acquire) ;
+
+         while (contended)
+         {
+            // Wait in the kernel (possibly)
+            futex(&_state, FUTEX_WAIT_PRIVATE, ST_LOCKWAIT) ;
+            contended = atomic_op::xchg(&_state, ST_LOCKWAIT, std::memory_order_acquire) ;
+         }
+         // Locked, there is contention; here _state is always ST_LOCKWAIT
+      }
+
+      /// Try to acquire the lock.
+      /// This call never blocks and never takes a kernel call.
+      /// @return true, if this thread has successfully acquired the lock; false, if the
+      /// lock is already held by any thread, including itself.
+      bool try_lock()
+      {
+         return atomic_op::cas(&_state, ST_UNLOCKED, ST_LOCKED) ;
+      }
+
+      /// Release the lock.
+      void unlock()
+      {
+         switch (atomic_op::xchg(&_state, ST_UNLOCKED, std::memory_order_release))
+         {
+            case ST_UNLOCKED: // Let unlock be idempotent...
+            case ST_LOCKED:   // There was no contention, no need to wake up threads in the kernel.
+               return ;
+         }
+
+         // Someone probably still waits inside the kernel, it was ST_LOCKWAIT.
+         // Wake up one thread.
+         futex(&_state, FUTEX_WAKE_PRIVATE, 1) ;
+      }
+
+   private:
+      int32_t _state ;
 } ;
 
 #endif // PCOMN_PL_LINUX
