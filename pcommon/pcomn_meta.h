@@ -28,6 +28,7 @@
 #include <limits>
 #include <utility>
 #include <stdlib.h>
+#include <stddef.h>
 #include <type_traits>
 
 /*******************************************************************************
@@ -75,7 +76,7 @@ using result_of_t = typename result_of<T>::type ;
 template<typename T>
 using underlying_type_t = typename underlying_type<T>::type ;
 
-template<size_t sz, size_t align>
+template<size_t sz, size_t align = alignof(max_align_t)>
 using aligned_storage_t = typename aligned_storage<sz, align>::type ;
 
 template<typename T>

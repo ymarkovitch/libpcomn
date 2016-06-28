@@ -202,14 +202,6 @@ inline bool exists(InputIterator begin, InputIterator end, const T &value)
    return false ;
 }
 
-template<class T>
-inline T *destroy(T *ptr)
-{
-   if (ptr)
-      ptr->~T() ;
-   return ptr ;
-}
-
 template<typename InputIterator>
 inline InputIterator destroy_range(InputIterator begin, InputIterator end)
 {

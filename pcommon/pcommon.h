@@ -524,6 +524,16 @@ struct malloc_delete {
       void operator()(const void *ptr) const noexcept { ::free(const_cast<void *>(ptr)) ; }
 } ;
 
+/******************************************************************************/
+/** Directly call the destructor of the object pointed to by @a ptr.
+*******************************************************************************/
+template<class T>
+inline T *destroy(T *ptr)
+{
+   if (ptr)
+      ptr->~T() ;
+   return ptr ;
+}
 } // end of namespace pcomn
 
 /******************************************************************************/
