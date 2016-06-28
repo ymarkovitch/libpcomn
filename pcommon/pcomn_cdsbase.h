@@ -101,6 +101,33 @@ class concurrent_container : private Allocator::template rebind<Node>::other {
          // pointed to it.
          hazards().mark_for_cleanup(node, node_dealloc(node_allocator())) ;
       }
+
+      /// Allocate and construct a node.
+      template<typename... Args>
+      node_type *make_node(Args &&... args)
+      {
+         node_allocator_type &allocator = node_allocator() ;
+         std::unique_ptr<node_type, node_dealloc> p {allocate_node(), node_dealloc(allocator)} ;
+
+         node_allocator_traits::construct(allocator, p.get(), std::forward<Args>(args)...) ;
+         return p.release() ;
+      }
+} ;
+
+/******************************************************************************/
+/** The base class of singly-linked list node for various kinds of lockless containers.
+*******************************************************************************/
+template<typename N>
+struct cdsnode_nextptr {
+      PCOMN_NONCOPYABLE(cdsnode_nextptr) ;
+      PCOMN_NONASSIGNABLE(cdsnode_nextptr) ;
+
+      typedef N node_type ;
+      typedef cdsnode_nextptr nextptr_type ;
+
+      constexpr cdsnode_nextptr(node_type *next = nullptr) : _next(next) {}
+
+      node_type *_next ;
 } ;
 
 } // end of namespace pcomn
