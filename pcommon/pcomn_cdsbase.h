@@ -52,17 +52,41 @@ class concurrent_container : private Allocator::template rebind<Node>::other {
       typedef Node      node_type ;
 
       typedef typename allocator_type::template rebind<node_type>::other   node_allocator_type ;
-      typedef typename allocator_type::template rebind<value_type>::other  value_allocator_type ;
       typedef std::allocator_traits<node_allocator_type>                   node_allocator_traits ;
 
       typedef hazard_ptr<node_type> node_hazard_ptr ;
 
-      struct node_dealloc : private std::reference_wrapper<node_allocator_type> {
-            constexpr node_dealloc(node_allocator_type &a) :
-               std::reference_wrapper<node_allocator_type>(a)
-            {}
+      static void delete_node(node_allocator_type &a, node_type *node)
+      {
+         if (node)
+         {
+            node_allocator_traits::destroy(a, node) ;
+            node_allocator_traits::deallocate(a, node, 1) ;
+         }
+      }
 
-            void operator()(node_type *node) const { this->get().deallocate(node, 1) ; }
+      void delete_node(node_type *node)
+      {
+         if (node)
+            delete_node(node_allocator(), node) ;
+      }
+      void destroy_node(node_type *node)
+      {
+         node_allocator_traits::destroy(node_allocator(), node) ;
+      }
+
+      struct node_dealloc : private std::reference_wrapper<node_allocator_type> {
+            using std::reference_wrapper<node_allocator_type>::reference_wrapper ;
+
+            void operator()(node_type *node) const
+            {
+               node_allocator_traits::deallocate(this->get(), node, 1) ;
+            }
+      } ;
+      struct node_deleter : private std::reference_wrapper<node_allocator_type> {
+            using std::reference_wrapper<node_allocator_type>::reference_wrapper ;
+
+            void operator()(node_type *node) const { delete_node(this->get(), node) ; }
       } ;
 
       concurrent_container() = default ;

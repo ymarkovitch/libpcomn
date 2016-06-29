@@ -48,7 +48,7 @@ struct dualq_node : cdsnode_nextptr<dualq_node<T>> {
       std::aligned_storage_t<sizeof(T), alignof(T)> _valstor ;
 
    public:
-      /// Create unfulllfilled request.
+      /// Create unfulfilled request.
       constexpr dualq_node() : _reqlock(true) {}
 
       /// Create normal node with initialized value.
@@ -60,8 +60,11 @@ struct dualq_node : cdsnode_nextptr<dualq_node<T>> {
 
       ~dualq_node()
       {
-         if (xchange(_value, nullptr) == value_storage())
+         if (_value == value_storage())
+         {
+            _value = nullptr ;
             destroy(value_storage()) ;
+         }
       }
 
       T *value_storage() { return static_cast<T *>(static_cast<void *>(&_valstor)) ; }
@@ -74,13 +77,13 @@ struct dualq_node : cdsnode_nextptr<dualq_node<T>> {
          return static_cast<dualq_node *>(padd(value, -offsetof(dualq_node, _valstor))) ;
       }
 
-      bool fulfill_request(dualq_node *realizer, std::memory_order order)
+      bool fulfill_request(dualq_node *realizer)
       {
          NOXCHECK(is_request_node()) ;
          NOXCHECK(realizer) ;
          NOXCHECK(!realizer->is_request_node()) ;
 
-         return atomic_op::cas(&_value, nullptr, realizer->_value, order) ;
+         return atomic_op::cas(&_value, (dualq_node *)nullptr, realizer->_value) ;
       }
 } ;
 }
@@ -95,6 +98,7 @@ class cdsqueue_base : public concurrent_container<T, N, Alloc> {
       using typename ancestor::value_type ;
       using typename ancestor::node_type ;
       using typename ancestor::node_allocator_traits ;
+      using typename ancestor::node_hazard_ptr ;
 
       bool empty() const
       {
@@ -144,6 +148,56 @@ class cdsqueue_base : public concurrent_container<T, N, Alloc> {
       {
          if (node != &_dummy_node)
             ancestor::retire_node(node) ;
+      }
+
+      /// Get the tail; if tail is falling behind, i.e. the queue is in the middle of
+      /// enqueuing of a node by someone else, help to wag the tail and return NULL.
+      node_hazard_ptr get_consistent_tail()
+      {
+         for (;;)
+         {
+            node_hazard_ptr tail (&this->_tail) ;
+
+            // When a tail is still the tail and the queue is not in the middle of enqueuing of
+            // a node by someone else, tail->_next shall be NULL.
+            if (const node_hazard_ptr tail_next {tail->_next})
+               // Tail is not pointing to the last node, help someone else who is now
+               // in the middle of enqueuing to swing the tail.
+               atomic_op::cas(&this->_tail, tail.get(), tail_next.get(), std::memory_order_release) ;
+            else
+               return std::move(tail) ;
+         }
+      }
+
+      bool enqueue_node(node_type *old_tail, node_type *new_node)
+      {
+         // Attempt to link the new node at the end of the list.
+         if (!old_tail || !atomic_op::cas(&old_tail->_next, (node_type *)nullptr, new_node, std::memory_order_release))
+            return false ;
+
+         // Enqueue is done (visible), try to swing the tail to the appended node.
+         // We can safely ignore the result of this CAS: if successful - we've swung the tail,
+         // if not - some other thread has already helped us.
+         atomic_op::cas(&this->_tail, old_tail, new_node, std::memory_order_relaxed) ;
+         return true ;
+      }
+
+      bool atomic_pop_head(node_type *head, std::memory_order order = std::memory_order_release)
+      {
+         return atomic_op::cas(&this->_head, head, head->_next, std::memory_order_release) ;
+      }
+
+      bool retire_head(node_hazard_ptr &head, std::memory_order order = std::memory_order_release)
+      {
+         node_type * const current_head = head.get() ;
+
+         if (atomic_pop_head(current_head, order))
+         {
+            head.reset() ;
+            retire_node(current_head) ;
+            return true ;
+         }
+         return false ;
       }
 
    private:
@@ -253,6 +307,11 @@ class concurrent_dualqueue : cdsqueue_base<T, detail::dualq_node<T>, A, concurre
 
       using ancestor::make_node ;
       using ancestor::retire_node ;
+
+      bool is_request_node(node_type *node) const
+      {
+         return node != &this->_dummy_node && node->is_request_node() ;
+      }
 } ;
 
 /*******************************************************************************
@@ -287,14 +346,15 @@ cdsqueue_base<T, N, A, Q>::~cdsqueue_base()
 template<typename T, typename A>
 bool concurrent_dynqueue<T, A>::pop(value_type &result)
 {
-   node_hazard_ptr popped_head = pop_node() ;
-   if (!popped_head)
+   const node_hazard_ptr popped_head = pop_node() ;
+   node_type * const popped_node = popped_head.get() ;
+   if (!popped_node)
       return false ;
 
-   result = std::move(popped_head->_value) ;
+   result = std::move(popped_node->_value) ;
    // Call the destructor but do _not_ retire/deallocate:
    // this node (maybe) becomes a dummy node.
-   node_allocator_traits::destroy(this->node_allocator(), popped_head.get()) ;
+   this->destroy_node(popped_node) ;
 
    return true ;
 }
@@ -323,70 +383,162 @@ void concurrent_dynqueue<T, A>::push_node(node_type *new_node) noexcept
    NOXCHECK(!new_node->_next) ;
 
    // Hold the pushed node safe until enqueue is finished
-   const node_hazard_ptr node (new_node) ;
-   node_type *old_tail ;
-
+   const node_hazard_ptr node_guard (new_node) ;
    // Keep trying until successful enqueue
-   for(;;)
-   {
-      const node_hazard_ptr tail (&this->_tail) ;
-      old_tail = tail.get() ;
-
-      // When a tail is still the tail and the queue is not in the middle of enqueuing of
-      // a node by someone else, tail->_next shall be NULL.
-      if (const node_hazard_ptr tail_next {tail->_next})
-      {
-         // Tail is not pointing to the last node, help someone else who is now
-         // in the middle of enqueuing to swing the tail.
-         atomic_op::cas(&this->_tail, old_tail, tail_next.get(), std::memory_order_release) ;
-         continue ;
-      }
-
-      // Attempt to link the new node at the end of the list.
-      if (atomic_op::cas(&tail->_next, (node_type *)nullptr, new_node, std::memory_order_release))
-         break ;
-   }
-   // Enqueue is done (visible), try to swing the tail to the appended node.
-   // We can safely ignore the result of this CAS: if successful - we've swung the tail,
-   // if not - some other thread has already helped us.
-   atomic_op::cas(&this->_tail, old_tail, new_node, std::memory_order_relaxed) ;
+   while(!this->enqueue_node(this->get_consistent_tail().get(), new_node)) ;
 }
 
 template<typename T, typename A>
-inline auto concurrent_dynqueue<T, A>::pop_node() -> node_hazard_ptr
+auto concurrent_dynqueue<T, A>::pop_node() -> node_hazard_ptr
 {
    // Keep trying until successful dequeue
    for(;;)
    {
-      node_hazard_ptr head (&this->_head) ;
-      node_hazard_ptr next (head->_next) ;
+      node_hazard_ptr tail {this->get_consistent_tail()} ;
+      node_hazard_ptr head {&this->_head} ;
 
-      node_type *head_ptr = head.get() ;
+      node_type *current_head = head.get() ;
+      if (current_head == tail)
+         // The queue is empty
+         return nullptr ;
 
-      if (head_ptr == this->_tail)
-      {
-         if (!next)
-            // The queue is empty
-            return nullptr ;
+      tail.reset() ;
 
-         // The queue is in the middle of enqueuing of the first node, tail is falling
-         // behind, help to advance it.
-         atomic_op::cas(&this->_tail, head_ptr, next.get(), std::memory_order_release) ;
-         continue ;
-      }
-
-      if (atomic_op::cas(&this->_head, head_ptr, next.get(), std::memory_order_release))
-      {
-         head.reset() ;
-         retire_node(head_ptr) ;
+      node_hazard_ptr next (current_head->_next) ;
+      if (this->retire_head(head))
          return std::move(next) ;
-      }
    }
 }
 
 /*******************************************************************************
  concurrent_dualqueue
 *******************************************************************************/
+template<typename T, typename A>
+auto concurrent_dualqueue<T, A>::pop() -> value_type
+{
+   node_hazard_ptr popped_head = pop_node() ;
+
+   auto finalize = [this](node_type *node)
+   {
+      node_type * const value_node = node_type::node(node->_value) ;
+
+      // Call the destructor but do _not_ retire/deallocate:
+      // this node (maybe) becomes a dummy node.
+      this->destroy_node(node) ;
+
+      if (value_node != node)
+         // value_node was a request fulfillment node
+         this->delete_node(value_node) ;
+   } ;
+
+   std::unique_ptr<node_type *, decltype(finalize)> const popped_node {popped_head.get(), finalize} ;
+   NOXCHECK(popped_node) ;
+
+   return
+      std::move(*popped_node->_value) ;
+}
+
+template<typename T, typename A>
+void concurrent_dualqueue<T, A>::push_node(node_type *new_node) noexcept
+{
+   NOXCHECK(new_node) ;
+   NOXCHECK(!new_node->_next) ;
+   NOXCHECK(!new_node->is_request_node()) ;
+
+   // Hold the pushed node safe until enqueue is finished
+   const node_hazard_ptr node (new_node) ;
+
+   // Keep trying until successful enqueue
+   for(;;)
+   {
+      const node_hazard_ptr tail (this->get_consistent_tail()) ;
+      node_type * const current_tail = tail.get() ;
+
+      if (!is_request_node(current_tail))
+         // The queue is either empty or consists of data nodes.
+         if (enqueue_node(current_tail, new_node))
+            break ;
+         else
+            continue ;
+
+      // The queue consists of requests.
+      // Try to fulfill a request at the head.
+      node_hazard_ptr head (&this->_head) ;
+      node_hazard_ptr front (head->_next) ;
+
+      if (atomic_op::load(&this->_head) != head || !is_request_node(front.get()))
+         continue ;
+
+      node_type * const front_request = front.get() ;
+      const bool front_fulfilled = front_request->fulfill_request(new_node) ;
+
+      if (front_fulfilled)
+         // Request is just fulfilled by us, let the requester go
+         front_request->_reqlock.unlock() ;
+
+      // Attempt to remove the old head.
+      this->retire_head(head) ;
+
+      if (front_fulfilled)
+         break ;
+   }
+}
+
+template<typename T, typename A>
+auto concurrent_dualqueue<T, A>::pop_node() -> node_hazard_ptr
+{
+   node_type *new_request_node = nullptr ;
+   // Keep trying until successful dequeue
+   for(;;)
+   {
+      node_hazard_ptr tail {this->get_consistent_tail()} ;
+      node_hazard_ptr head {&this->_head} ;
+
+      node_type *current_head = head.get() ;
+      node_type *current_tail = tail.get() ;
+
+      if (current_head == current_tail || current_tail->is_request_node())
+      {
+         // Needn't head any more
+         head.reset() ;
+
+         // No data nodes in the queue (queue is empty or consists of requests)
+         if (!new_request_node)
+            new_request_node = this->make_node() ;
+
+         node_hazard_ptr request {new_request_node} ;
+         // Enqueue new request
+         if (!enqueue_node(current_tail, new_request_node))
+            continue ;
+
+         // Wait until someone else fulfilled our request
+         new_request_node->_reqlock.wait() ;
+
+         // Assume the old tail is the current head
+         if (atomic_pop_head(current_tail, std::memory_order_release))
+            retire_node(current_tail) ;
+
+         NOXCHECK(new_request_node->_value) ;
+         NOXCHECK(new_request_node->is_request_node()) ;
+
+         // Return fulfilled request
+         return std::move(request) ;
+      }
+
+      // The queue consists of (at least one) data node(s).
+      // Needn't tail any more.
+      tail.reset() ;
+
+      node_hazard_ptr front {head->_next} ;
+
+      if (this->retire_head(head))
+      {
+         NOXCHECK(!front->is_request_node()) ;
+         this->delete_node(new_request_node) ;
+         return std::move(front) ;
+      }
+   }
+}
 
 } // end of namespace pcomn
 
