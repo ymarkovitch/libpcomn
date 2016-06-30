@@ -215,6 +215,7 @@ class promise_lock : private sys::native_promise_lock {
       PCOMN_NONCOPYABLE(promise_lock) ;
       PCOMN_NONASSIGNABLE(promise_lock) ;
    public:
+      /// Create a promise lock, initially locked by default.
       explicit constexpr promise_lock(bool initially_locked = true) :
          ancestor(initially_locked)
       {}
