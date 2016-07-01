@@ -253,6 +253,68 @@ constexpr inline T sign(T val)
 }
 
 /*******************************************************************************
+ Tagged pointers; only for pointers to types with alignment > 1
+*******************************************************************************/
+#define static_check_taggable_(T)  static_assert(alignof(T) > 1, "Attempt to tag a pointer to unaligned type")
+
+/// Make a pointer "tagged", set its LSBit to 1
+template<typename T>
+constexpr inline T *tag_ptr(T *ptr)
+{
+   static_check_taggable_(T) ;
+   return (T *)(reinterpret_cast<uintptr_t>(ptr) | 1) ;
+}
+
+/// Untag a pointer, clear its LSBit.
+template<typename T>
+constexpr inline T *untag_ptr(T *ptr)
+{
+   static_check_taggable_(T) ;
+   return (T *)(reinterpret_cast<uintptr_t>(ptr) &~ (uintptr_t)1) ;
+}
+
+/// Flip the pointer's LSBit.
+template<typename T>
+constexpr inline T *fliptag_ptr(T *ptr)
+{
+   static_check_taggable_(T) ;
+   return (T *)(reinterpret_cast<uintptr_t>(ptr) ^ 1) ;
+}
+
+template<typename T>
+constexpr inline bool is_ptr_tagged(T *ptr)
+{
+   static_check_taggable_(T) ;
+   return reinterpret_cast<uintptr_t>(ptr) & 1 ;
+}
+
+template<typename T>
+constexpr inline bool is_ptr_tagged_or_null(T *ptr)
+{
+   static_check_taggable_(T) ;
+   return (!(reinterpret_cast<uintptr_t>(ptr) & ~1)) | (reinterpret_cast<uintptr_t>(ptr) & 1) ;
+}
+
+/// If a pointer is tagged or NULL, return NULL; otherwise, return the untagged
+/// pointer value.
+template<typename T>
+constexpr inline T *null_if_tagged_or_null(T *ptr)
+{
+   static_check_taggable_(T) ;
+   return (T *)(reinterpret_cast<uintptr_t>(ptr) & ((reinterpret_cast<uintptr_t>(ptr) & 1) - 1)) ;
+}
+
+/// If a pointer is untagged or NULL, return NULL; otherwise, return the untagged
+/// pointer value.
+template<typename T>
+constexpr inline T *null_if_untagged_or_null(T *ptr)
+{
+   static_check_taggable_(T) ;
+   return (T *)(reinterpret_cast<uintptr_t>(ptr) & ((~uintptr_t() + ((reinterpret_cast<uintptr_t>(ptr) - 1) & 1)) & ~1)) ;
+}
+
+#undef static_check_taggable_
+/*******************************************************************************
  Ranges handling
 *******************************************************************************/
 template<typename T>
@@ -622,8 +684,8 @@ inline void pcomn_swap(T &a, T &b)
 /// I.e. we actually say "since object of type T is, in fact, just a namespace, consider
 /// any two T objects equal".
 #define PCOMN_DEFINE_INVARIANT_EQ(prefix, type)                         \
-   prefix inline constexpr bool operator==(const type &, const type &) { return true ; } \
-   prefix inline constexpr bool operator!=(const type &, const type &) { return false ; }
+   prefix constexpr inline bool operator==(const type &, const type &) { return true ; } \
+   prefix constexpr inline bool operator!=(const type &, const type &) { return false ; }
 
 #define PCOMN_DEFINE_INVARIANT_PRINT(prefix, type)                      \
    prefix inline std::ostream &operator<<(std::ostream &os, const type &) { return os << PCOMN_CLASSNAME(type) ; }

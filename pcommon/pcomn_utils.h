@@ -171,71 +171,8 @@ inline const T &assign_by_ptr(T *ptr, const T &value)
 }
 
 /*******************************************************************************
-*
-* Tagged pointer hacks; work only for pointers with alignment > 1
-*
+ Tagged pointer
 *******************************************************************************/
-#define static_check_taggable(T) \
-   static_assert(alignof(T) > 1, "Taggable pointer element type alignemnt must be at least 2")
-
-/// Make a pointer "tagged", set its LSBit to 1
-template<typename T>
-inline constexpr T *tag_ptr(T *ptr)
-{
-   static_check_taggable(T) ;
-   return (T *)(reinterpret_cast<uintptr_t>(ptr) | 1) ;
-}
-
-/// Untag a pointer, clear its LSBit.
-template<typename T>
-inline constexpr T *untag_ptr(T *ptr)
-{
-   static_check_taggable(T) ;
-   return (T *)(reinterpret_cast<uintptr_t>(ptr) &~ (uintptr_t)1) ;
-}
-
-/// Flip the pointer's LSBit.
-template<typename T>
-inline constexpr T *fliptag_ptr(T *ptr)
-{
-   static_check_taggable(T) ;
-   return (T *)(reinterpret_cast<uintptr_t>(ptr) ^ 1) ;
-}
-
-template<typename T>
-inline constexpr bool is_ptr_tagged(T *ptr)
-{
-   static_check_taggable(T) ;
-   return reinterpret_cast<uintptr_t>(ptr) & 1 ;
-}
-
-template<typename T>
-inline constexpr bool is_ptr_tagged_or_null(T *ptr)
-{
-   static_check_taggable(T) ;
-   return (!(reinterpret_cast<uintptr_t>(ptr) & ~1)) | (reinterpret_cast<uintptr_t>(ptr) & 1) ;
-}
-
-/// If a pointer is tagged or NULL, return NULL; otherwise, return the untagged
-/// pointer value.
-template<typename T>
-inline constexpr T *null_if_tagged_or_null(T *ptr)
-{
-   static_check_taggable(T) ;
-   return (T *)(reinterpret_cast<uintptr_t>(ptr) & ((reinterpret_cast<uintptr_t>(ptr) & 1) - 1)) ;
-}
-
-/// If a pointer is untagged or NULL, return NULL; otherwise, return the untagged
-/// pointer value.
-template<typename T>
-inline constexpr T *null_if_untagged_or_null(T *ptr)
-{
-   static_check_taggable(T) ;
-   return (T *)(reinterpret_cast<uintptr_t>(ptr) & ((~uintptr_t() + ((reinterpret_cast<uintptr_t>(ptr) - 1) & 1)) & ~1)) ;
-}
-
-#undef static_check_taggable
-
 /// Check if T* is assignable to U*, providing that valtypes of T and U are the same
 /// (i.e. assigning to base class or void pointer is _not_ allowed)
 template<typename T, typename U>
