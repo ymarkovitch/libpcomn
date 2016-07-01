@@ -18,11 +18,13 @@ class HazardPointerTests : public CppUnit::TestFixture {
 
       void Test_HazardStorage_Init() ;
       void Test_HazardPointer_Init() ;
+      void Test_HazardPointer_MarkHazard() ;
 
       CPPUNIT_TEST_SUITE(HazardPointerTests) ;
 
       CPPUNIT_TEST(Test_HazardStorage_Init) ;
       CPPUNIT_TEST(Test_HazardPointer_Init) ;
+      CPPUNIT_TEST(Test_HazardPointer_MarkHazard) ;
 
       CPPUNIT_TEST_SUITE_END() ;
 } ;
@@ -45,6 +47,17 @@ void HazardPointerTests::Test_HazardPointer_Init()
    hazard_ptr<std::vector<int>> pvi0 (nullptr) ;
    std::vector<int> v ;
    hazard_ptr<std::vector<int>> pvi1 (&v) ;
+}
+
+void HazardPointerTests::Test_HazardPointer_MarkHazard()
+{
+   std::string h = "Hello, world!" ;
+   std::string *hp = &h ;
+
+   hazard_ptr<std::string> ps1 {&hp} ;
+
+   CPPUNIT_LOG_ASSERT(ps1) ;
+   CPPUNIT_LOG_EQ(ps1.get(), &h) ;
 }
 
 /*******************************************************************************

@@ -12,6 +12,8 @@
 #include <pcomn_cdsqueue.h>
 #include <pcomn_unittest.h>
 
+#include <thread>
+
 using namespace pcomn ;
 
 class ConcurrentDynQueueTests : public CppUnit::TestFixture {
@@ -20,10 +22,22 @@ class ConcurrentDynQueueTests : public CppUnit::TestFixture {
       void Test_DualQueue_SingleThread() ;
       void Test_CdsQueues_Of_Movable() ;
 
+      template<size_t producers, size_t count = 10000>
+      void Test_CdsQueue_Nx1() ;
+
       CPPUNIT_TEST_SUITE(ConcurrentDynQueueTests) ;
 
       CPPUNIT_TEST(Test_CdsQueue_SingleThread) ;
       CPPUNIT_TEST(Test_DualQueue_SingleThread) ;
+      CPPUNIT_TEST(P_PASS(Test_CdsQueue_Nx1<1, 1>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CdsQueue_Nx1<1, 100>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CdsQueue_Nx1<2, 1>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CdsQueue_Nx1<2, 100>)) ;
+      /*
+      CPPUNIT_TEST(Test_CdsQueue_Nx1<2>) ;
+      CPPUNIT_TEST(Test_CdsQueue_Nx1<3>) ;
+      CPPUNIT_TEST(Test_CdsQueue_Nx1<16>) ;
+      */
 
       CPPUNIT_TEST_SUITE_END() ;
 } ;
@@ -187,6 +201,55 @@ void ConcurrentDynQueueTests::Test_CdsQueues_Of_Movable()
    CPPUNIT_LOG_EQ(sup1.get(), sp1) ;
    CPPUNIT_LOG_IS_FALSE(dualq.try_pop(sup1)) ;
    CPPUNIT_LOG_EQ(sup1.get(), sp1) ;
+}
+
+template<size_t P, size_t C>
+void ConcurrentDynQueueTests::Test_CdsQueue_Nx1()
+{
+   const size_t N = 3*5*7*16*C ;
+   PCOMN_STATIC_CHECK(N % P == 0) ;
+   const size_t per_thread = N/P ;
+
+   CPPUNIT_LOG_LINE("****************** " << P << " producers, 1 consumer, "
+                    << N << " items, " << per_thread << " per producer thread *******************") ;
+
+   std::thread producers[P] ;
+   std::thread consumer ;
+
+   concurrent_dynqueue<size_t> q ;
+   std::vector<size_t> v ;
+   v.reserve(N) ;
+
+   consumer = std::thread
+      ([&]
+       {
+          while(v.size() < N)
+          {
+             size_t c = 0 ;
+             if (q.pop(c))
+                v.push_back(c) ;
+          }
+       }) ;
+
+   size_t start_from = 0 ;
+   for (std::thread &p: producers)
+   {
+      p = std::thread
+         ([=,&q]() mutable
+          {
+             for (size_t i = start_from, end_with = start_from + per_thread ; i < end_with ; ++i)
+                q.push(i) ;
+          }) ;
+      start_from += per_thread ;
+   }
+
+   for (std::thread &p: producers)
+      CPPUNIT_LOG_RUN(p.join()) ;
+
+   CPPUNIT_LOG_RUN(consumer.join()) ;
+
+   CPPUNIT_LOG_EQ(v.size(), N) ;
+   CPPUNIT_LOG_ASSERT(q.empty()) ;
 }
 
 /*******************************************************************************

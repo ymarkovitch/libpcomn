@@ -237,9 +237,9 @@ class hazard_ptr {
       explicit hazard_ptr(element_type **pptr, manager_type &m = manager()) :
          hazard_ptr(*PCOMN_ENSURE_ARG(pptr), m)
       {
-         for (element_type *p = get() ;
-              p && (p = atomic_op::load(pptr, std::memory_order_acquire)) != get() ; unmark_hazard())
-            mark_hazard(p) ;
+         // The hazard is already marked by the target constructor, check its consistency
+         for (element_type *p ; *this && (p = atomic_op::load(pptr, std::memory_order_relaxed)) != get() ; mark_hazard(p))
+            unmark_hazard() ;
       }
 
       explicit hazard_ptr(std::atomic<element_type *> *pptr, manager_type &m = manager()) :
