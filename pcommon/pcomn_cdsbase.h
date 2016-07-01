@@ -55,6 +55,8 @@ class concurrent_container : private Allocator::template rebind<Node>::other {
       typedef std::allocator_traits<node_allocator_type>                   node_allocator_traits ;
 
       typedef hazard_ptr<node_type> node_hazard_ptr ;
+      template<typename D>
+      using node_safeptr = std::unique_ptr<node_type, D> ;
 
       static void delete_node(node_allocator_type &a, node_type *node)
       {
@@ -131,10 +133,16 @@ class concurrent_container : private Allocator::template rebind<Node>::other {
       node_type *make_node(Args &&... args)
       {
          node_allocator_type &allocator = node_allocator() ;
-         std::unique_ptr<node_type, node_dealloc> p {allocate_node(), node_dealloc(allocator)} ;
+         node_safeptr<node_dealloc> p {allocate_node(), node_dealloc(allocator)} ;
 
          node_allocator_traits::construct(allocator, p.get(), std::forward<Args>(args)...) ;
          return p.release() ;
+      }
+
+      template<typename F>
+      node_safeptr<F> node_finalizer(node_type *node, F &&finalizer)
+      {
+         return node_safeptr<F>(node, std::forward<F>(finalizer)) ;
       }
 } ;
 

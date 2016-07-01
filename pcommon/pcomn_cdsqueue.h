@@ -31,6 +31,8 @@ struct dynq_node : cdsnode_nextptr<dynq_node<T>> {
       dynq_node(Args &&...args) : _value(std::forward<Args>(args)...) {}
 
       T _value ;
+
+      T &value() { return _value ; }
 } ;
 
 /******************************************************************************/
@@ -40,10 +42,10 @@ struct dynq_node : cdsnode_nextptr<dynq_node<T>> {
 template<typename T>
 struct dualq_node : cdsnode_nextptr<dualq_node<T>> {
    public:
-      promise_lock _reqlock ;    /* Request lock: for normal node, initially unlocked */
-      T *          _value = {} ; /* &_valstor: normal node;
-                                  * nullptr:   unfulfilled request;
-                                  * other:     fulfilled request */
+      promise_lock _reqlock ;     /* Request lock: for normal node, initially unlocked */
+      T *          _valptr = {} ; /* &_valstor: normal node;
+                                   * nullptr:   unfulfilled request;
+                                   * other:     fulfilled request */
 
       std::aligned_storage_t<sizeof(T), alignof(T)> _valstor ;
 
@@ -55,26 +57,35 @@ struct dualq_node : cdsnode_nextptr<dualq_node<T>> {
       template<typename... Args>
       dualq_node(std::piecewise_construct_t, Args &&...args) : _reqlock(false)
       {
-         _value = new (value_storage()) T(std::forward<Args>(args)...) ;
+         _valptr = new (value_storage()) T(std::forward<Args>(args)...) ;
       }
 
       ~dualq_node()
       {
-         if (_value == value_storage())
+         if (_valptr == value_storage())
          {
-            _value = nullptr ;
+            _valptr = tag_ptr(_valptr) ;
             destroy(value_storage()) ;
          }
       }
 
       T *value_storage() { return static_cast<T *>(static_cast<void *>(&_valstor)) ; }
 
-      bool is_request_node() const { return _value != value_storage() ; }
+      T &value() { return *_valptr ; }
+
+      bool is_request_node() const
+      {
+         return static_cast<const void *>(untag_ptr(_valptr)) != &_valstor ;
+      }
 
       /// Get node address by the value address.
       static dualq_node *node(T *value)
       {
-         return static_cast<dualq_node *>(padd(value, -offsetof(dualq_node, _valstor))) ;
+         // Hack to avoid using offsetof macro
+         static const std::aligned_storage_t<sizeof(dualq_node), alignof(dualq_node)> dummy {} ;
+         static const ptrdiff_t valstor_offset = pdiff(&((dualq_node *)&dummy)->_valstor, &dummy) ;
+
+         return static_cast<dualq_node *>(padd<void>(value, -valstor_offset)) ;
       }
 
       bool fulfill_request(dualq_node *realizer)
@@ -83,7 +94,7 @@ struct dualq_node : cdsnode_nextptr<dualq_node<T>> {
          NOXCHECK(realizer) ;
          NOXCHECK(!realizer->is_request_node()) ;
 
-         return atomic_op::cas(&_value, (dualq_node *)nullptr, realizer->_value) ;
+         return atomic_op::cas(&_valptr, (T *)nullptr, realizer->_valptr) ;
       }
 } ;
 }
@@ -109,11 +120,11 @@ class cdsqueue_base : public concurrent_container<T, N, Alloc> {
 
       void push(const value_type &value)
       {
-         emplace(value) ;
+         self().emplace(value) ;
       }
       void push(value_type &&value)
       {
-         emplace(std::move(value)) ;
+         self().emplace(std::move(value)) ;
       }
 
       template<typename... Args>
@@ -256,6 +267,7 @@ class concurrent_dynqueue : cdsqueue_base<T, detail::dynq_node<T>, A, concurrent
 
       using ancestor::make_node ;
       using ancestor::retire_node ;
+      using ancestor::node_finalizer ;
 } ;
 
 /******************************************************************************/
@@ -289,6 +301,15 @@ class concurrent_dualqueue : cdsqueue_base<T, detail::dualq_node<T>, A, concurre
       /// being destroyed.
       ~concurrent_dualqueue() = default ;
 
+      using ancestor::push ;
+      using ancestor::push_back ;
+
+      template<typename... Args>
+      void emplace(Args &&...args)
+      {
+         ancestor::emplace(std::piecewise_construct, std::forward<Args>(args)...) ;
+      }
+
       value_type pop() ;
 
       bool try_pop(value_type &result) ;
@@ -301,17 +322,36 @@ class concurrent_dualqueue : cdsqueue_base<T, detail::dualq_node<T>, A, concurre
       template<typename... Args>
       std::pair<value_type, bool> pop_default(Args &&...defargs) ;
 
+      bool empty() const
+      {
+         return ancestor::empty() || this->_tail->is_request_node() ;
+      }
+
    private:
       void push_node(node_type *new_node) noexcept ;
-      node_hazard_ptr pop_node() ;
+      node_hazard_ptr pop_node(bool lock_if_empty) ;
 
       using ancestor::make_node ;
       using ancestor::retire_node ;
+      using ancestor::node_finalizer ;
 
       bool is_request_node(node_type *node) const
       {
          return node != &this->_dummy_node && node->is_request_node() ;
       }
+
+      void finalize_popped_head(node_type *popped_head)
+      {
+         node_type * const value_node = node_type::node(popped_head->_valptr) ;
+
+         // Call the destructor but do _not_ retire/deallocate:
+         // this node (maybe) becomes a dummy node.
+         this->destroy_node(popped_head) ;
+
+         if (value_node != popped_head)
+            // value_node was a request fulfillment node
+            this->delete_node(value_node) ;
+      } ;
 } ;
 
 /*******************************************************************************
@@ -347,33 +387,29 @@ template<typename T, typename A>
 bool concurrent_dynqueue<T, A>::pop(value_type &result)
 {
    const node_hazard_ptr popped_head = pop_node() ;
-   node_type * const popped_node = popped_head.get() ;
-   if (!popped_node)
-      return false ;
-
-   result = std::move(popped_node->_value) ;
-   // Call the destructor but do _not_ retire/deallocate:
-   // this node (maybe) becomes a dummy node.
-   this->destroy_node(popped_node) ;
-
-   return true ;
+   const bool retval = !!popped_head ;
+   if (retval)
+      // While finalizing, call the destructor but do _not_ retire/deallocate:
+      // this node (maybe) becomes a dummy node.
+      result = std::move
+         (node_finalizer(popped_head.get(), [this](node_type *n){ this->destroy_node(n) ; })->value()) ;
+   return retval ;
 }
 
 template<typename T, typename A>
 template<typename... Args>
 auto concurrent_dynqueue<T, A>::pop_default(Args &&...defargs) -> std::pair<value_type, bool>
 {
-   node_hazard_ptr popped_head = pop_node() ;
+   const node_hazard_ptr popped_head = pop_node() ;
    if (!popped_head)
-      return
-      {std::piecewise_construct,
+      // Return default value
+      return {std::piecewise_construct,
             std::forward_as_tuple(std::forward<Args>(defargs)...),
             std::forward_as_tuple(false)} ;
 
-   std::pair<value_type, bool> result {std::move(popped_head->_value), true} ;
-   node_allocator_traits::destroy(this->node_allocator(), popped_head.get()) ;
-
-   return std::move(result) ;
+   // Return head value and finalize popped node in one fell swoop
+   return
+      {std::move(node_finalizer(popped_head.get(), [this](node_type *n){ this->destroy_node(n) ; })->value()), true} ;
 }
 
 template<typename T, typename A>
@@ -416,26 +452,37 @@ auto concurrent_dynqueue<T, A>::pop_node() -> node_hazard_ptr
 template<typename T, typename A>
 auto concurrent_dualqueue<T, A>::pop() -> value_type
 {
-   node_hazard_ptr popped_head = pop_node() ;
-
-   auto finalize = [this](node_type *node)
-   {
-      node_type * const value_node = node_type::node(node->_value) ;
-
-      // Call the destructor but do _not_ retire/deallocate:
-      // this node (maybe) becomes a dummy node.
-      this->destroy_node(node) ;
-
-      if (value_node != node)
-         // value_node was a request fulfillment node
-         this->delete_node(value_node) ;
-   } ;
-
-   std::unique_ptr<node_type *, decltype(finalize)> const popped_node {popped_head.get(), finalize} ;
-   NOXCHECK(popped_node) ;
-
+   const node_hazard_ptr popped_head = pop_node(true) ;
+   NOXCHECK(popped_head) ;
    return
-      std::move(*popped_node->_value) ;
+      std::move(node_finalizer(popped_head.get(), [this](node_type *n) { finalize_popped_head(n) ; })->value()) ;
+}
+
+template<typename T, typename A>
+bool concurrent_dualqueue<T, A>::try_pop(value_type &result)
+{
+   const node_hazard_ptr popped_head = pop_node(false) ;
+   const bool retval = !!popped_head ;
+   if (retval)
+      result = std::move
+         (node_finalizer(popped_head.get(), [this](node_type *n) { finalize_popped_head(n) ; })
+          ->value()) ;
+   return retval ;
+}
+
+template<typename T, typename A>
+template<typename... Args>
+auto concurrent_dualqueue<T, A>::pop_default(Args &&...defargs) -> std::pair<value_type, bool>
+{
+   const node_hazard_ptr popped_head = pop_node(false) ;
+   if (!popped_head)
+      return {std::piecewise_construct,
+            std::forward_as_tuple(std::forward<Args>(defargs)...),
+            std::forward_as_tuple(false)} ;
+
+   // Return head value and finalize popped node in one fell swoop
+   return {std::move(node_finalizer(popped_head.get(),
+                                    [this](node_type *n) { finalize_popped_head(n) ; })->value()), true} ;
 }
 
 template<typename T, typename A>
@@ -456,7 +503,7 @@ void concurrent_dualqueue<T, A>::push_node(node_type *new_node) noexcept
 
       if (!is_request_node(current_tail))
          // The queue is either empty or consists of data nodes.
-         if (enqueue_node(current_tail, new_node))
+         if (this->enqueue_node(current_tail, new_node))
             break ;
          else
             continue ;
@@ -485,7 +532,7 @@ void concurrent_dualqueue<T, A>::push_node(node_type *new_node) noexcept
 }
 
 template<typename T, typename A>
-auto concurrent_dualqueue<T, A>::pop_node() -> node_hazard_ptr
+auto concurrent_dualqueue<T, A>::pop_node(bool lock_if_empty) -> node_hazard_ptr
 {
    node_type *new_request_node = nullptr ;
    // Keep trying until successful dequeue
@@ -499,6 +546,10 @@ auto concurrent_dualqueue<T, A>::pop_node() -> node_hazard_ptr
 
       if (current_head == current_tail || current_tail->is_request_node())
       {
+         if (!lock_if_empty)
+            // The only place in pop_node that returns null
+            return nullptr ;
+
          // Needn't head any more
          head.reset() ;
 
@@ -508,17 +559,17 @@ auto concurrent_dualqueue<T, A>::pop_node() -> node_hazard_ptr
 
          node_hazard_ptr request {new_request_node} ;
          // Enqueue new request
-         if (!enqueue_node(current_tail, new_request_node))
+         if (!this->enqueue_node(current_tail, new_request_node))
             continue ;
 
          // Wait until someone else fulfilled our request
          new_request_node->_reqlock.wait() ;
 
          // Assume the old tail is the current head
-         if (atomic_pop_head(current_tail, std::memory_order_release))
-            retire_node(current_tail) ;
+         if (this->atomic_pop_head(current_tail, std::memory_order_release))
+            this->retire_node(current_tail) ;
 
-         NOXCHECK(new_request_node->_value) ;
+         NOXCHECK(new_request_node->_valptr) ;
          NOXCHECK(new_request_node->is_request_node()) ;
 
          // Return fulfilled request
