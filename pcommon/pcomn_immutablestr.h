@@ -21,7 +21,6 @@
  CREATION DATE:   14 Nov 2006
 *******************************************************************************/
 #include <pcomn_meta.h>
-#include <pcomn_metafunctional.h>
 #include <pcomn_atomic.h>
 #include <pcomn_counter.h>
 #include <pcomn_function.h>

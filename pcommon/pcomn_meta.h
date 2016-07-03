@@ -343,6 +343,19 @@ is_derived_mem(Member &&) { return {} ; }
 template<typename T>
 using unipair = std::pair<T, T> ;
 
+/******************************************************************************/
+/** Count types that satisfy a meta-predicate in the arguments pack
+*******************************************************************************/
+template<template<typename> class Predicate, typename... Types>
+struct count_types_if ;
+
+template<template<typename> class F>
+struct count_types_if<F> : std::integral_constant<int, 0> {} ;
+
+template<template<typename> class F, typename H, typename... T>
+struct count_types_if<F, H, T...> :
+         std::integral_constant<int, ((int)!!F<H>::value + count_types_if<F, T...>::value)> {} ;
+
 } // end of namespace pcomn
 /// @endcond
 

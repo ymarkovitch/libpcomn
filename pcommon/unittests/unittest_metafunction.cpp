@@ -9,7 +9,6 @@
  PROGRAMMED BY:   Yakov Markovitch
  CREATION DATE:   28 Nov 2006
 *******************************************************************************/
-#include <pcomn_metafunctional.h>
 #include <pcomn_meta.h>
 #include <pcomn_unittest.h>
 
@@ -25,7 +24,6 @@
 
 class MetafunctionTests : public CppUnit::TestFixture {
 
-      void Test_Static_Fill() ;
       void Test_Has_Dep_Type() ;
       void Test_Ensure_Arg() ;
       void Test_Count_Types() ;
@@ -33,7 +31,6 @@ class MetafunctionTests : public CppUnit::TestFixture {
 
       CPPUNIT_TEST_SUITE(MetafunctionTests) ;
 
-      CPPUNIT_TEST(Test_Static_Fill) ;
       CPPUNIT_TEST(Test_Has_Dep_Type) ;
       CPPUNIT_TEST(Test_Ensure_Arg) ;
       CPPUNIT_TEST(Test_Count_Types) ;
@@ -45,47 +42,6 @@ class MetafunctionTests : public CppUnit::TestFixture {
 /*******************************************************************************
  MetafunctionTests
 *******************************************************************************/
-template<unsigned sz>
-struct TestBuf {
-      TestBuf(int init = 0)
-      {
-         memset(data, init, sizeof data) ;
-      }
-      ptrdiff_t check(int pattern) const
-      {
-         const char *iter = data ;
-         return
-            *iter != pattern ||
-            (iter = std::adjacent_find(iter, data + sizeof data, std::not_equal_to<char>())) != data + sizeof data ?
-            iter - data : -1 ;
-      }
-      char data[sz] ;
-} ;
-
-void MetafunctionTests::Test_Static_Fill()
-{
-#define CHECKFILL(sz)                                                   \
-   {                                                                    \
-      TestBuf<sz> TestBuf##sz ;                                         \
-      CPPUNIT_LOG_EQ(pcomn::static_fill<-1>(&TestBuf##sz)->check(-1), -1) ; \
-      TestBuf<sz> TestBuf_C##sz ;                                       \
-      CPPUNIT_LOG_EQ(*(pcomn::static_fill<-1>(TestBuf_C##sz.data) + (sz-1)), -1) ; \
-   }
-   CHECKFILL(1) ;
-   CHECKFILL(2) ;
-   CHECKFILL(3) ;
-   CHECKFILL(4) ;
-   CHECKFILL(5) ;
-   CHECKFILL(6) ;
-   CHECKFILL(7) ;
-   CHECKFILL(8) ;
-   CHECKFILL(9) ;
-   CHECKFILL(11) ;
-   CHECKFILL(15) ;
-   CHECKFILL(16) ;
-   CHECKFILL(29) ;
-}
-
 void MetafunctionTests::Test_Has_Dep_Type()
 {
    CPPUNIT_LOG_ASSERT((pcomn::has_key_type<std::map<std::string, int> >::value)) ;
