@@ -14,6 +14,7 @@
 #include <pcomn_unittest.h>
 
 #include <thread>
+#include <numeric>
 
 using namespace pcomn ;
 
@@ -29,11 +30,19 @@ class ConcurrentDynQueueTests : public CppUnit::TestFixture {
       void Test_QueueChecker_BadResult3() ;
       void Test_QueueChecker_BadResult4() ;
       void Test_QueueChecker_BadResult5() ;
+      void Test_QueueChecker_BadResult6() ;
+      void Test_QueueChecker_BadResult7() ;
+      void Test_QueueChecker_BadResult8() ;
 
       template<size_t producers, size_t count = 1000>
       void Test_CdsQueue_Nx1() ;
       template<size_t producers, size_t count = 1000>
       void Test_DualQueue_Nx1() ;
+
+      template<size_t producers, size_t consumers, size_t count = 1000>
+      void Test_CdsQueue_NxN() ;
+      template<size_t producers, size_t consumers, size_t count = 1000>
+      void Test_DualQueue_NxN() ;
 
       CPPUNIT_TEST_SUITE(ConcurrentDynQueueTests) ;
 
@@ -46,6 +55,9 @@ class ConcurrentDynQueueTests : public CppUnit::TestFixture {
       CPPUNIT_TEST_FAIL(Test_QueueChecker_BadResult3) ;
       CPPUNIT_TEST_FAIL(Test_QueueChecker_BadResult4) ;
       CPPUNIT_TEST_FAIL(Test_QueueChecker_BadResult5) ;
+      CPPUNIT_TEST_FAIL(Test_QueueChecker_BadResult6) ;
+      CPPUNIT_TEST_FAIL(Test_QueueChecker_BadResult7) ;
+      CPPUNIT_TEST_FAIL(Test_QueueChecker_BadResult8) ;
 
       CPPUNIT_TEST(P_PASS(Test_CdsQueue_Nx1<1, 1>)) ;
       CPPUNIT_TEST(P_PASS(Test_CdsQueue_Nx1<1, 1000>)) ;
@@ -56,6 +68,7 @@ class ConcurrentDynQueueTests : public CppUnit::TestFixture {
       CPPUNIT_TEST(P_PASS(Test_CdsQueue_Nx1<16, 1>)) ;
       CPPUNIT_TEST(P_PASS(Test_CdsQueue_Nx1<16, 1000>)) ;
 
+      /*
       CPPUNIT_TEST(P_PASS(Test_DualQueue_Nx1<1, 1>)) ;
       CPPUNIT_TEST(P_PASS(Test_DualQueue_Nx1<1, 1000>)) ;
       CPPUNIT_TEST(P_PASS(Test_DualQueue_Nx1<2, 1>)) ;
@@ -64,12 +77,22 @@ class ConcurrentDynQueueTests : public CppUnit::TestFixture {
       CPPUNIT_TEST(P_PASS(Test_DualQueue_Nx1<3, 1000>)) ;
       CPPUNIT_TEST(P_PASS(Test_DualQueue_Nx1<16, 1>)) ;
       CPPUNIT_TEST(P_PASS(Test_DualQueue_Nx1<16, 1000>)) ;
+      */
+
+      CPPUNIT_TEST(P_PASS(Test_CdsQueue_NxN<1, 1, 1>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CdsQueue_NxN<1, 2, 1>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CdsQueue_NxN<2, 4, 1000>)) ;
 
       CPPUNIT_TEST_SUITE_END() ;
 
    public:
       template<typename T>
-      static void CheckQueueResultConsistency(size_t items_per_thread, size_t producers_count, const std::vector<T> &result) ;
+      static void CheckQueueResultConsistency(size_t items_per_thread, size_t producers_count,
+                                              const std::vector<T> &result) ;
+      template<typename T>
+      static void CheckQueueResultConsistency(size_t items_per_thread, size_t producers_count,
+                                              const std::vector<T> *results_begin,
+                                              const std::vector<T> *results_end) ;
 } ;
 
 template<typename T>
@@ -77,7 +100,7 @@ void ConcurrentDynQueueTests::CheckQueueResultConsistency(size_t producers_count
                                                           const std::vector<T> &result)
 {
    const size_t n = items_per_thread*producers_count ;
-   CPPUNIT_LOG_LINE("CHECK RESULTS CONSISTENCY: " << producers_count << " producers, 1 consumer, "
+   CPPUNIT_LOG_LINE("\nCHECK RESULTS CONSISTENCY: " << producers_count << " producers, 1 consumer, "
                     << n << " items, " << items_per_thread << " per producer") ;
 
    CPPUNIT_ASSERT(items_per_thread) ;
@@ -107,7 +130,7 @@ void ConcurrentDynQueueTests::CheckQueueResultConsistency(size_t producers_count
       size_t start = p*items_per_thread ;
       const size_t finish = start + items_per_thread ;
 
-      CPPUNIT_LOG("Checking result sequential consistency with producer #" << p+1
+      CPPUNIT_LOG("Checking result sequential consistency with producer" << p+1
                   << " items " << start << ".." << finish-1 << " ...") ;
 
       const auto bad = std::find_if(result.begin(), result.end(), [&](T v) mutable
@@ -122,6 +145,93 @@ void ConcurrentDynQueueTests::CheckQueueResultConsistency(size_t producers_count
          CPPUNIT_LOG_EQ(*bad, start - 1) ;
       }
    }
+}
+
+template<typename T>
+void ConcurrentDynQueueTests::CheckQueueResultConsistency(size_t producers_count, size_t items_per_thread,
+                                                          const std::vector<T> *bresults,
+                                                          const std::vector<T> *eresults)
+{
+   const size_t nproduced = items_per_thread*producers_count ;
+   const size_t consumers = eresults - bresults ;
+
+   CPPUNIT_LOG_LINE(("\nCHECK RESULTS CONSISTENCY: ")
+                    << producers_count << " producers, " << consumers << " consumer(s), " << nproduced
+                    << " items, " << items_per_thread << " per producer") ;
+
+   CPPUNIT_ASSERT(consumers != 0) ;
+   CPPUNIT_ASSERT(items_per_thread) ;
+   CPPUNIT_ASSERT(producers_count) ;
+
+   auto consnum = [=](const std::vector<T> *result) { return result - bresults + 1 ; } ;
+
+   const size_t nconsumed =
+      std::accumulate(bresults, eresults, 0UL, [](size_t a, const std::vector<T> &v)
+      {
+         CPPUNIT_LOG_LINE("Consumed " << v.size() << " items") ;
+         return a + v.size() ;
+      }) ;
+
+   CPPUNIT_LOG_EQ(nconsumed, nproduced) ;
+
+   std::vector<std::pair<const std::vector<T> *, ptrdiff_t>> indicator (nproduced, {nullptr, -1}) ;
+
+   CPPUNIT_LOG_LINE("Checking every source item is present in the result exactly once") ;
+
+   for (auto result = bresults ; result != eresults ; ++result)
+   {
+      CPPUNIT_LOG("Checking consumer" << consnum(result) << " ...") ;
+
+      for (const auto &v: *result)
+      {
+         const ptrdiff_t nitem = &v - result->data() ;
+
+         if ((size_t)v < nproduced && !indicator[v].first)
+            indicator[v] = {result, nitem} ;
+         else
+         {
+            CPPUNIT_LOG(" ERROR consumer" << consnum(result) << " item #" << nitem << "=" << v) ;
+            if ((size_t)v >= nproduced)
+               CPPUNIT_LOG_LINE(": item value is too big") ;
+            else
+               CPPUNIT_LOG_LINE(": duplicate item, first appeared in consumer "
+                                << consnum(indicator[v].first) << " at #" << indicator[v].second) ;
+            CPPUNIT_FAIL("Inconsistent concurrent queue results") ;
+         }
+      }
+      CPPUNIT_LOG_LINE(" OK") ;
+   }
+
+   CPPUNIT_LOG_LINE("Checking consumer results for sequential consistency with producers") ;
+
+   for (auto result = bresults ; result != eresults ; ++result)
+      for (size_t p = 0 ; p < producers_count ; ++p)
+      {
+         const size_t start = p*items_per_thread ;
+         const size_t finish = start + items_per_thread ;
+         size_t last = start ;
+
+         CPPUNIT_LOG("Checking consumer" << consnum(result) << " sequential consistency with producer" << p+1
+                     << " items " << start << ".." << finish-1 << " ...") ;
+
+         const auto bad = std::find_if(result->begin(), result->end(), [&](T v) mutable
+         {
+            if (xinrange((size_t)v, start, finish))
+            {
+               if ((size_t)v < last)
+                  return true ;
+               last = v ;
+            }
+            return false ;
+         }) ;
+         if (bad == result->end())
+            CPPUNIT_LOG_LINE(" OK") ;
+         else
+         {
+            CPPUNIT_LOG_LINE(" ERROR at item #" << bad - result->begin() << ": " << last << " precedes " << *bad) ;
+            CPPUNIT_FAIL("Order of consumed results is not consistent with producer") ;
+         }
+      }
 }
 
 /*******************************************************************************
@@ -292,8 +402,23 @@ void ConcurrentDynQueueTests::Test_QueueChecker_GoodResults()
 {
    std::vector<size_t> v15 (count_iter(0), count_iter(15)) ;
    CheckQueueResultConsistency(1, 15, v15) ;
+   CheckQueueResultConsistency(1, 15, &v15, &v15 + 1) ;
+
    std::vector<size_t> v8 {0, 1, 4, 5, 2, 6, 3, 7} ;
    CheckQueueResultConsistency(2, 4, v8) ;
+   CheckQueueResultConsistency(2, 4, &v8, &v8 + 1) ;
+
+   std::vector<size_t> v4[2] = {
+      {0, 1, 4, 5},
+      {2, 6, 3, 7}
+   } ;
+   CheckQueueResultConsistency(2, 4, std::begin(v4), std::end(v4)) ;
+
+   std::vector<size_t> v34[2] = {
+      {0, 1, 4, 5, 2, 6},
+      {7, 3}
+   } ;
+   CheckQueueResultConsistency(2, 4, std::begin(v34), std::end(v34)) ;
 }
 
 void ConcurrentDynQueueTests::Test_QueueChecker_BadResult1()
@@ -329,6 +454,33 @@ void ConcurrentDynQueueTests::Test_QueueChecker_BadResult5()
    CheckQueueResultConsistency(2, 4, v8) ;
 }
 
+void ConcurrentDynQueueTests::Test_QueueChecker_BadResult6()
+{
+   std::vector<size_t> v4[2] = {
+      {0, 1, 4, 6},
+      {2, 6, 3, 7}
+   } ;
+   CheckQueueResultConsistency(2, 4, std::begin(v4), std::end(v4)) ;
+}
+
+void ConcurrentDynQueueTests::Test_QueueChecker_BadResult7()
+{
+   std::vector<size_t> v4[2] = {
+      {0, 1, 4, 5},
+      {2, 3, 6, 8}
+   } ;
+   CheckQueueResultConsistency(2, 4, std::begin(v4), std::end(v4)) ;
+}
+
+void ConcurrentDynQueueTests::Test_QueueChecker_BadResult8()
+{
+   std::vector<size_t> v4[2] = {
+      {0, 1, 4, 6, 2, 5},
+      {3, 7}
+   } ;
+   CheckQueueResultConsistency(2, 4, std::begin(v4), std::end(v4)) ;
+}
+
 /*******************************************************************************
  ConcurrentDynQueueTests::Test_Queue
 *******************************************************************************/
@@ -349,10 +501,11 @@ void ConcurrentDynQueueTests::Test_CdsQueue_Nx1()
    std::vector<size_t> v ;
    v.reserve(N) ;
 
+   volatile int endprod = 0 ;
    consumer = std::thread
       ([&]
        {
-          while(v.size() < N)
+          while(!endprod || !q.empty())
           {
              size_t c = 0 ;
              if (q.pop(c))
@@ -375,6 +528,7 @@ void ConcurrentDynQueueTests::Test_CdsQueue_Nx1()
    for (std::thread &p: producers)
       CPPUNIT_LOG_RUN(p.join()) ;
 
+   CPPUNIT_LOG_RUN(endprod = 1) ;
    CPPUNIT_LOG_RUN(consumer.join()) ;
 
    CPPUNIT_LOG_EQ(v.size(), N) ;
@@ -383,10 +537,10 @@ void ConcurrentDynQueueTests::Test_CdsQueue_Nx1()
    CheckQueueResultConsistency(P, per_thread, v) ;
 }
 
-template<size_t P, size_t C>
+template<size_t P, size_t K>
 void ConcurrentDynQueueTests::Test_DualQueue_Nx1()
 {
-   const size_t N = 3*5*7*16*C ;
+   const size_t N = 3*5*7*16*K ;
    PCOMN_STATIC_CHECK(N % P == 0) ;
    const size_t per_thread = N/P ;
 
@@ -428,6 +582,64 @@ void ConcurrentDynQueueTests::Test_DualQueue_Nx1()
    CPPUNIT_LOG_ASSERT(q.empty()) ;
 
    CheckQueueResultConsistency(P, per_thread, v) ;
+}
+
+template<size_t P, size_t C, size_t K>
+void ConcurrentDynQueueTests::Test_CdsQueue_NxN()
+{
+   const size_t N = 3*5*7*16*K ;
+   PCOMN_STATIC_CHECK(N % P == 0) ;
+   const size_t per_thread = N/P ;
+
+   CPPUNIT_LOG_LINE("****************** " << P << " producers, " << C << "  consumer(s), "
+                    << N << " items, " << per_thread << " per producer thread *******************") ;
+
+   std::thread producers[P] ;
+   std::thread consumers[C] ;
+   std::vector<size_t> v[C] ;
+
+   concurrent_dynqueue<size_t> q ;
+
+   volatile int endprod = 0 ;
+   size_t num = 0 ;
+   for (std::thread &cs: consumers)
+   {
+      cs = std::thread
+         ([&,num]
+          {
+             while(!endprod || !q.empty())
+             {
+                size_t c = 0 ;
+                if (q.pop(c))
+                   v[num].push_back(c) ;
+             }
+          }) ;
+      ++num ;
+   }
+
+   size_t start_from = 0 ;
+   for (std::thread &p: producers)
+   {
+      p = std::thread
+         ([=,&q]() mutable
+          {
+             for (size_t i = start_from, end_with = start_from + per_thread ; i < end_with ; ++i)
+                q.push(i) ;
+          }) ;
+      start_from += per_thread ;
+   }
+
+   for (std::thread &p: producers)
+      CPPUNIT_LOG_RUN(p.join()) ;
+
+   CPPUNIT_LOG_RUN(endprod = 1) ;
+
+   for (std::thread &c: consumers)
+      CPPUNIT_LOG_RUN(c.join()) ;
+
+   CPPUNIT_LOG_ASSERT(q.empty()) ;
+
+   CheckQueueResultConsistency(P, per_thread, std::begin(v), std::end(v)) ;
 }
 
 /*******************************************************************************
