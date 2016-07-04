@@ -30,14 +30,13 @@ class ConcurrentDynQueueTests : public CppUnit::TestFixture {
       CPPUNIT_TEST(Test_CdsQueue_SingleThread) ;
       CPPUNIT_TEST(Test_DualQueue_SingleThread) ;
       CPPUNIT_TEST(P_PASS(Test_CdsQueue_Nx1<1, 1>)) ;
-      CPPUNIT_TEST(P_PASS(Test_CdsQueue_Nx1<1, 100>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CdsQueue_Nx1<1, 10000>)) ;
       CPPUNIT_TEST(P_PASS(Test_CdsQueue_Nx1<2, 1>)) ;
-      CPPUNIT_TEST(P_PASS(Test_CdsQueue_Nx1<2, 100>)) ;
-      /*
-      CPPUNIT_TEST(Test_CdsQueue_Nx1<2>) ;
-      CPPUNIT_TEST(Test_CdsQueue_Nx1<3>) ;
-      CPPUNIT_TEST(Test_CdsQueue_Nx1<16>) ;
-      */
+      CPPUNIT_TEST(P_PASS(Test_CdsQueue_Nx1<2, 10000>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CdsQueue_Nx1<3, 1>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CdsQueue_Nx1<3, 10000>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CdsQueue_Nx1<16, 1>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CdsQueue_Nx1<16, 10000>)) ;
 
       CPPUNIT_TEST_SUITE_END() ;
 } ;

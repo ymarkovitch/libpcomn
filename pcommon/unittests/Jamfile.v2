@@ -77,7 +77,7 @@ if ! [ adhoc-targets ]
 
   compile unittest_hazardptr.cpp ;
   #unittest unittest_hazardptr ;
-  unittest unittest_cdsqueue.cpp ;
+  #unittest unittest_cdsqueue.cpp ;
   unittest unittest_synccomplex ;
 
   if [ os.name ] != NT

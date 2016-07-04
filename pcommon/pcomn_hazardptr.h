@@ -810,7 +810,7 @@ hazard_storage<L>::retire_safe(cleanup_container &pending, hazard_filter &observ
    pending.erase
       (std::partition(pending.begin(), pending.end(), [&](void *p)
       {
-         return !is_hasard_observed(p, observed_hazards) ;
+         return is_hasard_observed(p, observed_hazards) ;
       }),
       pending.end()) ;
 
