@@ -10,6 +10,7 @@
  CREATION DATE:   22 Jun 2016
 *******************************************************************************/
 #include <pcomn_cdsqueue.h>
+#include <pcomn_iterator.h>
 #include <pcomn_unittest.h>
 
 #include <thread>
@@ -22,24 +23,106 @@ class ConcurrentDynQueueTests : public CppUnit::TestFixture {
       void Test_DualQueue_SingleThread() ;
       void Test_CdsQueues_Of_Movable() ;
 
-      template<size_t producers, size_t count = 10000>
+      void Test_QueueChecker_GoodResults() ;
+      void Test_QueueChecker_BadResult1() ;
+      void Test_QueueChecker_BadResult2() ;
+      void Test_QueueChecker_BadResult3() ;
+      void Test_QueueChecker_BadResult4() ;
+      void Test_QueueChecker_BadResult5() ;
+
+      template<size_t producers, size_t count = 1000>
       void Test_CdsQueue_Nx1() ;
+      template<size_t producers, size_t count = 1000>
+      void Test_DualQueue_Nx1() ;
 
       CPPUNIT_TEST_SUITE(ConcurrentDynQueueTests) ;
 
       CPPUNIT_TEST(Test_CdsQueue_SingleThread) ;
       CPPUNIT_TEST(Test_DualQueue_SingleThread) ;
+
+      CPPUNIT_TEST(Test_QueueChecker_GoodResults) ;
+      CPPUNIT_TEST_FAIL(Test_QueueChecker_BadResult1) ;
+      CPPUNIT_TEST_FAIL(Test_QueueChecker_BadResult2) ;
+      CPPUNIT_TEST_FAIL(Test_QueueChecker_BadResult3) ;
+      CPPUNIT_TEST_FAIL(Test_QueueChecker_BadResult4) ;
+      CPPUNIT_TEST_FAIL(Test_QueueChecker_BadResult5) ;
+
       CPPUNIT_TEST(P_PASS(Test_CdsQueue_Nx1<1, 1>)) ;
-      CPPUNIT_TEST(P_PASS(Test_CdsQueue_Nx1<1, 10000>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CdsQueue_Nx1<1, 1000>)) ;
       CPPUNIT_TEST(P_PASS(Test_CdsQueue_Nx1<2, 1>)) ;
-      CPPUNIT_TEST(P_PASS(Test_CdsQueue_Nx1<2, 10000>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CdsQueue_Nx1<2, 1000>)) ;
       CPPUNIT_TEST(P_PASS(Test_CdsQueue_Nx1<3, 1>)) ;
-      CPPUNIT_TEST(P_PASS(Test_CdsQueue_Nx1<3, 10000>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CdsQueue_Nx1<3, 1000>)) ;
       CPPUNIT_TEST(P_PASS(Test_CdsQueue_Nx1<16, 1>)) ;
-      CPPUNIT_TEST(P_PASS(Test_CdsQueue_Nx1<16, 10000>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CdsQueue_Nx1<16, 1000>)) ;
+
+      CPPUNIT_TEST(P_PASS(Test_DualQueue_Nx1<1, 1>)) ;
+      CPPUNIT_TEST(P_PASS(Test_DualQueue_Nx1<1, 1000>)) ;
+      CPPUNIT_TEST(P_PASS(Test_DualQueue_Nx1<2, 1>)) ;
+      CPPUNIT_TEST(P_PASS(Test_DualQueue_Nx1<2, 1000>)) ;
+      CPPUNIT_TEST(P_PASS(Test_DualQueue_Nx1<3, 1>)) ;
+      CPPUNIT_TEST(P_PASS(Test_DualQueue_Nx1<3, 1000>)) ;
+      CPPUNIT_TEST(P_PASS(Test_DualQueue_Nx1<16, 1>)) ;
+      CPPUNIT_TEST(P_PASS(Test_DualQueue_Nx1<16, 1000>)) ;
 
       CPPUNIT_TEST_SUITE_END() ;
+
+   public:
+      template<typename T>
+      static void CheckQueueResultConsistency(size_t items_per_thread, size_t producers_count, const std::vector<T> &result) ;
 } ;
+
+template<typename T>
+void ConcurrentDynQueueTests::CheckQueueResultConsistency(size_t producers_count, size_t items_per_thread,
+                                                          const std::vector<T> &result)
+{
+   const size_t n = items_per_thread*producers_count ;
+   CPPUNIT_LOG_LINE("CHECK RESULTS CONSISTENCY: " << producers_count << " producers, 1 consumer, "
+                    << n << " items, " << items_per_thread << " per producer") ;
+
+   CPPUNIT_ASSERT(items_per_thread) ;
+   CPPUNIT_ASSERT(producers_count) ;
+
+   CPPUNIT_LOG_EQ(result.size(), n) ;
+   std::vector<ptrdiff_t> indicator (n, -1) ;
+
+   CPPUNIT_LOG("Checking every source item is present in the result exactly once...") ;
+   for (const auto &v: result)
+      if ((size_t)v < n && indicator[v] == -1)
+         indicator[v] = &v - result.data() ;
+      else
+      {
+         CPPUNIT_LOG(" ERROR at item #" << &v - result.data() << "=" << v) ;
+         if ((size_t)v >= n)
+            CPPUNIT_LOG_LINE(": item value is too big") ;
+         else
+            CPPUNIT_LOG_LINE(": duplicate item, first appears at #" << indicator[v]) ;
+         CPPUNIT_FAIL("Inconsistent concurrent queue results") ;
+      }
+
+   CPPUNIT_LOG_LINE(" OK") ;
+
+   for (size_t p = 0 ; p < producers_count ; ++p)
+   {
+      size_t start = p*items_per_thread ;
+      const size_t finish = start + items_per_thread ;
+
+      CPPUNIT_LOG("Checking result sequential consistency with producer #" << p+1
+                  << " items " << start << ".." << finish-1 << " ...") ;
+
+      const auto bad = std::find_if(result.begin(), result.end(), [&](T v) mutable
+      {
+         return xinrange((size_t)v, start, finish) && (size_t)v != start++ ;
+      }) ;
+      if (bad == result.end())
+         CPPUNIT_LOG_LINE(" OK") ;
+      else
+      {
+         CPPUNIT_LOG_LINE(" ERROR at item #" << bad - result.begin()) ;
+         CPPUNIT_LOG_EQ(*bad, start - 1) ;
+      }
+   }
+}
 
 /*******************************************************************************
  ConcurrentDynQueueTests
@@ -202,6 +285,53 @@ void ConcurrentDynQueueTests::Test_CdsQueues_Of_Movable()
    CPPUNIT_LOG_EQ(sup1.get(), sp1) ;
 }
 
+/*******************************************************************************
+ ConcurrentDynQueueTests::Test_QueueChecker
+*******************************************************************************/
+void ConcurrentDynQueueTests::Test_QueueChecker_GoodResults()
+{
+   std::vector<size_t> v15 (count_iter(0), count_iter(15)) ;
+   CheckQueueResultConsistency(1, 15, v15) ;
+   std::vector<size_t> v8 {0, 1, 4, 5, 2, 6, 3, 7} ;
+   CheckQueueResultConsistency(2, 4, v8) ;
+}
+
+void ConcurrentDynQueueTests::Test_QueueChecker_BadResult1()
+{
+   std::vector<size_t> v15 (count_iter(0), count_iter(15)) ;
+   CheckQueueResultConsistency(1, 14, v15) ;
+}
+
+void ConcurrentDynQueueTests::Test_QueueChecker_BadResult2()
+{
+   std::vector<size_t> v15 (count_iter(0), count_iter(15)) ;
+   CPPUNIT_LOG_RUN(v15.back() = 15) ;
+   CheckQueueResultConsistency(1, 15, v15) ;
+}
+
+void ConcurrentDynQueueTests::Test_QueueChecker_BadResult3()
+{
+   std::vector<size_t> v16 (count_iter(0), count_iter(16)) ;
+   CPPUNIT_LOG_RUN(v16[7] = 10) ;
+   CheckQueueResultConsistency(2, 8, v16) ;
+}
+
+void ConcurrentDynQueueTests::Test_QueueChecker_BadResult4()
+{
+   std::vector<size_t> v15 (count_iter(0), count_iter(15)) ;
+   CPPUNIT_LOG_RUN(std::swap(v15[5], v15[10])) ;
+   CheckQueueResultConsistency(1, 15, v15) ;
+}
+
+void ConcurrentDynQueueTests::Test_QueueChecker_BadResult5()
+{
+   std::vector<size_t> v8 {0, 1, 4, 5, 2, 7, 3, 6} ;
+   CheckQueueResultConsistency(2, 4, v8) ;
+}
+
+/*******************************************************************************
+ ConcurrentDynQueueTests::Test_Queue
+*******************************************************************************/
 template<size_t P, size_t C>
 void ConcurrentDynQueueTests::Test_CdsQueue_Nx1()
 {
@@ -249,6 +379,55 @@ void ConcurrentDynQueueTests::Test_CdsQueue_Nx1()
 
    CPPUNIT_LOG_EQ(v.size(), N) ;
    CPPUNIT_LOG_ASSERT(q.empty()) ;
+
+   CheckQueueResultConsistency(P, per_thread, v) ;
+}
+
+template<size_t P, size_t C>
+void ConcurrentDynQueueTests::Test_DualQueue_Nx1()
+{
+   const size_t N = 3*5*7*16*C ;
+   PCOMN_STATIC_CHECK(N % P == 0) ;
+   const size_t per_thread = N/P ;
+
+   CPPUNIT_LOG_LINE("****************** " << P << " producers, 1 consumer, "
+                    << N << " items, " << per_thread << " per producer thread *******************") ;
+
+   std::thread producers[P] ;
+   std::thread consumer ;
+
+   concurrent_dualqueue<size_t> q ;
+   std::vector<size_t> v ;
+   v.reserve(N) ;
+
+   consumer = std::thread
+      ([&]
+       {
+          while(v.size() < N)
+             v.push_back(q.pop()) ;
+       }) ;
+
+   size_t start_from = 0 ;
+   for (std::thread &p: producers)
+   {
+      p = std::thread
+         ([=,&q]() mutable
+          {
+             for (size_t i = start_from, end_with = start_from + per_thread ; i < end_with ; ++i)
+                q.push(i) ;
+          }) ;
+      start_from += per_thread ;
+   }
+
+   for (std::thread &p: producers)
+      CPPUNIT_LOG_RUN(p.join()) ;
+
+   CPPUNIT_LOG_RUN(consumer.join()) ;
+
+   CPPUNIT_LOG_EQ(v.size(), N) ;
+   CPPUNIT_LOG_ASSERT(q.empty()) ;
+
+   CheckQueueResultConsistency(P, per_thread, v) ;
 }
 
 /*******************************************************************************

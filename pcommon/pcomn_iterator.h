@@ -201,8 +201,8 @@ struct collection_iterator : collection_iterator_tag<RandomAccessContainer> {
 } ;
 
 /******************************************************************************/
-/** An iterator which counts how far it is advanced (i.e. how many times
- operator++() is called).
+/** The iterator counts how far it is advanced (i.e. how many times operator++()
+is called).
 *******************************************************************************/
 template<typename Counter = size_t>
 struct count_iterator : std::iterator<std::random_access_iterator_tag, Counter, ptrdiff_t, void, Counter> {

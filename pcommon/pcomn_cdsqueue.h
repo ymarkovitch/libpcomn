@@ -337,7 +337,7 @@ class concurrent_dualqueue : cdsqueue_base<T, detail::dualq_node<T>, A, concurre
 
       bool is_request_node(node_type *node) const
       {
-         return node != &this->_dummy_node && node->is_request_node() ;
+         return node != this->_head && node->is_request_node() ;
       }
 
       void finalize_popped_head(node_type *popped_head)
