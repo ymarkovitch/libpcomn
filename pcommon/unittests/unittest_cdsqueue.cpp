@@ -12,6 +12,7 @@
 #include <pcomn_cdsqueue.h>
 #include <pcomn_iterator.h>
 #include <pcomn_unittest.h>
+#include <pcomn_testcds.h>
 
 #include <thread>
 #include <numeric>
@@ -34,14 +35,14 @@ class ConcurrentDynQueueTests : public CppUnit::TestFixture {
       void Test_QueueChecker_BadResult7() ;
       void Test_QueueChecker_BadResult8() ;
 
-      template<size_t producers, size_t count = 1000>
+      template<size_t producers, size_t count>
       void Test_CdsQueue_Nx1() ;
-      template<size_t producers, size_t count = 1000>
+      template<size_t producers, size_t count>
       void Test_DualQueue_Nx1() ;
 
-      template<size_t producers, size_t consumers, size_t count = 1000>
+      template<size_t producers, size_t consumers, size_t count>
       void Test_CdsQueue_NxN() ;
-      template<size_t producers, size_t consumers, size_t count = 1000>
+      template<size_t producers, size_t consumers, size_t count>
       void Test_DualQueue_NxN() ;
 
       CPPUNIT_TEST_SUITE(ConcurrentDynQueueTests) ;
@@ -88,155 +89,8 @@ class ConcurrentDynQueueTests : public CppUnit::TestFixture {
       CPPUNIT_TEST(P_PASS(Test_DualQueue_NxN<7, 3, 1000>)) ;
 
       CPPUNIT_TEST_SUITE_END() ;
-
-   public:
-      template<typename T>
-      static void CheckQueueResultConsistency(size_t items_per_thread, size_t producers_count,
-                                              const std::vector<T> &result) ;
-      template<typename T>
-      static void CheckQueueResultConsistency(size_t items_per_thread, size_t producers_count,
-                                              const std::vector<T> *results_begin,
-                                              const std::vector<T> *results_end) ;
 } ;
 
-template<typename T>
-void ConcurrentDynQueueTests::CheckQueueResultConsistency(size_t producers_count, size_t items_per_thread,
-                                                          const std::vector<T> &result)
-{
-   const size_t n = items_per_thread*producers_count ;
-   CPPUNIT_LOG_LINE("\nCHECK RESULTS CONSISTENCY: " << producers_count << " producers, 1 consumer, "
-                    << n << " items, " << items_per_thread << " per producer") ;
-
-   CPPUNIT_ASSERT(items_per_thread) ;
-   CPPUNIT_ASSERT(producers_count) ;
-
-   CPPUNIT_LOG_EQ(result.size(), n) ;
-   std::vector<ptrdiff_t> indicator (n, -1) ;
-
-   CPPUNIT_LOG("Checking every source item is present in the result exactly once...") ;
-   for (const auto &v: result)
-      if ((size_t)v < n && indicator[v] == -1)
-         indicator[v] = &v - result.data() ;
-      else
-      {
-         CPPUNIT_LOG(" ERROR at item #" << &v - result.data() << "=" << v) ;
-         if ((size_t)v >= n)
-            CPPUNIT_LOG_LINE(": item value is too big") ;
-         else
-            CPPUNIT_LOG_LINE(": duplicate item, first appears at #" << indicator[v]) ;
-         CPPUNIT_FAIL("Inconsistent concurrent queue results") ;
-      }
-
-   CPPUNIT_LOG_LINE(" OK") ;
-
-   for (size_t p = 0 ; p < producers_count ; ++p)
-   {
-      size_t start = p*items_per_thread ;
-      const size_t finish = start + items_per_thread ;
-
-      CPPUNIT_LOG("Checking result sequential consistency with producer" << p+1
-                  << " items " << start << ".." << finish-1 << " ...") ;
-
-      const auto bad = std::find_if(result.begin(), result.end(), [&](T v) mutable
-      {
-         return xinrange((size_t)v, start, finish) && (size_t)v != start++ ;
-      }) ;
-      if (bad == result.end())
-         CPPUNIT_LOG_LINE(" OK") ;
-      else
-      {
-         CPPUNIT_LOG_LINE(" ERROR at item #" << bad - result.begin()) ;
-         CPPUNIT_LOG_EQ(*bad, start - 1) ;
-      }
-   }
-}
-
-template<typename T>
-void ConcurrentDynQueueTests::CheckQueueResultConsistency(size_t producers_count, size_t items_per_thread,
-                                                          const std::vector<T> *bresults,
-                                                          const std::vector<T> *eresults)
-{
-   const size_t nproduced = items_per_thread*producers_count ;
-   const size_t consumers = eresults - bresults ;
-
-   CPPUNIT_LOG_LINE(("\nCHECK RESULTS CONSISTENCY: ")
-                    << producers_count << " producers, " << consumers << " consumer(s), " << nproduced
-                    << " items, " << items_per_thread << " per producer") ;
-
-   CPPUNIT_ASSERT(consumers != 0) ;
-   CPPUNIT_ASSERT(items_per_thread) ;
-   CPPUNIT_ASSERT(producers_count) ;
-
-   auto consnum = [=](const std::vector<T> *result) { return result - bresults + 1 ; } ;
-
-   const size_t nconsumed =
-      std::accumulate(bresults, eresults, 0UL, [](size_t a, const std::vector<T> &v)
-      {
-         CPPUNIT_LOG_LINE("Consumed " << v.size() << " items") ;
-         return a + v.size() ;
-      }) ;
-
-   CPPUNIT_LOG_EQ(nconsumed, nproduced) ;
-
-   std::vector<std::pair<const std::vector<T> *, ptrdiff_t>> indicator (nproduced, {nullptr, -1}) ;
-
-   CPPUNIT_LOG_LINE("Checking every source item is present in the result exactly once") ;
-
-   for (auto result = bresults ; result != eresults ; ++result)
-   {
-      CPPUNIT_LOG("Checking consumer" << consnum(result) << " ...") ;
-
-      for (const auto &v: *result)
-      {
-         const ptrdiff_t nitem = &v - result->data() ;
-
-         if ((size_t)v < nproduced && !indicator[v].first)
-            indicator[v] = {result, nitem} ;
-         else
-         {
-            CPPUNIT_LOG(" ERROR consumer" << consnum(result) << " item #" << nitem << "=" << v) ;
-            if ((size_t)v >= nproduced)
-               CPPUNIT_LOG_LINE(": item value is too big") ;
-            else
-               CPPUNIT_LOG_LINE(": duplicate item, first appeared in consumer "
-                                << consnum(indicator[v].first) << " at #" << indicator[v].second) ;
-            CPPUNIT_FAIL("Inconsistent concurrent queue results") ;
-         }
-      }
-      CPPUNIT_LOG_LINE(" OK") ;
-   }
-
-   CPPUNIT_LOG_LINE("Checking consumer results for sequential consistency with producers") ;
-
-   for (auto result = bresults ; result != eresults ; ++result)
-      for (size_t p = 0 ; p < producers_count ; ++p)
-      {
-         const size_t start = p*items_per_thread ;
-         const size_t finish = start + items_per_thread ;
-         size_t last = start ;
-
-         CPPUNIT_LOG("Checking consumer" << consnum(result) << " sequential consistency with producer" << p+1
-                     << " items " << start << ".." << finish-1 << " ...") ;
-
-         const auto bad = std::find_if(result->begin(), result->end(), [&](T v) mutable
-         {
-            if (xinrange((size_t)v, start, finish))
-            {
-               if ((size_t)v < last)
-                  return true ;
-               last = v ;
-            }
-            return false ;
-         }) ;
-         if (bad == result->end())
-            CPPUNIT_LOG_LINE(" OK") ;
-         else
-         {
-            CPPUNIT_LOG_LINE(" ERROR at item #" << bad - result->begin() << ": " << last << " precedes " << *bad) ;
-            CPPUNIT_FAIL("Order of consumed results is not consistent with producer") ;
-         }
-      }
-}
 
 /*******************************************************************************
  ConcurrentDynQueueTests
