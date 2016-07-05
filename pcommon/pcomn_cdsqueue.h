@@ -163,7 +163,7 @@ class cdsqueue_base : public concurrent_container<T, N, Alloc> {
 
       /// Get the tail; if tail is falling behind, i.e. the queue is in the middle of
       /// enqueuing of a node by someone else, help to wag the tail and return NULL.
-      node_hazard_ptr get_consistent_tail()
+      node_hazard_ptr ensure_consistent_tail()
       {
          for (;;)
          {
@@ -421,7 +421,7 @@ void concurrent_dynqueue<T, A>::push_node(node_type *new_node) noexcept
    // Hold the pushed node safe until enqueue is finished
    const node_hazard_ptr node_guard (new_node) ;
    // Keep trying until successful enqueue
-   while(!this->enqueue_node(this->get_consistent_tail().get(), new_node)) ;
+   while(!this->enqueue_node(this->ensure_consistent_tail().get(), new_node)) ;
 }
 
 template<typename T, typename A>
@@ -430,15 +430,16 @@ auto concurrent_dynqueue<T, A>::pop_node() -> node_hazard_ptr
    // Keep trying until successful dequeue
    for(;;)
    {
-      node_hazard_ptr tail {this->get_consistent_tail()} ;
       node_hazard_ptr head {&this->_head} ;
-
       node_type *current_head = head.get() ;
-      if (current_head == tail)
-         // The queue is empty
-         return nullptr ;
 
-      tail.reset() ;
+      if (current_head == this->_tail)
+      {
+         if (!current_head->_next)
+            // The queue is empty
+            return nullptr ;
+         this->ensure_consistent_tail() ;
+      }
 
       node_hazard_ptr next (current_head->_next) ;
       if (this->retire_head(head))
@@ -498,7 +499,7 @@ void concurrent_dualqueue<T, A>::push_node(node_type *new_node) noexcept
    // Keep trying until successful enqueue
    for(;;)
    {
-      const node_hazard_ptr tail (this->get_consistent_tail()) ;
+      const node_hazard_ptr tail (this->ensure_consistent_tail()) ;
       node_type * const current_tail = tail.get() ;
 
       if (!is_request_node(current_tail))
@@ -538,10 +539,12 @@ auto concurrent_dualqueue<T, A>::pop_node(bool lock_if_empty) -> node_hazard_ptr
    // Keep trying until successful dequeue
    for(;;)
    {
-      node_hazard_ptr tail {this->get_consistent_tail()} ;
       node_hazard_ptr head {&this->_head} ;
-
       node_type *current_head = head.get() ;
+
+      node_hazard_ptr tail {current_head != this->_tail
+            ? node_hazard_ptr(&this->_tail)
+            : this->ensure_consistent_tail()} ;
       node_type *current_tail = tail.get() ;
 
       if (current_head == current_tail || current_tail->is_request_node())

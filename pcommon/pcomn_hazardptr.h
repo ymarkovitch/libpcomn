@@ -502,7 +502,7 @@ class alignas(PCOMN_CACHELINE_SIZE) hazard_storage {
 
       void fini_registry(registry_type &slot)
       {
-         if (flush_pending(slot.pending_retired(), &slot) == 0)
+         if (retire_pending(slot.pending_retired(), &slot) == 0)
          {
             // All pending entries are successfully cleaned up
             delete slot._pending_retired ;
@@ -589,6 +589,8 @@ class hazard_manager {
       /// Create a hazard manager and allocate a hazard registry slot in the specified
       /// storage.
       explicit hazard_manager(storage_type &hazards) ;
+
+      ~hazard_manager() ;
 
       /// Get the hazard registry allocated for this manager.
       registry_type &registry() { return _registry ; }
@@ -758,7 +760,7 @@ void hazard_storage<L>::release_slot(registry_type *slot)
    // This operation is allowed to be nonatomic: some arbitrary bit sequences can be
    // transiently recognized as hazard pointers, this is absolutely harmless.
    fini_registry(*slot) ;
-   // Atomically mark the slot as free, ensure all observers after this point also will
+   // Atomically mark the slot as free, ensure all observers after this point also see
    // slot memory zeroed away.
    slots_map().set(slotpos, false, std::memory_order_release) ;
 }
@@ -828,6 +830,12 @@ hazard_manager<T>::hazard_manager(storage_type &hazards) :
    _storage(hazards),
    _registry(storage().allocate_slot())
 {}
+
+template<typename T>
+hazard_manager<T>::~hazard_manager()
+{
+   storage().release_slot(&_registry) ;
+}
 
 template<typename T>
 hazard_manager<T> &hazard_manager<T>::manager()

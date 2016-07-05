@@ -68,7 +68,6 @@ class ConcurrentDynQueueTests : public CppUnit::TestFixture {
       CPPUNIT_TEST(P_PASS(Test_CdsQueue_Nx1<16, 1>)) ;
       CPPUNIT_TEST(P_PASS(Test_CdsQueue_Nx1<16, 1000>)) ;
 
-      /*
       CPPUNIT_TEST(P_PASS(Test_DualQueue_Nx1<1, 1>)) ;
       CPPUNIT_TEST(P_PASS(Test_DualQueue_Nx1<1, 1000>)) ;
       CPPUNIT_TEST(P_PASS(Test_DualQueue_Nx1<2, 1>)) ;
@@ -77,11 +76,16 @@ class ConcurrentDynQueueTests : public CppUnit::TestFixture {
       CPPUNIT_TEST(P_PASS(Test_DualQueue_Nx1<3, 1000>)) ;
       CPPUNIT_TEST(P_PASS(Test_DualQueue_Nx1<16, 1>)) ;
       CPPUNIT_TEST(P_PASS(Test_DualQueue_Nx1<16, 1000>)) ;
-      */
 
       CPPUNIT_TEST(P_PASS(Test_CdsQueue_NxN<1, 1, 1>)) ;
       CPPUNIT_TEST(P_PASS(Test_CdsQueue_NxN<1, 2, 1>)) ;
       CPPUNIT_TEST(P_PASS(Test_CdsQueue_NxN<2, 4, 1000>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CdsQueue_NxN<2, 2, 1000>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CdsQueue_NxN<3, 1, 1000>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CdsQueue_NxN<7, 3, 1000>)) ;
+
+      CPPUNIT_TEST(P_PASS(Test_DualQueue_NxN<1, 1, 1>)) ;
+      CPPUNIT_TEST(P_PASS(Test_DualQueue_NxN<7, 3, 1000>)) ;
 
       CPPUNIT_TEST_SUITE_END() ;
 
@@ -633,6 +637,58 @@ void ConcurrentDynQueueTests::Test_CdsQueue_NxN()
       CPPUNIT_LOG_RUN(p.join()) ;
 
    CPPUNIT_LOG_RUN(endprod = 1) ;
+
+   for (std::thread &c: consumers)
+      CPPUNIT_LOG_RUN(c.join()) ;
+
+   CPPUNIT_LOG_ASSERT(q.empty()) ;
+
+   CheckQueueResultConsistency(P, per_thread, std::begin(v), std::end(v)) ;
+}
+
+template<size_t P, size_t C, size_t K>
+void ConcurrentDynQueueTests::Test_DualQueue_NxN()
+{
+   const size_t N = 3*5*7*16*K ;
+   PCOMN_STATIC_CHECK(N % P == 0) ;
+   const size_t per_thread = N/P ;
+
+   CPPUNIT_LOG_LINE("****************** " << P << " producers, " << C << "  consumer(s), "
+                    << N << " items, " << per_thread << " per producer thread *******************") ;
+
+   std::thread producers[P] ;
+   std::thread consumers[C] ;
+   std::vector<size_t> v[C] ;
+
+   concurrent_dualqueue<size_t> q ;
+
+   size_t num = 0 ;
+   for (std::thread &cs: consumers)
+   {
+      cs = std::thread
+         ([&,num]
+          {
+             for (size_t c ; (c = q.pop()) != (size_t)-1 ; v[num].push_back(c)) ;
+          }) ;
+      ++num ;
+   }
+
+   size_t start_from = 0 ;
+   for (std::thread &p: producers)
+   {
+      p = std::thread
+         ([=,&q]() mutable
+          {
+             for (size_t i = start_from, end_with = start_from + per_thread ; i < end_with ; ++i)
+                q.push(i) ;
+          }) ;
+      start_from += per_thread ;
+   }
+
+   for (std::thread &p: producers)
+      CPPUNIT_LOG_RUN(p.join()) ;
+
+   CPPUNIT_LOG_RUN(for(int c = C ; c-- ; q.push_back(-1))) ;
 
    for (std::thread &c: consumers)
       CPPUNIT_LOG_RUN(c.join()) ;
