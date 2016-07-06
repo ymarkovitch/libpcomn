@@ -12,6 +12,7 @@ import modules ;
 project
   : requirements
   <library>$(PROJROOT)//pcommon
+  <library>$(PROJROOT)//cppunit
 
   : default-build release <link>static <threading>multi
   ;
