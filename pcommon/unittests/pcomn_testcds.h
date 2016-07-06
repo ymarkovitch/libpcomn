@@ -14,12 +14,17 @@
  Helper classes and functions for concurrent data structures testing.
 *******************************************************************************/
 #include <pcomn_unittest.h>
+#include <pcomn_calgorithm.h>
 
+#include <thread>
 #include <vector>
 #include <numeric>
 #include <algorithm>
 
 namespace pcomn {
+namespace unit {
+
+const size_t CDSTEST_COUNT_QUOTIENT = 3*5*7*9*11*16 ;
 
 /*******************************************************************************
  Check consistency of test results
@@ -27,24 +32,24 @@ namespace pcomn {
 template<typename T>
 void CheckQueueResultConsistency(size_t producers_count, size_t items_per_thread, const std::vector<T> &result)
 {
-   const size_t n = items_per_thread*producers_count ;
+   const size_t nproduced = items_per_thread*producers_count ;
    CPPUNIT_LOG_LINE("\nCHECK RESULTS CONSISTENCY: " << producers_count << " producers, 1 consumer, "
-                    << n << " items, " << items_per_thread << " per producer") ;
+                    << nproduced << " items, " << items_per_thread << " per producer") ;
 
    CPPUNIT_ASSERT(items_per_thread) ;
    CPPUNIT_ASSERT(producers_count) ;
 
-   CPPUNIT_LOG_EQ(result.size(), n) ;
-   std::vector<ptrdiff_t> indicator (n, -1) ;
+   CPPUNIT_LOG_EQ(result.size(), nproduced) ;
+   std::vector<ptrdiff_t> indicator (nproduced, -1) ;
 
    CPPUNIT_LOG("Checking every source item is present in the result exactly once...") ;
    for (const auto &v: result)
-      if ((size_t)v < n && indicator[v] == -1)
+      if ((size_t)v < nproduced && indicator[v] == -1)
          indicator[v] = &v - result.data() ;
       else
       {
          CPPUNIT_LOG(" ERROR at item #" << &v - result.data() << "=" << v) ;
-         if ((size_t)v >= n)
+         if ((size_t)v >= nproduced)
             CPPUNIT_LOG_LINE(": item value is too big") ;
          else
             CPPUNIT_LOG_LINE(": duplicate item, first appears at #" << indicator[v]) ;
@@ -165,13 +170,42 @@ void CheckQueueResultConsistency(size_t producers_count, size_t items_per_thread
 /*******************************************************************************
  Various queue tests
 *******************************************************************************/
+template<typename S, typename P, typename T>
+static void FinalizeQueueTestNx1(S stop, P &producers, std::thread &consumer, size_t per_thread,
+                                 const std::vector<T> &result)
+{
+   for (std::thread &p: producers)
+      CPPUNIT_LOG_RUN(p.join()) ;
+
+   CPPUNIT_LOG_RUN(stop()) ;
+   CPPUNIT_LOG_RUN(consumer.join()) ;
+
+   CheckQueueResultConsistency(std::size(producers), per_thread, result) ;
+}
+
+template<typename S, typename V, typename T>
+static void FinalizeQueueTestNxN(S stop, V &producers, V &consumers, size_t per_thread,
+                                 const std::vector<T> *bresults,
+                                 const std::vector<T> *eresults)
+{
+   for (std::thread &p: producers)
+      CPPUNIT_LOG_RUN(p.join()) ;
+
+   CPPUNIT_LOG_RUN(stop()) ;
+
+   for (std::thread &c: consumers)
+      CPPUNIT_LOG_RUN(c.join()) ;
+
+   CheckQueueResultConsistency(std::size(producers), per_thread, bresults, eresults) ;
+}
+
 template<typename Queue>
-void Test_CdsQueue_Nx1(size_t producers_count, size_t repeat_count)
+void CdsQueueTest_Nx1(Queue &q, size_t producers_count, size_t repeat_count)
 {
    CPPUNIT_LOG_ASSERT(producers_count > 0) ;
    CPPUNIT_LOG_ASSERT(repeat_count > 0) ;
 
-   const size_t N = 3*5*7*16*repeat_count ;
+   const size_t N = CDSTEST_COUNT_QUOTIENT*repeat_count ;
    const size_t per_thread = N/producers_count ;
 
    CPPUNIT_LOG_LINE("****************** " << producers_count << " producers, 1 consumer, "
@@ -182,7 +216,6 @@ void Test_CdsQueue_Nx1(size_t producers_count, size_t repeat_count)
    std::vector<std::thread> producers (producers_count) ;
    std::thread consumer ;
 
-   Queue q ;
    std::vector<size_t> v ;
    v.reserve(N) ;
 
@@ -210,30 +243,156 @@ void Test_CdsQueue_Nx1(size_t producers_count, size_t repeat_count)
       start_from += per_thread ;
    }
 
-   for (std::thread &p: producers)
-      CPPUNIT_LOG_RUN(p.join()) ;
-
-   CPPUNIT_LOG_RUN(endprod = 1) ;
-   CPPUNIT_LOG_RUN(consumer.join()) ;
-
+   FinalizeQueueTestNx1([&]()mutable { endprod = 1 ; }, producers, consumer, per_thread, v) ;
    CPPUNIT_LOG_EQ(v.size(), N) ;
+}
+
+template<typename Queue>
+void CdsQueueTest_NxN(Queue &q, size_t producers_count, size_t consumers_count, size_t repeat_count)
+{
+   CPPUNIT_LOG_ASSERT(producers_count > 0) ;
+   CPPUNIT_LOG_ASSERT(consumers_count > 0) ;
+   CPPUNIT_LOG_ASSERT(repeat_count > 0) ;
+
+   const size_t N = CDSTEST_COUNT_QUOTIENT*repeat_count ;
+   const size_t per_thread = N/producers_count ;
+
+   CPPUNIT_LOG_LINE("****************** " << producers_count << " producers, " << consumers_count << "  consumer(s), "
+                    << N << " items, " << per_thread << " per producer thread *******************") ;
+
+   CPPUNIT_LOG_ASSERT(N % producers_count == 0) ;
+
+   std::vector<std::thread> producers (producers_count) ;
+   std::vector<std::thread> consumers (consumers_count) ;
+   std::vector<std::vector<size_t>> v (consumers_count) ;
+
+   volatile int endprod = 0 ;
+   size_t num = 0 ;
+   for (std::thread &cs: consumers)
+   {
+      cs = std::thread
+         ([&,num]
+          {
+             auto &r = v[num] ;
+             while(!endprod || !q.empty())
+             {
+                size_t c = 0 ;
+                if (q.pop(c))
+                   r.push_back(c) ;
+             }
+          }) ;
+      ++num ;
+   }
+
+   size_t start_from = 0 ;
+   for (std::thread &p: producers)
+   {
+      p = std::thread
+         ([=,&q]() mutable
+          {
+             for (size_t i = start_from, end_with = start_from + per_thread ; i < end_with ; ++i)
+                q.push(i) ;
+          }) ;
+      start_from += per_thread ;
+   }
+
+   FinalizeQueueTestNxN([&]()mutable { endprod = 1 ; }, producers, consumers, per_thread, pbegin(v), pend(v)) ;
    CPPUNIT_LOG_ASSERT(q.empty()) ;
-
-   CheckQueueResultConsistency(P, per_thread, v) ;
 }
 
-void Test_CdsQueue_NxN(size_t producers, size_t consumers, size_t count)
+template<typename Queue>
+void DualQueueTest_Nx1(Queue &q, size_t producers_count, size_t repeat_count)
 {
+   CPPUNIT_LOG_ASSERT(producers_count > 0) ;
+   CPPUNIT_LOG_ASSERT(repeat_count > 0) ;
+
+   const size_t N = CDSTEST_COUNT_QUOTIENT*repeat_count ;
+   const size_t per_thread = N/producers_count ;
+
+   CPPUNIT_LOG_LINE("****************** " << producers_count << " producers, 1 consumer, "
+                    << N << " items, " << per_thread << " per producer thread *******************") ;
+
+   CPPUNIT_LOG_ASSERT(N % producers_count == 0) ;
+
+   std::vector<std::thread> producers (producers_count) ;
+   std::thread consumer ;
+
+   std::vector<size_t> v ;
+   v.reserve(N) ;
+
+   consumer = std::thread
+      ([&]
+       {
+          while(v.size() < N)
+             v.push_back(q.pop()) ;
+       }) ;
+
+   size_t start_from = 0 ;
+   for (std::thread &p: producers)
+   {
+      p = std::thread
+         ([=,&q]() mutable
+          {
+             for (size_t i = start_from, end_with = start_from + per_thread ; i < end_with ; ++i)
+                q.push(i) ;
+          }) ;
+      start_from += per_thread ;
+   }
+
+   FinalizeQueueTestNx1([]{}, producers, consumer, per_thread, v) ;
+   CPPUNIT_LOG_ASSERT(q.empty()) ;
 }
 
-void Test_DualQueue_Nx1(size_t producers, size_t count)
+template<typename Queue>
+void DualQueueTest_NxN(Queue &q, size_t producers_count, size_t consumers_count, size_t repeat_count)
 {
+   using namespace std ;
+
+   CPPUNIT_LOG_ASSERT(producers_count > 0) ;
+   CPPUNIT_LOG_ASSERT(consumers_count > 0) ;
+   CPPUNIT_LOG_ASSERT(repeat_count > 0) ;
+
+   const size_t N = CDSTEST_COUNT_QUOTIENT*repeat_count ;
+   const size_t per_thread = N/producers_count ;
+
+   CPPUNIT_LOG_LINE("****************** " << producers_count << " producers, " << consumers_count << "  consumer(s), "
+                    << N << " items, " << per_thread << " per producer thread *******************") ;
+
+   CPPUNIT_LOG_ASSERT(N % producers_count == 0) ;
+
+   vector<thread> producers (producers_count) ;
+   vector<thread> consumers (consumers_count) ;
+   vector<vector<size_t>> v (consumers_count) ;
+
+   size_t num = 0 ;
+   for (thread &cs: consumers)
+   {
+      cs = thread
+         ([&,num]
+          {
+             for (size_t c ; (c = q.pop()) != (size_t)-1 ; v[num].push_back(c)) ;
+          }) ;
+      ++num ;
+   }
+
+   size_t start_from = 0 ;
+   for (thread &p: producers)
+   {
+      p = thread
+         ([=,&q]() mutable
+          {
+             for (size_t i = start_from, end_with = start_from + per_thread ; i < end_with ; ++i)
+                q.push(i) ;
+          }) ;
+      start_from += per_thread ;
+   }
+
+   FinalizeQueueTestNxN([&]()mutable{ fill_n(back_inserter(q), consumers.size(), -1) ; },
+                        producers, consumers, per_thread, pbegin(v), pend(v)) ;
+   CPPUNIT_LOG_ASSERT(q.empty()) ;
 }
 
-void Test_DualQueue_NxN(size_t producers, size_t consumers, size_t count)
-{
-}
-
+} // end of namespace pcomn::unit
 } // end of namespace pcomn
 
 #endif /* __PCOMN_TESTCDS_H */

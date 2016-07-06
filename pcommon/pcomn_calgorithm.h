@@ -14,7 +14,6 @@
 /** Algorithms defined on containers instead of interators
 *******************************************************************************/
 #include <pcomn_algorithm.h>
-#include <pcomn_function.h>
 #include <pcomn_iterator.h>
 #include <pcomn_meta.h>
 
