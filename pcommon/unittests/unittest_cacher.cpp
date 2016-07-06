@@ -419,7 +419,7 @@ void KeyedPoolTests::Test_Keyed_Pool_Erase()
       CPPUNIT_LOG_RUN(TestPool.checkin("dummy2", dummy_nocopy)) ;
       CPPUNIT_LOG_EQUAL(dummy_nocopy, PoolItemNoCopy()) ;
       CPPUNIT_LOG_EQUAL(TestPool.size(), (size_t)1) ;
-      CPPUNIT_LOG_EQUAL(TestPool.key_count(), (size_t)1) ;
+      CPPUNIT_LOG_EQUAL(TestPool.key_count(), (size_t)2) ;
       CPPUNIT_LOG_EQUAL(PoolItemNoCopy::destroyed, CPPUNIT_CONTAINER(std::vector<value_pair>,
                                                                      (value_pair("dummy_nocopy", 13))
                                                                      (value_pair("foo_nocopy", 7)))) ;

@@ -63,7 +63,6 @@ class keyed_pool {
       ///
       void put(const key_type &key, const value_type &value)
       {
-         cleanup(LOCKED) ;
          PCOMN_SCOPE_LOCK (pool_guard, _lock) ;
          put_unlocked(key, value) ;
       }
@@ -72,7 +71,6 @@ class keyed_pool {
       ///
       void checkin(const key_type &key, value_type &value)
       {
-         cleanup(LOCKED) ;
          PCOMN_SCOPE_LOCK (pool_guard, _lock) ;
          checkin_unlocked(key, value) ;
       }
@@ -353,16 +351,19 @@ void keyed_pool<K, V, H, P>::retrieve_keys(std::vector<std::pair<key_type, size_
 }
 
 template<typename K, typename V, typename H, typename P>
-inline void keyed_pool<K, V, H, P>::cleanup_emptykeys()
+void keyed_pool<K, V, H, P>::cleanup_emptykeys()
 {
    if (_emptykey_count <= _data.size()/2)
       return ;
-   typedef typename pool_data::iterator data_iterator ;
-   for (data_iterator i = _data.begin(), e = _data.end() ; i != e ;)
+   for (auto dataiter = _data.begin(), end = _data.end() ; dataiter != end ;)
    {
-      const data_iterator d (i++) ;
-      if ((*d)->items().empty())
+      const auto d (dataiter++) ;
+      key_entry *ke = *d ;
+      if (ke->items().empty())
+      {
          _data.erase(d) ;
+         delete ke ;
+      }
    }
    _emptykey_count = 0 ;
 }

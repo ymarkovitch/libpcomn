@@ -55,7 +55,7 @@ class basic_buffer {
          _avail(size),
          _size(ensure_le<std::invalid_argument>
                (size, _maxsize, "Cannot grow memory buffer beneath maxsize.")),
-         _data(ensure_nonzero<std::bad_alloc>(std::malloc(size)))
+         _data(size ? ensure_nonzero<std::bad_alloc>(std::malloc(size)) : nullptr)
       {}
 
       basic_buffer(void *data, size_t datasize) :
