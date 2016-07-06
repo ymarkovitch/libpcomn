@@ -103,6 +103,7 @@ class ConcurrentDynQueueTests : public CppUnit::TestFixture {
       CPPUNIT_TEST(P_PASS(Test_DualQueue_Nx1<2, REPCOUNT>)) ;
       CPPUNIT_TEST(P_PASS(Test_DualQueue_Nx1<3, 1>)) ;
       CPPUNIT_TEST(P_PASS(Test_DualQueue_Nx1<3, REPCOUNT>)) ;
+      CPPUNIT_TEST(P_PASS(Test_DualQueue_Nx1<7, REPCOUNT>)) ;
       CPPUNIT_TEST(P_PASS(Test_DualQueue_Nx1<16, 1>)) ;
       CPPUNIT_TEST(P_PASS(Test_DualQueue_Nx1<16, REPCOUNT>)) ;
 
@@ -114,6 +115,8 @@ class ConcurrentDynQueueTests : public CppUnit::TestFixture {
       CPPUNIT_TEST(P_PASS(Test_CdsQueue_NxN<7, 3, REPCOUNT>)) ;
 
       CPPUNIT_TEST(P_PASS(Test_DualQueue_NxN<1, 1, 1>)) ;
+      CPPUNIT_TEST(P_PASS(Test_DualQueue_NxN<2, 2, REPCOUNT>)) ;
+      CPPUNIT_TEST(P_PASS(Test_DualQueue_NxN<2, 8, REPCOUNT>)) ;
       CPPUNIT_TEST(P_PASS(Test_DualQueue_NxN<7, 3, REPCOUNT>)) ;
 
       CPPUNIT_TEST_SUITE_END() ;

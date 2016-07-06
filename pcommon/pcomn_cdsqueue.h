@@ -513,11 +513,11 @@ void concurrent_dualqueue<T, A>::push_node(node_type *new_node) noexcept
       // Try to fulfill a request at the head.
       node_hazard_ptr head (&this->_head) ;
       node_hazard_ptr front (head->_next) ;
+      node_type *front_request ;
 
-      if (atomic_op::load(&this->_head) != head || !is_request_node(front.get()))
+      if (atomic_op::load(&this->_head) != head || (front_request = front.get()) == nullptr || !is_request_node(front_request))
          continue ;
 
-      node_type * const front_request = front.get() ;
       const bool front_fulfilled = front_request->fulfill_request(new_node) ;
 
       if (front_fulfilled)
