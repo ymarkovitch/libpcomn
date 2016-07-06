@@ -242,7 +242,7 @@ if_integer_t<I, size_t> find_first_bit(const I *bits, size_t start, size_t finis
    {
       const size_t to = cellndx<cell_type>(finish) ;
       do {
-         if (++ndx > to)
+         if (++ndx >= to)
             return finish ;
          cell = (*++bits ^ invert) ;
       } while (!cell) ;
