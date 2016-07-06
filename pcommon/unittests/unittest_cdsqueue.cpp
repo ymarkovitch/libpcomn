@@ -134,7 +134,7 @@ void ConcurrentDynQueueTests::Test_CdsQueue_SingleThread()
    std::string val0 = "Hello, world!" ;
 
    CPPUNIT_LOG_ASSERT(empty0.empty()) ;
-   CPPUNIT_LOG_IS_FALSE(empty0.pop(val0)) ;
+   CPPUNIT_LOG_IS_FALSE(empty0.try_pop(val0)) ;
    CPPUNIT_LOG_ASSERT(empty0.empty()) ;
    CPPUNIT_LOG_EQ(val0, "Hello, world!") ;
    CPPUNIT_LOG_EQ(empty0.pop_default("Foo"), std::make_pair("Foo", false)) ;
@@ -147,12 +147,12 @@ void ConcurrentDynQueueTests::Test_CdsQueue_SingleThread()
    std::string val ;
 
    CPPUNIT_LOG_ASSERT(q1.empty()) ;
-   CPPUNIT_LOG_IS_FALSE(q1.pop(val1)) ;
+   CPPUNIT_LOG_IS_FALSE(q1.try_pop(val1)) ;
    CPPUNIT_LOG_EQ(val1, "Bye, baby!") ;
    CPPUNIT_LOG_RUN(q1.push(val0)) ;
    CPPUNIT_LOG_IS_FALSE(q1.empty()) ;
 
-   CPPUNIT_LOG_ASSERT(q1.pop(val)) ;
+   CPPUNIT_LOG_ASSERT(q1.try_pop(val)) ;
    CPPUNIT_LOG_EQ(val, "Hello, world!") ;
    CPPUNIT_LOG_ASSERT(q1.empty()) ;
    CPPUNIT_LOG_EQ(q1.pop_default("Foo"), std::make_pair("Foo", false)) ;
@@ -170,7 +170,7 @@ void ConcurrentDynQueueTests::Test_CdsQueue_SingleThread()
    CPPUNIT_LOG_IS_FALSE(q1.empty()) ;
 
    CPPUNIT_LOG(std::endl) ;
-   CPPUNIT_LOG_ASSERT(q1.pop(val)) ;
+   CPPUNIT_LOG_ASSERT(q1.try_pop(val)) ;
    CPPUNIT_LOG_EQ(val, "Foo") ;
    CPPUNIT_LOG_IS_FALSE(q1.empty()) ;
    CPPUNIT_LOG_EQ(q1.pop_default(), std::make_pair("Quux", true)) ;
@@ -278,7 +278,7 @@ void ConcurrentDynQueueTests::Test_CdsQueues_Of_Movable()
    std::string *sp1 = new std::string("Hello, world!") ;
    struptr sup1 {sp1} ;
 
-   CPPUNIT_LOG_IS_FALSE(cdsq.pop(sup1)) ;
+   CPPUNIT_LOG_IS_FALSE(cdsq.try_pop(sup1)) ;
    CPPUNIT_LOG_EQ(sup1.get(), sp1) ;
    CPPUNIT_LOG_IS_FALSE(dualq.try_pop(sup1)) ;
    CPPUNIT_LOG_EQ(sup1.get(), sp1) ;

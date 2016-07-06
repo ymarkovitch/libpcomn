@@ -226,7 +226,7 @@ void CdsQueueTest_Nx1(Queue &q, size_t producers_count, size_t repeat_count)
           while(!endprod || !q.empty())
           {
              size_t c = 0 ;
-             if (q.pop(c))
+             if (q.try_pop(c))
                 v.push_back(c) ;
           }
        }) ;
@@ -277,7 +277,7 @@ void CdsQueueTest_NxN(Queue &q, size_t producers_count, size_t consumers_count, 
              while(!endprod || !q.empty())
              {
                 size_t c = 0 ;
-                if (q.pop(c))
+                if (q.try_pop(c))
                    r.push_back(c) ;
              }
           }) ;

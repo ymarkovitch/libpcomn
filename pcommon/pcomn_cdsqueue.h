@@ -251,7 +251,7 @@ class concurrent_dynqueue : cdsqueue_base<T, detail::dynq_node<T>, A, concurrent
       using ancestor::emplace ;
       using ancestor::empty ;
 
-      bool pop(value_type &result) ;
+      bool try_pop(value_type &result) ;
 
       /// If the queue is nonempty, pop and return its head; otherwise, return a default
       /// value constructed from passsed arguments.
@@ -384,7 +384,7 @@ cdsqueue_base<T, N, A, Q>::~cdsqueue_base()
  concurrent_dynqueue
 *******************************************************************************/
 template<typename T, typename A>
-bool concurrent_dynqueue<T, A>::pop(value_type &result)
+bool concurrent_dynqueue<T, A>::try_pop(value_type &result)
 {
    const node_hazard_ptr popped_head = pop_node() ;
    const bool retval = !!popped_head ;
