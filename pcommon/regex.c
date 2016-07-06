@@ -753,11 +753,10 @@ static const char *regprop(const char *op);
 void pcomn_regfree(regexp *preg)
 {
    if (!preg)
-   {
-      if (preg->program)
-         free(preg->program) ;
-      memset(preg, 0, sizeof *preg) ;
-   }
+      return ;
+   if (preg->program)
+      free(preg->program) ;
+   memset(preg, 0, sizeof *preg) ;
 }
 
 struct reinput_data {

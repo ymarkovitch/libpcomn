@@ -70,13 +70,12 @@ class regex::pattern_type : public regex::regex_pattern {
 public:
    explicit pattern_type(const char *ex)
    {
-      memset(&exp, 0, sizeof exp) ;
       pcomn_regcomp_ex(&exp, ex, 0, (regexp_handler)errh) ;
    }
 
    ~pattern_type() { pcomn_regfree(&exp) ; }
 
-   pcomn_regex_t exp ;
+   pcomn_regex_t exp {} ;
 private:
    std::pair<bool, reg_match *>
    exec_match(const char_type *begin, const char_type *end,
