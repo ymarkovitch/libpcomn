@@ -15,6 +15,7 @@
 #include <pcomn_safeptr.h>
 #include <pcomn_string.h>
 #include <pcomn_sys.h>
+#include <pcomn_trace.h>
 
 #include <iostream>
 #include <algorithm>
