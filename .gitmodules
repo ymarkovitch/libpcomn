@@ -1,3 +1,0 @@
-[submodule "pcomn_simd"]
-	path = pcomn_simd
-	url = ../pcomn_simd.git
