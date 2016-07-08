@@ -1,7 +1,7 @@
 #------------------------------------------------------------------------------
 # FILE         :  pcommon.cmake
-#
-# COPYRIGHT    :  Yakov Markovitch, 2014
+# COPYRIGHT    :  Yakov Markovitch, 2014-2016
+#                 See LICENSE for information on usage/redistribution.
 #
 # DESCRIPTION  :  pcommon CMake module implementing various basic CMake utilities
 #
@@ -83,8 +83,15 @@ macro(force_flags var)
   endforeach()
 endmacro(force_flags)
 
-function(set_compilation_features lang buildtype)
-endfunction(set_compilation_features)
+################################################################################
+# Print all defined variables (debugging macro)
+################################################################################
+macro(print_all_variables)
+  get_cmake_property(vars_ VARIABLES)
+  foreach (var_ ${vars_})
+    message(STATUS "${var_}=${${var_}}")
+  endforeach()
+endmacro(print_all_variables)
 
 ################################################################################
 #
@@ -98,21 +105,19 @@ set_global(PCOMN_CONFIG ${CMAKE_CURRENT_LIST_DIR})
 # Portable C/C++ compiler options
 ################################################################################
 if (UNIX)
-  set_global(PCOMN_C_OPT_BASE    -march=core2 -msse4.1 -pthread -fvisibility=hidden -Wall)
+  set_global(PCOMN_C_OPT_BASE    -march=corei7 -pthread -fvisibility=hidden -Wall)
   set_global(PCOMN_C_OPT_DBGINFO -gdwarf-4 -fno-debug-types-section -grecord-gcc-switches)
 
-  set_global(PCOMN_CXX_OPT_CXX11 -std=c++11)
   set_global(PCOMN_CXX_OPT_BASE  ${PCOMN_C_OPT_BASE} -Woverloaded-virtual)
 else()
   set_global(PCOMN_C_OPT_BASE "")
   set_global(PCOMN_C_OPT_DBGINFO "")
 
-  set_global(PCOMN_CXX_OPT_CXX11 "")
   set_global(PCOMN_CXX_OPT_BASE "")
 endif(UNIX)
 
-set_global(PCOMN_C_OPT_TRACE -D__PCOMN_TRACE)
-set_global(PCOMN_C_OPT_CHECK -D__PCOMN_DEBUG=2)
+set_global(PCOMN_TRACE __PCOMN_TRACE)
+set_global(PCOMN_CHECK __PCOMN_DEBUG=2)
 
 ################################################################################
 # Portable COMMAND arguments for using in add_custom_command and execute_process
