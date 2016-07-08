@@ -81,6 +81,17 @@ set_target_properties(pcommon
   POSITION_INDEPENDENT_CODE ON
   )
 
+target_compile_features(pcommon
+  PUBLIC
+  cxx_aggregate_default_initializers
+  cxx_alignas
+  cxx_alignof
+  cxx_auto_type
+  cxx_decltype
+  cxx_delegating_constructors
+  cxx_constexpr
+  )
+
 target_include_directories(pcommon
   PUBLIC
   ${PROJECT_SOURCE_DIR}
