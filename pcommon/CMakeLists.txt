@@ -83,13 +83,10 @@ set_target_properties(pcommon
 
 target_compile_features(pcommon
   PUBLIC
-  cxx_aggregate_default_initializers
   cxx_alignas
   cxx_alignof
-  cxx_auto_type
-  cxx_decltype
-  cxx_delegating_constructors
   cxx_constexpr
+  cxx_decltype
   )
 
 target_include_directories(pcommon
@@ -108,5 +105,3 @@ target_compile_options(pcommon
   )
 
 add_subdirectory(unittests EXCLUDE_FROM_ALL)
-
-#print_all_variables()

@@ -8,10 +8,11 @@
 # PROGRAMMED BY:  Yakov Markovitch
 # CREATION DATE:  5 Sep 2014
 #------------------------------------------------------------------------------
+get_property(__PCOMMON_INCLUDED GLOBAL PROPERTY __PCOMMON_INCLUDED SET)
 if(__PCOMMON_INCLUDED)
   return()
 endif()
-set(__PCOMMON_INCLUDED CACHE INTERNAL "")
+set_property(GLOBAL PROPERTY __PCOMMON_INCLUDED TRUE)
 
 ################################################################################
 # set_global(var)
@@ -94,11 +95,21 @@ macro(print_all_variables)
 endmacro(print_all_variables)
 
 ################################################################################
+# CMake does not allow linking OBJECT libraries for usage requirements
+################################################################################
+function(target_requirements target depends_on)
+  target_include_directories(${target} PRIVATE $<TARGET_PROPERTY:${depends_on},INTERFACE_INCLUDE_DIRECTORIES>)
+  target_compile_definitions(${target} PRIVATE $<TARGET_PROPERTY:${depends_on},INTERFACE_COMPILE_DEFINITIONS>)
+  target_compile_features(${target} PRIVATE $<TARGET_PROPERTY:${depends_on},INTERFACE_COMPILE_FEATURES>)
+  target_compile_options(${target} PRIVATE $<TARGET_PROPERTY:${depends_on},INTERFACE_COMPILE_OPTIONS>)
+  add_dependencies(${target} ${depends_on})
+endfunction(target_requirements)
+
+################################################################################
 #
 # Global variables
 #
 ################################################################################
-
 set_global(PCOMN_CONFIG ${CMAKE_CURRENT_LIST_DIR})
 
 ################################################################################
