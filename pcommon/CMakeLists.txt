@@ -28,9 +28,6 @@ else()
   set(PLATFORM_SOURCES win32)
 endif(UNIX)
 
-force_flags(CMAKE_C_FLAGS ${PCOMN_C_OPT_BASE})
-force_flags(CMAKE_CXX_FLAGS ${PCOMN_CXX_OPT_BASE})
-
 add_library(pcommon STATIC
 
   regex.c
@@ -79,6 +76,8 @@ set_target_properties(pcommon
   CXX_STANDARD 11
   CXX_STANDARD_REQUIRED ON
   POSITION_INDEPENDENT_CODE ON
+  VISIBILITY_INLINES_HIDDEN ON
+  CXX_VISIBILITY_PRESET hidden
   )
 
 target_compile_features(pcommon
@@ -101,7 +100,16 @@ target_compile_definitions(pcommon
 
 target_compile_options(pcommon
   PUBLIC
-  $<$<CONFIG:Debug>:${PCOMN_C_OPT_DBGINFO}>
+  $<$<CXX_COMPILER_ID:GNU>:-pthread>
+  $<$<CXX_COMPILER_ID:GNU>:-Wall>
+  $<$<CXX_COMPILER_ID:GNU>:-gdwarf-4 -fno-debug-types-section -grecord-gcc-switches>
+  PRIVATE
+  $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:GNU>>:-Woverloaded-virtual>
+  )
+
+target_link_libraries(pcommon
+  PUBLIC
+  $<$<OR:$<PLATFORM_ID:Linux>,$<PLATFORM_ID:Cygwin>,$<PLATFORM_ID:MinGW>>:-pthread>
   )
 
 add_subdirectory(unittests EXCLUDE_FROM_ALL)

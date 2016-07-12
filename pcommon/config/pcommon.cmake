@@ -115,18 +115,6 @@ set_global(PCOMN_CONFIG ${CMAKE_CURRENT_LIST_DIR})
 ################################################################################
 # Portable C/C++ compiler options
 ################################################################################
-if (UNIX)
-  set_global(PCOMN_C_OPT_BASE    -march=corei7 -pthread -fvisibility=hidden -Wall)
-  set_global(PCOMN_C_OPT_DBGINFO -gdwarf-4 -fno-debug-types-section -grecord-gcc-switches)
-
-  set_global(PCOMN_CXX_OPT_BASE  ${PCOMN_C_OPT_BASE} -Woverloaded-virtual)
-else()
-  set_global(PCOMN_C_OPT_BASE "")
-  set_global(PCOMN_C_OPT_DBGINFO "")
-
-  set_global(PCOMN_CXX_OPT_BASE "")
-endif(UNIX)
-
 set_global(PCOMN_TRACE __PCOMN_TRACE)
 set_global(PCOMN_CHECK __PCOMN_DEBUG=2)
 
