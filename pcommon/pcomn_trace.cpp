@@ -10,7 +10,6 @@
 *******************************************************************************/
 #define DIAG_DEFGROUP_DECLARED  /* Prevent pcomn_trace.h from declaring Def diag group. */
 #include <pcomn_trace.h>
-#include <pcomn_threadid.h>
 #include <pcomn_atomic.h>
 #include <pcomn_algorithm.h>
 #include <pcomn_utils.h>

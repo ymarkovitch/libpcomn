@@ -44,7 +44,6 @@ add_library(pcommon STATIC
   pcomn_diag.cpp
   pcomn_exec.cpp
   pcomn_fileutils.cpp
-  pcomn_incdlist.cpp
 
   pcomn_mmap.cpp
   pcomn_path.cpp
@@ -52,7 +51,6 @@ add_library(pcommon STATIC
   pcomn_regex.cpp
   pcomn_strsubst.cpp
   pcomn_textio.cpp
-  pcomn_thread.cpp
   pcomn_uri.cpp
   pcomn_uuid.cpp
 

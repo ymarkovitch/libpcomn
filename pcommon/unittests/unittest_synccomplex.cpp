@@ -12,10 +12,11 @@
 *******************************************************************************/
 #include <pcomn_unittest.h>
 #include <pcomn_syncobj.h>
-#include <pcomn_thread.h>
 #include <pcomn_stopwatch.h>
 
 #include <algorithm>
+#include <thread>
+
 #include <stdlib.h>
 
 /*******************************************************************************
@@ -86,8 +87,8 @@ static void check_dispensed(I front, ForwardIterator from, ForwardIterator to)
 }
 
 template<typename AtomicInt, typename RangeProvider>
-class IdDispenserThread : public pcomn::BasicThread {
-      typedef pcomn::BasicThread ancestor ;
+class IdDispenserThread {
+      typedef std::thread ancestor ;
    public:
       typedef std::vector<AtomicInt> result_type ;
       typedef pcomn::ident_dispenser<AtomicInt, RangeProvider> dispenser_type ;
@@ -95,11 +96,14 @@ class IdDispenserThread : public pcomn::BasicThread {
       IdDispenserThread(result_type &result, dispenser_type &dispenser, unsigned count) :
          _result(result),
          _dispenser(dispenser),
-         _count(count)
+         _count(count),
+         _thread([this]{ run() ; })
       {}
 
+      void join() { _thread.join() ; }
+
    protected:
-      int run()
+      void run()
       {
          unsigned seed ;
 
@@ -110,13 +114,12 @@ class IdDispenserThread : public pcomn::BasicThread {
             if ((r & 0x70) == 0x70)
                msleep(r & 2) ;
          }
-
-         return 0 ;
       }
    private:
       result_type &     _result ;
       dispenser_type &  _dispenser ;
       const unsigned    _count ;
+      std::thread       _thread ;
 } ;
 
 template<typename AtomicInt>
@@ -159,8 +162,6 @@ void IdentDispenserTests::Test_IdentDispenser_MultiThread()
    for (unsigned t = 0 ; t < setsize ; ++t)
       ThreadSet[t].reset(new TestThread(ResultSet[t], Dispenser, count)) ;
 
-   for (unsigned t = 0 ; t < setsize ; ++t)
-      ThreadSet[t]->start() ;
    for (unsigned t = 0 ; t < setsize ; ++t)
       ThreadSet[t]->join() ;
 

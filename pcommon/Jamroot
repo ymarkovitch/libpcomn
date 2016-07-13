@@ -120,7 +120,6 @@ lib pcommon :
   pcomn_diag.cpp
   pcomn_exec.cpp
   pcomn_fileutils.cpp
-  pcomn_incdlist.cpp
 
   pcomn_mmap.cpp
   pcomn_path.cpp
@@ -129,7 +128,6 @@ lib pcommon :
   pcomn_strsubst.cpp
   pcomn_sys.cpp
   pcomn_textio.cpp
-  pcomn_thread.cpp
   pcomn_uri.cpp
   pcomn_uuid.cpp
 

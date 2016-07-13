@@ -115,14 +115,55 @@ class PDList {
             bool is_standalone() const { return next == this && prev == this ; }
 
             /// Count the number of nodes in a list slice.
-            static _PCOMNEXP size_t count(const Node *start, const Node *finish) ;
+            static size_t count(const Node *start, const Node *finish)
+            {
+               size_t sz ;
+               for (sz = 0 ; start != finish ; start = start->next)
+                  ++sz ;
+
+               return sz ;
+            }
 
             /// Remove a node range from the list.
             /// Disconnects all nodes in a range. After call to this function
             /// all nodes from @a start to @a finish become self-connected (single).
-            static _PCOMNEXP size_t desintegrate(Node *start, Node *finish, destructor *dtr = NULL) ;
+            static size_t desintegrate(Node *start, Node *finish, destructor *dtr = NULL)
+            {
+               Node *first = start->prev ;
+               size_t cnt = 0 ;
 
-            static _PCOMNEXP size_t desintegrate(Node *start, size_t n, destructor *dtr = NULL) ;
+               while(start != finish)
+               {
+                  Node * const cur = start ;
+                  start = cur->next ;
+                  cur->postremove() ;
+                  if (dtr)
+                     dtr(cur) ;
+                  ++cnt ;
+               }
+               start->prev = first ;
+               first->next = start ;
+
+               return cnt ;
+            }
+
+            static size_t desintegrate(Node *start, size_t n, destructor *dtr = NULL)
+            {
+
+               Node *first = start->prev ;
+               size_t cnt = 0 ;
+
+               for (Node *cur ; cnt < n  && (cur = start->next) != start ; start = cur, ++cnt)
+               {
+                  start->postremove() ;
+                  if (dtr)
+                     dtr(start) ;
+               }
+               start->prev = first ;
+               first->next = start ;
+
+               return cnt ;
+            }
 
             Node *next ;
             Node *prev ;
