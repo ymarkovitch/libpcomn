@@ -34,7 +34,6 @@ add_library(pcommon STATIC
 
   pcomn_crc32.c
   pcomn_hash.c
-  pcomn_version.c
 
   pcomn_trace.cpp
   pcomn_tracecfg.cpp
