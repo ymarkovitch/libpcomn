@@ -48,7 +48,6 @@ add_library(pcommon STATIC
 
   pcomn_mmap.cpp
   pcomn_path.cpp
-  pcomn_qualname.cpp
   pcomn_rawstream.cpp
   pcomn_regex.cpp
   pcomn_strsubst.cpp
