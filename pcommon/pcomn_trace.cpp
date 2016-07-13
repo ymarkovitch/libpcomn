@@ -20,6 +20,7 @@
 #include <new>
 #include <iomanip>
 #include <utility>
+#include <thread>
 
 #include <stdlib.h>
 #include <string.h>
@@ -424,19 +425,17 @@ static int syslog_priority(LogLevel level)
 
 #endif
 
+static const std::thread::id main_thread_id = std::this_thread::get_id() ;
+
 static char *threadidtostr(char *buf)
 {
-   if (pcomn::thread_id() == pcomn::thread_id::mainThread())
-      strcpy(buf, "<mainthrd>") ;
-   else
-   {
-#ifdef PCOMN_PL_WINDOWS
-      sprintf(buf, "0x%4.4X", (unsigned)pcomn::thread_id()) ;
-#else
-      sprintf(buf, "%10u", (unsigned)pcomn::thread_id()) ;
-#endif
-   }
+   const std::thread::id id = std::this_thread::get_id() ;
+   if (std::this_thread::get_id() == main_thread_id)
+      return strcpy(buf, "<mainthrd>") ;
 
+   pcomn::bufstr_ostream<0> out (buf, 16) ;
+   out << std::right << std::setw(10) << id ;
+   buf[10] = 0 ;
    return buf ;
 }
 

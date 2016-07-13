@@ -373,7 +373,7 @@ template<size_t sz>
 class bufstr_ostream : private std::basic_streambuf<char>, public std::ostream {
    public:
       /// Create the stream with embedded buffer of @a sz bytes.
-      bufstr_ostream() throw() ;
+      bufstr_ostream() noexcept ;
 
       /// Get the pouinter to internal buffer memory
       const char *str() const { return _buffer ; }
@@ -390,8 +390,46 @@ class bufstr_ostream : private std::basic_streambuf<char>, public std::ostream {
       char _buffer[sz] ;
 } ;
 
+/******************************************************************************/
+/** Output stream with external fixed-size stream buffer .
+*******************************************************************************/
+template<>
+class bufstr_ostream<0> : private std::basic_streambuf<char>, public std::ostream {
+      PCOMN_NONCOPYABLE(bufstr_ostream) ;
+      PCOMN_NONASSIGNABLE(bufstr_ostream) ;
+   public:
+      bufstr_ostream(char *buf, size_t bufsize) noexcept :
+         std::ostream(static_cast<std::basic_streambuf<char> *>(this)),
+         _buffer(buf), _bufsz(bufsize)
+      {
+         setp(_buffer, _buffer + _bufsz) ;
+      }
+
+      bufstr_ostream() noexcept :
+         std::ostream(static_cast<std::basic_streambuf<char> *>(this))
+      {}
+
+      /// Get the pouinter to internal buffer memory
+      const char *str() const { return _buffer ; }
+      char *str() { return _buffer ; }
+
+      bufstr_ostream &reset()
+      {
+         clear() ;
+         setp(_buffer, _buffer + _bufsz) ;
+         return *this ;
+      }
+
+   private:
+      char *   _buffer = nullptr ;
+      size_t   _bufsz  = 0 ;
+} ;
+
+/*******************************************************************************
+ bufstr_ostream<size_t>
+*******************************************************************************/
 template<size_t sz>
-bufstr_ostream<sz>::bufstr_ostream() throw() :
+bufstr_ostream<sz>::bufstr_ostream() noexcept :
    std::ostream(static_cast<std::basic_streambuf<char> *>(this))
 {
    *_buffer = _buffer[sizeof _buffer - 1] = 0 ;
@@ -410,14 +448,14 @@ class imemstream : private std::basic_streambuf<char>, public std::istream {
       using ancestor::off_type ;
       using ancestor::traits_type ;
 
-      imemstream() throw() :
+      imemstream() noexcept :
          ancestor(static_cast<std::basic_streambuf<char> *>(this)),
          _size(0), _data("")
       {
          setstate(eofbit) ;
       }
 
-      imemstream(const void *data, size_t size) throw() :
+      imemstream(const void *data, size_t size) noexcept :
          ancestor(static_cast<std::basic_streambuf<char> *>(this)),
          _size(size), _data(static_cast<const char *>(data))
       {
@@ -425,7 +463,7 @@ class imemstream : private std::basic_streambuf<char>, public std::istream {
       }
 
       template<size_t n>
-      imemstream(const char (&data)[n]) throw() :
+      imemstream(const char (&data)[n]) noexcept :
          imemstream(std::begin(data), n - (!data[n-1]))
       {}
 
