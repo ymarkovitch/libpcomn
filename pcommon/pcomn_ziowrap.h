@@ -15,7 +15,6 @@
 *******************************************************************************/
 #include "zlib.h"
 #include <pcomn_platform.h>
-#include <pcomn_def.h>
 
 #ifdef __cplusplus
 extern "C" {

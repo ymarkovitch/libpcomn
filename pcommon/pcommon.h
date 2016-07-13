@@ -12,7 +12,6 @@
 *******************************************************************************/
 #include <pcomn_platform.h>
 #include <pcomn_macros.h>
-#include <pcomn_def.h>
 
 #include <stdio.h>
 #include <stddef.h>

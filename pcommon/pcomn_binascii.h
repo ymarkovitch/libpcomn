@@ -11,7 +11,7 @@
  PROGRAMMED BY:   Yakov Markovitch
  CREATION DATE:   25 Dec 2001
 *******************************************************************************/
-#include <pcomn_def.h>
+#include <pcomn_platform.h>
 
 #ifdef __cplusplus
 extern "C" {

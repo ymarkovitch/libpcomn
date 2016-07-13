@@ -57,7 +57,6 @@
      just @c "foo.ini" is enough.
 *******************************************************************************/
 #include <pcomn_platform.h>
-#include <pcomn_def.h>
 #include <stddef.h>
 
 #ifdef __cplusplus

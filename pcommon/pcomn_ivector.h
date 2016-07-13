@@ -10,7 +10,6 @@
 
  CREATION DATE:   24 Jul 1996
 *******************************************************************************/
-#include <pcomn_def.h>
 #include <pcomn_utils.h>
 
 #include <vector>

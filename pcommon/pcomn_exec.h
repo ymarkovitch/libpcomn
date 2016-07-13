@@ -18,7 +18,6 @@
 #include <pcomn_except.h>
 #include <pcomn_unistd.h>
 #include <pcomn_handle.h>
-#include <pcomn_def.h>
 
 #include <stdarg.h>
 

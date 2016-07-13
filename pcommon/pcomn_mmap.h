@@ -10,7 +10,6 @@
 
  CREATION DATE:   17 Jan 2001
 *******************************************************************************/
-#include <pcomn_def.h>
 #include <pcomn_utils.h>
 #include <pcomn_smartptr.h>
 #include <pcomn_unistd.h>

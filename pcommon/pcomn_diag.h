@@ -11,7 +11,6 @@
  CREATION DATE:   17 Jan 1995
 *******************************************************************************/
 #include <pcomn_trace.h>
-#include <pcomn_def.h>
 
 DECLARE_DIAG_GROUP(PCOMN_Common, _PCOMNEXP) ;
 DECLARE_DIAG_GROUP(PCOMN_Test, _PCOMNEXP) ;

@@ -10,8 +10,9 @@
 
  CREATION DATE:   28 Apr 1995
 *******************************************************************************/
-#include <pcomn_def.h>
+#include <pcomn_platform.h>
 #include <pcomn_assert.h>
+
 #include <algorithm>
 #include <new>
 

@@ -439,6 +439,17 @@
 #  endif /* PCOMN_COMPILER_GNU && PCOMN_PL_X86 */
 #endif /* PCOMN_PL_X86 */
 
+/*******************************************************************************
+ Export/import macros
+*******************************************************************************/
+#if defined(__PCOMMON_BUILD)
+#  define _PCOMNEXP   __EXPORT
+#elif defined(__PCOMMON_DLL)
+#  define _PCOMNEXP   __IMPORT
+#else
+#  define _PCOMNEXP
+#endif
+
 /******************************************************************************/
 /** @def likely
  Provide the compiler with branch prediction information, assering the expression is

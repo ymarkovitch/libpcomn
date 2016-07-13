@@ -11,8 +11,9 @@
 
  CREATION DATE:   7 Apr 1998
 *******************************************************************************/
+#include <pcomn_platform.h>
+
 #include <stddef.h>
-#include <pcomn_def.h>
 #include <stdlib.h>
 
 typedef int reg_off ;

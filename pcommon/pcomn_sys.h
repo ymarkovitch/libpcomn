@@ -15,7 +15,6 @@
  System (platform) functions
 *******************************************************************************/
 #include <pcomn_platform.h>
-#include <pcomn_def.h>
 #include <pcomn_cstrptr.h>
 #include <pcomn_except.h>
 #include <pcomn_unistd.h>

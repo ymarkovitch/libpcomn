@@ -21,7 +21,6 @@
  around POSIX-like regex functions that are slightly modified Henry Spencer's regular
  expressions implementation (1986).
 *******************************************************************************/
-#include <pcomn_def.h>
 #include <pcomn_string.h>
 #include <pcomn_strslice.h>
 #include <pcomn_iterator.h>
