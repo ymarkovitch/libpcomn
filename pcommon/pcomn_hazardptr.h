@@ -208,7 +208,7 @@ class hazard_ptr {
       /// The same as the default constructor.
       constexpr hazard_ptr(nullptr_t, manager_type & = *(manager_type *)nullptr) {}
 
-      hazard_ptr(hazard_ptr &&other) :
+      hazard_ptr(hazard_ptr &&other) noexcept :
          _registry(other._registry),
          _slot(other._slot)
       {
@@ -216,7 +216,7 @@ class hazard_ptr {
       }
 
       template<typename U, typename = std::enable_if_t<std::is_convertible<U *, T *>::value, void>>
-      hazard_ptr(hazard_ptr<U, T> &&other) :
+      hazard_ptr(hazard_ptr<U, T> &&other) noexcept :
          _registry(other._registry),
          _slot(other._slot)
       {
@@ -253,6 +253,20 @@ class hazard_ptr {
          unmark_hazard() ;
       }
 
+      hazard_ptr &operator=(hazard_ptr &&other) noexcept
+      {
+         move_assign(other) ;
+         return *this ;
+      }
+
+      template<typename U>
+      std::enable_if_t<std::is_convertible<U *, T *>::value, hazard_ptr &>
+      operator=(hazard_ptr<U, T> &&other) noexcept
+      {
+         move_assign(other) ;
+         return *this ;
+      }
+
       element_type *get() const
       {
          return static_cast<element_type *>(const_cast<void *>(registry().hazard(_slot))) ;
@@ -272,7 +286,7 @@ class hazard_ptr {
       /// Mark the pointer as safe for reclaim.
       /// Since after this call the plain pointer this object has held is eventually
       /// invalid, so no return value.
-      void reset()
+      void reset() noexcept
       {
          unmark_hazard() ;
          zero_itself() ;
@@ -318,6 +332,17 @@ class hazard_ptr {
          if (_registry != &registry_type::zero)
             registry().unregister_hazard(_slot) ;
       }
+
+      template<typename U>
+      void move_assign(hazard_ptr<U, T> &&other) noexcept
+      {
+         if (&other == this)
+            return ;
+         std::swap(_registry, other._registry) ;
+         std::swap(_slot, other._slot) ;
+         other.reset() ;
+      }
+
 } ;
 
 /******************************************************************************/
