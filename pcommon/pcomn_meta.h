@@ -79,6 +79,9 @@ using underlying_type_t = typename underlying_type<T>::type ;
 template<size_t sz, size_t align = alignof(max_align_t)>
 using aligned_storage_t = typename aligned_storage<sz, align>::type ;
 
+template<size_t count, typename... Types>
+using aligned_union_t = typename std::aligned_union<count, Types...>::type ;
+
 template<typename T>
 using make_unsigned_t = typename make_unsigned<T>::type ;
 template<typename T>

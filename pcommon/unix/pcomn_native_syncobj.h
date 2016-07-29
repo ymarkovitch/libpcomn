@@ -40,6 +40,8 @@
 #include <linux/futex.h>
 #include <sys/syscall.h>
 #include <sys/time.h>
+// sched_getcpu()
+#include <sched.h>
 #endif
 
 namespace pcomn {
@@ -54,7 +56,19 @@ inline void pause_cpu() {}
 #endif
 
 #ifdef PCOMN_PL_LINUX
+/******************************************************************************/
+/** Get logical CPU(core) the calling thread is running on.
+ Never fails: if underlying shched_getcpu fails, returns 0.
+*******************************************************************************/
+inline unsigned get_current_cpu_core()
+{
+   const int core = sched_getcpu() ;
+   return core >= 0 ? core : 0 ;
+}
 
+/*******************************************************************************
+ Futex API
+*******************************************************************************/
 inline int futex(void *addr1, int32_t op, int32_t val1, struct timespec *timeout, void *addr2, int32_t val3)
 {
   return syscall(SYS_futex, addr1, op, val1, timeout, addr2, val3) ;

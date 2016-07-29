@@ -10,7 +10,7 @@
 
  CREATION DATE:   15 Feb 2000
 *******************************************************************************/
-#include <pcomn_utils.h>
+#include <pcommon.h>
 
 #include <stdexcept>
 #include <string>

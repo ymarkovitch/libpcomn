@@ -61,6 +61,37 @@
 
 namespace pcomn {
 
+/******************************************************************************/
+/** Get logical CPU(core) which the calling thread is running on.
+ Never fails: if underlying OS API fails, returns 0.
+*******************************************************************************/
+inline unsigned current_cpu_core()
+{
+   return sys::get_current_cpu_core() ;
+}
+
+/// Probabilistically get logical CPU(core) which the calling thread is running on.
+///
+/// Caches the result of actual current_cpu_core() call in a thread_local variable and
+/// refereshes it every 2^^N calls.
+/// Since the scheduler tries to minimize thread movements between CPUs, the result is
+/// correct in the most cases.
+///
+template<unsigned N>
+unsigned probable_current_cpu_core()
+{
+   static_assert(N < 16, "The specified value of log2(calls) is too large.") ;
+
+   static thread_local unsigned coreid_cache ;
+   static thread_local unsigned call_count = 0 ;
+   const unsigned mask = (1U << N) - 1 ;
+
+   if (!(call_count++ & mask))
+      coreid_cache = current_cpu_core() ;
+
+   return coreid_cache ;
+}
+
 /*******************************************************************************
  C++14 Standard Library has shared_mutex and shared_lock
 *******************************************************************************/

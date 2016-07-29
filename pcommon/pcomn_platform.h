@@ -39,21 +39,27 @@
                        PCOMN_MD_SUN
                        PCOMN_MD_HP
 
-                       6) Processor type
+                       6) CPU endiannes
 
                        PCOMN_CPU_LITTLE_ENDIAN
                        PCOMN_CPU_BIG_ENDIAN
 
-                       7) Character coding
+                       7) CPU platform
+
+                       PCOMN_PL_X86
+                       PCOMN_PL_ARM64
+                       PCOMN_PL_POWER8
+
+                       8) Character encoding
 
                        PCOMN_CHAR_ASCII
                        PCOMN_CHAR_EBCDIC
 
-                       8) Platform standard alignment boundary
+                       9) Platform standard alignment boundary
 
                        PCOMN_STD_ALIGNMENT
 
-                       9) Platform standard path delimiters
+                       10) Platform standard path delimiters
 
                        PCOMN_PATH_DELIMS
                        PCOMN_PATH_NATIVE_DELIM
@@ -225,6 +231,33 @@
 #  elif defined(PCOMN_PL_UNIX)
 #     define PCOMN_PL_UNIX32  1
 #  endif
+#endif
+
+/*******************************************************************************
+ Atomic operation support
+*******************************************************************************/
+#if   defined(PCOMN_PL_X86)
+
+// No native LL/SC
+#  define PCOMN_NATIVE_CAS   1
+#  define PCOMN_CAS_WIDTH    2
+
+#elif defined(PCOMN_PL_ARM64)
+
+// No native CAS, LL/SC supported
+#  define PCOMN_NATIVE_LLSC  1
+// There is support for double-witdth LL/SC (lqarx/stqcx)
+#  define PCOMN_CAS_WIDTH    2
+
+#elif defined(PCOMN_PL_POWER8)
+
+// No native CAS, LL/SC supported
+#  define PCOMN_NATIVE_LLSC  1
+// There is support for double-witdth LL/SC (lqarx/stqcx)
+#  define PCOMN_CAS_WIDTH    2
+
+#else
+#  define PCOMN_CAS_WIDTH    0
 #endif
 
 /*******************************************************************************

@@ -130,7 +130,7 @@ struct closed_hashtable_item<Value *> : closed_hashitem_base {
 /******************************************************************************/
 /** Closed hash table, particularly efficient for storing objects of small POD types.
 
- Uses linear probing for collision resolution, .
+ Uses linear probing for collision resolution.
 *******************************************************************************/
 template<typename Value,
          typename ExtractKey = pcomn::identity,

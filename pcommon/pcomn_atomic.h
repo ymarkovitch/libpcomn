@@ -164,6 +164,24 @@ cas(T *target, atomic_value_t<T> expected_value, atomic_value_t<T> new_value,
    return cas(target, &expected_value, new_value, order) ;
 }
 
+/// Atomically compare the value of target object of size 2*sizeof(void*) with argument
+/// and perform atomic exchange if those are equal or atomic load if not.
+///
+/// Works only on platforms with either native double-width cas support (x86/x86_64)
+/// or with double-width LL/SC support (arm64
+///
+/// @return The result of the comparison: true if *target was equal to *expected_value
+/// (and thus *target is replaced), false otherwise.
+///
+template<typename T>
+inline enable_if_atomic_t<T, bool>
+cas2(T *target, atomic_value_t<T> *expected_value, atomic_value_t<T> new_value,
+    std::memory_order order = std::memory_order_acq_rel)
+{
+   return reinterpret_cast<atomic_type_t<T> *>(target)
+      ->compare_exchange_strong(*expected_value, new_value, order) ;
+}
+
 /*******************************************************************************
  Fetch-And-Function
  Compare-And-Function
@@ -340,6 +358,30 @@ fliptag_ptr(T *pptr, std::memory_order order)
    return reinterpret_cast<atomic_value_t<T>>
       (bit_xor(data_ptr, tag, order)) ;
 }
+
+/******************************************************************************/
+/** Implementation of LoadLinked/StoreConditional pointer variables.
+
+ On platforms without native LL/SC (x86) uses CAS2 and generation counter,
+ so it is 2*sizeof(void*) on such platforms and sizeof(void*) on LL/SC platforms
+ (such as arm64, POWER8, etc.).
+*******************************************************************************/
+template<typename T>
+class llsc_ptr {
+      PCOMN_NONCOPYABLE(llsc_ptr) ;
+      PCOMN_NONASSIGNABLE(llsc_ptr) ;
+
+   public:
+      typedef T element_type ;
+
+      llsc_ptr(llsc_ptr &&other)
+
+      element_type load_linked() ;
+
+      bool store_condidtional(element_type value) ;
+
+   private:
+} ;
 
 } // end of namespace pcomn::atomic_op
 } // end of namespace pcomn
