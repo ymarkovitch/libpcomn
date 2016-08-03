@@ -23,12 +23,21 @@
  Sometimes it is the @em only way, for e.g. interop with pre-existing code.
 *******************************************************************************/
 #include <pcomn_platform.h>
+#include <pcomn_meta.h>
 
 #include <atomic>
+#include <mutex>
 #include <utility>
 #include <type_traits>
 
 #include <stddef.h>
+
+#ifdef PCOMN_PL_MS
+#include <intrin.h>
+#else
+#include <sys/resource.h>
+#include <sys/mman.h>
+#endif
 
 namespace pcomn {
 
@@ -57,7 +66,7 @@ using atomic_value_t = typename atomic_type<C>::value_type ;
 *******************************************************************************/
 template<typename T>
 using is_atomic_placement =
-   std::integral_constant<bool, sizeof(T) >= 4 && sizeof(T) <= sizeof(void *) && alignof(T) >= sizeof(T)> ;
+   std::bool_constant<sizeof(T) >= 4 && sizeof(T) <= sizeof(void *) && alignof(T) >= sizeof(T)> ;
 
 /******************************************************************************/
 /** If the type is eligible for both atomic load/store and integral or pointer
@@ -65,9 +74,8 @@ using is_atomic_placement =
  otherwise, false.
 *******************************************************************************/
 template<typename T>
-struct is_atomic_arithmetic : std::integral_constant
-<bool,
- std::is_pointer<T>::value ||
+struct is_atomic_arithmetic : std::bool_constant
+<std::is_pointer<T>::value ||
  std::is_integral<T>::value && is_atomic_placement<T>::value>
 {} ;
 
@@ -76,29 +84,118 @@ struct is_atomic_arithmetic : std::integral_constant
  constant @a value equal to true; otherwise, false.
 *******************************************************************************/
 template<typename T>
-struct is_atomic : std::integral_constant
-<bool,
- is_atomic_arithmetic<T>::value ||
+struct is_atomic : std::bool_constant
+<is_atomic_arithmetic<T>::value ||
  std::is_trivially_copyable<T>::value && is_atomic_placement<T>::value>
 {} ;
 
 template<typename T, typename R = T>
 using enable_if_atomic_t =
-   typename std::enable_if<is_atomic<atomic_value_t<T>>::value, R>::type ;
+   std::enable_if_t<is_atomic<atomic_value_t<T>>::value, R> ;
 
 template<typename T, typename R = T>
 using enable_if_atomic_arithmetic_t =
-   typename std::enable_if<is_atomic_arithmetic<atomic_value_t<T>>::value, R>::type ;
+   std::enable_if_t<is_atomic_arithmetic<atomic_value_t<T>>::value, R> ;
 
 template<typename T, typename R = T>
 using enable_if_atomic_ptr_t =
-   typename std::enable_if<is_atomic<atomic_value_t<T>>::value && std::is_pointer<atomic_value_t<T>>::value, R>::type ;
+   std::enable_if_t<is_atomic<atomic_value_t<T>>::value && std::is_pointer<atomic_value_t<T>>::value, R> ;
+
+/******************************************************************************/
+/** Check if the type is eligible for CAS2 or double-witdth LL/SC.
+
+ CAS2 or double-witdth LL/SC requre
+*******************************************************************************/
+template<typename T>
+struct is_atomic2 : bool_constant
+<sizeof(T) == 2*sizeof(void*) && alignof(T) >= sizeof(T) && is_trivially_swappable<T>::value>
+{} ;
 
 /******************************************************************************/
 /** @namespace pcomn::atomic_op
  Atomic operations
 *******************************************************************************/
 namespace atomic_op {
+
+/******************************************************************************/
+/** Process-wide memory barrier provider.
+
+ On Windows, we use FlushProcessWriteBuffers() call, which is intended specifically
+ for garbage collector implementers.
+
+ On Linux, we use JVM implementers' trick: flip protection bits of a (specially
+ allocated) memory page. This forces a memory barrier in every core running any
+ of the process's threads due to TLB shootdown. We do @em not use sys_membarrier()
+ even with kerenels it is available on due to abysmal performance
+ (order of 1ms per call!)
+*******************************************************************************/
+template<nullptr_t = nullptr>
+struct process_membarrier_provider_ {
+      static void mb() ;
+   #if !defined(PCOMN_PL_MS)
+   private:
+      static std::mutex       pagelock_mutex ;
+      static std::atomic<int> page_unlocked ;
+      static int * const      dummy_page ;
+   #endif
+} ;
+
+#if defined(PCOMN_PL_MS)
+
+template<nullptr_t _>
+inline void process_membarrier_provider_<_>::mb()
+{
+   FlushProcessWriteBuffers() ;
+}
+
+#else // Unix/Linux
+
+template<nullptr_t _>
+std::mutex       process_membarrier_provider_<_>::pagelock_mutex ;
+
+template<nullptr_t _>
+std::atomic<int> process_membarrier_provider_<_>::page_unlocked {1} ;
+
+template<nullptr_t _>
+int * const process_membarrier_provider_<_>::dummy_page = ([]
+   {
+      void * const page = mmap(nullptr, sizeof(int), PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0) ;
+      PCOMN_ENSURE(page, "Cannot allocate dummy page for process-wide memory barrier") ;
+      return static_cast<int *>(page) ;
+   })() ;
+
+template<nullptr_t _>
+void process_membarrier_provider_<_>::mb()
+{
+   int unlocked = page_unlocked.load(std::memory_order_relaxed) ;
+   // One-time attempt to make a page forever residnet
+   if (unlocked == 1)
+      page_unlocked.compare_exchange_strong(unlocked, mlock(dummy_page, sizeof(*dummy_page))) ;
+
+   if (unlocked)
+      pagelock_mutex.lock() ;
+
+   // Upgrade access rights
+   mprotect(dummy_page, sizeof(*dummy_page), PROT_READ | PROT_WRITE) ;
+   // Ensure the page is resident, even if mlock failed
+   *dummy_page = 0x0DF0FECA ;
+   // Downgrade access rights; this forces TLB shootdown and hence flushes store
+   // buffers on all cores this process executes on,
+   mprotect(dummyPage, sizeof(*dummy_page), PROT_READ) ;
+
+   if (unlocked)
+      pagelock_mutex.unlock() ;
+}
+
+#endif
+
+/******************************************************************************/
+/** Issue process-wide memory barrier
+*******************************************************************************/
+inline void process_membarrier()
+{
+   process_membarrier_provider_<>::mb() ;
+}
 
 /*******************************************************************************
  Ordered load
@@ -152,7 +249,7 @@ cas(T *target, atomic_value_t<T> *expected_value, atomic_value_t<T> new_value,
     std::memory_order order = std::memory_order_acq_rel)
 {
    return reinterpret_cast<atomic_type_t<T> *>(target)
-      ->compare_exchange_strong(*expected_value, new_value, order) ;
+      ->compare_exchange_weak(*expected_value, new_value, order) ;
 }
 
 /// @overload
@@ -174,12 +271,37 @@ cas(T *target, atomic_value_t<T> expected_value, atomic_value_t<T> new_value,
 /// (and thus *target is replaced), false otherwise.
 ///
 template<typename T>
-inline enable_if_atomic_t<T, bool>
-cas2(T *target, atomic_value_t<T> *expected_value, atomic_value_t<T> new_value,
-    std::memory_order order = std::memory_order_acq_rel)
+inline enable_if_t<is_atomic2<T>::value, bool>
+cas2(T *target, T *expected_value, T new_value, std::memory_order order = std::memory_order_acq_rel)
 {
-   return reinterpret_cast<atomic_type_t<T> *>(target)
-      ->compare_exchange_strong(*expected_value, new_value, order) ;
+   static_assert(PCOMN_ATOMIC_WIDTH >=2,
+                 "CAS2 is only available on CPU platforms with 2-pointer-wide-enabled atomic operation(s).") ;
+
+   #if !defined(PCOMN_PL_MS)
+
+   __int128 * const expected128 = reinterpret_cast<__int128 *>(expected_value) ;
+   const __int128 * const new128 = reinterpret_cast<__int128 *>(target) ;
+
+   return reinterpret_cast<std::atomic<__int128> *>(target)
+      ->compare_exchange_weak(*expected128, *new128, order) ;
+
+   #else
+
+   __int64 * const begin_target = reinterpret_cast<__int64 *>(target) ;
+   __int64 * const begin_expected = reinterpret_cast<__int64 *>(expected_value) ;
+   const __int64 * const begin_new = reinterpret_cast<__int64 *>(&new_value) ;
+
+   return !!_InterlockedCompareExchange128(begin_target,
+                                           begin_new[1], begin_new[0],
+                                           begin_expected) ;
+   #endif
+}
+
+template<typename T>
+inline enable_if_t<is_atomic2<T>::value, bool>
+cas2(T *target, T expected_value, T new_value, std::memory_order order = std::memory_order_acq_rel)
+{
+   return cas2(target, &expected_value, new_value, order) ;
 }
 
 /*******************************************************************************
@@ -379,8 +501,6 @@ class llsc_ptr {
       element_type load_linked() ;
 
       bool store_condidtional(element_type value) ;
-
-   private:
 } ;
 
 } // end of namespace pcomn::atomic_op
