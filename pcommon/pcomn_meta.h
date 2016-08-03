@@ -23,13 +23,13 @@
 *******************************************************************************/
 #include <pcomn_platform.h>
 #include <pcomn_macros.h>
-#include <pcomn_assert.h>
 
 #include <limits>
 #include <utility>
+#include <type_traits>
+
 #include <stdlib.h>
 #include <stddef.h>
-#include <type_traits>
 
 /*******************************************************************************
  C++14 definitions for C++11 compiler
@@ -231,6 +231,18 @@ struct is_base_of_strict :
 template<typename T, typename U>
 using is_same_unqualified = std::is_same<std::remove_cv_t<T>, std::remove_cv_t<U> > ;
 
+/******************************************************************************/
+/** Check if the type can be trivially swapped, i.e. by simply swapping raw memory
+ contents.
+*******************************************************************************/
+template<typename T>
+struct is_trivially_swappable : std::is_trivial<T> {} ;
+
+template<typename T1, typename T2>
+struct is_trivially_swappable<std::pair<T1, T2>> :
+         ct_and<is_trivially_swappable<T1>, is_trivially_swappable<T2>>
+{} ;
+
 /*******************************************************************************
  Parameter type
 *******************************************************************************/
@@ -241,7 +253,7 @@ template<typename T>
 using clvref_t = lvref_t<typename std::add_const<T>::type> ;
 
 template<typename T>
-using parmtype_t = typename std::conditional<(std::is_arithmetic<T>::value || std::is_pointer<T>::value), T, clvref_t<T> >::type ;
+using parmtype_t = conditional_t<(std::is_arithmetic<T>::value || std::is_pointer<T>::value), T, clvref_t<T>> ;
 
 /******************************************************************************/
 /** Deduce the return type of a function call expression at compile time @em and,
