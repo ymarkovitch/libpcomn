@@ -239,25 +239,25 @@
 #if   defined(PCOMN_PL_X86)
 
 // No native LL/SC
-#  define PCOMN_NATIVE_CAS   1
-#  define PCOMN_CAS_WIDTH    2
+#  define PCOMN_NATIVE_CAS    1
+#  define PCOMN_ATOMIC_WIDTH  2
 
 #elif defined(PCOMN_PL_ARM64)
 
 // No native CAS, LL/SC supported
 #  define PCOMN_NATIVE_LLSC  1
 // There is support for double-witdth LL/SC (lqarx/stqcx)
-#  define PCOMN_CAS_WIDTH    2
+#  define PCOMN_ATOMIC_WIDTH 2
 
 #elif defined(PCOMN_PL_POWER8)
 
 // No native CAS, LL/SC supported
 #  define PCOMN_NATIVE_LLSC  1
 // There is support for double-witdth LL/SC (lqarx/stqcx)
-#  define PCOMN_CAS_WIDTH    2
+#  define PCOMN_ATOMIC_WIDTH 2
 
 #else
-#  define PCOMN_CAS_WIDTH    0
+#  define PCOMN_ATOMIC_WIDTH 1
 #endif
 
 /*******************************************************************************
