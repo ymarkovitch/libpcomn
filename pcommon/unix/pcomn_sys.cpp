@@ -30,14 +30,6 @@
 namespace pcomn {
 namespace sys {
 
-size_t pagesize()
-{
-   static size_t sz ;
-   if (!sz)
-      sz = sysconf(_SC_PAGESIZE) ;
-   return sz ;
-}
-
 #ifdef PCOMN_PL_LINUX
 unsigned cpu_core_count(unsigned *phys_sockets, unsigned *ht_count)
 {

@@ -33,7 +33,7 @@ enum Access {
 } ;
 
 /// Get the memory page size for the platform.
-_PCOMNEXP size_t pagesize() ;
+inline size_t pagesize() ;
 
 /// Portable filesize function.
 /// @return The file size, or -1 on error.

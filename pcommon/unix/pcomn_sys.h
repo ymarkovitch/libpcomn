@@ -21,6 +21,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#include <sys/resource.h>
 
 #include <limits.h>
 #include <unistd.h>
@@ -29,6 +30,12 @@
 
 namespace pcomn {
 namespace sys {
+
+inline size_t pagesize()
+{
+   static thread_local size_t sz = sysconf(_SC_PAGESIZE) ;
+   return sz ;
+}
 
 inline fileoff_t filesize(int fd)
 {
