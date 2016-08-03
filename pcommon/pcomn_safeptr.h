@@ -10,12 +10,12 @@
 
  CREATION DATE:   25 Nov 1994
 *******************************************************************************/
+#include <pcomn_meta.h>
 #include <pcommon.h>
-#include <stdexcept>
 
+#include <stdexcept>
 #include <utility>
 #include <memory>
-#include <type_traits>
 
 namespace pcomn {
 
@@ -133,6 +133,16 @@ class safe_ptr : private std::unique_ptr<T> {
 } ;
 
 PCOMN_DEFINE_SWAP(safe_ptr<T>, template<typename T>) ;
+
+/******************************************************************************/
+/** Both std::unique_ptr and pcomn::safe_ptr are trivially swappable,
+ but only with standard deleter object.
+*******************************************************************************/
+template<typename T>
+struct is_trivially_swappable<std::unique_ptr<T>> : std::true_type {} ;
+
+template<typename T>
+struct is_trivially_swappable<safe_ptr<T>> : std::true_type {} ;
 
 /******************************************************************************/
 /** unique_ptr creation helper
