@@ -55,6 +55,9 @@ constexpr size_t HAZARD_DEFAULT_CAPACITY = 7 ;
 
 constexpr size_t HAZARD_DEFAULT_THREADCOUNT = 128 ;
 
+constexpr size_t HAZARD_MIN_PENDING = 1024 ; /**< Minimum pending cleanups per hazard
+                                                  registry  */
+
 /*******************************************************************************
  Forward declarations
 *******************************************************************************/
@@ -673,7 +676,7 @@ class hazard_manager {
       {
          const size_t pending_count = pending_retired().size() ;
          return
-            pending_count > 8 &&
+            pending_count > HAZARD_MIN_PENDING &&
             pending_count > storage()._top_alloc.load(std::memory_order_relaxed) ;
       }
 } ;
