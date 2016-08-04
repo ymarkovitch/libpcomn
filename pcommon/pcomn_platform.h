@@ -765,7 +765,13 @@ inline void put_byte(T *data, size_t byte_num, uint8_t byte)
 /** @var PCOMN_CACHELINE_SIZE
  Typical L1 cacheline size for the architecture the library is compiled for.
 *******************************************************************************/
-const size_t PCOMN_CACHELINE_SIZE = 64 ;
+const size_t PCOMN_CACHELINE_SIZE =
+#if !defined(PCOMN_PL_POWER8)
+   64
+#else
+   128
+#endif
+   ;
 
 #endif // __cplusplus
 
