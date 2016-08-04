@@ -144,8 +144,8 @@ class alignas(PCOMN_CACHELINE_SIZE) hazard_registry {
             return HAZARD_BADCALL ;
 
          _hazard[slot] = ptr ;
-         // Memory barrier
-         atomic_op::store(&_occupied, _occupied | slotbit(slot), std::memory_order_release) ;
+         // No membarrier here, full process fence at retire_pending() is enough
+         _occupied |= slotbit(slot) ;
          return slot ;
       }
 
@@ -755,10 +755,10 @@ auto hazard_storage<L>::allocate_slot() -> registry_type &
       for (auto p = slots_map().begin_positional(false_type()), e = slots_map().end_positional(false_type()) ; p != e ; ++p)
       {
          const size_t freepos = *p ;
-         if (slots_map().cas(freepos, false, true, memory_order_acquire))
+         if (slots_map().cas(freepos, false, true, memory_order_seq_cst))
          {
             atomic_op::check_and_swap(&_top_alloc, [=](size_t old){ return freepos + 1 > old ; }, freepos + 1,
-                                      memory_order_acquire) ;
+                                      memory_order_seq_cst) ;
             // Success
             return
                init_registry(_registries[freepos]) ;
@@ -790,13 +790,16 @@ void hazard_storage<L>::release_slot(registry_type *slot)
    fini_registry(*slot) ;
    // Atomically mark the slot as free, ensure all observers after this point also see
    // slot memory zeroed away.
-   slots_map().set(slotpos, false, std::memory_order_release) ;
+   slots_map().set(slotpos, false, std::memory_order_seq_cst) ;
 }
 
 template<unsigned L>
 size_t hazard_storage<L>::retire_pending(cleanup_container &pending, registry_type *skip_slot) noexcept
 {
    using namespace std ;
+
+   // Issue full fence on all process' active threads
+   atomic_op::atomic_process_fence() ;
 
    registry_type *slot = slots() ;
    registry_type *const top = slot + _top_alloc.load(memory_order_relaxed) ;
@@ -879,7 +882,7 @@ auto hazard_manager<T>::ensure_global_storage() -> storage_type &
    if (!s)
    {
       auto new_s = new_hazard_storage<storage_capacity_bits()>(0) ;
-      if (_global_storage.compare_exchange_strong(s, new_s.get(), std::memory_order_release))
+      if (_global_storage.compare_exchange_strong(s, new_s.get(), std::memory_order_seq_cst))
          return *new_s.release() ;
    }
    return *s ;

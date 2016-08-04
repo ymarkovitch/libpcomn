@@ -142,6 +142,8 @@ class cdsqueue_base : public concurrent_container<T, N, Alloc> {
       typename node_type::nextptr_type _dummy_node = {nullptr} ;
 
       node_type *_head = static_cast<node_type *>(&_dummy_node) ;
+
+      alignas(PCOMN_CACHELINE_SIZE)
       node_type *_tail = static_cast<node_type *>(&_dummy_node) ;
 
    protected:
