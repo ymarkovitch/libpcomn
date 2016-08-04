@@ -14,6 +14,7 @@
 *******************************************************************************/
 #include <pcomn_meta.h>
 #include <pcomn_bitops.h>
+#include <pcomn_assert.h>
 
 #include <functional>
 #include <iterator>

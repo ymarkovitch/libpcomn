@@ -16,6 +16,7 @@
 *******************************************************************************/
 #include <pcomn_meta.h>
 #include <pcomn_function.h>
+#include <pcomn_assert.h>
 
 #include <utility>
 #include <iterator>
