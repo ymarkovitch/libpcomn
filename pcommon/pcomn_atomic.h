@@ -23,7 +23,9 @@
  Sometimes it is the @em only way, for e.g. interop with pre-existing code.
 *******************************************************************************/
 #include <pcomn_platform.h>
+#include <pcomn_assert.h>
 #include <pcomn_meta.h>
+#include <pcommon.h>
 
 #include <atomic>
 #include <mutex>
@@ -130,7 +132,7 @@ namespace atomic_op {
  (order of 1ms per call!)
 *******************************************************************************/
 template<nullptr_t = nullptr>
-struct process_membarrier_provider_ {
+struct process_membarrier_ {
       static void mb() ;
    #if !defined(PCOMN_PL_MS)
    private:
@@ -143,7 +145,7 @@ struct process_membarrier_provider_ {
 #if defined(PCOMN_PL_MS)
 
 template<nullptr_t _>
-inline void process_membarrier_provider_<_>::mb()
+inline void process_membarrier_<_>::mb()
 {
    FlushProcessWriteBuffers() ;
 }
@@ -151,13 +153,13 @@ inline void process_membarrier_provider_<_>::mb()
 #else // Unix/Linux
 
 template<nullptr_t _>
-std::mutex       process_membarrier_provider_<_>::pagelock_mutex ;
+std::mutex       process_membarrier_<_>::pagelock_mutex ;
 
 template<nullptr_t _>
-std::atomic<int> process_membarrier_provider_<_>::page_unlocked {1} ;
+std::atomic<int> process_membarrier_<_>::page_unlocked {1} ;
 
 template<nullptr_t _>
-int * const process_membarrier_provider_<_>::dummy_page = ([]
+int * const process_membarrier_<_>::dummy_page = ([]
    {
       void * const page = mmap(nullptr, sizeof(int), PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0) ;
       PCOMN_ENSURE(page, "Cannot allocate dummy page for process-wide memory barrier") ;
@@ -165,7 +167,7 @@ int * const process_membarrier_provider_<_>::dummy_page = ([]
    })() ;
 
 template<nullptr_t _>
-void process_membarrier_provider_<_>::mb()
+void process_membarrier_<_>::mb()
 {
    int unlocked = page_unlocked.load(std::memory_order_relaxed) ;
    // One-time attempt to make a page forever residnet
@@ -177,11 +179,12 @@ void process_membarrier_provider_<_>::mb()
 
    // Upgrade access rights
    mprotect(dummy_page, sizeof(*dummy_page), PROT_READ | PROT_WRITE) ;
-   // Ensure the page is resident, even if mlock failed
-   *dummy_page = 0x0DF0FECA ;
+   if (unlocked)
+      // Ensure the page is resident, even if mlock failed
+      *dummy_page = 0x0DF0FECA ;
    // Downgrade access rights; this forces TLB shootdown and hence flushes store
    // buffers on all cores this process executes on,
-   mprotect(dummyPage, sizeof(*dummy_page), PROT_READ) ;
+   mprotect(dummy_page, sizeof(*dummy_page), PROT_READ) ;
 
    if (unlocked)
       pagelock_mutex.unlock() ;
@@ -192,9 +195,9 @@ void process_membarrier_provider_<_>::mb()
 /******************************************************************************/
 /** Issue process-wide memory barrier
 *******************************************************************************/
-inline void process_membarrier()
+inline void atomic_process_fence()
 {
-   process_membarrier_provider_<>::mb() ;
+   process_membarrier_<>::mb() ;
 }
 
 /*******************************************************************************
@@ -271,8 +274,8 @@ cas(T *target, atomic_value_t<T> expected_value, atomic_value_t<T> new_value,
 /// (and thus *target is replaced), false otherwise.
 ///
 template<typename T>
-inline enable_if_t<is_atomic2<T>::value, bool>
-cas2(T *target, T *expected_value, T new_value, std::memory_order order = std::memory_order_acq_rel)
+inline std::enable_if_t<is_atomic2<T>::value, bool>
+cas2_weak(T *target, T *expected_value, T new_value, std::memory_order order = std::memory_order_acq_rel)
 {
    static_assert(PCOMN_ATOMIC_WIDTH >=2,
                  "CAS2 is only available on CPU platforms with 2-pointer-wide-enabled atomic operation(s).") ;
@@ -298,10 +301,42 @@ cas2(T *target, T *expected_value, T new_value, std::memory_order order = std::m
 }
 
 template<typename T>
-inline enable_if_t<is_atomic2<T>::value, bool>
-cas2(T *target, T expected_value, T new_value, std::memory_order order = std::memory_order_acq_rel)
+inline std::enable_if_t<is_atomic2<T>::value, bool>
+cas2_weak(T *target, T expected_value, T new_value, std::memory_order order = std::memory_order_acq_rel)
 {
-   return cas2(target, &expected_value, new_value, order) ;
+   return cas2_weak(target, &expected_value, new_value, order) ;
+}
+
+#if defined(PCOMN_PL_MS)
+template<typename T>
+inline std::enable_if_t<is_atomic2<T>::value, bool>
+cas2_strong(T *target, T *expected_value, T new_value, std::memory_order order = std::memory_order_acq_rel)
+{
+   cas2_weak(target, expected_value, new_value, std::memory_order_acq_rel) ;
+}
+#else /* GCC/Clang version */
+
+template<typename T>
+inline std::enable_if_t<is_atomic2<T>::value, bool>
+cas2_strong(T *target, T *expected_value, T new_value, std::memory_order order = std::memory_order_acq_rel)
+{
+   static_assert(PCOMN_ATOMIC_WIDTH >=2,
+                 "CAS2 is only available on CPU platforms with 2-pointer-wide-enabled atomic operation(s).") ;
+
+   __int128 * const expected128 = reinterpret_cast<__int128 *>(expected_value) ;
+   const __int128 * const new128 = reinterpret_cast<__int128 *>(target) ;
+
+   return reinterpret_cast<std::atomic<__int128> *>(target)
+      ->compare_exchange_strong(*expected128, *new128, order) ;
+}
+
+#endif
+
+template<typename T>
+inline std::enable_if_t<is_atomic2<T>::value, bool>
+cas2_strong(T *target, T expected_value, T new_value, std::memory_order order = std::memory_order_acq_rel)
+{
+   return cas2_strong(target, &expected_value, new_value, order) ;
 }
 
 /*******************************************************************************
@@ -496,7 +531,7 @@ class llsc_ptr {
    public:
       typedef T element_type ;
 
-      llsc_ptr(llsc_ptr &&other)
+      llsc_ptr(llsc_ptr &&other) ;
 
       element_type load_linked() ;
 
