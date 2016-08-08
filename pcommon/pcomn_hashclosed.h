@@ -26,6 +26,7 @@
 #include <pcomn_function.h>
 #include <pcomn_except.h>
 #include <pcomn_hash.h>
+#include <pcomn_integer.h>
 
 #include <functional>
 
@@ -35,6 +36,7 @@
 #include <iterator>
 #include <iostream>
 #include <limits>
+#include <memory>
 
 #include <string.h>
 #include <math.h>
@@ -43,73 +45,59 @@ constexpr const float PCOMN_CLOSED_HASH_LOAD_FACTOR = 0.75 ;
 
 namespace pcomn {
 
-struct closed_hashitem_base {
-      enum State {
-         Valid   = 0,
-         Empty   = 1,
-         Deleted = 2,
-         End     = 3
-      } ;
+enum class bucket_state : uint8_t {
+   Valid   = 0,
+   Empty   = 1,
+   Deleted = 2,
+   End     = 3
 } ;
 
 /******************************************************************************/
-/** Closed hashtable item.
+/** State extractor for a hashtable bucket with pointer value.
 *******************************************************************************/
-template<typename Value>
-struct closed_hashtable_item : closed_hashitem_base {
-      typedef Value value_type ;
+template<typename T>
+struct pointer_state_extractor {
 
-      closed_hashtable_item() :
-         _state(Empty),
-         _value()
-      {}
-
-      State state() const { return (State)_state ; }
-      void set_state(State newstate)
+      static bucket_state state(T *p)
       {
-         NOXCHECK((unsigned)newstate <= End) ;
-         _state = newstate ;
+         const uintptr_t mask = 3 ;
+         const uintptr_t is_null = !((uintptr_t)p &~ mask) ;
+         const uintptr_t s       = (uintptr_t)p & mask ;
+         return static_cast<bucket_state>
+            (s & bitop::bitextend<uintptr_t>(is_null)) ;
       }
 
-      const value_type &value() const { return _value ; }
-      void set_value(const value_type &v)
+      static T *value(bucket_state s)
       {
-         _value = v ;
-         _state = Valid ;
+         return (T *)static_cast<uintptr_t>(s) ;
       }
-
-      bool is_available() const { return ((_state >> 1) + _state) & 1 ; }
-
-   private:
-      uint8_t   _state ;
-      Value     _value ;
 } ;
 
 /******************************************************************************/
-/** Specialization of hashtable_item for pointers; uses no additional space,
- @p sizeof(bucket)==sizeof(void).
+/** The item of a closed hashtable.
 *******************************************************************************/
-template<typename Value>
-struct closed_hashtable_item<Value *> : closed_hashitem_base {
-      typedef Value * value_type ;
+template<typename Value, typename StateExtractor = void>
+struct closed_hashtable_bucket {
+      typedef Value           value_type ;
+      typedef StateExtractor  state_extract ;
 
-      closed_hashtable_item() :
-         _value((value_type)(int)Empty)
+      constexpr closed_hashtable_bucket() :
+         _value(state_extract::value(bucket_state::Empty))
       {}
 
-      State state() const
+      constexpr bucket_state state() const
       {
-         return is_valid(_value) ? Valid : (State)(uintptr_t)_value ;
+         return state_extract::state(_value) ;
       }
-      void set_state(State newstate)
+
+      void set_state(bucket_state newstate)
       {
-         if (newstate > Valid)
-            _value = (value_type)(uintptr_t)newstate ;
-         else if (!is_valid(_value))
-            _value = NULL ;
+         if (newstate != bucket_state::Valid || newstate != state_extract::state(_value))
+            _value = state_extract::value(newstate) ;
       }
 
       const value_type &value() const { return _value ; }
+
       void set_value(value_type v)
       {
          ensure<std::invalid_argument>(is_valid(v) || !v, "Attempt to insert an invalid pointer value.") ;
@@ -118,14 +106,62 @@ struct closed_hashtable_item<Value *> : closed_hashitem_base {
 
       bool is_available() const
       {
-         return (uintptr_t)_value <= End && ((((uintptr_t)_value >> 1) + (uintptr_t)_value) & 1) ;
+         const unsigned s = static_cast<uint8_t>(state()) ;
+         return ((s >> 1) + s) & 1U ;
       }
 
    private:
       value_type _value ;
 
-      static bool is_valid(value_type v) { return !!((uintptr_t)v & ~(uintptr_t)7) ; }
+      static bool is_valid(value_type v)
+      {
+         return state_extract::state(v) == bucket_state::Valid ;
+      }
 } ;
+
+/******************************************************************************/
+/** Specialization of hashtable_item for items without state extractor.
+*******************************************************************************/
+template<typename Value>
+struct closed_hashtable_bucket<Value, void> {
+      typedef Value value_type ;
+
+      constexpr closed_hashtable_bucket() : _state(bucket_state::Empty), _value() {}
+
+      bucket_state state() const { return _state ; }
+
+      void set_state(bucket_state newstate)
+      {
+         NOXCHECK(newstate <= bucket_state::End) ;
+         _state = newstate ;
+      }
+
+      const value_type &value() const { return _value ; }
+      void set_value(const value_type &v)
+      {
+         _value = v ;
+         _state = bucket_state::Valid ;
+      }
+
+      bool is_available() const
+      {
+         const unsigned s = static_cast<uint8_t>(state()) ;
+         return ((s >> 1) + s) & 1U ;
+      }
+
+   private:
+      bucket_state _state ;
+      value_type     _value ;
+} ;
+
+/******************************************************************************/
+/** Specialization of hashtable_item for pointers; uses no additional space,
+ @p sizeof(bucket)==sizeof(void).
+*******************************************************************************/
+template<typename Value>
+struct closed_hashtable_bucket<Value *, void> :
+   closed_hashtable_bucket<Value *, pointer_state_extractor<Value>>
+{} ;
 
 /******************************************************************************/
 /** Closed hash table, particularly efficient for storing objects of small POD types.
@@ -133,23 +169,28 @@ struct closed_hashtable_item<Value *> : closed_hashitem_base {
  Uses linear probing for collision resolution.
 *******************************************************************************/
 template<typename Value,
-         typename ExtractKey = pcomn::identity,
-         typename Hash = pcomn::hash_fn<noref_result_of_t<ExtractKey(Value)> >,
-         typename Pred = std::equal_to<noref_result_of_t<ExtractKey(Value)> > >
+         typename ExtractKey     = void,
+         typename Hash           = void,
+         typename Pred           = void,
+         typename ExtractState   = void>
+
 class closed_hashtable {
       // Only TriviallyCopyable items are allowed!
-      PCOMN_STATIC_CHECK(std::is_trivially_copyable<Value>::value || std::is_literal_type<Value>::value) ;
+      PCOMN_STATIC_CHECK(std::is_trivially_copyable<Value>::value ||
+                         std::is_literal_type<Value>::value) ;
 
       PCOMN_NONASSIGNABLE(closed_hashtable) ;
 
-      typedef closed_hashtable_item<Value> bucket_type ;
+      typedef closed_hashtable_bucket<Value, ExtractState> bucket_type ;
 
    public:
-      typedef noref_result_of_t<ExtractKey(Value)> key_type ;
-      typedef Value       value_type ;
-      typedef Hash        hasher ;
-      typedef Pred        key_equal ;
-      typedef ExtractKey  key_extract ;
+      using value_type  = Value ;
+
+      using key_extract = std::conditional_t<std::is_same<ExtractKey, void>::value,
+                                             pcomn::identity, ExtractKey> ;
+      using key_type    = noref_result_of_t<key_extract(value_type)> ;
+      using hasher      = select_functor_t<Hash, key_type, pcomn::hash_fn> ;
+      using key_equal   = select_functor_t<Pred, key_type, std::equal_to> ;
 
       typedef size_t      size_type ;
       typedef ptrdiff_t   difference_type ;
@@ -207,7 +248,7 @@ class closed_hashtable {
          private:
             item_pointer _current ;
 
-            explicit basic_iterator(item_pointer ptr):
+            explicit basic_iterator(item_pointer ptr) :
                _current(ptr)
             {
                if (_current)
@@ -229,7 +270,7 @@ class closed_hashtable {
 
       explicit closed_hashtable(size_type initsize = 0) ;
 
-      explicit closed_hashtable(const std::pair<size_type, double> &size_n_load) ;
+      explicit closed_hashtable(const std::pair<size_type, float> &size_n_load) ;
 
       closed_hashtable(const closed_hashtable &other) :
          _basic_state{other.hash_function(), other.key_eq(), {}, other.max_load_factor()},
@@ -240,13 +281,13 @@ class closed_hashtable {
 
       closed_hashtable(closed_hashtable &&other) : closed_hashtable(0) { swap(other) ; }
 
-      closed_hashtable(const std::pair<size_type, double> &size_n_load,
+      closed_hashtable(const std::pair<size_type, float> &size_n_load,
                        const hasher &hf, const key_equal &keq = {}, const key_extract &kex = {}) :
          _basic_state{hf, keq, kex, size_n_load.second},
          _bucket_container(size_n_load.first, _basic_state)
       {}
 
-      closed_hashtable(const std::pair<size_type, double> &size_n_load,
+      closed_hashtable(const std::pair<size_type, float> &size_n_load,
                        const key_extract &kx, const key_equal &eq = {}) :
          _basic_state{{}, eq, kx, size_n_load.second},
          _bucket_container(size_n_load.first, _basic_state)
@@ -364,12 +405,12 @@ class closed_hashtable {
 
       size_type max_size() const { return bucket_count() ; }
 
-      double max_load_factor() const { return _basic_state._max_load_factor ; }
+      float max_load_factor() const { return _basic_state._max_load_factor ; }
 
-      double load_factor() const
+      float load_factor() const
       {
          const size_type bc = bucket_count() ;
-         return bc ? (double)size()/bc : 1.0 ;
+         return bc ? (float)size()/bc : 1.0 ;
       }
 
       bool empty() const { return !size() ; }
@@ -425,7 +466,7 @@ class closed_hashtable {
             basic_state(const hasher &h, const key_equal &keq = {}, const key_extract &kex = {}) :
                _hasher(h), _key_eq(keq), _key_get(kex) {}
 
-            basic_state(const hasher &h, const key_equal &keq, const key_extract &kex, double max_load) :
+            basic_state(const hasher &h, const key_equal &keq, const key_extract &kex, float max_load) :
                _hasher(h), _key_eq(keq), _key_get(kex),
                // Set max load factor bounds to float values exactly representable in
                // binary
@@ -461,11 +502,11 @@ class closed_hashtable {
             bucket_type *begin_buckets() const { return _buckets ; }
             bucket_type *end_buckets() const { return begin_buckets() + _bucket_count ; }
 
-            void init(size_type initsize, double max_load_factor)
+            void init(size_type initsize, float max_load_factor)
             {
                reset_members() ;
                if (initsize)
-                  create_buckets((size_type)ceil((double)initsize/max_load_factor)) ;
+                  create_buckets((size_type)ceil((float)initsize/max_load_factor)) ;
             }
 
             void reset(size_type bucketcount)
@@ -481,7 +522,7 @@ class closed_hashtable {
                _bucket_count = 0 ;
                _buckets = new bucket_type[bucketcount + 1] ;
                _bucket_count = bucketcount ;
-               _buckets[bucketcount].set_state(bucket_type::End) ;
+               _buckets[bucketcount].set_state(bucket_state::End) ;
             }
 
             void clear()
@@ -493,16 +534,16 @@ class closed_hashtable {
 
             void put_value(bucket_type *bucket, const value_type &value)
             {
-               const bool newly_occupied = bucket->state() == bucket_type::Empty ;
+               const bool newly_occupied = bucket->state() == bucket_state::Empty ;
                bucket->set_value(value) ;
                if (newly_occupied)
                   ++_occupied_count ;
                ++_valid_count ;
             }
 
-            bool overloaded(double max_load_factor) const
+            bool overloaded(float max_load_factor) const
             {
-               return !_bucket_count || (double)_occupied_count/_bucket_count >= max_load_factor ;
+               return !_bucket_count || (float)_occupied_count/_bucket_count >= max_load_factor ;
             }
          private:
             void reset_members()
@@ -517,8 +558,12 @@ class closed_hashtable {
         Statically allocated buckets
       *************************************************************************/
       struct static_buckets {
-            enum { _bucket_count =
-                   sizeof(bucket_type) <= sizeof(void *) ? 4 : sizeof(dynamic_buckets)/sizeof(bucket_type) } ;
+            enum : size_t
+            {
+               _bucket_count = sizeof(bucket_type) <= sizeof(void *)
+                  ? 4
+                  : (bitop::ct_log2floor<sizeof(dynamic_buckets)/sizeof(bucket_type)>::value)
+            } ;
 
             bucket_type *begin_buckets() const { return (bucket_type *)(void *)&_bucketmem ; }
             bucket_type *end_buckets() const { return begin_buckets() + _bucket_count ; }
@@ -590,7 +635,7 @@ class closed_hashtable {
                else
                {
                   std::uninitialized_fill(_stat.begin_buckets(), _stat.end_buckets(), bucket_type()) ;
-                  _stat.end_buckets()->set_state(bucket_type::End) ;
+                  _stat.end_buckets()->set_state(bucket_state::End) ;
                }
             }
 
@@ -705,12 +750,12 @@ class closed_hashtable {
          do
             switch (bucket->state())
             {
-               case bucket_type::Valid:
+               case bucket_state::Valid:
                   if (!keys_equal(bucket->value(), key)) break ;
-               case bucket_type::Empty:
+               case bucket_state::Empty:
                   return bucket ;
 
-               case bucket_type::Deleted:
+               case bucket_state::Deleted:
                   // Save position of first found deleted slot: if we'll not find a
                   // valid bucket with requested key, this slot will be used as a
                   // result, since it is a first appropriate available place for the key.
@@ -734,11 +779,11 @@ class closed_hashtable {
          do
             switch (bucket->state())
             {
-               case bucket_type::Valid:
+               case bucket_state::Valid:
                   if (keys_equal(bucket->value(), key))
                      return bucket ;
                   break ;
-               case bucket_type::Empty:
+               case bucket_state::Empty:
                   return NULL ;
 
                default: break ;
@@ -780,11 +825,11 @@ class closed_hashtable {
       void erase_bucket(bucket_type *bucket)
       {
          NOXCHECK(bucket >= begin_buckets() && bucket < end_buckets()) ;
-         NOXCHECK(bucket->state() == bucket_type::Valid) ;
+         NOXCHECK(bucket->state() == bucket_state::Valid) ;
          bucket_type *pnext = next(bucket) ;
          container().inc_valid(_basic_state, -1) ;
-         if (pnext->state() != bucket_type::Empty)
-            bucket->set_state(bucket_type::Deleted) ;
+         if (pnext->state() != bucket_state::Empty)
+            bucket->set_state(bucket_state::Deleted) ;
          else
             collect_buckets(bucket, pnext) ;
       }
@@ -795,13 +840,13 @@ class closed_hashtable {
       void collect_buckets(bucket_type *bucket, bucket_type *boundary)
       {
          NOXCHECK(bucket >= begin_buckets() && bucket < end_buckets()) ;
-         NOXCHECK(bucket->state() != bucket_type::Empty) ;
+         NOXCHECK(bucket->state() != bucket_state::Empty) ;
          do
          {
-            bucket->set_state(bucket_type::Empty) ;
+            bucket->set_state(bucket_state::Empty) ;
             container().inc_occupied(_basic_state, -1) ;
          }
-         while((bucket = prev(bucket)) != boundary && bucket->state() == bucket_type::Deleted) ;
+         while((bucket = prev(bucket)) != boundary && bucket->state() == bucket_state::Deleted) ;
       }
 
       void copy_buckets(const bucket_type *begin, const bucket_type *end) ;
@@ -810,30 +855,30 @@ class closed_hashtable {
 /*******************************************************************************
  closed_hashtable
 *******************************************************************************/
-template<typename V, typename X, typename H, typename P>
-closed_hashtable<V, X, H, P>::closed_hashtable(size_type initsize) :
+template<typename V, typename X, typename H, typename P, typename S>
+closed_hashtable<V, X, H, P, S>::closed_hashtable(size_type initsize) :
    _bucket_container(initsize, _basic_state)
 {}
 
-template<typename V, typename X, typename H, typename P>
-closed_hashtable<V, X, H, P>::closed_hashtable(const std::pair<size_type, double> &size_n_load) :
+template<typename V, typename X, typename H, typename P, typename S>
+closed_hashtable<V, X, H, P, S>::closed_hashtable(const std::pair<size_type, float> &size_n_load) :
    _basic_state{{}, {}, {}, size_n_load.second},
    _bucket_container(size_n_load.first, _basic_state)
 {}
 
-template<typename V, typename X, typename H, typename P>
-void closed_hashtable<V, X, H, P>::copy_buckets(const bucket_type *begin,
-                                                const bucket_type *end)
+template<typename V, typename X, typename H, typename P, typename S>
+void closed_hashtable<V, X, H, P, S>::copy_buckets(const bucket_type *begin,
+                                                   const bucket_type *end)
 {
    for ( ; begin != end ; ++begin)
-      if (begin->state() == bucket_type::Valid)
+      if (begin->state() == bucket_state::Valid)
          insert(begin->value()) ;
       else
          NOXCHECK(begin->is_available()) ;
 }
 
-template<typename V, typename X, typename H, typename P>
-void closed_hashtable<V, X, H, P>::expand(size_type reserve_count)
+template<typename V, typename X, typename H, typename P, typename S>
+void closed_hashtable<V, X, H, P, S>::expand(size_type reserve_count)
 {
    NOXCHECK(reserve_count <= std::numeric_limits<size_type>::max()/2) ;
    NOXCHECK(!_basic_state.is_static_buckets() || _basic_state.static_size()) ;
@@ -858,40 +903,40 @@ void closed_hashtable<V, X, H, P>::expand(size_type reserve_count)
 /*******************************************************************************
 
 *******************************************************************************/
-template<typename V, typename E, typename H, typename P>
-inline bool find_keyed_value(const closed_hashtable<V, E, H, P> &dict,
-                             const typename closed_hashtable<V, E, H, P>::key_type &key,
+template<typename V, typename E, typename H, typename P, typename S>
+inline bool find_keyed_value(const closed_hashtable<V, E, H, P, S> &dict,
+                             const typename closed_hashtable<V, E, H, P, S>::key_type &key,
                              V &value)
 {
-   const typename closed_hashtable<V, E, H, P>::const_iterator found (dict.find(key)) ;
+   const typename closed_hashtable<V, E, H, P, S>::const_iterator found (dict.find(key)) ;
    if (found == dict.end())
       return false ;
    value = *found ;
    return true ;
 }
 
-template<typename V, typename E, typename H, typename P>
-inline V get_keyed_value(const closed_hashtable<V, E, H, P> &dict,
-                         const typename closed_hashtable<V, E, H, P>::key_type &key,
+template<typename V, typename E, typename H, typename P, typename S>
+inline V get_keyed_value(const closed_hashtable<V, E, H, P, S> &dict,
+                         const typename closed_hashtable<V, E, H, P, S>::key_type &key,
                          const V &default_value)
 {
-   const typename closed_hashtable<V, E, H, P>::const_iterator found (dict.find(key)) ;
+   const typename closed_hashtable<V, E, H, P, S>::const_iterator found (dict.find(key)) ;
    return found == dict.end() ? default_value : *found ;
 }
 
-template<typename V, typename E, typename H, typename P>
-inline V get_keyed_value(const closed_hashtable<V, E, H, P> &dict,
-                         const typename closed_hashtable<V, E, H, P>::key_type &key)
+template<typename V, typename E, typename H, typename P, typename S>
+inline V get_keyed_value(const closed_hashtable<V, E, H, P, S> &dict,
+                         const typename closed_hashtable<V, E, H, P, S>::key_type &key)
 {
    return get_keyed_value(dict, key, V()) ;
 }
 
-
 } // end of namespace pcomn
 
 namespace std {
-template<typename V, typename X, typename H, typename P>
-inline void swap(pcomn::closed_hashtable<V, X, H, P> &lhs, pcomn::closed_hashtable<V, X, H, P> &rhs)
+template<typename V, typename X, typename H, typename P, typename S>
+inline void swap(pcomn::closed_hashtable<V, X, H, P, S> &lhs,
+                 pcomn::closed_hashtable<V, X, H, P, S> &rhs)
 {
    lhs.swap(rhs) ;
 }

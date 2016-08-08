@@ -281,6 +281,19 @@ struct rebind___t {
 template<typename C, typename T, typename... A>
 using rebind_t = decltype(rebind___t<T, A...>::eval(autoval<C *>())) ;
 
+template<typename Functor, typename Argtype, template<class> typename Default>
+struct select_functor {
+      typedef Functor type ;
+} ;
+
+template<typename Argtype, template<class> typename Default>
+struct select_functor<void, Argtype, Default> {
+      typedef Default<Argtype> type ;
+} ;
+
+template<typename Functor, typename Argtype, template<class> typename Default>
+using select_functor_t = typename select_functor<Functor, Argtype, Default>::type ;
+
 /******************************************************************************/
 /** Macro to define member type metatesters
 *******************************************************************************/

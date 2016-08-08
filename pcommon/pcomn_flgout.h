@@ -189,7 +189,7 @@ std::ostream &print_enum(std::ostream &os, Enum value)
 {
    if (const char * const name = enum_name(value))
       return os << name ;
-   return os << "<UNKNOWN>(" << (long long)value << ')' ;
+   return os << "<UNKNOWN>(" << (std::underlying_type_t<Enum>)value << ')' ;
 }
 
 } // end of namespace pcomn

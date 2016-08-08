@@ -19,6 +19,16 @@
 
 #include <stdio.h>
 
+namespace CppUnit {
+
+template<>
+inline std::string assertion_traits<pcomn::bucket_state>::toString(const pcomn::bucket_state &s)
+{
+   return std::to_string((uintptr_t)s) ;
+}
+
+}
+
 /*******************************************************************************
                      class ClosedHashTests
 *******************************************************************************/
@@ -31,7 +41,7 @@ class ClosedHashTests : public CppUnit::TestFixture {
 
    private:
       void Test_Hash_Functions() ;
-      void Test_Hashtable_Item() ;
+      void Test_Hashtable_Bucket() ;
       void Test_Closed_Hash_Empty() ;
       void Test_Closed_Hash_Init() ;
       void Test_Closed_Hash_Insert_One() ;
@@ -47,7 +57,7 @@ class ClosedHashTests : public CppUnit::TestFixture {
       CPPUNIT_TEST_SUITE(ClosedHashTests) ;
 
       CPPUNIT_TEST(Test_Hash_Functions) ;
-      CPPUNIT_TEST(Test_Hashtable_Item) ;
+      CPPUNIT_TEST(Test_Hashtable_Bucket) ;
       CPPUNIT_TEST(Test_Closed_Hash_Empty) ;
       CPPUNIT_TEST(Test_Closed_Hash_Init) ;
       CPPUNIT_TEST(Test_Closed_Hash_Insert_One) ;
@@ -119,62 +129,62 @@ void ClosedHashTests::Test_Hash_Functions()
                      pcomn::Hash().append(1).append(2).append(3).value()) ;
 }
 
-void ClosedHashTests::Test_Hashtable_Item()
+void ClosedHashTests::Test_Hashtable_Bucket()
 {
-   pcomn::closed_hashtable_item<int> IntItem ;
-   pcomn::closed_hashtable_item<void *> PItem ;
-   pcomn::closed_hashtable_item<const char *> CItem ;
+   using namespace pcomn ;
 
-   typedef pcomn::closed_hashitem_base base ;
+   closed_hashtable_bucket<int> IntBucket ;
+   closed_hashtable_bucket<void *> PBucket ;
+   closed_hashtable_bucket<const char *> CBucket ;
 
-   CPPUNIT_LOG_EQUAL(sizeof(PItem), sizeof(void *)) ;
-   CPPUNIT_LOG_EQUAL(sizeof(CItem), sizeof(char *)) ;
-   CPPUNIT_LOG_ASSERT(sizeof(IntItem) > sizeof(int)) ;
+   CPPUNIT_LOG_EQUAL(sizeof(PBucket), sizeof(void *)) ;
+   CPPUNIT_LOG_EQUAL(sizeof(CBucket), sizeof(char *)) ;
+   CPPUNIT_LOG_ASSERT(sizeof(IntBucket) > sizeof(int)) ;
 
-   CPPUNIT_LOG_EQUAL(IntItem.state(), base::Empty) ;
-   CPPUNIT_LOG_ASSERT(IntItem.is_available()) ;
-   CPPUNIT_LOG_EQUAL(CItem.state(), base::Empty) ;
-   CPPUNIT_LOG_ASSERT(CItem.is_available()) ;
+   CPPUNIT_LOG_EQUAL(IntBucket.state(), bucket_state::Empty) ;
+   CPPUNIT_LOG_ASSERT(IntBucket.is_available()) ;
+   CPPUNIT_LOG_EQUAL(CBucket.state(), bucket_state::Empty) ;
+   CPPUNIT_LOG_ASSERT(CBucket.is_available()) ;
 
    const char * const Hello = "Hello, world!" ;
 
    CPPUNIT_LOG(std::endl) ;
-   CPPUNIT_LOG_RUN(IntItem.set_value(3)) ;
-   CPPUNIT_LOG_RUN(CItem.set_value(Hello)) ;
+   CPPUNIT_LOG_RUN(IntBucket.set_value(3)) ;
+   CPPUNIT_LOG_RUN(CBucket.set_value(Hello)) ;
 
-   CPPUNIT_LOG_EQUAL(IntItem.state(), base::Valid) ;
-   CPPUNIT_LOG_IS_FALSE(IntItem.is_available()) ;
-   CPPUNIT_LOG_EQUAL(CItem.state(), base::Valid) ;
-   CPPUNIT_LOG_IS_FALSE(CItem.is_available()) ;
-   CPPUNIT_LOG_EQUAL(IntItem.value(), 3) ;
-   CPPUNIT_LOG_EQUAL(CItem.value(), Hello) ;
-
-   CPPUNIT_LOG(std::endl) ;
-   CPPUNIT_LOG_RUN(IntItem.set_state(base::Deleted)) ;
-   CPPUNIT_LOG_RUN(CItem.set_state(base::Deleted)) ;
-   CPPUNIT_LOG_EQUAL(IntItem.state(), base::Deleted) ;
-   CPPUNIT_LOG_ASSERT(IntItem.is_available()) ;
-   CPPUNIT_LOG_EQUAL(CItem.state(), base::Deleted) ;
-   CPPUNIT_LOG_ASSERT(CItem.is_available()) ;
+   CPPUNIT_LOG_EQUAL(IntBucket.state(), bucket_state::Valid) ;
+   CPPUNIT_LOG_IS_FALSE(IntBucket.is_available()) ;
+   CPPUNIT_LOG_EQUAL(CBucket.state(), bucket_state::Valid) ;
+   CPPUNIT_LOG_IS_FALSE(CBucket.is_available()) ;
+   CPPUNIT_LOG_EQUAL(IntBucket.value(), 3) ;
+   CPPUNIT_LOG_EQUAL(CBucket.value(), Hello) ;
 
    CPPUNIT_LOG(std::endl) ;
-   CPPUNIT_LOG_RUN(IntItem.set_value(3)) ;
-   CPPUNIT_LOG_RUN(CItem.set_value(Hello)) ;
-
-   CPPUNIT_LOG_EQUAL(IntItem.state(), base::Valid) ;
-   CPPUNIT_LOG_IS_FALSE(IntItem.is_available()) ;
-   CPPUNIT_LOG_EQUAL(CItem.state(), base::Valid) ;
-   CPPUNIT_LOG_IS_FALSE(CItem.is_available()) ;
-   CPPUNIT_LOG_EQUAL(IntItem.value(), 3) ;
-   CPPUNIT_LOG_EQUAL(CItem.value(), Hello) ;
+   CPPUNIT_LOG_RUN(IntBucket.set_state(bucket_state::Deleted)) ;
+   CPPUNIT_LOG_RUN(CBucket.set_state(bucket_state::Deleted)) ;
+   CPPUNIT_LOG_EQUAL(IntBucket.state(), bucket_state::Deleted) ;
+   CPPUNIT_LOG_ASSERT(IntBucket.is_available()) ;
+   CPPUNIT_LOG_EQUAL(CBucket.state(), bucket_state::Deleted) ;
+   CPPUNIT_LOG_ASSERT(CBucket.is_available()) ;
 
    CPPUNIT_LOG(std::endl) ;
-   CPPUNIT_LOG_RUN(IntItem.set_state(base::End)) ;
-   CPPUNIT_LOG_RUN(CItem.set_state(base::End)) ;
-   CPPUNIT_LOG_EQUAL(IntItem.state(), base::End) ;
-   CPPUNIT_LOG_IS_FALSE(IntItem.is_available()) ;
-   CPPUNIT_LOG_EQUAL(CItem.state(), base::End) ;
-   CPPUNIT_LOG_IS_FALSE(CItem.is_available()) ;
+   CPPUNIT_LOG_RUN(IntBucket.set_value(3)) ;
+   CPPUNIT_LOG_RUN(CBucket.set_value(Hello)) ;
+
+   CPPUNIT_LOG_EQUAL(IntBucket.state(), bucket_state::Valid) ;
+   CPPUNIT_LOG_IS_FALSE(IntBucket.is_available()) ;
+   CPPUNIT_LOG_EQUAL(CBucket.state(), bucket_state::Valid) ;
+   CPPUNIT_LOG_IS_FALSE(CBucket.is_available()) ;
+   CPPUNIT_LOG_EQUAL(IntBucket.value(), 3) ;
+   CPPUNIT_LOG_EQUAL(CBucket.value(), Hello) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_RUN(IntBucket.set_state(bucket_state::End)) ;
+   CPPUNIT_LOG_RUN(CBucket.set_state(bucket_state::End)) ;
+   CPPUNIT_LOG_EQUAL(IntBucket.state(), bucket_state::End) ;
+   CPPUNIT_LOG_IS_FALSE(IntBucket.is_available()) ;
+   CPPUNIT_LOG_EQUAL(CBucket.state(), bucket_state::End) ;
+   CPPUNIT_LOG_IS_FALSE(CBucket.is_available()) ;
 }
 
 void ClosedHashTests::Test_Closed_Hash_Empty()
