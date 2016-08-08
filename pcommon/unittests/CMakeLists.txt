@@ -30,6 +30,7 @@ unittest(unittest_strslice)
 
 unittest(unittest_cacher)
 unittest(unittest_cdsqueue)
+unittest(unittest_cdscrq)
 unittest(unittest_crypthash)
 unittest(unittest_exec)
 unittest(unittest_file_lock)

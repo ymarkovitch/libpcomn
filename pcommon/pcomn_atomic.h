@@ -110,7 +110,7 @@ using enable_if_atomic_ptr_t =
 *******************************************************************************/
 template<typename T>
 struct is_atomic2 : bool_constant
-<sizeof(T) == 2*sizeof(void*) && alignof(T) >= sizeof(T) && is_trivially_swappable<T>::value>
+<sizeof(T) == 2*sizeof(void*) && alignof(T) >= sizeof(T) && std::is_trivially_copyable<T>::value>
 {} ;
 
 /******************************************************************************/
