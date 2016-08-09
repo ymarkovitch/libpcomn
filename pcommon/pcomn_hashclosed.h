@@ -519,6 +519,11 @@ class closed_hashtable {
             void create_buckets(size_type bucketcount)
             {
                NOXCHECK(!_buckets) ;
+               NOXCHECK(bucketcount) ;
+
+               // Bucket count is always the power of 2
+               bucketcount = (size_type)1 << bitop::log2ceil(bucketcount) ;
+
                _bucket_count = 0 ;
                _buckets = new bucket_type[bucketcount + 1] ;
                _bucket_count = bucketcount ;
@@ -562,7 +567,7 @@ class closed_hashtable {
             {
                _bucket_count = sizeof(bucket_type) <= sizeof(void *)
                   ? 4
-                  : (bitop::ct_log2floor<sizeof(dynamic_buckets)/sizeof(bucket_type)>::value)
+                  : (1U << bitop::ct_log2floor<sizeof(dynamic_buckets)/sizeof(bucket_type)>::value)
             } ;
 
             bucket_type *begin_buckets() const { return (bucket_type *)(void *)&_bucketmem ; }
@@ -735,7 +740,10 @@ class closed_hashtable {
       {
          return !!key_eq()(key_get()(value), key) ;
       }
-      size_t bucket_ndx(const key_type &key) const { return hash_function()(key) % bucket_count() ; }
+      size_t bucket_ndx(const key_type &key) const
+      {
+         return hash_function()(key) & (bucket_count() - 1) ;
+      }
 
       void expand(size_type reserve_count = 0) ;
 
@@ -803,7 +811,7 @@ class closed_hashtable {
       bucket_type *next(bucket_type *current) const
       {
          bucket_type * const begin = begin_buckets() ;
-         return begin + (current - begin + 1) % bucket_count() ;
+         return begin + ((current - begin + 1) & (bucket_count() - 1)) ;
       }
       bucket_type *prev(bucket_type *current) const
       {
@@ -883,8 +891,9 @@ void closed_hashtable<V, X, H, P, S>::expand(size_type reserve_count)
    NOXCHECK(reserve_count <= std::numeric_limits<size_type>::max()/2) ;
    NOXCHECK(!_basic_state.is_static_buckets() || _basic_state.static_size()) ;
 
-   size_type new_bucket_count = std::max<size_type>(bucket_count(), 4) ;
-   for (new_bucket_count *= 2 ; new_bucket_count < reserve_count ; new_bucket_count *= 2) ;
+   reserve_count = std::max<size_type>({reserve_count, bucket_count() + 1, 4}) ;
+   // The bucket count is always the power of 2
+   const size_type new_bucket_count = (size_type)1 << bitop::log2ceil(reserve_count) ;
 
    const bool was_static = _basic_state.is_static_buckets() ;
 

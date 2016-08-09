@@ -218,7 +218,7 @@ void ClosedHashTests::Test_Closed_Hash_Init()
 {
    test_inthashtable IntHash(4) ;
    CPPUNIT_LOG_EQ(IntHash.max_load_factor(), 0.75) ;
-   CPPUNIT_LOG_EQUAL(IntHash.bucket_count(), (size_t)6) ;
+   CPPUNIT_LOG_EQ(IntHash.bucket_count(), 8) ;
 
    test_inthashtable IntHash2 ({4, 0.5}) ;
    CPPUNIT_LOG_EQ(IntHash2.max_load_factor(), 0.5) ;
@@ -278,7 +278,7 @@ void ClosedHashTests::Test_Closed_Hash_Insert()
 {
    test_inthashtable IntHash(4) ;
    CPPUNIT_LOG_EQ(IntHash.max_load_factor(), 0.75) ;
-   CPPUNIT_LOG_EQUAL(IntHash.bucket_count(), (size_t)6) ;
+   CPPUNIT_LOG_EQ(IntHash.bucket_count(), 8) ;
 
    CPPUNIT_LOG_ASSERT(IntHash.insert(10).second) ;
    CPPUNIT_LOG(IntHash << std::endl) ;
