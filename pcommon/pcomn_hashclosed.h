@@ -100,7 +100,7 @@ struct closed_hashtable_bucket {
 
       void set_value(value_type v)
       {
-         ensure<std::invalid_argument>(is_valid(v) || !v, "Attempt to insert an invalid pointer value.") ;
+         ensure<std::invalid_argument>(is_valid(v), "Attempt to insert an invalid pointer value.") ;
          _value = v ;
       }
 
@@ -182,6 +182,7 @@ class closed_hashtable {
       PCOMN_NONASSIGNABLE(closed_hashtable) ;
 
       typedef closed_hashtable_bucket<Value, ExtractState> bucket_type ;
+      typedef closed_hashtable<Value, ExtractKey, Hash, Pred, ExtractState> table_type ;
 
    public:
       using value_type  = Value ;
@@ -199,7 +200,7 @@ class closed_hashtable {
       class basic_iterator :
          public std::iterator<std::forward_iterator_tag, Value, ptrdiff_t, const Value *, const Value &>
       {
-            friend class closed_hashtable<Value, ExtractKey, Hash, Pred> ;
+            friend table_type ;
             typedef std::conditional_t<IsConstant, const bucket_type *, bucket_type *> item_pointer ;
 
          public:
@@ -330,21 +331,7 @@ class closed_hashtable {
          return erase_item(key_get()(value), NULL) ;
       }
 
-      std::pair<iterator, bool> insert(const value_type &value)
-      {
-         if (container().overloaded(_basic_state))
-            expand() ;
-
-         bucket_type *place = find_available_bucket(key_get()(value)) ;
-
-         NOXCHECK(place && (place->is_available() || keys_equal(place->value(), key_get()(value)))) ;
-
-         const bool has_place = place->is_available() ;
-         if (has_place)
-            container().put_value(place, value, _basic_state) ;
-
-         return std::pair<iterator, bool>(iterator(place), has_place) ;
-      }
+      std::pair<iterator, bool> insert(const value_type &value) ;
 
       std::pair<iterator, bool> replace(const value_type &value)
       {
@@ -771,7 +758,7 @@ class closed_hashtable {
                      result = bucket ;
                   break ;
                default:
-                  PCOMN_DEBUG_FAIL("Invalid bucket state while searching available bucket") ;
+                  PCOMN_FAIL("Invalid bucket state while searching available bucket") ;
             }
          while ((bucket = next(bucket)) != first_found) ;
          return result ;
@@ -873,6 +860,23 @@ closed_hashtable<V, X, H, P, S>::closed_hashtable(const std::pair<size_type, flo
    _basic_state{{}, {}, {}, size_n_load.second},
    _bucket_container(size_n_load.first, _basic_state)
 {}
+
+template<typename V, typename X, typename H, typename P, typename S>
+auto closed_hashtable<V, X, H, P, S>::insert(const value_type &value) -> std::pair<iterator, bool>
+{
+   if (container().overloaded(_basic_state))
+      expand() ;
+
+   bucket_type *place = find_available_bucket(key_get()(value)) ;
+
+   NOXCHECK(place && (place->is_available() || keys_equal(place->value(), key_get()(value)))) ;
+
+   const bool has_place = place->is_available() ;
+   if (has_place)
+      container().put_value(place, value, _basic_state) ;
+
+   return std::pair<iterator, bool>(iterator(place), has_place) ;
+}
 
 template<typename V, typename X, typename H, typename P, typename S>
 void closed_hashtable<V, X, H, P, S>::copy_buckets(const bucket_type *begin,

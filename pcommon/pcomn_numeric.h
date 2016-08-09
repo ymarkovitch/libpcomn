@@ -19,13 +19,7 @@
 
 namespace pcomn {
 
-// From the SGI STL
-template <class ForwardIterator, class Tp>
-inline void iota(ForwardIterator first, ForwardIterator last, Tp value)
-{
-   while (first != last)
-      *first++ = value++ ;
-}
+using std::iota ;
 
 const unsigned UPRIME_MIN = 3u ;
 const unsigned UPRIME_MAX = 4294967291u ;
