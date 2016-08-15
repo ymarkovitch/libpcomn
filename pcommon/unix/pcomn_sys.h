@@ -22,6 +22,7 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/resource.h>
+#include <sys/mman.h>
 
 #include <limits.h>
 #include <unistd.h>
@@ -31,9 +32,16 @@
 namespace pcomn {
 namespace sys {
 
+inline const char *strlasterr()
+{
+   static thread_local char errbuf[128] ;
+   *errbuf = errbuf[sizeof errbuf - 1] = 0 ;
+   return strerror_r(errno, errbuf, sizeof errbuf - 1) ;
+}
+
 inline size_t pagesize()
 {
-   static thread_local size_t sz = sysconf(_SC_PAGESIZE) ;
+   static const thread_local size_t sz = sysconf(_SC_PAGESIZE) ;
    return sz ;
 }
 
@@ -47,6 +55,18 @@ inline fileoff_t filesize(const char *name)
 {
    struct stat st ;
    return stat(name, &st) == 0 ? (fileoff_t)st.st_size : (fileoff_t)-1 ;
+}
+
+inline void *pagealloc()
+{
+   void * const mem = mmap(nullptr, 1, PROT_READ|PROT_WRITE, MAP_ANONYMOUS|MAP_PRIVATE, -1, 0) ;
+   return mem == MAP_FAILED ? nullptr : mem ;
+}
+
+inline void pagefree(void *p)
+{
+   if (p)
+      munmap(p, 1) ;
 }
 
 #define _PCOMN_SYS_FSTATAT(statfn, dirfd, path, flags, raise)        \

@@ -35,6 +35,20 @@ enum Access {
 /// Get the memory page size for the platform.
 inline size_t pagesize() ;
 
+inline size_t pagemask()
+{
+   return pagesize() - 1 ;
+}
+
+inline size_t pagemulsize(size_t sz)
+{
+   return (sz + pagemask()) & pagemask() ;
+}
+
+inline void *pagealloc() ;
+
+inline void pagefree(void *) ;
+
 /// Portable filesize function.
 /// @return The file size, or -1 on error.
 inline fileoff_t filesize(int fd) ;
