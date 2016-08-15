@@ -183,7 +183,7 @@ static void FinalizeQueueTestNx1(S stop, P &producers, std::thread &consumer, si
    CPPUNIT_LOG_RUN(stop()) ;
    CPPUNIT_LOG_RUN(consumer.join()) ;
 
-   //CheckQueueResultConsistency(std::size(producers), per_thread, result) ;
+   CheckQueueResultConsistency(std::size(producers), per_thread, result) ;
 }
 
 template<typename S, typename V, typename T>
@@ -199,7 +199,7 @@ static void FinalizeQueueTestNxN(S stop, V &producers, V &consumers, size_t per_
    for (std::thread &c: consumers)
       CPPUNIT_LOG_RUN(c.join()) ;
 
-   //CheckQueueResultConsistency(std::size(producers), per_thread, bresults, eresults) ;
+   CheckQueueResultConsistency(std::size(producers), per_thread, bresults, eresults) ;
 }
 
 template<typename Queue>

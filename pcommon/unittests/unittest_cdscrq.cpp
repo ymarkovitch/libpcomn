@@ -26,20 +26,45 @@ static const size_t REPCOUNT = 50 ;
 static const size_t REPCOUNT = 5 ;
 #endif
 
+namespace CppUnit {
+template<>
+struct assertion_traits<pcomn::crqslot_tag> {
+
+      static bool equal(const pcomn::crqslot_tag &x, const pcomn::crqslot_tag &y)
+      {
+         return x._tag == y._tag ;
+      }
+
+      static std::string toString(const pcomn::crqslot_tag &v)
+      {
+         pcomn::omemstream os ;
+         os << '(' << (v.is_safe() ? 's' : 'u') << ',' << (v.is_empty() ? '_' : '*') << ',' << v.ndx() << ')' ;
+         return os.checkout() ;
+      }
+} ;
+} // end of namespace CppUnit
+
 /*******************************************************************************
  class CRQTests
 *******************************************************************************/
 class CRQTests : public CppUnit::TestFixture {
 
       void Test_CRQ_Data() ;
+      void Test_CRQ_Init() ;
       void Test_CRQ_SingleThread() ;
 
       CPPUNIT_TEST_SUITE(CRQTests) ;
 
       CPPUNIT_TEST(Test_CRQ_Data) ;
+      CPPUNIT_TEST(Test_CRQ_Init) ;
       CPPUNIT_TEST(Test_CRQ_SingleThread) ;
 
       CPPUNIT_TEST_SUITE_END() ;
+
+      typedef std::unique_ptr<std::string> string_ptr ;
+
+      typedef crq<int>         int_crq ;
+      typedef crq<string_ptr>  string_crq ;
 } ;
 
 
@@ -50,88 +75,111 @@ void CRQTests::Test_CRQ_Data()
 {
 }
 
-void CRQTests::Test_CRQ_SingleThread()
+void CRQTests::Test_CRQ_Init()
 {
-   typedef std::unique_ptr<std::string> string_ptr ;
-
-   typedef crq<int>         int_crq ;
-   typedef crq<string_ptr>  string_crq ;
-
    std::unique_ptr<int_crq>    i_crq0 ;
    std::unique_ptr<string_crq> s_crq0 ;
 
-   CPPUNIT_LOG_RUN(i_crq0.reset(int_crq::make_crq(1, 0))) ;
-   CPPUNIT_LOG_RUN(s_crq0.reset(string_crq::make_crq(1, 0))) ;
+   CPPUNIT_LOG_RUN(i_crq0.reset(int_crq::make_crq(0, 1))) ;
+   CPPUNIT_LOG_RUN(s_crq0.reset(string_crq::make_crq(0))) ;
 
    CPPUNIT_LOG_ASSERT(i_crq0->empty()) ;
    CPPUNIT_LOG_ASSERT(s_crq0->empty()) ;
 
-   /*
-   strcdsq empty0 ;
-   std::string val0 = "Hello, world!" ;
+   CPPUNIT_LOG_EQ(i_crq0->memsize(), sys::pagesize()) ;
+   CPPUNIT_LOG_EQ(s_crq0->memsize(), sys::pagesize()) ;
 
-   CPPUNIT_LOG_ASSERT(empty0.empty()) ;
-   CPPUNIT_LOG_IS_FALSE(empty0.try_pop(val0)) ;
-   CPPUNIT_LOG_ASSERT(empty0.empty()) ;
-   CPPUNIT_LOG_EQ(val0, "Hello, world!") ;
-   CPPUNIT_LOG_EQ(empty0.pop_default("Foo"), std::make_pair("Foo", false)) ;
-   CPPUNIT_LOG_ASSERT(empty0.empty()) ;
+   CPPUNIT_LOG_EQ(i_crq0->capacity(), sys::pagesize()/PCOMN_CACHELINE_SIZE - 3) ;
+   CPPUNIT_LOG_EQ(s_crq0->capacity(), sys::pagesize()/PCOMN_CACHELINE_SIZE - 3) ;
+   CPPUNIT_LOG_EQ(s_crq0->modulo(), sys::pagesize()/PCOMN_CACHELINE_SIZE) ;
+   CPPUNIT_LOG_EQ(s_crq0->initndx(), 0) ;
+
+   CPPUNIT_LOG_EQ(i_crq0->head_fetch_and_next(), 0) ;
+   CPPUNIT_LOG_EQ(i_crq0->head_fetch_and_next(), 1) ;
+   for (uintptr_t i = 1 ; ++i < i_crq0->capacity() - 1 ; )
+      CPPUNIT_EQUAL(i_crq0->head_fetch_and_next(), i) ;
+
+   CPPUNIT_LOG_EQ(i_crq0->head_fetch_and_next(), i_crq0->capacity() - 1) ;
+   CPPUNIT_LOG_EQ(i_crq0->pos(i_crq0->capacity() - 2), i_crq0->capacity() - 2) ;
+   CPPUNIT_LOG_EQ(i_crq0->pos(i_crq0->capacity() - 1), i_crq0->capacity() - 1) ;
+
+   CPPUNIT_LOG_EQ(i_crq0->head_fetch_and_next(), i_crq0->initndx() + i_crq0->modulo()) ;
+   CPPUNIT_LOG_EQ(i_crq0->pos(i_crq0->initndx() + i_crq0->modulo()), 0) ;
+
+
+   CPPUNIT_LOG(std::endl) ;
+   std::unique_ptr<int_crq> i_crq1 ;
+
+   CPPUNIT_LOG_RUN(i_crq1.reset(int_crq::make_crq(779))) ;
+   CPPUNIT_LOG_ASSERT(i_crq1->empty()) ;
+   CPPUNIT_LOG_EQ(i_crq1->memsize(), sys::pagesize()) ;
+
+   CPPUNIT_LOG_EQ(i_crq1->initndx(), 779) ;
+
+   CPPUNIT_LOG_EQ(i_crq1->head_fetch_and_next(), 779) ;
+   CPPUNIT_LOG_EQ(i_crq1->head_fetch_and_next(), 780) ;
+   for (uintptr_t i = 780 ; ++i < i_crq1->initndx() + i_crq1->capacity() ; )
+      CPPUNIT_EQUAL(i_crq1->head_fetch_and_next(), i) ;
+
+   CPPUNIT_LOG_EQ(i_crq1->head_fetch_and_next(), i_crq1->initndx() + i_crq1->modulo()) ;
+   CPPUNIT_LOG_EQ(i_crq1->pos(i_crq1->initndx() + i_crq1->modulo()), 0) ;
 
    CPPUNIT_LOG(std::endl) ;
 
-   strcdsq q1 ;
-   std::string val1 = "Bye, baby!" ;
-   std::string val ;
+   std::unique_ptr<int_crq> i_crq2 ;
+   CPPUNIT_LOG_RUN(i_crq2.reset(int_crq::make_crq(779))) ;
+   CPPUNIT_LOG_ASSERT(i_crq2->empty()) ;
+   CPPUNIT_LOG_EQ(i_crq2->memsize(), sys::pagesize()) ;
 
-   CPPUNIT_LOG_ASSERT(q1.empty()) ;
-   CPPUNIT_LOG_IS_FALSE(q1.try_pop(val1)) ;
-   CPPUNIT_LOG_EQ(val1, "Bye, baby!") ;
-   CPPUNIT_LOG_RUN(q1.push(val0)) ;
-   CPPUNIT_LOG_IS_FALSE(q1.empty()) ;
+   CPPUNIT_LOG_EQ(i_crq2->initndx(), 779) ;
 
-   CPPUNIT_LOG_ASSERT(q1.try_pop(val)) ;
-   CPPUNIT_LOG_EQ(val, "Hello, world!") ;
-   CPPUNIT_LOG_ASSERT(q1.empty()) ;
-   CPPUNIT_LOG_EQ(q1.pop_default("Foo"), std::make_pair("Foo", false)) ;
-   CPPUNIT_LOG_ASSERT(q1.empty()) ;
+   CPPUNIT_LOG_EQ(i_crq2->tail_fetch_and_next(), crqslot_tag(779)) ;
+   CPPUNIT_LOG_EQ(i_crq2->tail_fetch_and_next(), crqslot_tag(780)) ;
+   for (uintptr_t i = 780 ; ++i < i_crq2->initndx() + i_crq2->capacity() ; )
+      CPPUNIT_EQUAL(i_crq2->tail_fetch_and_next(), crqslot_tag(i)) ;
 
-   CPPUNIT_LOG(std::endl) ;
-   CPPUNIT_LOG_RUN(q1.push("Foo")) ;
-   CPPUNIT_LOG_IS_FALSE(q1.empty()) ;
-   CPPUNIT_LOG_RUN(q1.push_back("Quux")) ;
-   CPPUNIT_LOG_IS_FALSE(q1.empty()) ;
-   CPPUNIT_LOG_RUN(q1.push(std::move(val0))) ;
-   CPPUNIT_LOG_IS_FALSE(q1.empty()) ;
-   CPPUNIT_LOG_EQ(val0, "") ;
-   CPPUNIT_LOG_RUN(q1.emplace(16, '@')) ;
-   CPPUNIT_LOG_IS_FALSE(q1.empty()) ;
+   CPPUNIT_LOG_EQ(i_crq2->tail_fetch_and_next(), crqslot_tag(i_crq2->initndx() + i_crq2->modulo())) ;
+}
 
-   CPPUNIT_LOG(std::endl) ;
-   CPPUNIT_LOG_ASSERT(q1.try_pop(val)) ;
-   CPPUNIT_LOG_EQ(val, "Foo") ;
-   CPPUNIT_LOG_IS_FALSE(q1.empty()) ;
-   CPPUNIT_LOG_EQ(q1.pop_default(), std::make_pair("Quux", true)) ;
-   CPPUNIT_LOG_IS_FALSE(q1.empty()) ;
-   CPPUNIT_LOG_EQ(q1.pop_default(), std::make_pair("Hello, world!", true)) ;
-   CPPUNIT_LOG_IS_FALSE(q1.empty()) ;
-   CPPUNIT_LOG_EQ(q1.pop_default(), std::make_pair("@@@@@@@@@@@@@@@@", true)) ;
-   CPPUNIT_LOG_ASSERT(q1.empty()) ;
-   CPPUNIT_LOG_EQ(q1.pop_default(), std::make_pair("", false)) ;
+void CRQTests::Test_CRQ_SingleThread()
+{
+   std::unique_ptr<int_crq> i_crq0 {int_crq::make_crq(0)} ;
+   using std::make_pair ;
 
-   CPPUNIT_LOG(std::endl) ;
-   {
-      strcdsq q2 ;
-      CPPUNIT_LOG_RUN(q2.push("Quux")) ;
-      CPPUNIT_LOG_RUN(q2.push_back("Bar")) ;
-      CPPUNIT_LOG_RUN(q2.emplace(16, '+')) ;
-   }
+   CPPUNIT_LOG_ASSERT(i_crq0->empty()) ;
+   CPPUNIT_LOG_ASSERT(i_crq0->enqueue(100)) ;
+   CPPUNIT_LOG_IS_FALSE(i_crq0->empty()) ;
+   CPPUNIT_LOG_EQ(i_crq0->dequeue(), make_pair(100, true)) ;
+   CPPUNIT_LOG_ASSERT(i_crq0->empty()) ;
+   CPPUNIT_LOG_EQ(i_crq0->dequeue(), make_pair(0, false)) ;
+   CPPUNIT_LOG_ASSERT(i_crq0->empty()) ;
+   CPPUNIT_LOG_EQ(i_crq0->dequeue(), make_pair(0, false)) ;
+   CPPUNIT_LOG_ASSERT(i_crq0->enqueue(200)) ;
+   CPPUNIT_LOG_EQ(i_crq0->dequeue(), make_pair(200, true)) ;
+
+   CPPUNIT_LOG_ASSERT(i_crq0->enqueue(300)) ;
+   CPPUNIT_LOG_ASSERT(i_crq0->enqueue(400)) ;
+   CPPUNIT_LOG_EQ(i_crq0->dequeue(), make_pair(300, true)) ;
+   CPPUNIT_LOG_ASSERT(i_crq0->enqueue(500)) ;
+   CPPUNIT_LOG_EQ(i_crq0->dequeue(), make_pair(400, true)) ;
+   CPPUNIT_LOG_EQ(i_crq0->dequeue(), make_pair(500, true)) ;
+   CPPUNIT_LOG_EQ(i_crq0->dequeue(), make_pair(0, false)) ;
 
    CPPUNIT_LOG(std::endl) ;
-   strcdsq q3 ;
-   CPPUNIT_LOG_RUN(q3.push("Quux")) ;
-   CPPUNIT_LOG_RUN(q3.push_back("Bar")) ;
-   CPPUNIT_LOG_RUN(q3.emplace(16, '+')) ;
-   */
+   size_t count ;
+   size_t success = 0 ;
+   for (count = 0 ; count++ < i_crq0->capacity() ;)
+      CPPUNIT_EQUAL((success += i_crq0->enqueue(count * 10)), count) ;
+
+   CPPUNIT_LOG_IS_FALSE(i_crq0->enqueue(count * 10)) ;
+   CPPUNIT_LOG_IS_FALSE(i_crq0->enqueue(count * 10)) ;
+
+   for (count = 0 ; count++ < i_crq0->capacity() ;)
+      CPPUNIT_EQUAL(i_crq0->dequeue(), make_pair((int)count * 10, true)) ;
+
+   CPPUNIT_LOG_EQ(i_crq0->dequeue(), make_pair(0, false)) ;
+   CPPUNIT_LOG_IS_FALSE(i_crq0->enqueue(count * 10)) ;
+   CPPUNIT_LOG_EQ(i_crq0->dequeue(), make_pair(0, false)) ;
 }
 
 /*******************************************************************************
