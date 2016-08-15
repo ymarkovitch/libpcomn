@@ -168,12 +168,7 @@ inline char *strnewz(const char *src)
 #endif
 
 
-/*
-** In C++ mode all these function are inlines.
-** In C mode they are normal functions
-*/
-
-#if defined(__cplusplus) && !defined(__PCSTRING_CC)
+#if !defined(__PCSTRING_CC)
 #include <pcstring.cc>
 #endif /* PCSTRING.CC */
 
