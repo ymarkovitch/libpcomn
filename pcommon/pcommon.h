@@ -12,6 +12,7 @@
 *******************************************************************************/
 #include <pcomn_platform.h>
 #include <pcomn_macros.h>
+#include <pcstring.h>
 
 #include <stdio.h>
 #include <stddef.h>
@@ -204,37 +205,37 @@ constexpr inline bool is_flags_off(T flags, T mask)
 }
 
 template<typename T>
-inline T &set_flags_masked(T &target, const T &flagset, const T &mask)
+inline T &set_flags_masked(T &target, T flagset, T mask)
 {
    return (target &= ~mask) |= flagset & mask ;
 }
 
 template<typename T>
-inline T &set_flags(T &target, bool value, const T &mask)
+inline T &set_flags(T &target, bool value, T mask)
 {
    return set_flags_masked(target, (T() - (T)value), mask) ;
 }
 
 template<typename T>
-inline T &set_flags_on(T &flags, const T &mask)
+inline T &set_flags_on(T &flags, T mask)
 {
    return flags |= mask ;
 }
 
 template<typename T>
-inline T &set_flags_off(T &flags, const T &mask)
+inline T &set_flags_off(T &flags, T mask)
 {
    return flags &= ~mask ;
 }
 
 template<typename T>
-inline T &inv_flags(T &flags, const T &mask)
+inline T &inv_flags(T &flags, T mask)
 {
    return flags ^= mask ;
 }
 
 template<typename T>
-constexpr inline T is_inverted(const T &flag, const T &mask, long test)
+constexpr inline T is_inverted(T flag, T mask, long test)
 {
    return !(flag & mask) ^ !test ;
 }
@@ -565,6 +566,27 @@ inline void ensure_precondition(bool precondition, const M &message)
 /*******************************************************************************
  Allocation errors handling
 *******************************************************************************/
+struct bad_alloc_msg : public std::bad_alloc {
+
+      bad_alloc_msg() noexcept
+      {
+         *_errbuf = 0 ;
+      }
+
+      explicit bad_alloc_msg(const char *msg) noexcept : bad_alloc_msg()
+      {
+         if (msg)
+            strncpyz(_errbuf, msg, sizeof _errbuf) ;
+      }
+
+      const char *what() const noexcept override
+      {
+         return *_errbuf ? _errbuf : std::bad_alloc::what() ;
+      }
+   private:
+      char _errbuf[128] ;
+} ;
+
 template<bool> inline __noreturn void handle_bad_alloc() { throw_exception<std::bad_alloc>() ; }
 template<> inline void handle_bad_alloc<false>() {}
 
