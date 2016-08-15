@@ -283,7 +283,7 @@ cas2_weak(T *target, T *expected_value, T new_value, std::memory_order order = s
    #if !defined(PCOMN_PL_MS)
 
    __int128 * const expected128 = reinterpret_cast<__int128 *>(expected_value) ;
-   const __int128 * const new128 = reinterpret_cast<__int128 *>(target) ;
+   const __int128 * const new128 = reinterpret_cast<__int128 *>(&new_value) ;
 
    return reinterpret_cast<std::atomic<__int128> *>(target)
       ->compare_exchange_weak(*expected128, *new128, order) ;
@@ -324,7 +324,7 @@ cas2_strong(T *target, T *expected_value, T new_value, std::memory_order order =
                  "CAS2 is only available on CPU platforms with 2-pointer-wide-enabled atomic operation(s).") ;
 
    __int128 * const expected128 = reinterpret_cast<__int128 *>(expected_value) ;
-   const __int128 * const new128 = reinterpret_cast<__int128 *>(target) ;
+   const __int128 * const new128 = reinterpret_cast<__int128 *>(&new_value) ;
 
    return reinterpret_cast<std::atomic<__int128> *>(target)
       ->compare_exchange_strong(*expected128, *new128, order) ;
