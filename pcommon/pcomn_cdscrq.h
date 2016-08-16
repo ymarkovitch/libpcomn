@@ -204,9 +204,10 @@ struct crq : cdsnode_nextptr<crq<T>> {
       uintptr_t fetch_and_next(uintptr_t *mark, std::memory_order order) const
       {
          uintptr_t result ;
-         do result = atomic_op::postinc(mark, std::memory_order_relaxed) ;
 
+         do result = atomic_op::postinc(mark, std::memory_order_relaxed) ;
          while (((result - initndx()) & _modmask) >= capacity()) ;
+
          fence_after_atomic(order) ;
          return result ;
       }
@@ -260,39 +261,48 @@ std::pair<T, bool> crq<T>::dequeue()
 
       crqslot_tag slot_tag = *slot ;
 
-      while (head_ndx <= slot_tag.ndx())
+      while (head_ndx >= slot_tag.ndx())
       {
          if (slot_tag.is_empty())
          {
             slot_type empty_data {slot_tag.is_safe(), head_ndx} ;
-            // head_index <= slot_index and value is empty, our enqueuer is late: try empty transition
-            if (cas2(slot, &empty_data, {slot_tag.is_safe(), head_ndx + modulo()}))
-               break ;
 
-            // After cas2 empty_data contains actual tag
-            slot_tag = empty_data ;
-            // Cannot make empty transition, something changed, maybe our enqueuer
-            // managed it on time? Try again with the same head index
-            continue ;
+            // head_index <= slot_index and value is empty, our enqueuer is late: try empty transition
+            if (!cas2(slot, &empty_data, {slot_tag.is_safe(), head_ndx + modulo()}))
+            {
+               // After cas2 empty_data contains actual tag
+               slot_tag = empty_data ;
+               // Cannot make empty transition, something changed, maybe our enqueuer
+               // managed it on time? Try again with the same head index
+               continue ;
+            }
+
+            // Empty transition succesful, get the new head index, try again
+            break ;
          }
+
+         // ============================================
+         // === If we are here, the slot is nonempty ===
+         // ============================================
 
          void * const data = slot->_data ;
-         // Slot is nonempty
          crqslot_data expected {slot_tag, data} ;
 
-         if (slot_tag.ndx() != head_ndx)
-         {
-            // Actually head_ndx > slot_tag.ndx() here (see while condition above).
-            // This means we are ahead of enquers for k full rounds (k >= 1).
+         if (head_ndx > slot_tag.ndx())
+            // We are ahead of enquers for k full rounds (k >= 1).
             // Mark node unsafe to prevent future enqueue.
             if (cas2(slot, &expected, crqslot_data({true, head_ndx}, data)))
-               // Get new head index
+               // Node marked unsfe, get the new head index, try again
                break ;
-         }
+            else
+               continue ;
+
+         // ============================================
+         // === If we are here, this is our slot. ======
+         // === Try dequeue transition.           ======
+         // ============================================
 
          slot_type new_empty_data {slot_tag.is_safe(), head_ndx + modulo()} ;
-         // Here head_ndx == slot_tag.ndx() and the slot is nonempty.
-         // Try dequeue transition,
          if (cas2(slot, &expected, new_empty_data))
          {
             slot_type &slot_content = *static_cast<slot_type *>(&expected) ;
@@ -326,14 +336,14 @@ bool crq<T>::enqueue(value_type &value)
    // tantrum.
    for (crqslot_tag tail ; (tail = tail_fetch_and_next()).is_safe() ;)
    {
-      const uintptr_t tail_ndx = tail.ndx() ;
+      const intptr_t tail_ndx = tail.ndx() ;
       slot_type * const slot = _slot_ring + pos(tail_ndx) ;
       crqslot_data slot_data = *slot ;
 
       newval.set_ndx(tail_ndx) ;
 
       if (slot_data.is_empty() && slot_data.ndx() <= tail.ndx() &&
-          (slot_data.is_safe() || _head <= tail_ndx) &&
+          (slot_data.is_safe() || (intptr_t)_head <= tail_ndx) &&
           // Here is the enqueue transition
           cas2(slot, &slot_data, newval))
       {
@@ -341,10 +351,11 @@ bool crq<T>::enqueue(value_type &value)
          return true ;
       }
 
-      const uintptr_t head_ndx = _head ;
+      const intptr_t head_ndx = _head ;
+      const intptr_t ring_size = modulo() ;
 
       // Check is full or starving
-      if (tail_ndx - head_ndx >= modulo() || starving())
+      if (tail_ndx - head_ndx >= ring_size || starving())
       {
          // Close the CRQ
          _tail.test_and_set(crqslot_tag::unsafe_bit_pos, std::memory_order_seq_cst) ;

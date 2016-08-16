@@ -49,9 +49,23 @@ struct assertion_traits<pcomn::crqslot_tag> {
 *******************************************************************************/
 class CRQTests : public CppUnit::TestFixture {
 
+   public:
+      typedef std::unique_ptr<std::string> string_ptr ;
+
+      typedef crq<int>         int_crq ;
+      typedef crq<string_ptr>  string_crq ;
+
+   private:
       void Test_CRQ_Data() ;
       void Test_CRQ_Init() ;
       void Test_CRQ_SingleThread() ;
+
+      template<size_t producers_count, size_t consumers_count, size_t per_producer_items>
+      void Test_CRQ_NxN()
+      {
+         std::unique_ptr<int_crq> icrq {int_crq::make_crq(0)} ;
+         unit::TantrumQueueTest(*icrq, producers_count, consumers_count, per_producer_items) ;
+      }
 
       CPPUNIT_TEST_SUITE(CRQTests) ;
 
@@ -59,12 +73,37 @@ class CRQTests : public CppUnit::TestFixture {
       CPPUNIT_TEST(Test_CRQ_Init) ;
       CPPUNIT_TEST(Test_CRQ_SingleThread) ;
 
+      CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<1, 1, 1>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<1, 1, 32>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<1, 1, 60>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<1, 1, 61>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<1, 1, 62>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<1, 1, 200000>)) ;
+
+      CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<2, 1, 1>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<2, 1, 32>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<2, 1, 60>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<2, 1, 61>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<2, 1, 62>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<2, 1, 200000>)) ;
+
+      CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<2, 2, 1>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<2, 2, 32>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<2, 2, 60>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<2, 2, 61>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<2, 2, 62>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<2, 2, 200000>)) ;
+
+      CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<1, 2, 1>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<1, 2, 32>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<1, 2, 60>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<1, 2, 61>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<1, 2, 62>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<1, 2, 200000>)) ;
+
+      CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<2, 3, 100000>)) ;
+
       CPPUNIT_TEST_SUITE_END() ;
-
-      typedef std::unique_ptr<std::string> string_ptr ;
-
-      typedef crq<int>         int_crq ;
-      typedef crq<string_ptr>  string_crq ;
 } ;
 
 
@@ -180,6 +219,17 @@ void CRQTests::Test_CRQ_SingleThread()
    CPPUNIT_LOG_EQ(i_crq0->dequeue(), make_pair(0, false)) ;
    CPPUNIT_LOG_IS_FALSE(i_crq0->enqueue(count * 10)) ;
    CPPUNIT_LOG_EQ(i_crq0->dequeue(), make_pair(0, false)) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   std::unique_ptr<int_crq> i_crq1 {int_crq::make_crq(0)} ;
+
+   for (count = 0 ; count++ < i_crq1->capacity() * 2 ;)
+      CPPUNIT_EQUAL(i_crq1->dequeue(), make_pair(0, false)) ;
+
+   CPPUNIT_LOG_ASSERT(i_crq1->enqueue(777)) ;
+   CPPUNIT_LOG_EQ(i_crq1->dequeue(), make_pair(777, true)) ;
+   CPPUNIT_LOG_EQ(i_crq1->dequeue(), make_pair(0, false)) ;
 }
 
 /*******************************************************************************

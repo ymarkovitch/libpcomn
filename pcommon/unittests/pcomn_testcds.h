@@ -30,6 +30,27 @@ namespace unit {
 
 const size_t CDSTEST_COUNT_QUOTIENT = 3*5*7*9*11*16 ;
 
+template<typename T, size_t align, bool derive = std::is_class<T>::value>
+struct alignas(align) aligned_type ;
+
+template<class T, size_t align>
+struct alignas(align) aligned_type<T, align, true> : T { using T::T ; } ;
+
+template<typename T, size_t align>
+struct alignas(align) aligned_type<T, align, false> {
+
+   constexpr aligned_type() : value() {}
+   constexpr aligned_type(T v) : value(v) {}
+
+   constexpr operator T() const { return value ; }
+   operator T&() { return value ; }
+
+   T value ;
+} ;
+
+template<typename T>
+using cache_aligned = aligned_type<T, PCOMN_CACHELINE_SIZE> ;
+
 /*******************************************************************************
  Check consistency of test results
 *******************************************************************************/
@@ -395,6 +416,88 @@ void DualQueueTest_NxN(Queue &q, size_t producers_count, size_t consumers_count,
 
    FinalizeQueueTestNxN([&]()mutable{ fill_n(back_inserter(q), consumers.size(), -1) ; },
                         producers, consumers, per_thread, pbegin(v), pend(v)) ;
+   CPPUNIT_LOG_ASSERT(q.empty()) ;
+}
+
+/*******************************************************************************
+ Tantrum queues tests.
+ A tantrum queue is a queue in which an enqueue can nondeterministically refuse
+ to enqueue its item, returning CLOSED instead and moving the queue to a CLOSED state.
+*******************************************************************************/
+template<typename Queue>
+void TantrumQueueTest(Queue &q, size_t producers_count, size_t consumers_count, size_t per_producer_count)
+{
+   CPPUNIT_LOG_ASSERT(producers_count > 0) ;
+   CPPUNIT_LOG_ASSERT(consumers_count > 0) ;
+   CPPUNIT_LOG_ASSERT(per_producer_count > 0) ;
+
+   const size_t total = per_producer_count*producers_count ;
+
+   CPPUNIT_LOG_LINE("****************** " << producers_count << " producers, " << consumers_count << "  consumer(s), "
+                    << total << " items, " << per_producer_count << " per producer thread *******************") ;
+
+   std::vector<std::thread> producers (producers_count) ;
+   std::vector<cache_aligned<size_t>> produced_counts (producers_count) ;
+
+   std::vector<std::thread> consumers (consumers_count) ;
+   std::vector<cache_aligned<std::vector<size_t>>> v (consumers_count) ;
+
+   volatile int endprod = 0 ;
+   size_t num = 0 ;
+   for (std::thread &cs: consumers)
+   {
+      cs = std::thread
+         ([&,num]
+          {
+             auto &r = v[num] ;
+             while(!endprod || !q.empty())
+             {
+                auto dv = q.dequeue() ;
+                if (dv.second)
+                   r.push_back(dv.first) ;
+             }
+          }) ;
+      ++num ;
+   }
+
+   size_t start_from = 0 ;
+   num = 0 ;
+   for (std::thread &p: producers)
+   {
+      p = std::thread
+         ([=,&q,&produced_counts]() mutable
+          {
+             size_t &count = produced_counts[num] ;
+             std::random_device rd1 ;
+             std::uniform_int_distribution<int> distrib (0, 200) ;
+             for (size_t i = start_from, end_with = start_from + per_producer_count ; i < end_with ; ++i)
+             {
+                for (int pause = distrib(rd1) ; pause-- ; sys::pause_cpu()) ;
+                if (q.enqueue(i))
+                   ++count ;
+                else
+                   break ;
+             }
+          }) ;
+      start_from += per_producer_count ;
+      ++num ;
+   }
+
+   for (std::thread &p: producers)
+      CPPUNIT_LOG_RUN(p.join()) ;
+
+   endprod = 1 ;
+
+   for (std::thread &c: consumers)
+      CPPUNIT_LOG_RUN(c.join()) ;
+
+   std::vector<std::vector<size_t>> consumed_data
+      (std::make_move_iterator(v.begin()), std::make_move_iterator(v.end())) ;
+
+   CheckQueueResultConsistency(producers_count, per_producer_count,
+                               std::accumulate(produced_counts.begin(), produced_counts.end(), 0),
+                               pbegin(consumed_data), pend(consumed_data)) ;
+
    CPPUNIT_LOG_ASSERT(q.empty()) ;
 }
 
