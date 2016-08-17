@@ -70,9 +70,9 @@ struct alignas(2*sizeof(void*)) crqslot_data : crqslot_tag {
 
       using crqslot_tag::crqslot_tag ;
 
-      constexpr crqslot_data() = default ;
-      explicit constexpr crqslot_data(crqslot_tag tag, void *d = nullptr) :
-         crqslot_tag(tag), _data(d)
+      explicit constexpr crqslot_data(crqslot_tag tag = {}) : crqslot_tag(tag) {}
+      constexpr crqslot_data(crqslot_tag tag, void *d) :
+         crqslot_tag(tag._tag | crqslot_tag::value_bit), _data(d)
       {}
 
       void *_data = nullptr ;
@@ -92,16 +92,16 @@ struct alignas(PCOMN_CACHELINE_SIZE) crq_slot : public crqslot_data {
 
       typedef T value_type ;
 
-      crq_slot() { new (this->_data) value_type ; }
+      crq_slot() { new (&this->_data) value_type ; }
 
-      crq_slot(bool unsafe, uintptr_t index) :
-         crqslot_data(unsafe, index)
+      crq_slot(bool safe, uintptr_t index) :
+         crqslot_data(safe, index)
       {
-         new (this->_data) value_type ;
+         new (&this->_data) value_type ;
       }
 
-      crq_slot(bool unsafe, uintptr_t index, value_type &v) :
-         crq_slot(unsafe, index)
+      crq_slot(bool safe, uintptr_t index, value_type &v) :
+         crq_slot(safe, index)
       {
          using std::swap ;
          swap(v, value()) ;
@@ -119,6 +119,8 @@ struct crq : cdsnode_nextptr<crq<T>> {
 
       typedef crq_slot<T>                    slot_type ;
       typedef typename slot_type::value_type value_type ;
+
+      ~crq() { destroy_slots(std::bool_constant<std::is_trivially_destructible<value_type>::value>()) ; }
 
       static crq *make_crq(uintptr_t initndx, size_t capacity_request = 1) ;
 
@@ -216,6 +218,13 @@ struct crq : cdsnode_nextptr<crq<T>> {
 
       bool starving() const { return false ; }
 
+      static void destroy_slots(std::true_type) {}
+      void destroy_slots(std::false_type)
+      {
+         for (slot_type *s = _slot_ring, *e = s + capacity() ; s != e ; ++s)
+            s->value().~value_type() ;
+      }
+
    private:
       const size_t _capacity ;
       const size_t _initndx ;
@@ -256,43 +265,36 @@ std::pair<T, bool> crq<T>::dequeue()
 {
    while (true)
    {
-      const uintptr_t head_ndx = head_fetch_and_next(std::memory_order_acq_rel) ;
-      slot_type * const slot = _slot_ring + pos(head_ndx) ;
+      const uintptr_t xhead      = head_fetch_and_next(std::memory_order_acq_rel) ;
+      crqslot_data * const slot  = _slot_ring + pos(xhead) ;
+      crqslot_data slot_data     = *slot ;
 
-      crqslot_tag slot_tag = *slot ;
-
-      while (head_ndx >= slot_tag.ndx())
+      while (xhead >= slot_data.ndx())
       {
-         if (slot_tag.is_empty())
+         if (slot_data.is_empty())
          {
-            slot_type empty_data {slot_tag.is_safe(), head_ndx} ;
+            const crqslot_data new_empty_data {slot_data.is_safe(), xhead + modulo()} ;
 
             // head_index <= slot_index and value is empty, our enqueuer is late: try empty transition
-            if (!cas2(slot, &empty_data, {slot_tag.is_safe(), head_ndx + modulo()}))
-            {
-               // After cas2 empty_data contains actual tag
-               slot_tag = empty_data ;
-               // Cannot make empty transition, something changed, maybe our enqueuer
-               // managed it on time? Try again with the same head index
-               continue ;
-            }
+            if (cas2(slot, &slot_data, new_empty_data))
+               // Empty transition succesful, get the new head index, try again
+               break ;
 
-            // Empty transition succesful, get the new head index, try again
-            break ;
+            // Cannot make empty transition, something changed, maybe our enqueuer
+            // managed it on time? Try again with the same head index.
+            // Note thay after cas2 slot_data contains actual tag.
+            continue ;
          }
 
          // ============================================
          // === If we are here, the slot is nonempty ===
          // ============================================
 
-         void * const data = slot->_data ;
-         crqslot_data expected {slot_tag, data} ;
-
-         if (head_ndx > slot_tag.ndx())
-            // We are ahead of enquers for k full rounds (k >= 1).
+         if (xhead > slot_data.ndx())
+            // We are ahead of enqueuers for k full rounds (k >= 1).
             // Mark node unsafe to prevent future enqueue.
-            if (cas2(slot, &expected, crqslot_data({true, head_ndx}, data)))
-               // Node marked unsfe, get the new head index, try again
+            if (cas2(slot, &slot_data, crqslot_data({false, slot_data.ndx()}, slot_data._data)))
+               // Node marked unsafe, get the new head index, try again.
                break ;
             else
                continue ;
@@ -302,10 +304,10 @@ std::pair<T, bool> crq<T>::dequeue()
          // === Try dequeue transition.           ======
          // ============================================
 
-         slot_type new_empty_data {slot_tag.is_safe(), head_ndx + modulo()} ;
-         if (cas2(slot, &expected, new_empty_data))
+         slot_type new_empty_data {slot_data.is_safe(), xhead + modulo()} ;
+         if (cas2(slot, &slot_data, new_empty_data))
          {
-            slot_type &slot_content = *static_cast<slot_type *>(&expected) ;
+            slot_type &slot_content = *static_cast<slot_type *>(&slot_data) ;
 
             std::pair<value_type, bool> result ;
             result.second = true ;
@@ -319,7 +321,7 @@ std::pair<T, bool> crq<T>::dequeue()
 
       // FAILED to dequeue, need new head index.
       // Check for empty.
-      if (_tail.ndx() <= head_ndx + 1)
+      if (_tail.ndx() <= xhead + 1)
       {
          fix_tail() ;
          return {} ;
@@ -336,26 +338,29 @@ bool crq<T>::enqueue(value_type &value)
    // tantrum.
    for (crqslot_tag tail ; (tail = tail_fetch_and_next()).is_safe() ;)
    {
-      const intptr_t tail_ndx = tail.ndx() ;
-      slot_type * const slot = _slot_ring + pos(tail_ndx) ;
+      const intptr_t xtail = tail.ndx() ;
+      crqslot_data * const slot = _slot_ring + pos(xtail) ;
+      NOXCHECK(slot < _slot_ring + capacity()) ;
       crqslot_data slot_data = *slot ;
 
-      newval.set_ndx(tail_ndx) ;
-
-      if (slot_data.is_empty() && slot_data.ndx() <= tail.ndx() &&
-          (slot_data.is_safe() || (intptr_t)_head <= tail_ndx) &&
-          // Here is the enqueue transition
-          cas2(slot, &slot_data, newval))
+      if (slot_data.is_empty())
       {
-         destroy_slot_value(*static_cast<slot_type *>(&slot_data)) ;
-         return true ;
+         newval.set_ndx(xtail) ;
+
+         if ((intptr_t)slot_data.ndx() <= xtail &&
+             (slot_data.is_safe() || (intptr_t)_head <= xtail) &&
+             // Here is the enqueue transition
+             cas2(slot, &slot_data, newval))
+         {
+            destroy_slot_value(*static_cast<slot_type *>(&slot_data)) ;
+            return true ;
+         }
       }
 
-      const intptr_t head_ndx = _head ;
-      const intptr_t ring_size = modulo() ;
+      const intptr_t xhead = _head ;
 
       // Check is full or starving
-      if (tail_ndx - head_ndx >= ring_size || starving())
+      if (xtail - xhead >= (intptr_t)capacity() || starving())
       {
          // Close the CRQ
          _tail.test_and_set(crqslot_tag::unsafe_bit_pos, std::memory_order_seq_cst) ;
@@ -375,7 +380,7 @@ void crq<T>::fix_tail()
 {
    while (true)
    {
-      const uintptr_t   head = atomic_op::load(&_head, std::memory_order_seq_cst) ;
+      const uintptr_t   head = atomic_op::load(&_head, std::memory_order_acquire) ;
       const crqslot_tag tail = atomic_op::load(&_tail, std::memory_order_relaxed) ;
 
       if (_tail.ndx() != tail.ndx())
@@ -384,7 +389,7 @@ void crq<T>::fix_tail()
 
       if (head <= _tail.ndx() /* Nothing to do, already OK */ ||
           // Bump the tail to catch up with the head
-          atomic_op::cas(&_tail, tail, crqslot_tag(tail.is_safe(), head), std::memory_order_seq_cst))
+          atomic_op::cas(&_tail, tail, crqslot_tag(tail.is_safe(), head), std::memory_order_release))
          break ;
    }
 }

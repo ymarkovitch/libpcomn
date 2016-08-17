@@ -21,9 +21,9 @@
 using namespace pcomn ;
 
 #if defined(_NDEBUG) || defined(__OPTIMIZE__)
-static const size_t REPCOUNT = 50 ;
+static const size_t PER_PRODUCER = 3000000 ;
 #else
-static const size_t REPCOUNT = 5 ;
+static const size_t PER_PRODUCER =  300000 ;
 #endif
 
 namespace CppUnit {
@@ -78,40 +78,83 @@ class CRQTests : public CppUnit::TestFixture {
       CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<1, 1, 60>)) ;
       CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<1, 1, 61>)) ;
       CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<1, 1, 62>)) ;
-      CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<1, 1, 200000>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<1, 1, PER_PRODUCER>)) ;
 
       CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<2, 1, 1>)) ;
       CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<2, 1, 32>)) ;
       CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<2, 1, 60>)) ;
       CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<2, 1, 61>)) ;
       CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<2, 1, 62>)) ;
-      CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<2, 1, 200000>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<2, 1, PER_PRODUCER>)) ;
 
       CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<2, 2, 1>)) ;
       CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<2, 2, 32>)) ;
       CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<2, 2, 60>)) ;
       CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<2, 2, 61>)) ;
       CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<2, 2, 62>)) ;
-      CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<2, 2, 200000>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<2, 2, PER_PRODUCER>)) ;
 
       CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<1, 2, 1>)) ;
       CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<1, 2, 32>)) ;
       CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<1, 2, 60>)) ;
       CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<1, 2, 61>)) ;
       CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<1, 2, 62>)) ;
-      CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<1, 2, 200000>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<1, 2, PER_PRODUCER>)) ;
 
-      CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<2, 3, 100000>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<2, 3, PER_PRODUCER>)) ;
 
       CPPUNIT_TEST_SUITE_END() ;
 } ;
 
+struct uint_5 {
+      constexpr uint_5(unsigned val = 5) : value(val) {}
+      constexpr operator unsigned() const { return value ; }
+      unsigned value ;
+} ;
 
 /*******************************************************************************
  CRQTests
 *******************************************************************************/
 void CRQTests::Test_CRQ_Data()
 {
+   crqslot_tag tag_empty ;
+   CPPUNIT_LOG_EQ(tag_empty.ndx(), 0) ;
+   CPPUNIT_LOG_ASSERT(tag_empty.is_empty()) ;
+   CPPUNIT_LOG_ASSERT(tag_empty.is_safe()) ;
+   CPPUNIT_LOG_EQ(tag_empty.set_ndx(5).ndx(), 5) ;
+
+   CPPUNIT_LOG_IS_FALSE(tag_empty.test_and_set(crqslot_tag::value_bit_pos, std::memory_order_relaxed)) ;
+   CPPUNIT_LOG_IS_FALSE(tag_empty.is_empty()) ;
+   CPPUNIT_LOG_ASSERT(tag_empty.is_safe()) ;
+
+   CPPUNIT_LOG_ASSERT(tag_empty.test_and_set(crqslot_tag::value_bit_pos, std::memory_order_relaxed)) ;
+   CPPUNIT_LOG_IS_FALSE(tag_empty.is_empty()) ;
+   CPPUNIT_LOG_ASSERT(tag_empty.is_safe()) ;
+
+   CPPUNIT_LOG_EQ(tag_empty.ndx(), 5) ;
+   CPPUNIT_LOG_EQ(tag_empty.set_ndx(0xFFFFFFFFFFFF).ndx(), 0xFFFFFFFFFFFF) ;
+   CPPUNIT_LOG_IS_FALSE(tag_empty.is_empty()) ;
+   CPPUNIT_LOG_ASSERT(tag_empty.is_safe()) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   crqslot_tag empty_tag0 ;
+   CPPUNIT_LOG_EQ(empty_tag0.set_ndx(0xFFFFFFFFFFFF).ndx(), 0xFFFFFFFFFFFF) ;
+   CPPUNIT_LOG_IS_FALSE(empty_tag0.test_and_set(crqslot_tag::unsafe_bit_pos, std::memory_order_relaxed)) ;
+
+   crqslot_data data_empty {empty_tag0} ;
+   CPPUNIT_LOG_EQ(data_empty.ndx(), 0xFFFFFFFFFFFF) ;
+   CPPUNIT_LOG_ASSERT(data_empty.is_empty()) ;
+   CPPUNIT_LOG_IS_FALSE(empty_tag0.is_safe()) ;
+   CPPUNIT_LOG_IS_FALSE(data_empty.is_safe()) ;
+
+   typedef crq_slot<uint_5> crq_slot_5 ;
+
+   crq_slot_5 slot_empty ;
+   CPPUNIT_LOG_EQ(slot_empty.ndx(), 0) ;
+   CPPUNIT_LOG_ASSERT(slot_empty.is_empty()) ;
+   CPPUNIT_LOG_ASSERT(slot_empty.is_safe()) ;
+   CPPUNIT_LOG_EQ(slot_empty.value(), 5) ;
 }
 
 void CRQTests::Test_CRQ_Init()

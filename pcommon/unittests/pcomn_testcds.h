@@ -442,7 +442,7 @@ void TantrumQueueTest(Queue &q, size_t producers_count, size_t consumers_count, 
    std::vector<std::thread> consumers (consumers_count) ;
    std::vector<cache_aligned<std::vector<size_t>>> v (consumers_count) ;
 
-   volatile int endprod = 0 ;
+   std::atomic<int> endprod = {} ;
    size_t num = 0 ;
    for (std::thread &cs: consumers)
    {
@@ -450,7 +450,7 @@ void TantrumQueueTest(Queue &q, size_t producers_count, size_t consumers_count, 
          ([&,num]
           {
              auto &r = v[num] ;
-             while(!endprod || !q.empty())
+             while(!endprod.load(std::memory_order_relaxed) || !q.empty())
              {
                 auto dv = q.dequeue() ;
                 if (dv.second)

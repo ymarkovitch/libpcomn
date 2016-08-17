@@ -236,7 +236,9 @@ using is_same_unqualified = std::is_same<std::remove_cv_t<T>, std::remove_cv_t<U
  contents.
 *******************************************************************************/
 template<typename T>
-struct is_trivially_swappable : std::is_trivial<T> {} ;
+struct is_trivially_swappable :
+         std::is_trivially_copyable<T>
+{} ;
 
 template<typename T1, typename T2>
 struct is_trivially_swappable<std::pair<T1, T2>> :
