@@ -51,6 +51,10 @@ struct alignas(align) aligned_type<T, align, false> {
 template<typename T>
 using cache_aligned = aligned_type<T, PCOMN_CACHELINE_SIZE> ;
 
+enum CdsTestFlags : unsigned {
+   CDSTST_NOCHEK = 0x0001  /**< Don't check consistency */
+} ;
+
 /*******************************************************************************
  Check consistency of test results
 *******************************************************************************/
@@ -425,7 +429,8 @@ void DualQueueTest_NxN(Queue &q, size_t producers_count, size_t consumers_count,
  to enqueue its item, returning CLOSED instead and moving the queue to a CLOSED state.
 *******************************************************************************/
 template<typename Queue>
-void TantrumQueueTest(Queue &q, size_t producers_count, size_t consumers_count, size_t per_producer_count)
+void TantrumQueueTest(Queue &q, size_t producers_count, size_t consumers_count, size_t per_producer_count,
+                      unsigned flags = 0)
 {
    CPPUNIT_LOG_ASSERT(producers_count > 0) ;
    CPPUNIT_LOG_ASSERT(consumers_count > 0) ;
@@ -436,11 +441,15 @@ void TantrumQueueTest(Queue &q, size_t producers_count, size_t consumers_count, 
    CPPUNIT_LOG_LINE("****************** " << producers_count << " producers, " << consumers_count << "  consumer(s), "
                     << total << " items, " << per_producer_count << " per producer thread *******************") ;
 
+   typedef cache_aligned<size_t> cache_aligned_counter ;
+
    std::vector<std::thread> producers (producers_count) ;
-   std::vector<cache_aligned<size_t>> produced_counts (producers_count) ;
+   std::vector<cache_aligned_counter> produced_counts (producers_count) ;
+   std::vector<cache_aligned_counter> consumed_counts (consumers_count) ;
 
    std::vector<std::thread> consumers (consumers_count) ;
    std::vector<cache_aligned<std::vector<size_t>>> v (consumers_count) ;
+   const bool check_consistency = !(flags & CDSTST_NOCHEK) ;
 
    std::atomic<int> endprod = {} ;
    size_t num = 0 ;
@@ -450,11 +459,16 @@ void TantrumQueueTest(Queue &q, size_t producers_count, size_t consumers_count, 
          ([&,num]
           {
              auto &r = v[num] ;
+             size_t &count = consumed_counts[num] ;
              while(!endprod.load(std::memory_order_relaxed) || !q.empty())
              {
                 auto dv = q.dequeue() ;
                 if (dv.second)
-                   r.push_back(dv.first) ;
+                {
+                   ++count ;
+                   if (check_consistency)
+                      r.push_back(dv.first) ;
+                }
              }
           }) ;
       ++num ;
@@ -491,14 +505,25 @@ void TantrumQueueTest(Queue &q, size_t producers_count, size_t consumers_count, 
    for (std::thread &c: consumers)
       CPPUNIT_LOG_RUN(c.join()) ;
 
-   std::vector<std::vector<size_t>> consumed_data
-      (std::make_move_iterator(v.begin()), std::make_move_iterator(v.end())) ;
+   if (check_consistency)
+   {
+      std::vector<std::vector<size_t>> consumed_data
+         (std::make_move_iterator(v.begin()), std::make_move_iterator(v.end())) ;
 
-   CheckQueueResultConsistency(producers_count, per_producer_count,
-                               std::accumulate(produced_counts.begin(), produced_counts.end(), 0),
-                               pbegin(consumed_data), pend(consumed_data)) ;
+      CheckQueueResultConsistency(producers_count, per_producer_count,
+                                  std::accumulate(produced_counts.begin(), produced_counts.end(), 0),
+                                  pbegin(consumed_data), pend(consumed_data)) ;
 
-   CPPUNIT_LOG_ASSERT(q.empty()) ;
+      CPPUNIT_LOG_ASSERT(q.empty()) ;
+   }
+   else
+   {
+      const size_t produced = std::accumulate(std::begin(produced_counts), std::end(produced_counts), 0) ;
+      const size_t consumed = std::accumulate(std::begin(consumed_counts), std::end(consumed_counts), 0) ;
+
+      CPPUNIT_LOG_LINE('\n' << producers_count << " producer(s), " << consumers_count << " consumer(s), " << produced
+                        << " enqueued items, " << consumed << " dequeued items") ;
+   }
 }
 
 } // end of namespace pcomn::unit
