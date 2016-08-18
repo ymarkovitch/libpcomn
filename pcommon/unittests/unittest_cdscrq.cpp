@@ -64,7 +64,7 @@ class CRQTests : public CppUnit::TestFixture {
       void Test_CRQ_NxN()
       {
          std::unique_ptr<int_crq> icrq {int_crq::make_crq(0)} ;
-         unit::TantrumQueueTest(*icrq, producers_count, consumers_count, per_producer_items) ;
+         unit::TantrumQueueTest(*icrq, producers_count, consumers_count, per_producer_items, {0, 400}) ;
       }
 
       CPPUNIT_TEST_SUITE(CRQTests) ;
@@ -76,8 +76,8 @@ class CRQTests : public CppUnit::TestFixture {
       CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<1, 1, 1>)) ;
       CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<1, 1, 32>)) ;
       CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<1, 1, 60>)) ;
-      CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<1, 1, 61>)) ;
       CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<1, 1, 62>)) ;
+      CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<1, 1, 10000>)) ;
       CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<1, 1, PER_PRODUCER>)) ;
 
       CPPUNIT_TEST(P_PASS(Test_CRQ_NxN<2, 1, 1>)) ;

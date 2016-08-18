@@ -22,6 +22,8 @@ project
 # The list of performance tests. In order to build them all, use -sALL=1 in bjam
 # command line.
 local ALLTESTS =
+  perftest_cdsqueue
+  perftest_cdscrq
   perftest_locks
   perftest_hashtable ;
 

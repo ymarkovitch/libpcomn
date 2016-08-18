@@ -30,6 +30,10 @@ namespace unit {
 
 const size_t CDSTEST_COUNT_QUOTIENT = 3*5*7*9*11*16 ;
 
+enum CdsTestFlags : unsigned {
+   CDSTST_NOCHECK = 0x0001  /**< Don't check consistency */
+} ;
+
 template<typename T, size_t align, bool derive = std::is_class<T>::value>
 struct alignas(align) aligned_type ;
 
@@ -51,8 +55,20 @@ struct alignas(align) aligned_type<T, align, false> {
 template<typename T>
 using cache_aligned = aligned_type<T, PCOMN_CACHELINE_SIZE> ;
 
-enum CdsTestFlags : unsigned {
-   CDSTST_NOCHEK = 0x0001  /**< Don't check consistency */
+struct pause_distribution {
+      pause_distribution(unsigned from, unsigned to) :
+         _start(from),
+         _multiplier((to - from + 7)/8),
+         _distrib({10, 15, 25, 40, 70, 40, 25, 15, 10})
+      {}
+
+      unsigned operator()() { return _start + _distrib(_device)*_multiplier ; }
+
+   private:
+      const unsigned     _start ;
+      const unsigned     _multiplier ;
+      std::discrete_distribution<unsigned> _distrib ;
+      std::random_device _device ;
 } ;
 
 /*******************************************************************************
@@ -262,7 +278,7 @@ void CdsQueueTest_Nx1(Queue &q, size_t producers_count, size_t repeat_count)
              std::uniform_int_distribution<int> distrib (0, 200) ;
              for (size_t i = start_from, end_with = start_from + per_thread ; i < end_with ; ++i)
              {
-                for (int pause = distrib(rd1) ; pause-- ; sys::pause_cpu()) ;
+                sys::pause_cpu(distrib(rd1)) ;
                 q.push(i) ;
              }
           }) ;
@@ -320,7 +336,7 @@ void CdsQueueTest_NxN(Queue &q, size_t producers_count, size_t consumers_count, 
              std::uniform_int_distribution<int> distrib (0, 200) ;
              for (size_t i = start_from, end_with = start_from + per_thread ; i < end_with ; ++i)
              {
-                for (int pause = distrib(rd1) ; pause-- ; sys::pause_cpu()) ;
+                sys::pause_cpu(distrib(rd1)) ;
                 q.push(i) ;
              }
           }) ;
@@ -430,18 +446,26 @@ void DualQueueTest_NxN(Queue &q, size_t producers_count, size_t consumers_count,
 *******************************************************************************/
 template<typename Queue>
 void TantrumQueueTest(Queue &q, size_t producers_count, size_t consumers_count, size_t per_producer_count,
+                      unipair<unsigned> enqueue_pause = {}, unipair<unsigned> dequeue_pause = {},
                       unsigned flags = 0)
 {
-   CPPUNIT_LOG_ASSERT(producers_count > 0) ;
-   CPPUNIT_LOG_ASSERT(consumers_count > 0) ;
-   CPPUNIT_LOG_ASSERT(per_producer_count > 0) ;
+   typedef cache_aligned<size_t> cache_aligned_counter ;
+
+   CPPUNIT_ASSERT(producers_count > 0) ;
+   CPPUNIT_ASSERT(consumers_count > 0) ;
+   CPPUNIT_ASSERT(per_producer_count > 0) ;
+   CPPUNIT_ASSERT(enqueue_pause.first <= enqueue_pause.second) ;
+   CPPUNIT_ASSERT(dequeue_pause.first <= dequeue_pause.second) ;
 
    const size_t total = per_producer_count*producers_count ;
 
    CPPUNIT_LOG_LINE("****************** " << producers_count << " producers, " << consumers_count << "  consumer(s), "
                     << total << " items, " << per_producer_count << " per producer thread *******************") ;
 
-   typedef cache_aligned<size_t> cache_aligned_counter ;
+   if (enqueue_pause.first != enqueue_pause.second || dequeue_pause.first != dequeue_pause.second)
+      CPPUNIT_LOG_LINE("****************** enqueue pause: " << enqueue_pause.first << ".." << enqueue_pause.second << " clocks, "
+                       << "dequeue pause: " << dequeue_pause.first << ".." << dequeue_pause.second << " clocks") ;
+
 
    std::vector<std::thread> producers (producers_count) ;
    std::vector<cache_aligned_counter> produced_counts (producers_count) ;
@@ -449,7 +473,13 @@ void TantrumQueueTest(Queue &q, size_t producers_count, size_t consumers_count, 
 
    std::vector<std::thread> consumers (consumers_count) ;
    std::vector<cache_aligned<std::vector<size_t>>> v (consumers_count) ;
-   const bool check_consistency = !(flags & CDSTST_NOCHEK) ;
+   const bool check_consistency = !(flags & CDSTST_NOCHECK) ;
+
+   PCpuStopwatch  cpu_stopwatch ;
+   PRealStopwatch wallclock_stopwatch ;
+
+   cpu_stopwatch.start() ;
+   wallclock_stopwatch.start() ;
 
    std::atomic<int> endprod = {} ;
    size_t num = 0 ;
@@ -458,10 +488,14 @@ void TantrumQueueTest(Queue &q, size_t producers_count, size_t consumers_count, 
       cs = std::thread
          ([&,num]
           {
+             pause_distribution distrib (dequeue_pause.first, dequeue_pause.second) ;
              auto &r = v[num] ;
              size_t &count = consumed_counts[num] ;
+
              while(!endprod.load(std::memory_order_relaxed) || !q.empty())
              {
+                sys::pause_cpu(distrib()) ;
+
                 auto dv = q.dequeue() ;
                 if (dv.second)
                 {
@@ -481,13 +515,14 @@ void TantrumQueueTest(Queue &q, size_t producers_count, size_t consumers_count, 
       p = std::thread
          ([=,&q,&produced_counts]() mutable
           {
+             pause_distribution distrib (enqueue_pause.first, enqueue_pause.second) ;
              size_t &count = produced_counts[num] ;
-             std::random_device rd1 ;
-             std::uniform_int_distribution<int> distrib (0, 200) ;
+
              for (size_t i = start_from, end_with = start_from + per_producer_count ; i < end_with ; ++i)
              {
-                for (int pause = distrib(rd1) ; pause-- ; sys::pause_cpu()) ;
-                if (q.enqueue(i))
+                sys::pause_cpu(distrib()) ;
+
+                if (q.enqueue(i + 0))
                    ++count ;
                 else
                    break ;
@@ -518,11 +553,16 @@ void TantrumQueueTest(Queue &q, size_t producers_count, size_t consumers_count, 
    }
    else
    {
+      const double elapsed_time = wallclock_stopwatch.stop() ;
+      const double elapsed_cputime = cpu_stopwatch.stop() ;
+
       const size_t produced = std::accumulate(std::begin(produced_counts), std::end(produced_counts), 0) ;
       const size_t consumed = std::accumulate(std::begin(consumed_counts), std::end(consumed_counts), 0) ;
 
       CPPUNIT_LOG_LINE('\n' << producers_count << " producer(s), " << consumers_count << " consumer(s), " << produced
-                        << " enqueued items, " << consumed << " dequeued items") ;
+                        << " enqueued items, " << consumed << " dequeued items\n") ;
+      CPPUNIT_LOG_LINE("time real: " << elapsed_time << '\n' <<
+                       "time cpu : " << elapsed_cputime) ;
    }
 }
 

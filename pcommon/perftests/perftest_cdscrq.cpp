@@ -1,34 +1,31 @@
 /*-*- tab-width:3;indent-tabs-mode:nil;c-file-style:"ellemtel";c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
- FILE         :   perftest_cdsqueue.cpp
+ FILE         :   perftest_cdscrq.cpp
  COPYRIGHT    :   Yakov Markovitch, 2016. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
- DESCRIPTION  :   Performance test for conqurrent queues.
+ DESCRIPTION  :   Performance test for CRQ.
 
  PROGRAMMED BY:   Yakov Markovitch
- CREATION DATE:   22 Jun 2016
+ CREATION DATE:   18 Aug 2016
 *******************************************************************************/
-#include <pcomn_cdsqueue.h>
+#include <pcomn_cdscrq.h>
 #include <unittests/pcomn_testcds.h>
 
 using namespace pcomn ;
 
 /*******************************************************************************
- class DynQueuePerfTest
+ class CRQPerfTest
 *******************************************************************************/
-class DynQueuePerfTest : public CppUnit::TestFixture {
+class CRQPerfTest : public CppUnit::TestFixture {
 
       void Test_Queue_Performance()
       {
-         concurrent_dynqueue<size_t> q ;
-         if (consumers == 1)
-            unit::CdsQueueTest_Nx1(q, producers, count) ;
-         else
-            unit::CdsQueueTest_NxN(q, producers, consumers, count) ;
+         std::unique_ptr<crq<size_t>> q {crq<size_t>::make_crq(0)} ;
+         unit::TantrumQueueTest(*q, producers, consumers, count, {0, 400}, {}, unit::CDSTST_NOCHECK) ;
       }
 
-      CPPUNIT_TEST_SUITE(DynQueuePerfTest) ;
+      CPPUNIT_TEST_SUITE(CRQPerfTest) ;
 
       CPPUNIT_TEST(Test_Queue_Performance) ;
 
@@ -40,16 +37,16 @@ class DynQueuePerfTest : public CppUnit::TestFixture {
       static size_t count ;
 } ;
 
-size_t DynQueuePerfTest::producers ;
-size_t DynQueuePerfTest::consumers ;
-size_t DynQueuePerfTest::count ;
+size_t CRQPerfTest::producers ;
+size_t CRQPerfTest::consumers ;
+size_t CRQPerfTest::count ;
 
 /*******************************************************************************
 
 *******************************************************************************/
 int main(int argc, char *argv[])
 {
-   typedef DynQueuePerfTest test_type ;
+   typedef CRQPerfTest test_type ;
 
    if (argc != 4)
       return 1 ;
@@ -59,8 +56,8 @@ int main(int argc, char *argv[])
    test_type::count =     atoll(argv[3]) ;
 
    pcomn::unit::TestRunner runner ;
-   runner.addTest(DynQueuePerfTest::suite()) ;
+   runner.addTest(CRQPerfTest::suite()) ;
 
    return
-      pcomn::unit::run_tests(runner, 1, argv, nullptr, "Lock-free queue performance test") ;
+      pcomn::unit::run_tests(runner, 1, argv, nullptr, "Concurrent Ring Queue (CRQ) performance test") ;
 }
