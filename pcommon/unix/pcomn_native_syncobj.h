@@ -51,8 +51,20 @@ namespace sys {
 /// Emit pause instruction to prevent excess processor bus usage.
 /// For busy wait loops.
 inline void pause_cpu() { asm volatile("pause\n": : :"memory") ; }
+
+inline void pause_cpu(size_t cycle_count)
+{
+   // The apporximate count of CPU clocks per pause operation.
+   // MUST be the power of 2.
+   static const size_t pause_clk = 8 ;
+   for (size_t i = cycle_count & pause_clk - 1 ; i-- ; pause_cpu()) ;
+}
+
 #else
 inline void pause_cpu() {}
+inline void pause_cpu(size_t)
+{
+}
 #endif
 
 #ifdef PCOMN_PL_LINUX
