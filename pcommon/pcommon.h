@@ -608,15 +608,22 @@ struct malloc_delete {
 } ;
 
 /******************************************************************************/
-/** Directly call the destructor of the object pointed to by @a ptr.
+/** Directly call the destructor of the object pointed to by @a p.
 *******************************************************************************/
 template<class T>
-inline T *destroy(T *ptr)
+inline T *destroy(T *p)
 {
-   if (ptr)
-      ptr->~T() ;
-   return ptr ;
+   if (p)
+      p->~T() ;
+   return p ;
 }
+
+template<class T>
+inline void destroy_ref(T &r)
+{
+   r.~T() ;
+}
+
 } // end of namespace pcomn
 
 /******************************************************************************/
