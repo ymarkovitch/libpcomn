@@ -16,6 +16,8 @@
 #include <pcomn_sys.h>
 
 #include <algorithm>
+#include <thread>
+#include <cstddef>
 #include <new>
 
 namespace pcomn {
@@ -24,6 +26,7 @@ namespace pcomn {
 /**
 *******************************************************************************/
 class block_allocator {
+   public:
       virtual ~block_allocator() = default ;
 
       /// Get the size of allocated blocks
@@ -42,9 +45,9 @@ class block_allocator {
          if (!block)
             return ;
 
-         PCOMN_THROW_IF(static_cast<uintptr_t>(block) & (alignment() - 1), std::invalid_argument,
+         PCOMN_THROW_IF((uintptr_t)block & (alignment() - 1), std::invalid_argument,
                         "Pointer %p with invalid alignment passed to the block deallocation method that requires alignment at least %zu",
-                        block, alignment) ;
+                        block, alignment()) ;
 
          free_block(block) ;
       }
@@ -55,7 +58,7 @@ class block_allocator {
          _alignment(align ? align : sz)
       {
          PCOMN_THROW_IF(!_size || bitop::bitcount(_alignment) != 1 || (_size & (_alignment - 1)), std::invalid_argument,
-                        "Invalid size or alignment specified for a block allocator. size:%zu alignment:zu",
+                        "Invalid size or alignment specified for a block allocator. size:%zu alignment:%zu",
                         size(), alignment()) ;
       }
 
@@ -88,31 +91,16 @@ class malloc_block_allocator : public block_allocator {
       {
          return alignment() == std_align()
             ? malloc(size())
-            : alloc_aligned(alignment(), size()) ;
+            : sys::alloc_aligned(alignment(), size()) ;
       }
 
       void free_block(void *block) override
       {
-         #ifndef PCOMN_PL_MS
-         free(block) ;
-         #else
-         alignment() == std_align() ? free(block) : _aligned_free(block) ;
-         #endif
+         alignment() == std_align() ? free(block) : sys::free_aligned(block) ;
       }
 
    private:
-      static constexpr std_align() { return sizeof(std::max_align_t) ; }
-
-      static void *alloc_aligned(size_t align, size_t sz)
-      {
-         return
-          #ifndef PCOMN_PL_MS
-          aligned_alloc(align, sz)
-          #else
-          _aligned_malloc(sz, align)
-          #endif
-            ;
-      }
+      static constexpr size_t std_align() { return sizeof(std::max_align_t) ; }
 } ;
 
 /******************************************************************************/
@@ -140,74 +128,33 @@ class singlepage_allocator : public block_allocator {
 *******************************************************************************/
 class alignas(PCOMN_CACHELINE_SIZE) concurrent_freestack {
       template<typename T>
-      using phazard = hazard_ptr<T, concurrent_freestack> ;
+      using hazard = hazard_ptr<T, concurrent_freestack> ;
 
+      enum : unsigned {
+         COUNT_BITS = 24 // Bitsize of the stack item count (16M max)
+      } ;
    public:
       explicit concurrent_freestack(unsigned maxsz) :
-         _intmaxsz(maxsz),
+         _intmaxsz(validate_maxsize(maxsz)),
          _maxsize(_intmaxsz)
       {}
 
       explicit concurrent_freestack(const unsigned *maxsz) :
          _intmaxsz(0),
-         _maxsize(PCOMN_ENSURE_ARG(*maxsz))
+         _maxsize(validate_maxsize(PCOMN_ENSURE_ARG(*maxsz)))
       {}
 
-      block_allocator &allocator() const { return _allocator ; }
+      static constexpr unsigned max_size_limit() { return (1U << COUNT_BITS) - 1 ; }
+
+      unsigned max_size() const { return _maxsize ; }
 
       size_t size() const
       {
-         return atomic_op::load(&_top._counter, std::memory_order_acquire)._size ;
+         return atomic_op::load(&_head._counter, std::memory_order_acquire)._count ;
       }
 
-      void *allocate()
-      {
-         head oldhead = {} ;
-         do {
-            phazard<block> top {&_head._top} ;
-            oldhead._top = top ;
-            if (!oldhead._top)
-               break ;
-
-            counter c = _head._counter ;
-            oldhead._counter = c ;
-            --c._size ;
-            ++c._generation ;
-            const head newhead = {oldhead._top->_next, c} ;
-            if (atomic_op::cas2_strong(&_head, &oldhead, newhead))
-               return oldhead._ptr ;
-         }
-         while (oldhead._top) ;
-
-         return nullptr ;
-      }
-
-      bool deallocate(void *p)
-      {
-         if (!p)
-            return true ;
-
-         NOXCHECK((static_cast<uintptr_t>(p) & (sizeof(void*) - 1)) == 0) ;
-
-         block * const newtop = static_cast<block *>(p) ;
-         counter c = _head._counter ;
-
-         while (c._size < maxsize())
-         {
-            phazard<block> top {&_head._top} ;
-
-            newtop->_next = top ;
-
-            head oldhead = {newtop->_next, c} ;
-            ++c._size ;
-            ++c._generation ;
-            const head newhead = {newtop, c} ;
-            if (atomic_op::cas2_strong(&_head, &oldhead, newhead))
-               return true ;
-            c = oldhead._counter ;
-         }
-         return false ;
-      }
+      void *pop() ;
+      bool push(void *p) ;
 
       size_t trim(unsigned sz, block_allocator &allocator)
       {
@@ -217,16 +164,23 @@ class alignas(PCOMN_CACHELINE_SIZE) concurrent_freestack {
          if (sz < current_sz)
             for (const size_t diff = current_sz - sz ; trimmed < diff ; ++trimmed)
                ;
+         return trimmed ;
       }
 
    private:
+      static const unsigned &validate_maxsize(const unsigned &maxsz)
+      {
+         return ensure_le<std::length_error>
+            (maxsz, max_size_limit(), "Implementation-defined concurrent_freestack maxsize limits exceeded") ;
+      }
+
+      // Place both the stack size and top pointer generation into a single 64-bit to
+      // allow for atomic insertion/deletion and size increment/decrement.
       struct counter {
-            uint64_t _size      :24 ;
-            uint64_t _generation:40 ;
+            uint64_t _count      : COUNT_BITS ;
+            uint64_t _generation : 64 - COUNT_BITS ;
       } ;
-      struct block {
-            block *_next ;
-      } ;
+      struct block { block *_next ; } ;
       struct alignas(16) head {
             block  *_top ;
             counter _counter ;
@@ -243,37 +197,32 @@ class alignas(PCOMN_CACHELINE_SIZE) concurrent_freestack {
 /******************************************************************************/
 /**
 *******************************************************************************/
-class freestack_ring final : public block_allocator {
+class freepool_ring final : public block_allocator {
+      typedef block_allocator ancestor ;
+      typedef concurrent_freestack pool_type ;
    public:
-      freestack_ring(block_allocator &alloc, unsigned ring_size, unsigned free_maxsize) :
-         _allocator(alloc),
-         _stacks_count(ring_size),
-         _stack_maxsz(calc_stack_maxsz(free_maxsize)),
-         _stacks(std::allocator<concurrent_freestack>::allocate(_stacks_count))
-      {
-         for (unsigned i = 0 ; i < _stacks_count ; ++i)
-            std::allocator<concurrent_freestack>::construct(&stacks[i], &_stack_maxsz) ;
-      }
+      freepool_ring(block_allocator &alloc, unsigned free_maxsize, unsigned ring_size = -1) ;
+      ~freepool_ring() ;
 
       block_allocator &allocator() const { return _allocator ; }
 
-      unsigned ringsize() const { return _stacks_count ; }
+      unsigned ringsize() const { return _pools_count ; }
 
-      static constexpr unsigned maxringsize() { return 512 ; }
+      static constexpr unsigned max_ringsize() { return 512 ; }
 
-      unsigned maxsize() { return _stack_maxsz * _stacks_count ; }
+      unsigned max_size() const { return _pool_maxsz * _pools_count ; }
 
-      void maxsize(unsigned newmaxsize)
+      void max_size(unsigned newmaxsize)
       {
-         atomic_op::store(&_stack_maxsz, calc_stack_maxsz(newmaxsize), std::memory_order_seq_cst) ;
+         atomic_op::store(&_pool_maxsz, calc_pool_maxsz(newmaxsize), std::memory_order_seq_cst) ;
       }
 
       /// Debug interface
-      std::vector<unsigned> stack_sizes() const
+      std::vector<unsigned> pool_sizes() const
       {
          std::vector<unsigned> result (ringsize()) ;
-         std::transform(_stacks.get(), _stacks.get() + ringsize(),
-                        [](const concurrent_freestack &s) { return s.size() ; }, result.begin()) ;
+         std::transform(_pools, _pools + ringsize(), result.begin(),
+                        [](const pool_type &s) { return s.size() ; }) ;
          return result ;
       }
 
@@ -282,38 +231,134 @@ class freestack_ring final : public block_allocator {
       void free_block(void *block) override ;
 
    private:
-      block_allocator &_allocator ;
-      const unsigned   _stacks_count ;
-      unsigned         _stack_maxsz ;
-      const std::unique_ptr<concurrent_freestack[]> _stacks ;
+      block_allocator & _allocator ;
+      const unsigned    _pools_count ;
+      unsigned          _pool_maxsz ;
+      pool_type *       _pools ;
 
-      unsigned next_stackndx() const
+      unsigned next_poolndx() const
       {
-         static thread_local unsigned short random_ndx[maxringsize()] ;
-         static thread_local size_t next = maxringsize() + 1 ;
-         static constexpr const size_t mask = maxringsize() - 1 ;
-         if (next > maxringsize())
+         static thread_local unsigned short random_ndx[max_ringsize()] ;
+         static thread_local size_t next = max_ringsize() + 1 ;
+         static constexpr const size_t mask = max_ringsize() - 1 ;
+         if (next > max_ringsize())
             // Generate random index sequence
             ;
          const size_t i = next ;
          next = (next + 1) & mask ;
          return random_ndx[i] & (ringsize() - 1) ;
       }
+
+      unsigned calc_pool_maxsz(unsigned maxsz) const
+      {
+         return (maxsz + ringsize() - 1) & (ringsize() - 1) ;
+      }
 } ;
 
 /*******************************************************************************
- freestack_ring
+ concurrent_freestack
 *******************************************************************************/
-inline
-void *freestack_ring::allocate_block()
+inline __noinline
+void *concurrent_freestack::pop()
 {
-   return allocator().allocate_block() ;
+   head oldhead = {} ;
+   do {
+      hazard<block> top {&_head._top} ;
+      oldhead._top = top.get() ;
+      if (!oldhead._top)
+         break ;
+
+      counter c = _head._counter ;
+      oldhead._counter = c ;
+      --c._count ;
+      ++c._generation ;
+      const head newhead = {oldhead._top->_next, c} ;
+      if (atomic_op::cas2_strong(&_head, &oldhead, newhead))
+         return oldhead._top ;
+   }
+   while (oldhead._top) ;
+
+   return nullptr ;
 }
 
-inline
-void freestack_ring::free_block(void *block)
+inline __noinline
+bool concurrent_freestack::push(void *p)
 {
-   return sys::pagefree(block) ;
+   if (!p)
+      return true ;
+
+   NOXCHECK(((uintptr_t)p & (sizeof(void*) - 1)) == 0) ;
+
+   block * const newtop = static_cast<block *>(p) ;
+   counter c = _head._counter ;
+
+   while (c._count < max_size())
+   {
+      hazard<block> top {&_head._top} ;
+
+      newtop->_next = top.get() ;
+
+      head oldhead = {newtop->_next, c} ;
+      ++c._count ;
+      ++c._generation ;
+      const head newhead = {newtop, c} ;
+      if (atomic_op::cas2_strong(&_head, &oldhead, newhead))
+         return true ;
+      c = oldhead._counter ;
+   }
+   return false ;
+}
+
+/*******************************************************************************
+ freepool_ring
+*******************************************************************************/
+inline __noinline
+freepool_ring::freepool_ring(block_allocator &alloc, unsigned free_maxsize, unsigned ring_size) :
+   ancestor(alloc.size(), alloc.alignment()),
+   _allocator(alloc),
+
+   // Round up ring size to the power of 2
+   _pools_count(bitop::log2ceil
+                 (ring_size == (unsigned)-1
+                  ? midval(1U, max_ringsize(), std::thread::hardware_concurrency())
+                  : ensure_le<std::length_error>(ring_size, max_ringsize(),
+                                                 "Implementation-defined freepool ring size limits exceeded"))),
+
+   _pool_maxsz(calc_pool_maxsz(free_maxsize)),
+   _pools(ringsize() ? sys::alloc_aligned<pool_type>(ringsize()) : nullptr)
+{
+   if (ringsize() && !_pools)
+      throw_exception<bad_alloc_msg>(sys::strlasterr()) ;
+
+   try {
+      std::for_each(_pools, _pools + ringsize(), [this](pool_type &p) { return new (&p) pool_type(&_pool_maxsz) ; }) ;
+   }
+   catch (...) {
+      sys::free_aligned(_pools) ;
+      _pools = nullptr ;
+      throw ;
+   }
+}
+
+inline __noinline
+freepool_ring::~freepool_ring()
+{
+   if (!_pools)
+      return ;
+
+   std::for_each(_pools, _pools + ringsize(), destroy_ref<pool_type>) ;
+   sys::free_aligned(_pools) ;
+}
+
+inline __noinline
+void *freepool_ring::allocate_block()
+{
+   return allocator().allocate() ;
+}
+
+inline __noinline
+void freepool_ring::free_block(void *)
+{
 }
 
 } // end of namespace pcomn
