@@ -49,6 +49,39 @@ inline void *pagealloc() ;
 
 inline void pagefree(void *) ;
 
+inline void *alloc_aligned(size_t align, size_t sz)
+{
+   return
+      #ifndef PCOMN_PL_MS
+      aligned_alloc(align, sz)
+      #else
+      _aligned_malloc(sz, align)
+      #endif
+      ;
+}
+
+inline void free_aligned(void *data)
+{
+   #ifndef PCOMN_PL_MS
+   free(data) ;
+   #else
+   _aligned_free(data) ;
+   #endif
+}
+
+template<typename T>
+inline T *alloc_aligned(size_t count)
+{
+   if (count)
+      return static_cast<T *>(alloc_aligned(alignof(T), count*sizeof(T))) ;
+}
+
+template<typename T>
+inline T *alloc_aligned()
+{
+   return alloc_aligned<T>(1) ;
+}
+
 /// Portable filesize function.
 /// @return The file size, or -1 on error.
 inline fileoff_t filesize(int fd) ;

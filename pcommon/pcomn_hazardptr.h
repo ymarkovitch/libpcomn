@@ -30,6 +30,7 @@
 #include <pcomn_atomic.h>
 #include <pcomn_bitvector.h>
 #include <pcomn_calgorithm.h>
+#include <pcomn_sys.h>
 #include <pcommon.h>
 
 #include <memory>
@@ -89,11 +90,8 @@ struct hazard_policy {
 /******************************************************************************/
 /** Policy type for hazard_manager
 *******************************************************************************/
-template<typename T>
-struct hazard_traits ;
-
-template<>
-struct hazard_traits<void> : hazard_policy<HAZARD_DEFAULT_CAPACITY> {} ;
+template<typename Tag>
+struct hazard_traits : hazard_policy<HAZARD_DEFAULT_CAPACITY> {} ;
 
 /******************************************************************************/
 /** A per-thread hazard pointer registry
@@ -196,13 +194,13 @@ constexpr const hazard_registry<L> hazard_registry<L>::zero ;
  @note Objects of this class are movable, enabling to return them from functions,
  but they must @em never be passed between threads.
 *******************************************************************************/
-template<typename E, typename T = void>
+template<typename Elem, typename Tag = void>
 class hazard_ptr {
       PCOMN_NONCOPYABLE(hazard_ptr) ;
       PCOMN_NONASSIGNABLE(hazard_ptr) ;
    public:
-      typedef E                        element_type ;
-      typedef T                        tag_type ;
+      typedef Elem                     element_type ;
+      typedef Tag                      tag_type ;
       typedef hazard_manager<tag_type> manager_type ;
       typedef typename manager_type::registry_type registry_type ;
 
@@ -218,8 +216,8 @@ class hazard_ptr {
          other.zero_itself() ;
       }
 
-      template<typename U, typename = std::enable_if_t<std::is_convertible<U *, T *>::value, void>>
-      hazard_ptr(hazard_ptr<U, T> &&other) noexcept :
+      template<typename U, typename = std::enable_if_t<std::is_convertible<U *, element_type *>::value, void>>
+      hazard_ptr(hazard_ptr<U, tag_type> &&other) noexcept :
          _registry(other._registry),
          _slot(other._slot)
       {
@@ -263,8 +261,8 @@ class hazard_ptr {
       }
 
       template<typename U>
-      std::enable_if_t<std::is_convertible<U *, T *>::value, hazard_ptr &>
-      operator=(hazard_ptr<U, T> &&other) noexcept
+      std::enable_if_t<std::is_convertible<U *, element_type *>::value, hazard_ptr &>
+      operator=(hazard_ptr<U, tag_type> &&other) noexcept
       {
          move_assign(other) ;
          return *this ;
@@ -298,7 +296,7 @@ class hazard_ptr {
       /// Get the default thread-local hazard pointer manager
       static manager_type &manager()
       {
-         return hazard_manager<T>::manager() ;
+         return manager_type::manager() ;
       }
 
    private:
@@ -337,7 +335,7 @@ class hazard_ptr {
       }
 
       template<typename U>
-      void move_assign(hazard_ptr<U, T> &&other) noexcept
+      void move_assign(hazard_ptr<U, tag_type> &&other) noexcept
       {
          if (&other == this)
             return ;
@@ -720,27 +718,17 @@ void *hazard_storage<L>::allocate_storage(unsigned thread_maxcount)
       slotdata_offset(slot_count) +
       sizeof(registry_type) * slot_count ;
 
-   void * const mem =
-      #ifndef PCOMN_PL_MS
-      aligned_alloc(alignof(hazard_storage), memsize)
-      #else
-      _aligned_malloc(memsize, alignof(hazard_storage))
-      #endif
-      ;
    // Check and zero-fill
-   return memset(ensure_nonzero<std::bad_alloc>(mem), 0, memsize) ;
+   return memset(ensure_nonzero<std::bad_alloc>
+                 (sys::alloc_aligned(alignof(hazard_storage), memsize)),
+                 0, memsize) ;
 }
 
 template<unsigned L>
 void hazard_storage<L>::deallocate_storage(void *ptr)
 {
-   if (!ptr)
-      return ;
-   #ifndef PCOMN_PL_MS
-   free(ptr) ;
-   #else
-   _aligned_free(ptr) ;
-   #endif
+   if (ptr)
+      sys::free_aligned(ptr) ;
 }
 
 template<unsigned L>
