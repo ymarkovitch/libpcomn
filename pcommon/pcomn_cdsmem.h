@@ -127,6 +127,10 @@ class singlepage_allocator : public block_allocator {
 /**
 *******************************************************************************/
 class alignas(PCOMN_CACHELINE_SIZE) concurrent_freestack {
+
+      PCOMN_NONCOPYABLE(concurrent_freestack) ;
+      PCOMN_NONASSIGNABLE(concurrent_freestack) ;
+
       template<typename T>
       using hazard = hazard_ptr<T, concurrent_freestack> ;
 
@@ -141,16 +145,21 @@ class alignas(PCOMN_CACHELINE_SIZE) concurrent_freestack {
 
       explicit concurrent_freestack(const unsigned *maxsz) :
          _intmaxsz(0),
-         _maxsize(validate_maxsize(PCOMN_ENSURE_ARG(*maxsz)))
+         _maxsize(validate_maxsize(*PCOMN_ENSURE_ARG(maxsz)))
       {}
 
       static constexpr unsigned max_size_limit() { return (1U << COUNT_BITS) - 1 ; }
 
-      unsigned max_size() const { return _maxsize ; }
+      unsigned max_size() const { return std::min((unsigned)_maxsize, max_size_limit()) ; }
 
       size_t size() const
       {
          return atomic_op::load(&_head._counter, std::memory_order_acquire)._count ;
+      }
+
+      bool empty() const
+      {
+         return !atomic_op::load(&_head._top, std::memory_order_acquire) ;
       }
 
       void *pop() ;
@@ -285,7 +294,7 @@ inline __noinline
 bool concurrent_freestack::push(void *p)
 {
    if (!p)
-      return true ;
+      return false ;
 
    NOXCHECK(((uintptr_t)p & (sizeof(void*) - 1)) == 0) ;
 

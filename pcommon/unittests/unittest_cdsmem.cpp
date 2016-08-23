@@ -29,12 +29,14 @@ class CDSMemTests : public CppUnit::TestFixture {
       void Test_Block_Malloc_Allocator() ;
       void Test_Block_Page_Allocator() ;
       void Test_Concurrent_Freestack_SingleThread() ;
+      void Test_Freepool_Ring_SingleThread() ;
 
       CPPUNIT_TEST_SUITE(CDSMemTests) ;
 
       CPPUNIT_TEST(Test_Block_Malloc_Allocator) ;
       CPPUNIT_TEST(Test_Block_Page_Allocator) ;
       CPPUNIT_TEST(Test_Concurrent_Freestack_SingleThread) ;
+      CPPUNIT_TEST(Test_Freepool_Ring_SingleThread) ;
 
       CPPUNIT_TEST_SUITE_END() ;
 } ;
@@ -61,7 +63,46 @@ void CDSMemTests::Test_Concurrent_Freestack_SingleThread()
 
    CPPUNIT_LOG_EQUAL(concurrent_freestack(concurrent_freestack::max_size_limit()).max_size(), concurrent_freestack::max_size_limit()) ;
    CPPUNIT_LOG_EQ(concurrent_freestack(1).max_size(), 1) ;
-   CPPUNIT_LOG_EXCEPTION(concurrent_freestack(concurrent_freestack::max_size_limit() + 1).max_size(), std::length_error) ;
+   CPPUNIT_LOG_EXCEPTION(concurrent_freestack(concurrent_freestack::max_size_limit() + 1), std::length_error) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_EQ(zero_stack.size(), 0) ;
+   CPPUNIT_LOG_ASSERT(zero_stack.empty()) ;
+   CPPUNIT_LOG_IS_NULL(zero_stack.pop()) ;
+   CPPUNIT_LOG_EQ(zero_stack.size(), 0) ;
+   CPPUNIT_LOG_IS_FALSE(zero_stack.push(nullptr)) ;
+   CPPUNIT_LOG_EQ(zero_stack.size(), 0) ;
+   CPPUNIT_LOG_ASSERT(zero_stack.empty()) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_EXCEPTION(concurrent_freestack{nullptr}, std::invalid_argument) ;
+
+   unsigned msz1 ;
+   CPPUNIT_LOG_RUN(msz1 = concurrent_freestack::max_size_limit() + 1) ;
+   CPPUNIT_LOG_EXCEPTION(concurrent_freestack{&msz1}, std::length_error) ;
+
+   CPPUNIT_LOG_RUN(msz1 = 1) ;
+
+   concurrent_freestack one_stack {&msz1} ;
+
+   CPPUNIT_LOG_EQ(one_stack.max_size(), 1) ;
+   CPPUNIT_LOG_RUN(msz1 = concurrent_freestack::max_size_limit() + 1) ;
+   CPPUNIT_LOG_EQ(one_stack.max_size(), concurrent_freestack::max_size_limit()) ;
+   CPPUNIT_LOG_RUN(msz1 = 1) ;
+   CPPUNIT_LOG_EQ(one_stack.max_size(), 1) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   typedef std::pair<void *, uintptr_t> test_item ;
+   test_item items[] = {
+      {},
+      {},
+      {},
+   }
+}
+
+void CDSMemTests::Test_Freepool_Ring_SingleThread()
+{
 }
 
 /*******************************************************************************
