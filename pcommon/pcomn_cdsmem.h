@@ -138,15 +138,106 @@ class singlepage_allocator : public block_allocator {
 /******************************************************************************/
 /**
 *******************************************************************************/
-class concurrent_freestack {
-   public:
-      concurrent_freestack(block_allocator &alloc, unsigned maxsz) ;
-      concurrent_freestack(block_allocator &alloc, const unsigned *maxsz) ;
+class alignas(PCOMN_CACHELINE_SIZE) concurrent_freestack {
+      template<typename T>
+      using phazard = hazard_ptr<T, concurrent_freestack> ;
 
-      block_allocator &allocator() const ;
+   public:
+      explicit concurrent_freestack(unsigned maxsz) :
+         _intmaxsz(maxsz),
+         _maxsize(_intmaxsz)
+      {}
+
+      explicit concurrent_freestack(const unsigned *maxsz) :
+         _intmaxsz(0),
+         _maxsize(PCOMN_ENSURE_ARG(*maxsz))
+      {}
+
+      block_allocator &allocator() const { return _allocator ; }
+
+      size_t size() const
+      {
+         return atomic_op::load(&_top._counter, std::memory_order_acquire)._size ;
+      }
+
+      void *allocate()
+      {
+         head oldhead = {} ;
+         do {
+            phazard<block> top {&_head._top} ;
+            oldhead._top = top ;
+            if (!oldhead._top)
+               break ;
+
+            counter c = _head._counter ;
+            oldhead._counter = c ;
+            --c._size ;
+            ++c._generation ;
+            const head newhead = {oldhead._top->_next, c} ;
+            if (atomic_op::cas2_strong(&_head, &oldhead, newhead))
+               return oldhead._ptr ;
+         }
+         while (oldhead._top) ;
+
+         return nullptr ;
+      }
+
+      bool deallocate(void *p)
+      {
+         if (!p)
+            return true ;
+
+         NOXCHECK((static_cast<uintptr_t>(p) & (sizeof(void*) - 1)) == 0) ;
+
+         block * const newtop = static_cast<block *>(p) ;
+         counter c = _head._counter ;
+
+         while (c._size < maxsize())
+         {
+            phazard<block> top {&_head._top} ;
+
+            newtop->_next = top ;
+
+            head oldhead = {newtop->_next, c} ;
+            ++c._size ;
+            ++c._generation ;
+            const head newhead = {newtop, c} ;
+            if (atomic_op::cas2_strong(&_head, &oldhead, newhead))
+               return true ;
+            c = oldhead._counter ;
+         }
+         return false ;
+      }
+
+      size_t trim(unsigned sz, block_allocator &allocator)
+      {
+         const size_t current_sz = size() ;
+         size_t trimmed = 0 ;
+
+         if (sz < current_sz)
+            for (const size_t diff = current_sz - sz ; trimmed < diff ; ++trimmed)
+               ;
+      }
 
    private:
-      block_allocator &_allocator ;
+      struct counter {
+            uint64_t _size      :24 ;
+            uint64_t _generation:40 ;
+      } ;
+      struct block {
+            block *_next ;
+      } ;
+      struct alignas(16) head {
+            block  *_top ;
+            counter _counter ;
+      } ;
+      PCOMN_STATIC_CHECK(sizeof(counter) == sizeof(uint64_t)) ;
+      PCOMN_STATIC_CHECK(sizeof(head) == 16) ;
+
+   private:
+      const unsigned            _intmaxsz ;
+      const volatile unsigned & _maxsize ;
+      head                      _head = {} ;
 } ;
 
 /******************************************************************************/
@@ -154,24 +245,60 @@ class concurrent_freestack {
 *******************************************************************************/
 class freestack_ring final : public block_allocator {
    public:
-      freestack_ring(block_allocator &alloc, unsigned ring_size, unsigned stack_maxsz) ;
+      freestack_ring(block_allocator &alloc, unsigned ring_size, unsigned free_maxsize) :
+         _allocator(alloc),
+         _stacks_count(ring_size),
+         _stack_maxsz(calc_stack_maxsz(free_maxsize)),
+         _stacks(std::allocator<concurrent_freestack>::allocate(_stacks_count))
+      {
+         for (unsigned i = 0 ; i < _stacks_count ; ++i)
+            std::allocator<concurrent_freestack>::construct(&stacks[i], &_stack_maxsz) ;
+      }
 
-      block_allocator &allocator() const ;
+      block_allocator &allocator() const { return _allocator ; }
 
+      unsigned ringsize() const { return _stacks_count ; }
+
+      static constexpr unsigned maxringsize() { return 512 ; }
+
+      unsigned maxsize() { return _stack_maxsz * _stacks_count ; }
+
+      void maxsize(unsigned newmaxsize)
+      {
+         atomic_op::store(&_stack_maxsz, calc_stack_maxsz(newmaxsize), std::memory_order_seq_cst) ;
+      }
+
+      /// Debug interface
+      std::vector<unsigned> stack_sizes() const
+      {
+         std::vector<unsigned> result (ringsize()) ;
+         std::transform(_stacks.get(), _stacks.get() + ringsize(),
+                        [](const concurrent_freestack &s) { return s.size() ; }, result.begin()) ;
+         return result ;
+      }
 
    protected:
-      void *allocate_block() override
-      {
-         return sys::pagealloc() ;
-      }
+      void *allocate_block() override ;
+      void free_block(void *block) override ;
 
-      void free_block(void *block) override
-      {
-         return sys::pagefree(block) ;
-      }
    private:
       block_allocator &_allocator ;
+      const unsigned   _stacks_count ;
       unsigned         _stack_maxsz ;
+      const std::unique_ptr<concurrent_freestack[]> _stacks ;
+
+      unsigned next_stackndx() const
+      {
+         static thread_local unsigned short random_ndx[maxringsize()] ;
+         static thread_local size_t next = maxringsize() + 1 ;
+         static constexpr const size_t mask = maxringsize() - 1 ;
+         if (next > maxringsize())
+            // Generate random index sequence
+            ;
+         const size_t i = next ;
+         next = (next + 1) & mask ;
+         return random_ndx[i] & (ringsize() - 1) ;
+      }
 } ;
 
 /*******************************************************************************
@@ -180,7 +307,7 @@ class freestack_ring final : public block_allocator {
 inline
 void *freestack_ring::allocate_block()
 {
-   return sys::pagealloc() ;
+   return allocator().allocate_block() ;
 }
 
 inline
