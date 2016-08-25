@@ -11,6 +11,7 @@
 *******************************************************************************/
 #include <pcomn_integer.h>
 #include <pcomn_primenum.h>
+#include <pcomn_atomic.h>
 #include <pcomn_unittest.h>
 
 class IntegerTests : public CppUnit::TestFixture {
@@ -25,6 +26,7 @@ class IntegerTests : public CppUnit::TestFixture {
       void Test_NzbitPosIterator() ;
       void Test_OneOf() ;
       void Test_Log2() ;
+      void Test_PseudoRandom() ;
 
       CPPUNIT_TEST_SUITE(IntegerTests) ;
 
@@ -38,6 +40,7 @@ class IntegerTests : public CppUnit::TestFixture {
       CPPUNIT_TEST(Test_NzbitPosIterator) ;
       CPPUNIT_TEST(Test_OneOf) ;
       CPPUNIT_TEST(Test_Log2) ;
+      CPPUNIT_TEST(Test_PseudoRandom) ;
 
       CPPUNIT_TEST_SUITE_END() ;
 
@@ -286,6 +289,57 @@ void IntegerTests::Test_Log2()
    CPPUNIT_LOG_EQUAL(bitop::log2floor(0x800000001LLU), 35) ;
    CPPUNIT_LOG_EQUAL(bitop::log2ceil(0x800000001LLU), 36) ;
 }
+
+void IntegerTests::Test_PseudoRandom()
+{
+   using namespace pcomn ;
+
+   splitmix64 m64_0 ;
+   splitmix64 m64_01(0) ;
+   CPPUNIT_LOG_ASSERT(is_atomic<splitmix64>::value) ;
+
+   CPPUNIT_LOG_EQ(m64_0(), 0xe220a8397b1dcdaf) ;
+   CPPUNIT_LOG_EQ(m64_0(), 0x6e789e6aa1b965f4) ;
+   CPPUNIT_LOG_EQ(m64_01(), 0xe220a8397b1dcdaf) ;
+   CPPUNIT_LOG_EQ(m64_01(), 0x6e789e6aa1b965f4) ;
+
+   splitmix64 m64_1024(1024) ;
+
+   CPPUNIT_LOG_EQ(m64_1024(), 0x4426acba529f17cc) ;
+   CPPUNIT_LOG_EQ(m64_1024(), 0xf2a46c019abe148a) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   xoroshiro_prng<uint64_t> x64_0 ;
+   xoroshiro_prng<uint64_t> x64_01(0) ;
+
+   struct alignas(16) xp : xoroshiro_prng<uint64_t> {} ;
+
+   CPPUNIT_LOG_ASSERT(is_atomic2<xp>::value) ;
+
+   CPPUNIT_LOG_EQ(x64_0(),  0x509946a41cd733a3) ;
+   CPPUNIT_LOG_EQ(x64_0(),  0x885667b1934bfa) ;
+   CPPUNIT_LOG_EQ(x64_01(), 0x509946a41cd733a3) ;
+   CPPUNIT_LOG_EQ(x64_01(), 0x885667b1934bfa) ;
+
+   xoroshiro_prng<uint64_t> x64_1024(1024) ;
+
+   CPPUNIT_LOG_EQ(x64_1024(), 0x36cb18bbed5d2c56) ;
+   CPPUNIT_LOG_EQ(x64_1024(), 0x629e56513e05d889) ;
+
+   CPPUNIT_LOG_RUN(x64_1024 = xoroshiro_prng<uint64_t>{1024}) ;
+   CPPUNIT_LOG_RUN(x64_1024.jump()) ;
+
+   CPPUNIT_LOG_EQ(x64_1024(), 0x95ef4131aac51b3) ;
+   CPPUNIT_LOG_EQ(x64_1024(), 0xd6da96741416be7c) ;
+
+   CPPUNIT_LOG_RUN(x64_1024 = xoroshiro_prng<uint64_t>{1024}) ;
+   CPPUNIT_LOG_RUN(x64_1024.jump().jump()) ;
+
+   CPPUNIT_LOG_EQ(x64_1024(), 0x1ccca0b6e0111680) ;
+   CPPUNIT_LOG_EQ(x64_1024(), 0x180d58fd5aef78a) ;
+}
+
 
 int main(int argc, char *argv[])
 {
