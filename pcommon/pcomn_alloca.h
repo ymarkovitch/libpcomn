@@ -37,7 +37,7 @@
 ///
 #define P_FAST_BUFFER(name, itemtype, nitems, threshold)                \
    const size_t _var_##__LINE__##name##_count_ = (nitems) ;             \
-   const std::unique_ptr<std::aligned_storage_t<sizeof(itemtype), std::alignment_of<itemtype >::value> > \
+   const std::unique_ptr<std::aligned_storage_t<sizeof(itemtype), std::alignment_of<itemtype>::value>[]> \
    _var_##__LINE__##name##_guard_                                       \
    (_var_##__LINE__##name##_count_ * sizeof(itemtype) <= (threshold)    \
     ? nullptr                                                           \
