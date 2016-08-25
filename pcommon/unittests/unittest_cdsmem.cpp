@@ -46,6 +46,11 @@ class CDSMemTests : public CppUnit::TestFixture {
 *******************************************************************************/
 void CDSMemTests::Test_Block_Malloc_Allocator()
 {
+   CPPUNIT_LOG_EXCEPTION_MSG((malloc_block_allocator{0}), std::invalid_argument, "size:0") ;
+   CPPUNIT_LOG_EXCEPTION_MSG((malloc_block_allocator{0, 16}), std::invalid_argument, "size:0") ;
+   CPPUNIT_LOG_RUN((malloc_block_allocator{1, 3})) ;
+
+   //malloc_block_allocator mallocator0 ;
 }
 
 void CDSMemTests::Test_Block_Page_Allocator()
@@ -146,6 +151,10 @@ void CDSMemTests::Test_Concurrent_Freestack_SingleThread()
 
 void CDSMemTests::Test_Freepool_Ring_SingleThread()
 {
+   typedef concurrent_freepool_ring<> ring ;
+
+   //malloc_block_allocator mallocator ;
+   //ring r01
 }
 
 /*******************************************************************************

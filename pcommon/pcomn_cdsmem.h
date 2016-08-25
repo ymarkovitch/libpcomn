@@ -57,7 +57,7 @@ class block_allocator {
          _size(sz),
          _alignment(align ? align : sz)
       {
-         PCOMN_THROW_IF(!_size || bitop::bitcount(_alignment) != 1 || (_size & (_alignment - 1)), std::invalid_argument,
+         PCOMN_THROW_IF(!_size || !bitop::tstpow2(_alignment) || (_size & (_alignment - 1)), std::invalid_argument,
                         "Invalid size or alignment specified for a block allocator. size:%zu alignment:%zu",
                         size(), alignment()) ;
       }
@@ -79,7 +79,8 @@ class malloc_block_allocator : public block_allocator {
       typedef block_allocator ancestor ;
    public:
       explicit malloc_block_allocator(size_t size) :
-         ancestor((size + (std_align() - 1)) & (std_align() - 1), std_align())
+         ancestor(!size ? 0 : ((size + (std_align() - 1)) & (std_align() - 1)),
+                  std_align())
       {}
 
       malloc_block_allocator(size_t size, size_t align) :
@@ -100,7 +101,7 @@ class malloc_block_allocator : public block_allocator {
       }
 
    private:
-      static constexpr size_t std_align() { return sizeof(std::max_align_t) ; }
+      static constexpr size_t std_align() { return alignof(std::max_align_t) ; }
 } ;
 
 /******************************************************************************/
@@ -206,12 +207,14 @@ class alignas(PCOMN_CACHELINE_SIZE) concurrent_freestack {
 /******************************************************************************/
 /**
 *******************************************************************************/
-class freepool_ring final : public block_allocator {
+template<class Pool = concurrent_freestack>
+class concurrent_freepool_ring final : public block_allocator {
       typedef block_allocator ancestor ;
-      typedef concurrent_freestack pool_type ;
    public:
-      freepool_ring(block_allocator &alloc, unsigned free_maxsize, unsigned ring_size = -1) ;
-      ~freepool_ring() ;
+      typedef Pool pool_type ;
+
+      concurrent_freepool_ring(block_allocator &alloc, unsigned free_maxsize, unsigned ring_size = -1) ;
+      ~concurrent_freepool_ring() ;
 
       block_allocator &allocator() const { return _allocator ; }
 
@@ -262,6 +265,17 @@ class freepool_ring final : public block_allocator {
       {
          return (maxsz + ringsize() - 1) & (ringsize() - 1) ;
       }
+} ;
+
+/******************************************************************************/
+/**
+*******************************************************************************/
+template<size_t size, size_t alignment, typename Tag = void, class Pool = concurrent_freestack>
+struct concurrent_global_blocks {
+
+      static block_allocator &blocks() ;
+      static void *allocate() { return blocks().allocate() ; }
+      static void deallocate(void *blk) { blocks().deallocate(blk) ; }
 } ;
 
 /*******************************************************************************
@@ -319,10 +333,10 @@ bool concurrent_freestack::push(void *p)
 }
 
 /*******************************************************************************
- freepool_ring
+ concurrent_freepool_ring
 *******************************************************************************/
-inline __noinline
-freepool_ring::freepool_ring(block_allocator &alloc, unsigned free_maxsize, unsigned ring_size) :
+template<typename P>
+concurrent_freepool_ring<P>::concurrent_freepool_ring(block_allocator &alloc, unsigned free_maxsize, unsigned ring_size) :
    ancestor(alloc.size(), alloc.alignment()),
    _allocator(alloc),
 
@@ -349,8 +363,8 @@ freepool_ring::freepool_ring(block_allocator &alloc, unsigned free_maxsize, unsi
    }
 }
 
-inline __noinline
-freepool_ring::~freepool_ring()
+template<typename P>
+concurrent_freepool_ring<P>::~concurrent_freepool_ring()
 {
    if (!_pools)
       return ;
@@ -359,14 +373,14 @@ freepool_ring::~freepool_ring()
    sys::free_aligned(_pools) ;
 }
 
-inline __noinline
-void *freepool_ring::allocate_block()
+template<typename P>
+void *concurrent_freepool_ring<P>::allocate_block()
 {
    return allocator().allocate() ;
 }
 
-inline __noinline
-void freepool_ring::free_block(void *)
+template<typename P>
+void concurrent_freepool_ring<P>::free_block(void *)
 {
 }
 
