@@ -199,6 +199,15 @@ constexpr inline if_integer_t<I, size_t> rzcnt(I x)
    return native_rzcnt(x, native_isa_tag()) ;
 }
 
+/// Test if Power of 2.
+/// 00001000 -> true
+/// 00101000 -> false
+template<typename I>
+constexpr inline if_integer_t<I, bool> tstpow2(I x)
+{
+   return !clrrnzb(x) && x ;
+}
+
 /// Rotate Left.
 /// @note Most contemporary compilers recognize such code sequence and replace it with
 /// single native CPU command equivalent.
