@@ -56,8 +56,8 @@ constexpr size_t HAZARD_DEFAULT_CAPACITY = 7 ;
 
 constexpr size_t HAZARD_DEFAULT_THREADCOUNT = 128 ;
 
-constexpr size_t HAZARD_MIN_PENDING = 1024 ; /**< Minimum pending cleanups per hazard
-                                                  registry  */
+constexpr size_t HAZARD_DEFAULT_MINPENDING = 1024 ; /**< Minimum pending cleanups per hazard
+                                                       registry  */
 
 /*******************************************************************************
  Forward declarations
@@ -80,18 +80,19 @@ template<unsigned L>
 std::unique_ptr<hazard_storage<L>> new_hazard_storage(unsigned thread_maxcount = 0) ;
 
 /******************************************************************************/
-/** Describes various hazard pointer policies
-*******************************************************************************/
-template<size_t Capacity>
-struct hazard_policy {
-      static constexpr size_t thread_capacity = Capacity ;
-} ;
-
-/******************************************************************************/
-/** Policy type for hazard_manager
+/** Policy type for hazard_manager, describes various hazard pointer policies.
 *******************************************************************************/
 template<typename Tag>
-struct hazard_traits : hazard_policy<HAZARD_DEFAULT_CAPACITY> {} ;
+struct hazard_traits {
+      /// The maximum count of simultaneously active hazards per thread.
+      ///
+      /// This is actually the maximum number of "transient" hazard pointers required by
+      /// some algorithm executed by thread (usually 1-3 pointers)
+      static constexpr size_t thread_capacity  = HAZARD_DEFAULT_CAPACITY ;
+
+      /// Minimum pending cleanups per hazard registry.
+      static constexpr size_t pending_cleanups = HAZARD_DEFAULT_MINPENDING ;
+} ;
 
 /******************************************************************************/
 /** A per-thread hazard pointer registry
@@ -465,6 +466,7 @@ class alignas(PCOMN_CACHELINE_SIZE) hazard_storage {
    private:
       const slots_bitmap      _slots_map ;  /* Map of free/allocated registry slots */
       registry_type * const   _registries ; /* Registry slots */
+      std::atomic<size_t>     _minpending {HAZARD_DEFAULT_MINPENDING} ;
       std::atomic<size_t>     _top_alloc ;
 
    private:
@@ -609,6 +611,7 @@ class hazard_manager {
          return bitop::ct_log2floor<hazard_traits<Tag>::thread_capacity>::value ;
       }
    public:
+      typedef Tag                                     tag_type ;
       typedef hazard_storage<storage_capacity_bits()> storage_type ;
       typedef typename storage_type::registry_type    registry_type ;
 
@@ -625,6 +628,22 @@ class hazard_manager {
 
       /// Get the thread-local hazard pointer manager
       static hazard_manager &manager() ;
+
+      /// Minimum pending cleanups per hazard registry for hasards managed by
+      /// hazard_ptr<*,tag_type>.
+      ///
+      size_t min_pending() const
+      {
+         return storage()._minpending.load(std::memory_order_relaxed) ;
+      }
+
+      /// Set minimum pending cleanups per hazard registry for hasards managed by
+      /// hazard_ptr<*,tag_type>.
+      ///
+      static void min_pending(size_t count)
+      {
+         storage()._minpending = count ;
+      }
 
       /// Register an object for posponed reclamation and provide reclaiming function.
       template<typename U, typename F>
@@ -674,7 +693,7 @@ class hazard_manager {
       {
          const size_t pending_count = pending_retired().size() ;
          return
-            pending_count > HAZARD_MIN_PENDING &&
+            pending_count > min_pending() &&
             pending_count > storage()._top_alloc.load(std::memory_order_relaxed) ;
       }
 } ;
@@ -870,6 +889,8 @@ auto hazard_manager<T>::ensure_global_storage() -> storage_type &
    if (!s)
    {
       auto new_s = new_hazard_storage<storage_capacity_bits()>(0) ;
+      new_s->_minpending.store(hazard_traits<tag_type>::pending_cleanups, std::memory_order_relaxed) ;
+
       if (_global_storage.compare_exchange_strong(s, new_s.get(), std::memory_order_seq_cst))
          return *new_s.release() ;
    }

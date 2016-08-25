@@ -94,11 +94,54 @@ void CDSMemTests::Test_Concurrent_Freestack_SingleThread()
 
    CPPUNIT_LOG(std::endl) ;
    typedef std::pair<void *, uintptr_t> test_item ;
-   test_item items[] = {
-      {},
-      {},
-      {},
-   }
+   test_item items[32] ;
+   for (test_item &i: items)
+      i.second = &i - items ;
+
+   CPPUNIT_LOG_EQ(one_stack.size(), 0) ;
+   CPPUNIT_LOG_ASSERT(one_stack.empty()) ;
+   CPPUNIT_LOG_IS_NULL(one_stack.pop()) ;
+   CPPUNIT_LOG_EQ(one_stack.size(), 0) ;
+   CPPUNIT_LOG_ASSERT(one_stack.empty()) ;
+
+   CPPUNIT_LOG_ASSERT(one_stack.push(items + 2)) ;
+   CPPUNIT_LOG_IS_FALSE(one_stack.push(items + 5)) ;
+
+   CPPUNIT_LOG_IS_FALSE(one_stack.empty()) ;
+   CPPUNIT_LOG_EQ(one_stack.size(), 1) ;
+
+   CPPUNIT_LOG_EQUAL(items[2], test_item(0, 2)) ;
+   CPPUNIT_LOG_EQUAL(items[5], test_item(0, 5)) ;
+   CPPUNIT_LOG_EQ(one_stack.pop(), items + 2) ;
+
+   CPPUNIT_LOG_EQ(one_stack.size(), 0) ;
+   CPPUNIT_LOG_ASSERT(one_stack.empty()) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_ASSERT(one_stack.push(items + 6)) ;
+   CPPUNIT_LOG_IS_FALSE(one_stack.push(items + 8)) ;
+   CPPUNIT_LOG_EQUAL(items[8], test_item(0, 8)) ;
+
+   CPPUNIT_LOG_RUN(msz1 = 4) ;
+   CPPUNIT_LOG_ASSERT(one_stack.push(items + 8)) ;
+   CPPUNIT_LOG_EQUAL(items[8], test_item(items + 6, 8)) ;
+
+   CPPUNIT_LOG_EQ(one_stack.size(), 2) ;
+   CPPUNIT_LOG_IS_FALSE(one_stack.empty()) ;
+
+   CPPUNIT_LOG_ASSERT(one_stack.push(items + 3)) ;
+   CPPUNIT_LOG_ASSERT(one_stack.push(items + 4)) ;
+
+   CPPUNIT_LOG_IS_FALSE(one_stack.push(items + 5)) ;
+
+   CPPUNIT_LOG_EQ(one_stack.size(), 4) ;
+   CPPUNIT_LOG_IS_FALSE(one_stack.empty()) ;
+
+   CPPUNIT_LOG_EQUAL(items[6], test_item(0, 6)) ;
+   CPPUNIT_LOG_EQUAL(items[8], test_item(items + 6, 8)) ;
+   CPPUNIT_LOG_EQUAL(items[5], test_item(0, 5)) ;
+   CPPUNIT_LOG_EQUAL(items[4], test_item(items + 3, 4)) ;
 }
 
 void CDSMemTests::Test_Freepool_Ring_SingleThread()

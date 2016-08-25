@@ -3,5 +3,5 @@ rm -f TAGS
 (
     find $(readlink -f .) \( -name deploy -o -name distributed \) -prune -o \( -regex '.+[.]hp*$' -print \)
     find $(readlink -f .) \( -name deploy -o -name distributed \) -prune -o \( \( -regex '.+[.][cC][cC]?$' -o -regex '.+[.][cC][pP]+$' -o -name '*.S' \) -print \)
-) | grep -v -E '(/win32|/CMakeFiles)' | ctags --language-force=c++ -e "$@" -L - -a
+) | grep -v -E '(/win32|/CMakeFiles|/scratch|/bin)' | ctags --language-force=c++ -e "$@" -L - -a
 chmod -x TAGS 2>/dev/null
