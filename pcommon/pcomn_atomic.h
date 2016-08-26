@@ -113,6 +113,9 @@ struct is_atomic2 : bool_constant
 <sizeof(T) == 2*sizeof(void*) && alignof(T) >= sizeof(T) && std::is_trivially_copyable<T>::value>
 {} ;
 
+template<typename T, typename R = T>
+using enable_if_atomic2_t = std::enable_if_t<is_atomic2<T>::value, R> ;
+
 /******************************************************************************/
 /** @namespace pcomn::atomic_op
  Atomic operations
@@ -274,7 +277,7 @@ cas(T *target, atomic_value_t<T> expected_value, atomic_value_t<T> new_value,
 /// (and thus *target is replaced), false otherwise.
 ///
 template<typename T>
-inline std::enable_if_t<is_atomic2<T>::value, bool>
+inline enable_if_atomic2_t<T, bool>
 cas2_weak(T *target, T *expected_value, T new_value, std::memory_order order = std::memory_order_acq_rel)
 {
    static_assert(PCOMN_ATOMIC_WIDTH >=2,
@@ -301,7 +304,7 @@ cas2_weak(T *target, T *expected_value, T new_value, std::memory_order order = s
 }
 
 template<typename T>
-inline std::enable_if_t<is_atomic2<T>::value, bool>
+inline enable_if_atomic2_t<T, bool>
 cas2_weak(T *target, T expected_value, T new_value, std::memory_order order = std::memory_order_acq_rel)
 {
    return cas2_weak(target, &expected_value, new_value, order) ;
@@ -309,7 +312,7 @@ cas2_weak(T *target, T expected_value, T new_value, std::memory_order order = st
 
 #if defined(PCOMN_PL_MS)
 template<typename T>
-inline std::enable_if_t<is_atomic2<T>::value, bool>
+inline enable_if_atomic2_t<T, bool>
 cas2_strong(T *target, T *expected_value, T new_value, std::memory_order order = std::memory_order_acq_rel)
 {
    cas2_weak(target, expected_value, new_value, std::memory_order_acq_rel) ;
@@ -317,7 +320,7 @@ cas2_strong(T *target, T *expected_value, T new_value, std::memory_order order =
 #else /* GCC/Clang version */
 
 template<typename T>
-inline std::enable_if_t<is_atomic2<T>::value, bool>
+inline enable_if_atomic2_t<T, bool>
 cas2_strong(T *target, T *expected_value, T new_value, std::memory_order order = std::memory_order_acq_rel)
 {
    static_assert(PCOMN_ATOMIC_WIDTH >=2,
@@ -333,10 +336,27 @@ cas2_strong(T *target, T *expected_value, T new_value, std::memory_order order =
 #endif
 
 template<typename T>
-inline std::enable_if_t<is_atomic2<T>::value, bool>
+inline enable_if_atomic2_t<T, bool>
 cas2_strong(T *target, T expected_value, T new_value, std::memory_order order = std::memory_order_acq_rel)
 {
    return cas2_strong(target, &expected_value, new_value, order) ;
+}
+
+template<typename T>
+inline enable_if_atomic2_t<T>
+load(T *value, std::memory_order order = std::memory_order_acq_rel)
+{
+   T result = *value ;
+   while(!cas2_strong(value, &result, result, order)) ;
+   return result ;
+}
+
+template<typename T>
+inline enable_if_atomic2_t<T, void>
+store(T *target, T value, std::memory_order order = std::memory_order_acq_rel)
+{
+   T expected = value ;
+   while(!cas2_strong(target, &expected, value, order)) ;
 }
 
 /*******************************************************************************
