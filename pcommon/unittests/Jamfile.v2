@@ -62,6 +62,7 @@ if ! [ adhoc-targets ]
   unittest unittest_iostream ;
   unittest unittest_iterator ;
   unittest unittest_mmap ;
+  unittest unittest_random ;
   unittest unittest_rawstream ;
   unittest unittest_regex ;
   unittest unittest_simplematrix ;
