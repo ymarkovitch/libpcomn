@@ -72,8 +72,9 @@ inline void free_aligned(void *data)
 template<typename T>
 inline T *alloc_aligned(size_t count)
 {
-   if (count)
-      return static_cast<T *>(alloc_aligned(alignof(T), count*sizeof(T))) ;
+   return count
+      ? static_cast<T *>(alloc_aligned(alignof(T), count*sizeof(T)))
+      : nullptr ;
 }
 
 template<typename T>
