@@ -13,6 +13,7 @@
 #include <pcomn_hazardptr.h>
 #include <pcomn_atomic.h>
 #include <pcomn_integer.h>
+#include <pcomn_random.h>
 #include <pcomn_sys.h>
 
 #include <algorithm>
@@ -54,22 +55,51 @@ class block_allocator {
 
    protected:
       explicit block_allocator(size_t sz, size_t align = 0) :
-         _size(sz),
-         _alignment(align ? align : sz)
+         _alignment(align ? align : sz),
+         _size((sz + (_alignment - 1)) &~ (_alignment - 1))
       {
-         PCOMN_THROW_IF(!_size || !bitop::tstpow2(_alignment) || (_size & (_alignment - 1)), std::invalid_argument,
+         PCOMN_THROW_IF(!sz || !bitop::tstpow2(_alignment), std::invalid_argument,
                         "Invalid size or alignment specified for a block allocator. size:%zu alignment:%zu",
-                        size(), alignment()) ;
+                        sz, alignment()) ;
       }
 
       virtual void *allocate_block() = 0 ;
       virtual void free_block(void *) = 0 ;
 
    private:
-      const size_t _size ;
       const size_t _alignment ;
+      const size_t _size ;
 
       PCOMN_NONASSIGNABLE(block_allocator) ;
+} ;
+
+/******************************************************************************/
+/** RAII guard for blocks allocated with a block allocator.
+*******************************************************************************/
+class safe_block {
+      PCOMN_NONCOPYABLE(safe_block) ;
+      PCOMN_NONASSIGNABLE(safe_block) ;
+   public:
+      explicit safe_block(block_allocator &alloc) :
+         _allocator(alloc),
+         _block(_allocator.allocate())
+      {}
+
+      ~safe_block() { reset() ; }
+
+      void reset()
+      {
+         if (_block)
+            _allocator.deallocate(xchange(_block, nullptr)) ;
+      }
+
+      void *get() const noexcept { return _block ; }
+      operator void *() const noexcept { return _block ; }
+      explicit operator bool() const noexcept { return !!get() ; }
+
+   private:
+      block_allocator &_allocator ;
+      void *           _block ;
 } ;
 
 /******************************************************************************/
@@ -78,13 +108,17 @@ class block_allocator {
 class malloc_block_allocator : public block_allocator {
       typedef block_allocator ancestor ;
    public:
-      explicit malloc_block_allocator(size_t size) :
-         ancestor(!size ? 0 : ((size + (std_align() - 1)) & (std_align() - 1)),
-                  std_align())
+      /// Create allocator for blocks of specified size aligned to std::max_align_t
+      /// bound.
+      /// @param blocksize The size of blocks the allocator allocates.
+      /// @throw std::invalid_argument if @a blocksize is 0.
+      ///
+      explicit malloc_block_allocator(size_t blocksize) :
+         ancestor(blocksize, std_align())
       {}
 
       malloc_block_allocator(size_t size, size_t align) :
-         ancestor(size, std::max(std_align(), align))
+         ancestor(size, bitop::tstpow2(align) ? std::max(std_align(), align) : align)
       {}
 
    protected:
@@ -107,10 +141,10 @@ class malloc_block_allocator : public block_allocator {
 /******************************************************************************/
 /**
 *******************************************************************************/
-class singlepage_allocator : public block_allocator {
+class singlepage_block_allocator : public block_allocator {
       typedef block_allocator ancestor ;
    public:
-      singlepage_allocator() : ancestor(sys::pagesize()) {}
+      singlepage_block_allocator() noexcept : ancestor(sys::pagesize()) {}
 
    protected:
       void *allocate_block() override
@@ -213,16 +247,19 @@ class concurrent_freepool_ring final : public block_allocator {
    public:
       typedef Pool pool_type ;
 
-      concurrent_freepool_ring(block_allocator &alloc, unsigned free_maxsize, unsigned ring_size = -1) ;
+      concurrent_freepool_ring(block_allocator &alloc, unsigned free_maxsize, unsigned ring_size = 0) ;
       ~concurrent_freepool_ring() ;
 
       block_allocator &allocator() const { return _allocator ; }
 
-      unsigned ringsize() const { return _pools_count ; }
+      /// Get the number of pools in the ring.
+      /// @note The value is always the power of 2 and >=2.
+      ///
+      unsigned ringsize() const { return _pools_mask + 1 ; }
 
-      static constexpr unsigned max_ringsize() { return 512 ; }
+      static constexpr unsigned max_ringsize() { return 32 ; }
 
-      unsigned max_size() const { return _pool_maxsz * _pools_count ; }
+      unsigned max_size() const { return _pool_maxsz * ringsize() ; }
 
       void max_size(unsigned newmaxsize)
       {
@@ -244,7 +281,7 @@ class concurrent_freepool_ring final : public block_allocator {
 
    private:
       block_allocator & _allocator ;
-      const unsigned    _pools_count ;
+      const unsigned    _pools_mask ;
       unsigned          _pool_maxsz ;
       pool_type *       _pools ;
 
@@ -261,9 +298,22 @@ class concurrent_freepool_ring final : public block_allocator {
          return random_ndx[i] & (ringsize() - 1) ;
       }
 
+      pool_type &pool(size_t n)
+      {
+         return _pools[n & _pools_mask] ;
+      }
+
+      unsigned calc_ringsz(unsigned sz)
+      {
+         sz = ensure_le<std::length_error>(std::max(2U, sz), max_ringsize(),
+                                           "Implementation-defined freepool ring size limits exceeded") ;
+         return 1U << bitop::log2ceil(sz) ;
+      }
+
       unsigned calc_pool_maxsz(unsigned maxsz) const
       {
-         return (maxsz + ringsize() - 1) & (ringsize() - 1) ;
+         NOXCHECK(maxsz) ;
+         return (maxsz + _pools_mask) / ringsize() ;
       }
 } ;
 
@@ -281,8 +331,7 @@ struct concurrent_global_blocks {
 /*******************************************************************************
  concurrent_freestack
 *******************************************************************************/
-inline __noinline
-void *concurrent_freestack::pop()
+inline void *concurrent_freestack::pop()
 {
    head oldhead = {} ;
    do {
@@ -304,8 +353,7 @@ void *concurrent_freestack::pop()
    return nullptr ;
 }
 
-inline __noinline
-bool concurrent_freestack::push(void *p)
+inline bool concurrent_freestack::push(void *p)
 {
    if (!p)
       return false ;
@@ -340,17 +388,12 @@ concurrent_freepool_ring<P>::concurrent_freepool_ring(block_allocator &alloc, un
    ancestor(alloc.size(), alloc.alignment()),
    _allocator(alloc),
 
-   // Round up ring size to the power of 2
-   _pools_count(bitop::log2ceil
-                 (ring_size == (unsigned)-1
-                  ? midval(1U, max_ringsize(), std::thread::hardware_concurrency())
-                  : ensure_le<std::length_error>(ring_size, max_ringsize(),
-                                                 "Implementation-defined freepool ring size limits exceeded"))),
-
+   // Round up ring size to the power of 2 and ensure it is at least 2
+   _pools_mask(calc_ringsz(ring_size ? ring_size : std::min(std::thread::hardware_concurrency(), max_ringsize())) - 1),
    _pool_maxsz(calc_pool_maxsz(free_maxsize)),
-   _pools(ringsize() ? sys::alloc_aligned<pool_type>(ringsize()) : nullptr)
+   _pools(sys::alloc_aligned<pool_type>(ringsize()))
 {
-   if (ringsize() && !_pools)
+   if (!_pools)
       throw_exception<bad_alloc_msg>(sys::strlasterr()) ;
 
    try {

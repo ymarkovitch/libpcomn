@@ -48,13 +48,44 @@ void CDSMemTests::Test_Block_Malloc_Allocator()
 {
    CPPUNIT_LOG_EXCEPTION_MSG((malloc_block_allocator{0}), std::invalid_argument, "size:0") ;
    CPPUNIT_LOG_EXCEPTION_MSG((malloc_block_allocator{0, 16}), std::invalid_argument, "size:0") ;
-   CPPUNIT_LOG_RUN((malloc_block_allocator{1, 3})) ;
+   CPPUNIT_LOG_EXCEPTION_MSG((malloc_block_allocator{1, 3}), std::invalid_argument, "alignment:3") ;
 
-   //malloc_block_allocator mallocator0 ;
+   malloc_block_allocator alloc1 {12, 4} ;
+   malloc_block_allocator alloc2 {2} ;
+   malloc_block_allocator alloc17 {17} ;
+   CPPUNIT_LOG_EQ(alloc1.size(), alignof(std::max_align_t)) ;
+   CPPUNIT_LOG_EQ(alloc1.alignment(), alignof(std::max_align_t)) ;
+   CPPUNIT_LOG_EQ(alloc2.size(), alignof(std::max_align_t)) ;
+   CPPUNIT_LOG_EQ(alloc2.alignment(), alignof(std::max_align_t)) ;
+   CPPUNIT_LOG_EQ(alloc17.size(), 2*alignof(std::max_align_t)) ;
+   CPPUNIT_LOG_EQ(alloc17.alignment(), alignof(std::max_align_t)) ;
+
+   malloc_block_allocator alloc64 {32, 64} ;
+   CPPUNIT_LOG_EQ(alloc64.size(), 64) ;
+   CPPUNIT_LOG_EQ(alloc64.alignment(), 64) ;
+
+   {
+      safe_block b {alloc64} ;
+      CPPUNIT_LOG_ASSERT(b.get()) ;
+      CPPUNIT_LOG_EQ(b.get(), b) ;
+      CPPUNIT_LOG_ASSERT(b) ;
+      CPPUNIT_LOG_EXPRESSION(b) ;
+      CPPUNIT_LOG_EQ((uintptr_t)b.get() & 63, 0) ;
+   }
 }
 
 void CDSMemTests::Test_Block_Page_Allocator()
 {
+   const size_t psz = sys::pagesize() ;
+
+   singlepage_block_allocator alloc1 ;
+   CPPUNIT_LOG_EQ(alloc1.size(), psz) ;
+   CPPUNIT_LOG_EQ(alloc1.alignment(), psz) ;
+
+   safe_block b {alloc1} ;
+   CPPUNIT_LOG_ASSERT(b.get()) ;
+   CPPUNIT_LOG_EXPRESSION(b) ;
+   CPPUNIT_LOG_EQ((uintptr_t)b.get() & (psz - 1), 0) ;
 }
 
 void CDSMemTests::Test_Concurrent_Freestack_SingleThread()
@@ -152,9 +183,32 @@ void CDSMemTests::Test_Concurrent_Freestack_SingleThread()
 void CDSMemTests::Test_Freepool_Ring_SingleThread()
 {
    typedef concurrent_freepool_ring<> ring ;
+   typedef std::vector<unsigned> uvec ;
 
-   //malloc_block_allocator mallocator ;
-   //ring r01
+   malloc_block_allocator malloc16 {16} ;
+   malloc_block_allocator malloc64 {16, 64} ;
+
+   CPPUNIT_LOG_EXPRESSION(std::thread::hardware_concurrency()) ;
+   CPPUNIT_LOG_ASSERT(std::thread::hardware_concurrency() > 0) ;
+
+   CPPUNIT_LOG_EXCEPTION_MSG(ring(malloc16, 1, ring::max_ringsize() + 1), std::length_error, "ring size") ;
+   CPPUNIT_LOG_RUN(ring(malloc16, 1, ring::max_ringsize())) ;
+
+   ring r16_01 {malloc16, 1, 1} ;
+   CPPUNIT_LOG_EQ(r16_01.ringsize(), 2) ;
+   CPPUNIT_LOG_EQ(r16_01.max_size(), 2) ;
+
+   ring r16_02 {malloc16, 3, 2} ;
+   CPPUNIT_LOG_EQ(r16_02.ringsize(), 2) ;
+   CPPUNIT_LOG_EQ(r16_02.max_size(), 4) ;
+
+   ring r16_04 {malloc16, 5, 3} ;
+   CPPUNIT_LOG_EQ(r16_04.ringsize(), 4) ;
+   CPPUNIT_LOG_EQ(r16_04.max_size(), 8) ;
+   CPPUNIT_LOG_EQ(r16_04.pool_sizes(), (uvec{0, 0, 0, 0})) ;
+
+   ring r16_CPU {malloc64, 1} ;
+   CPPUNIT_LOG_EQ(r16_CPU.ringsize(), std::thread::hardware_concurrency()) ;
 }
 
 /*******************************************************************************
