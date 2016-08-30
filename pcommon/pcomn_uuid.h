@@ -48,6 +48,10 @@ struct uuid {
          _hdata{be(h1), be(h2), be(h3), be(h4), be(h5), be(h6), be(h7), be(h8)}
       {}
 
+      constexpr uuid(const binary128_t &bin) :
+         _idata{*reinterpret_cast<const uint64_t *>(bin.data()), *(reinterpret_cast<const uint64_t *>(bin.data()) + 1)}
+      {}
+
       /// Create a UUID from "standard" string representation
       ///
       /// @param str Canonical form of UUID string representation, like
@@ -93,6 +97,13 @@ struct uuid {
          return std::string(to_strbuf(buf)) ;
       }
 
+      explicit operator binary128_t() const
+      {
+         binary128_t result ;
+         memcpy(&result, this, sizeof result) ;
+         return result ;
+      }
+
       friend bool operator==(const uuid &x, const uuid &y)
       {
          return !((x._idata[0] ^ y._idata[0]) | (x._idata[1] ^ y._idata[1])) ;
@@ -117,6 +128,8 @@ struct uuid {
 inline void swap(uuid &lhs, uuid &rhs) { lhs.swap(rhs) ; }
 
 PCOMN_DEFINE_RELOP_FUNCTIONS(, uuid) ;
+
+PCOMN_STATIC_CHECK(sizeof(uuid) == 16) ;
 
 /******************************************************************************/
 /** Network Media Access Address (MAC)
