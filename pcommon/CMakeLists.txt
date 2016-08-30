@@ -67,10 +67,15 @@ add_library(pcommon STATIC
 )
 
 # At least C++11
+target_compile_features(pcommon
+  PUBLIC
+  cxx_alignas
+  cxx_alignof
+  cxx_delegating_constructors
+  )
+
 set_target_properties(pcommon
   PROPERTIES
-  CXX_STANDARD 11
-  CXX_STANDARD_REQUIRED ON
   POSITION_INDEPENDENT_CODE ON
   VISIBILITY_INLINES_HIDDEN ON
   CXX_VISIBILITY_PRESET hidden
