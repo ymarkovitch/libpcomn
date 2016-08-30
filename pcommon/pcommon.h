@@ -642,6 +642,50 @@ inline void pcomn_swap(T &a, T &b)
 }
 
 /*******************************************************************************
+ Hex digit to number and number to hex digit
+*******************************************************************************/
+inline int hextoi(char hexdigit)
+{
+  switch (hexdigit)
+  {
+    case '0': return 0 ; case '1': return 1 ; case '2': return 2 ; case '3': return 3 ;
+    case '4': return 4 ; case '5': return 5 ; case '6': return 6 ; case '7': return 7 ;
+    case '8': return 8 ; case '9': return 9 ;
+
+    case 'a': case 'A': return 10 ; case 'b': case 'B': return 11 ;
+    case 'c': case 'C': return 12 ; case 'd': case 'D': return 13 ;
+    case 'e': case 'E': return 14 ; case 'f': case 'F': return 15 ;
+  }
+  return -1 ;
+}
+
+inline int itohex(unsigned num)
+{
+   static constexpr const char xc[16] =
+      { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' } ;
+   return xc[num & 0xfu] & (-(int)!(num &~ 0xfu)) ;
+}
+
+inline void *hextob(void *buf, size_t bufsz, const char *hexstr)
+{
+   if (!buf || !hexstr && bufsz)
+      return nullptr ;
+
+   uint8_t *data = static_cast<uint8_t *>(buf) ;
+   for (const char *c = hexstr, *e = c + 2 * bufsz ; c != e ; c += 2, ++data)
+   {
+      const int d1 = hextoi(c[0]) ;
+      if (d1 < 0)
+         return nullptr ;
+      const int d2 = hextoi(c[1]) ;
+      if (d2 < 0)
+         return nullptr ;
+      *data = (d1 << 4) | d2 ;
+   }
+   return buf ;
+}
+
+/*******************************************************************************
 
 *******************************************************************************/
 #define PCOMN_NONCOPYABLE(Class)   Class(const Class&) = delete

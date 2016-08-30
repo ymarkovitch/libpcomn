@@ -432,20 +432,12 @@ struct alignas(16) binary128_t {
       void init(const char *hexstr)
       {
          init() ;
-         if (!hexstr) return ;
-         for (const char *c = hexstr, *e = c + 2 * sizeof *this ; c != e ;)
-            if (!isxdigit(*c++)) return ;
-
-         constexpr const char *in_fmt =
-         #ifdef PCOMN_COMPILER_MS
-            "%16llx%16llx"
-         #else
-            "%16Lx%16Lx"
-         #endif
-             ;
-         sscanf(hexstr, in_fmt, (ulonglong_t *)_idata + 0, (ulonglong_t *)_idata + 1) ;
-         to_big_endian(_idata[0]) ;
-         to_big_endian(_idata[1]) ;
+         uint64_t idata[2] ;
+         if (hextob(idata, sizeof idata, hexstr))
+         {
+            _idata[0] = idata[0] ;
+            _idata[1] = idata[1] ;
+         }
       }
 
    private:
@@ -504,19 +496,18 @@ struct sha1hash_pod_t {
 
    protected:
       void init() { _idata[4] = _idata[3] = _idata[2] = _idata[1] = _idata[0] = 0 ; }
-      void init(const char *hashstr)
+      void init(const char *hexstr)
       {
          init() ;
-         if (!hashstr) return ;
-         for (const char *c = hashstr, *e = c + 2 * sizeof *this ; c != e ;)
-            if (!isxdigit(*c++)) return ;
-
-         sscanf(hashstr, "%8x%8x%8x%8x%8x", _idata + 0, _idata + 1, _idata + 2, _idata + 3, _idata + 4) ;
-         to_big_endian(_idata[0]) ;
-         to_big_endian(_idata[1]) ;
-         to_big_endian(_idata[2]) ;
-         to_big_endian(_idata[3]) ;
-         to_big_endian(_idata[4]) ;
+         uint32_t idata[5] ;
+         if (hextob(idata, sizeof idata, hexstr))
+         {
+            _idata[0] = idata[0] ;
+            _idata[1] = idata[1] ;
+            _idata[2] = idata[2] ;
+            _idata[3] = idata[3] ;
+            _idata[4] = idata[4] ;
+         }
       }
 
    private:
