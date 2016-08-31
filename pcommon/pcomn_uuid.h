@@ -36,6 +36,11 @@ struct uuid {
       }
 
    public:
+      enum : size_t {
+         SZ_BIN = 16, /**< Binary representation length */
+         SZ_STR = 36  /**< String representation length (RFC4122, Section 3)   */
+      } ;
+
       /// Create a "null" UUID
       ///
       /// Null UUID has all its octets set to 0; operator bool() returns false
