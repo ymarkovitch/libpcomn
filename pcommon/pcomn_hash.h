@@ -399,7 +399,10 @@ struct alignas(16) binary128_t {
       explicit constexpr operator bool() const { return !!(_idata[0] | _idata[1]) ; }
 
       unsigned char *data() { return reinterpret_cast<unsigned char *>(&_idata) ; }
-      constexpr const unsigned char *data() const { return reinterpret_cast<const unsigned char *>(&_idata) ; }
+      constexpr const unsigned char *data() const
+      {
+         return (const unsigned char *)(const void *)&_idata ;
+      }
 
       static constexpr size_t size() { return sizeof _idata ; }
 

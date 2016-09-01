@@ -54,7 +54,7 @@ struct uuid {
       {}
 
       constexpr uuid(const binary128_t &bin) :
-         _idata{*reinterpret_cast<const uint64_t *>(bin.data()), *(reinterpret_cast<const uint64_t *>(bin.data()) + 1)}
+         _idata{*(const uint64_t *)(const void *)bin.data(), *((const uint64_t *)(const void *)bin.data() + 1)}
       {}
 
       /// Create a UUID from "standard" string representation

@@ -96,6 +96,8 @@ do {                                                        \
 
 namespace pcomn {
 
+using std::nullptr_t ;
+
 const size_t PCOMN_MSGBUFSIZE = 1024 ;
 
 /******************************************************************************/
@@ -142,7 +144,18 @@ static const RaiseError RAISE_ERROR      (true) ;
 /** Not-a-pointer: something, which is both not NULL and is not a valid pointer
 *******************************************************************************/
 template<typename T = void>
-struct not_a_pointer { static constexpr T * const value = reinterpret_cast<T *>(~(intptr_t())) ; } ;
+struct not_a_pointer
+{
+      static constexpr T * const value =
+      #ifdef PCOMN_COMPILER_GNU
+          __builtin_constant_p(reinterpret_cast<T *>(~(intptr_t())))
+         ? reinterpret_cast<T *>(~(intptr_t()))
+         : reinterpret_cast<T *>(~(intptr_t()))
+      #else
+         reinterpret_cast<T *>(~(intptr_t()))
+      #endif
+         ;
+} ;
 
 template<typename T>
 constexpr T * const not_a_pointer<T>::value ;
