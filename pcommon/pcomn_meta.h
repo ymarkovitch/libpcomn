@@ -396,7 +396,7 @@ struct count_types_if<F, H, T...> :
  Note this contrived trait class is not a complete equivalent of the standard
  one: it does not consider move constructor/assignment.
 *******************************************************************************/
-#if PCOMN_WORKAROUND(__GNUC_VER__, < 600)
+#if PCOMN_WORKAROUND(__GNUC_VER__, < 700)
 namespace std {
 #if PCOMN_WORKAROUND(__GNUC_VER__, < 500)
 template<typename T, typename U>

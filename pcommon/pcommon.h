@@ -146,21 +146,13 @@ static const RaiseError RAISE_ERROR      (true) ;
 template<typename T = void>
 struct not_a_pointer
 {
-      static constexpr T * const value =
-      #ifdef PCOMN_COMPILER_GNU
-          __builtin_constant_p(reinterpret_cast<T *>(~(intptr_t())))
-         ? reinterpret_cast<T *>(~(intptr_t()))
-         : reinterpret_cast<T *>(~(intptr_t()))
-      #else
-         reinterpret_cast<T *>(~(intptr_t()))
-      #endif
-         ;
+      constexpr not_a_pointer() = default ;
+
+      template<typename U>
+      operator U*() const { return reinterpret_cast<U*>(~(intptr_t())) ; }
 } ;
 
-template<typename T>
-constexpr T * const not_a_pointer<T>::value ;
-
-constexpr void * const NaP = not_a_pointer<>::value ;
+constexpr const not_a_pointer<> NaP = not_a_pointer<>{} ;
 
 /*******************************************************************************
  void * pointer arithmetics

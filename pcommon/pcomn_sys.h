@@ -148,7 +148,7 @@ DIR *listdir(const char *dirname, unsigned flags, OutputIterator &filenames, Rai
       ::closedir(d) ;
       errno = err ;
       if (!err)
-         return not_a_pointer<DIR>::value ;
+         return NaP ;
 
       PCOMN_CHECK_POSIX(-!!raise, "Cannot read directory '%s'", dirname) ;
       return NULL ;

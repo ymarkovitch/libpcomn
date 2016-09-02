@@ -163,7 +163,9 @@ size_t normpath(const char *name, char *result, size_t bufsize)
             break ;
 
          case 1:
-            if (dest == pathbuf_begin) *dest++ = '.' ; break ;
+            if (dest == pathbuf_begin)
+               *dest++ = '.' ;
+            break ;
 
          case 0:
          {
