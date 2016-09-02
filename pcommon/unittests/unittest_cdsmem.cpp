@@ -30,6 +30,7 @@ class CDSMemTests : public CppUnit::TestFixture {
       void Test_Block_Page_Allocator() ;
       void Test_Concurrent_Freestack_SingleThread() ;
       void Test_Freepool_Ring_SingleThread() ;
+      void Test_Freepool_Ring_SingleThread_Alloc() ;
 
       CPPUNIT_TEST_SUITE(CDSMemTests) ;
 
@@ -37,8 +38,36 @@ class CDSMemTests : public CppUnit::TestFixture {
       CPPUNIT_TEST(Test_Block_Page_Allocator) ;
       CPPUNIT_TEST(Test_Concurrent_Freestack_SingleThread) ;
       CPPUNIT_TEST(Test_Freepool_Ring_SingleThread) ;
+      CPPUNIT_TEST(Test_Freepool_Ring_SingleThread_Alloc) ;
 
       CPPUNIT_TEST_SUITE_END() ;
+} ;
+
+struct test_allocator : malloc_block_allocator {
+      typedef malloc_block_allocator ancestor ;
+
+      test_allocator() : ancestor(8) {}
+
+      unsigned allocated() const { return _allocated.load(std::memory_order_relaxed) ; }
+      unsigned freed() const { return _freed.load(std::memory_order_relaxed) ; }
+
+      unipair<unsigned> state() const { return {allocated(), freed()} ; }
+
+      friend std::ostream &operator<<(std::ostream &os, const test_allocator &v)
+      {
+         return os << "{alloc:" << allocated() << ";freed:" << freed() << '}' ;
+      }
+
+   protected:
+      void *allocate_block() override
+      {
+         void * const data = ancestor::allocate_block() ;
+
+      }
+
+   private:
+      std::atomic<unsigned> _allocated {0} ;
+      std::atomic<unsigned> _freed {0} ;
 } ;
 
 /*******************************************************************************
@@ -90,16 +119,18 @@ void CDSMemTests::Test_Block_Page_Allocator()
 
 void CDSMemTests::Test_Concurrent_Freestack_SingleThread()
 {
-   CPPUNIT_LOG_IS_FALSE(std::is_copy_constructible<concurrent_freestack>::value) ;
-   CPPUNIT_LOG_IS_FALSE(std::is_move_constructible<concurrent_freestack>::value) ;
-   CPPUNIT_LOG_IS_FALSE(std::is_copy_assignable<concurrent_freestack>::value) ;
-   CPPUNIT_LOG_IS_FALSE(std::is_move_assignable<concurrent_freestack>::value) ;
+   typedef concurrent_freestack<> freestack ;
 
-   concurrent_freestack zero_stack (0U) ;
+   CPPUNIT_LOG_IS_FALSE(std::is_copy_constructible<freestack>::value) ;
+   CPPUNIT_LOG_IS_FALSE(std::is_move_constructible<freestack>::value) ;
+   CPPUNIT_LOG_IS_FALSE(std::is_copy_assignable<freestack>::value) ;
+   CPPUNIT_LOG_IS_FALSE(std::is_move_assignable<freestack>::value) ;
 
-   CPPUNIT_LOG_EQUAL(concurrent_freestack(concurrent_freestack::max_size_limit()).max_size(), concurrent_freestack::max_size_limit()) ;
-   CPPUNIT_LOG_EQ(concurrent_freestack(1).max_size(), 1) ;
-   CPPUNIT_LOG_EXCEPTION(concurrent_freestack(concurrent_freestack::max_size_limit() + 1), std::length_error) ;
+   freestack zero_stack (0U) ;
+
+   CPPUNIT_LOG_EQUAL(freestack(freestack::max_size_limit()).max_size(), freestack::max_size_limit()) ;
+   CPPUNIT_LOG_EQ(freestack(1).max_size(), 1) ;
+   CPPUNIT_LOG_EXCEPTION(freestack(freestack::max_size_limit() + 1), std::length_error) ;
 
    CPPUNIT_LOG(std::endl) ;
    CPPUNIT_LOG_EQ(zero_stack.size(), 0) ;
@@ -112,19 +143,19 @@ void CDSMemTests::Test_Concurrent_Freestack_SingleThread()
 
    CPPUNIT_LOG(std::endl) ;
 
-   CPPUNIT_LOG_EXCEPTION(concurrent_freestack{nullptr}, std::invalid_argument) ;
+   CPPUNIT_LOG_EXCEPTION(freestack{nullptr}, std::invalid_argument) ;
 
    unsigned msz1 ;
-   CPPUNIT_LOG_RUN(msz1 = concurrent_freestack::max_size_limit() + 1) ;
-   CPPUNIT_LOG_EXCEPTION(concurrent_freestack{&msz1}, std::length_error) ;
+   CPPUNIT_LOG_RUN(msz1 = freestack::max_size_limit() + 1) ;
+   CPPUNIT_LOG_EXCEPTION(freestack{&msz1}, std::length_error) ;
 
    CPPUNIT_LOG_RUN(msz1 = 1) ;
 
-   concurrent_freestack one_stack {&msz1} ;
+   freestack one_stack {&msz1} ;
 
    CPPUNIT_LOG_EQ(one_stack.max_size(), 1) ;
-   CPPUNIT_LOG_RUN(msz1 = concurrent_freestack::max_size_limit() + 1) ;
-   CPPUNIT_LOG_EQ(one_stack.max_size(), concurrent_freestack::max_size_limit()) ;
+   CPPUNIT_LOG_RUN(msz1 = freestack::max_size_limit() + 1) ;
+   CPPUNIT_LOG_EQ(one_stack.max_size(), freestack::max_size_limit()) ;
    CPPUNIT_LOG_RUN(msz1 = 1) ;
    CPPUNIT_LOG_EQ(one_stack.max_size(), 1) ;
 
@@ -182,8 +213,10 @@ void CDSMemTests::Test_Concurrent_Freestack_SingleThread()
 
 void CDSMemTests::Test_Freepool_Ring_SingleThread()
 {
+   typedef concurrent_freestack<> freestack ;
    typedef concurrent_freepool_ring<> ring ;
-   typedef std::vector<unsigned> uvec ;
+
+   CPPUNIT_LOG_IS_TRUE(std::is_same<ring, concurrent_freepool_ring<freestack>>::value) ;
 
    malloc_block_allocator malloc16 {16} ;
    malloc_block_allocator malloc64 {16, 64} ;
@@ -209,6 +242,11 @@ void CDSMemTests::Test_Freepool_Ring_SingleThread()
 
    ring r16_CPU {malloc64, 1} ;
    CPPUNIT_LOG_EQ(r16_CPU.ringsize(), std::thread::hardware_concurrency()) ;
+}
+
+void CDSMemTests::Test_Freepool_Ring_SingleThread_Alloc()
+{
+   typedef std::vector<unsigned> uvec ;
 }
 
 /*******************************************************************************

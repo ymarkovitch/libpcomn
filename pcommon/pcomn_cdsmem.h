@@ -23,8 +23,27 @@
 
 namespace pcomn {
 
+/*******************************************************************************
+ Forward declarations
+*******************************************************************************/
+class block_allocator ;
+class malloc_block_allocator ;
+
 /******************************************************************************/
-/**
+/** Hazard traits for pools of pages.
+*******************************************************************************/
+template<singlepage_block_allocator>
+struct hazard_traits : hazard_traits<block_allocator> {
+
+      /// Reduce minimum pending cleanups.
+      static constexpr size_t pending_cleanups = 128 ;
+} ;
+
+/******************************************************************************/
+/** Abstract base class for single-size block allocator.
+
+ A single-size block allocator object provides a parameterless allocate() method
+ which returns a block of predefined size and alignment.
 *******************************************************************************/
 class block_allocator {
    public:
@@ -103,7 +122,8 @@ class safe_block {
 } ;
 
 /******************************************************************************/
-/**
+/** Allocates blocks of memory of size and alignment preset in allocator constructor
+ from standard C/C++ heap.
 *******************************************************************************/
 class malloc_block_allocator : public block_allocator {
       typedef block_allocator ancestor ;
@@ -139,7 +159,8 @@ class malloc_block_allocator : public block_allocator {
 } ;
 
 /******************************************************************************/
-/**
+/** Allocates page-sized and page-allocated blocks of memory using OS virtual
+ memory API (e.g. mmap, VirtualAlloc, etc.).
 *******************************************************************************/
 class singlepage_block_allocator : public block_allocator {
       typedef block_allocator ancestor ;
@@ -161,18 +182,21 @@ class singlepage_block_allocator : public block_allocator {
 /******************************************************************************/
 /**
 *******************************************************************************/
+template<typename AllocHazardTag = block_allocator>
 class alignas(PCOMN_CACHELINE_SIZE) concurrent_freestack {
 
       PCOMN_NONCOPYABLE(concurrent_freestack) ;
       PCOMN_NONASSIGNABLE(concurrent_freestack) ;
 
       template<typename T>
-      using hazard = hazard_ptr<T, concurrent_freestack> ;
+      using hazard = hazard_ptr<T, AllocHazardTag> ;
 
       enum : unsigned {
          COUNT_BITS = 24 // Bitsize of the stack item count (16M max)
       } ;
    public:
+      typedef AllocHazardTag hazard_tag ;
+
       explicit concurrent_freestack(unsigned maxsz) :
          _intmaxsz(validate_maxsize(maxsz)),
          _maxsize(_intmaxsz)
@@ -241,16 +265,23 @@ class alignas(PCOMN_CACHELINE_SIZE) concurrent_freestack {
 /******************************************************************************/
 /**
 *******************************************************************************/
-template<class Pool = concurrent_freestack>
+template<class Pool = concurrent_freestack<>>
 class concurrent_freepool_ring final : public block_allocator {
       typedef block_allocator ancestor ;
-   public:
-      typedef Pool pool_type ;
 
-      concurrent_freepool_ring(block_allocator &alloc, unsigned free_maxsize, unsigned ring_size = 0) ;
+      typedef typename Pool::hazard_tag hazard_tag ;
+
+      static_assert(std::is_base_of<block_allocator, hazard_tag>::value,
+                    "Pool hazard tag must be derived from pcomn::block_allocator") ;
+   public:
+
+      typedef Pool         pool_type ;
+      typedef hazard_tag   allocator_type ;
+
+      concurrent_freepool_ring(allocator_type &alloc, unsigned free_maxsize, unsigned ring_size = 0) ;
       ~concurrent_freepool_ring() ;
 
-      block_allocator &allocator() const { return _allocator ; }
+      allocator_type &allocator() const { return _allocator ; }
 
       /// Get the number of pools in the ring.
       /// @note The value is always the power of 2 and >=2.
@@ -259,8 +290,12 @@ class concurrent_freepool_ring final : public block_allocator {
 
       static constexpr unsigned max_ringsize() { return 32 ; }
 
+      /// Get the current maximum pool size.
       unsigned max_size() const { return _pool_maxsz * ringsize() ; }
 
+      /// Request to atomically set the new pool maximum size.
+      /// Note that the resulting maximum size may be greater than requested.
+      ///
       void max_size(unsigned newmaxsize)
       {
          atomic_op::store(&_pool_maxsz, calc_pool_maxsz(newmaxsize), std::memory_order_seq_cst) ;
@@ -280,27 +315,28 @@ class concurrent_freepool_ring final : public block_allocator {
       void free_block(void *block) override ;
 
    private:
-      block_allocator & _allocator ;
+      allocator_type &  _allocator ;
       const unsigned    _pools_mask ;
       unsigned          _pool_maxsz ;
       pool_type *       _pools ;
 
-      unsigned next_poolndx() const
-      {
-         static thread_local unsigned short random_ndx[max_ringsize()] ;
-         static thread_local size_t next = max_ringsize() + 1 ;
-         static constexpr const size_t mask = max_ringsize() - 1 ;
-         if (next > max_ringsize())
-            // Generate random index sequence
-            ;
-         const size_t i = next ;
-         next = (next + 1) & mask ;
-         return random_ndx[i] & (ringsize() - 1) ;
-      }
+      // Factory for per-thread random pool selectors
+      static xoroshiro_prng<std::atomic<unsigned>> _random_factory ;
 
+      // Selector of the next pool index ( high-speed per-thread PRNG)
+      static thread_local xoroshiro_prng<unsigned> poolnum_select {_random_factory.jump()} ;
+
+      // Get the pool (n mod ringsize())
       pool_type &pool(size_t n)
       {
          return _pools[n & _pools_mask] ;
+      }
+
+      // Get the number of attempts to get/put a block from/to pool before allocating new
+      // block or freeing the block, respectively.
+      unsigned maxattempts() const
+      {
+         return std::min(1U, ringsize()) ;
       }
 
       unsigned calc_ringsz(unsigned sz)
@@ -331,7 +367,8 @@ struct concurrent_global_blocks {
 /*******************************************************************************
  concurrent_freestack
 *******************************************************************************/
-inline void *concurrent_freestack::pop()
+template<typename Tag>
+void *concurrent_freestack<Tag>::pop()
 {
    head oldhead = {} ;
    do {
@@ -353,7 +390,8 @@ inline void *concurrent_freestack::pop()
    return nullptr ;
 }
 
-inline bool concurrent_freestack::push(void *p)
+template<typename Tag>
+bool concurrent_freestack<Tag>::push(void *p)
 {
    if (!p)
       return false ;
@@ -384,7 +422,7 @@ inline bool concurrent_freestack::push(void *p)
  concurrent_freepool_ring
 *******************************************************************************/
 template<typename P>
-concurrent_freepool_ring<P>::concurrent_freepool_ring(block_allocator &alloc, unsigned free_maxsize, unsigned ring_size) :
+concurrent_freepool_ring<P>::concurrent_freepool_ring(allocator_type &alloc, unsigned free_maxsize, unsigned ring_size) :
    ancestor(alloc.size(), alloc.alignment()),
    _allocator(alloc),
 
@@ -419,12 +457,32 @@ concurrent_freepool_ring<P>::~concurrent_freepool_ring()
 template<typename P>
 void *concurrent_freepool_ring<P>::allocate_block()
 {
+   unsigned attempts = maxattempts() ;
+   do
+   {
+   }
+   while (attempts--) ;
+
+   // Lost all available attempts, allocate new block.
    return allocator().allocate() ;
 }
 
 template<typename P>
-void concurrent_freepool_ring<P>::free_block(void *)
+void concurrent_freepool_ring<P>::free_block(void *block)
 {
+   NOXCHECK(block) ;
+
+   unsigned attempts = maxattempts() ;
+   do
+   {
+   }
+   while (attempts--) ;
+
+   block_allocator * const dealloc = &allocator() ;
+   // Lost all available attempts, retire the block completely,
+   // i.e. put it into the pending cleanup queue.
+   hazard_manager<hazard_tag>::manager().
+      mark_for_cleanup(block, [=](void *block){ dealloc->deallocate(block) ; }) ;
 }
 
 } // end of namespace pcomn

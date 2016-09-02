@@ -371,9 +371,15 @@ class cleanup_holder {
 
    public:
       template<typename T, typename C>
-      cleanup_holder(T *data, C &&cleanup_fn) noexcept :
+      cleanup_holder(T *data, C &&cleanup_fn,
+                     disable_if_t<std::is_void<T>::value, nullptr_t> = nullptr) noexcept :
          _data(data),
          _cleanup(cleanup_forwarder<T, C>(std::forward<C>(cleanup_fn)))
+      {}
+
+      cleanup_holder(void *data, std::function<void(void *)> cleanup_fn) noexcept :
+         _data(data),
+         _cleanup(std::move(cleanup_fn))
       {}
 
       template<typename T>
