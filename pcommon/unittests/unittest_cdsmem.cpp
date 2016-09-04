@@ -17,6 +17,7 @@
 
 #include <thread>
 #include <numeric>
+#include <new>
 
 using namespace pcomn ;
 
@@ -43,10 +44,34 @@ class CDSMemTests : public CppUnit::TestFixture {
       CPPUNIT_TEST_SUITE_END() ;
 } ;
 
-struct test_allocator : malloc_block_allocator {
-      typedef malloc_block_allocator ancestor ;
 
-      test_allocator() : ancestor(8) {}
+struct item : unipair<uint32_t> {
+      item() : unipair<uint32_t>{0xDEADBEEF, -1} {}
+      item(uint32_t v) : unipair<uint32_t>{0x600DF00D, v} {}
+
+      item &make_bad()
+      {
+         first = 0xDEADBEEF ;
+         return *this ;
+      }
+} ;
+
+inline std::ostream &operator<<(std::ostream &os, const item &v)
+{
+   char buf[32] ;
+   return os << bufprintf(buf, "{%08X;%06u}", (unsigned)v.first, (unsigned)v.second) ;
+}
+
+struct page_allocator : singlepage_block_allocator {
+      template<typename... Args>
+      page_allocator(Args &&...) : singlepage_block_allocator() {}
+} ;
+
+template<typename Base = malloc_block_allocator, size_t size = 8>
+struct test_allocator : Base {
+      typedef Base ancestor ;
+
+      test_allocator() : ancestor(size) {}
 
       unsigned allocated() const { return _allocated.load(std::memory_order_relaxed) ; }
       unsigned freed() const { return _freed.load(std::memory_order_relaxed) ; }
@@ -61,8 +86,16 @@ struct test_allocator : malloc_block_allocator {
    protected:
       void *allocate_block() override
       {
-         void * const data = ancestor::allocate_block() ;
+         return new (ancestor::allocate_block()) item{++_allocated} ;
+      }
 
+      void free_block(void *data) override
+      {
+         CPPUNIT_ASSERT(data) ;
+         CPPUNIT_EQ(((item *)data)->first, 0x600DF00D) ;
+         ((item *)data)->make_bad() ;
+         ++_freed ;
+         ancestor::free_block(data) ;
       }
 
    private:
@@ -213,10 +246,11 @@ void CDSMemTests::Test_Concurrent_Freestack_SingleThread()
 
 void CDSMemTests::Test_Freepool_Ring_SingleThread()
 {
+   typedef std::vector<unsigned> uvec ;
    typedef concurrent_freestack<> freestack ;
    typedef concurrent_freepool_ring<> ring ;
 
-   CPPUNIT_LOG_IS_TRUE(std::is_same<ring, concurrent_freepool_ring<freestack>>::value) ;
+   CPPUNIT_LOG_IS_TRUE((std::is_same<ring, concurrent_freepool_ring<freestack>>::value)) ;
 
    malloc_block_allocator malloc16 {16} ;
    malloc_block_allocator malloc64 {16, 64} ;
@@ -246,7 +280,53 @@ void CDSMemTests::Test_Freepool_Ring_SingleThread()
 
 void CDSMemTests::Test_Freepool_Ring_SingleThread_Alloc()
 {
+   using std::make_pair ;
    typedef std::vector<unsigned> uvec ;
+   typedef test_allocator<> allocator_type ;
+   typedef concurrent_freestack<allocator_type> freestack ;
+   typedef concurrent_freepool_ring<freestack> ring ;
+
+   allocator_type a1 ;
+   item *i1 ;
+   item *i2 ;
+   CPPUNIT_LOG_ASSERT((i1 = (item *)a1.allocate())) ;
+   CPPUNIT_LOG_EQ(a1.state(), make_pair(1U, 0U)) ;
+   CPPUNIT_LOG_EQ(*i1, 1) ;
+   CPPUNIT_LOG_RUN(a1.deallocate(i1)) ;
+   CPPUNIT_LOG_EQ(a1.state(), make_pair(1U, 1U)) ;
+   CPPUNIT_LOG_ASSERT((i1 = (item *)a1.allocate())) ;
+   CPPUNIT_LOG_EQ(*i1, 2) ;
+   CPPUNIT_LOG_EQ(a1.state(), make_pair(2U, 1U)) ;
+   CPPUNIT_LOG_RUN(a1.deallocate(i1)) ;
+   CPPUNIT_LOG_EQ(a1.state(), make_pair(2U, 2U)) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   static allocator_type a2 ;
+   ring r4_2 (a2, 4, 2) ;
+
+   CPPUNIT_LOG_EQ(r4_2.ringsize(), 2) ;
+   CPPUNIT_LOG_EQ(r4_2.max_size(), 4) ;
+
+   CPPUNIT_LOG_ASSERT((i1 = (item *)r4_2.allocate())) ;
+   CPPUNIT_LOG_ASSERT((i2 = (item *)r4_2.allocate())) ;
+   CPPUNIT_LOG_EQ(a2.state(), make_pair(2U, 0U)) ;
+
+   CPPUNIT_LOG_RUN(r4_2.deallocate(i1)) ;
+   CPPUNIT_LOG_RUN(r4_2.deallocate(i2)) ;
+   CPPUNIT_LOG_EQ(a2.state(), make_pair(2U, 0U)) ;
+
+   CPPUNIT_LOG_EXPRESSION(r4_2.pool_sizes()) ;
+
+   CPPUNIT_LOG_ASSERT((i1 = (item *)r4_2.allocate())) ;
+   CPPUNIT_LOG_ASSERT((i2 = (item *)r4_2.allocate())) ;
+
+   if (i1->second > i2->second)
+      std::swap(i1, i2) ;
+
+   CPPUNIT_LOG_EXPRESSION(r4_2.pool_sizes()) ;
+   CPPUNIT_LOG_EQ(a2.state(), make_pair(2U, 0U)) ;
+   CPPUNIT_LOG_EQ(unipair<item>(*i1, *i2), unipair<item>(1, 2)) ;
 }
 
 /*******************************************************************************

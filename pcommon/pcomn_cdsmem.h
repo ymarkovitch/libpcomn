@@ -28,12 +28,13 @@ namespace pcomn {
 *******************************************************************************/
 class block_allocator ;
 class malloc_block_allocator ;
+class singlepage_block_allocator ;
 
 /******************************************************************************/
 /** Hazard traits for pools of pages.
 *******************************************************************************/
-template<singlepage_block_allocator>
-struct hazard_traits : hazard_traits<block_allocator> {
+template<>
+struct hazard_traits<singlepage_block_allocator> : hazard_traits<block_allocator> {
 
       /// Reduce minimum pending cleanups.
       static constexpr size_t pending_cleanups = 128 ;
@@ -324,7 +325,7 @@ class concurrent_freepool_ring final : public block_allocator {
       static xoroshiro_prng<std::atomic<unsigned>> _random_factory ;
 
       // Selector of the next pool index ( high-speed per-thread PRNG)
-      static thread_local xoroshiro_prng<unsigned> poolnum_select {_random_factory.jump()} ;
+      static thread_local xoroshiro_prng<unsigned> poolnum_select ;
 
       // Get the pool (n mod ringsize())
       pool_type &pool(size_t n)
@@ -353,10 +354,14 @@ class concurrent_freepool_ring final : public block_allocator {
       }
 } ;
 
+template<class Pool>
+thread_local
+xoroshiro_prng<unsigned> concurrent_freepool_ring<Pool>::poolnum_select {_random_factory.jump()} ;
+
 /******************************************************************************/
 /**
 *******************************************************************************/
-template<size_t size, size_t alignment, typename Tag = void, class Pool = concurrent_freestack>
+template<size_t size, size_t alignment, typename Tag = void, class Pool = concurrent_freestack<>>
 struct concurrent_global_blocks {
 
       static block_allocator &blocks() ;
