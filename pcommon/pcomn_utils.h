@@ -583,10 +583,28 @@ class omemstream : private std::basic_streambuf<char>, public std::ostream {
  but way more efficient due to pcomn::omemstream instead of std::stringstream
 *******************************************************************************/
 template<typename T>
+__noinline
 std::string string_cast(T &&arg)
 {
    pcomn::omemstream os ;
    os << std::forward<T>(arg) ;
+   return os.checkout() ;
+}
+
+inline std::ostream &print_values(std::ostream &os) { return os ; }
+
+template<typename T, typename... Tn>
+inline std::ostream &print_values(std::ostream &os, T &&a1, Tn &&...an)
+{
+   return print_values(os << std::forward<T>(a1), std::forward<Tn>(an)...) ;
+}
+
+template<typename T1, typename T2, typename... Tn>
+__noinline
+std::string string_cast(T1 &&a1, T2 &&a2, Tn &&...an)
+{
+   pcomn::omemstream os ;
+   print_values(os, std::forward<T1>(a1), std::forward<T2>(a2), std::forward<Tn>(an)...) ;
    return os.checkout() ;
 }
 

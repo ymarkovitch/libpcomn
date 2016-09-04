@@ -27,6 +27,7 @@ class UtilityTests : public CppUnit::TestFixture {
       void Test_TypeTraits() ;
       void Test_TupleUtils() ;
       void Test_StreamUtils() ;
+      void Test_String_Cast() ;
 
       CPPUNIT_TEST_SUITE(UtilityTests) ;
 
@@ -35,6 +36,7 @@ class UtilityTests : public CppUnit::TestFixture {
       CPPUNIT_TEST(Test_TypeTraits) ;
       CPPUNIT_TEST(Test_TupleUtils) ;
       CPPUNIT_TEST(Test_StreamUtils) ;
+      CPPUNIT_TEST(Test_String_Cast) ;
 
       CPPUNIT_TEST_SUITE_END() ;
 } ;
@@ -312,6 +314,13 @@ void UtilityTests::Test_StreamUtils()
    CPPUNIT_LOG_ASSERT(std::getline(imems2, line01)) ;
    CPPUNIT_LOG_EQ(line01, "Bye, baby!") ;
    CPPUNIT_LOG_IS_FALSE(std::getline(imems2, line01)) ;
+}
+
+void UtilityTests::Test_String_Cast()
+{
+   CPPUNIT_LOG_EQ(string_cast(20), "20") ;
+   CPPUNIT_LOG_EQ(string_cast("Hello, ", 20), "Hello, 20") ;
+   CPPUNIT_LOG_EQ(string_cast("Hello, ", 1, 2, std::string("3")), "Hello, 123") ;
 }
 
 /*******************************************************************************
