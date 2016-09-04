@@ -99,6 +99,9 @@
 #define CPPUNIT_ASSERT_EQ(expected, actual) \
    (CppUnit::X::assertEq((expected), (actual), CPPUNIT_SOURCELINE()))
 
+#define CPPUNIT_EQ(actual, expected)            \
+   CPPUNIT_ASSERT_EQ((expected), (actual))
+
 #define CPPUNIT_LOG_EQ(actual, expected)                                \
    (CPPUNIT_LOG_MESSAGE((__CPPUNIT_CONCAT_SRC_LINE("EXPECTING: (") #actual ") == (" #expected ")... ")), \
     CPPUNIT_LOG_MESSAGE((CPPUNIT_ASSERT_EQ(expected, actual), "OK\n")))
