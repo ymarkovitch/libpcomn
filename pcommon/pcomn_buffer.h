@@ -254,7 +254,7 @@ class cow_buffer {
       /// is empty: empty() for such buffer returns true even though size() is not zero.
       /// Memory is allocated after first call of non-constant get() (or, the same,
       /// non-constant operator void *)
-      explicit cow_buffer(size_t sz = 0) noexcept : _size(sz) {}
+      explicit constexpr cow_buffer(size_t sz = 0) noexcept : _size(sz) {}
 
       cow_buffer(const void *data, size_t sz) : _size(sz)
       {

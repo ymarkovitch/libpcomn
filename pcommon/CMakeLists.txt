@@ -105,7 +105,7 @@ target_compile_options(pcommon
   $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>:-Wall>
   $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>:-gdwarf-4>
   $<$<CXX_COMPILER_ID:GNU>:-fno-debug-types-section -grecord-gcc-switches>
-  $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>>:-Wno-potentially-evaluated-expression -Wno-mismatched-tags>
+  $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:Clang>>:-Wno-potentially-evaluated-expression -Wno-mismatched-tags>
 
   PRIVATE
   $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>>:-Woverloaded-virtual>
