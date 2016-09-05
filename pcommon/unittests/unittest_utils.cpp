@@ -318,6 +318,9 @@ void UtilityTests::Test_StreamUtils()
 
 void UtilityTests::Test_String_Cast()
 {
+   CPPUNIT_LOG_EQUAL(string_cast("Hello!"), std::string("Hello!")) ;
+   CPPUNIT_LOG_EQUAL(string_cast(std::string("Hello!")), std::string("Hello!")) ;
+
    CPPUNIT_LOG_EQ(string_cast(20), "20") ;
    CPPUNIT_LOG_EQ(string_cast("Hello, ", 20), "Hello, 20") ;
    CPPUNIT_LOG_EQ(string_cast("Hello, ", 1, 2, std::string("3")), "Hello, 123") ;

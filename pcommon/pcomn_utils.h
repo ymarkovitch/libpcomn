@@ -584,11 +584,20 @@ class omemstream : private std::basic_streambuf<char>, public std::ostream {
 *******************************************************************************/
 template<typename T>
 __noinline
-std::string string_cast(T &&arg)
+disable_if_t<std::is_convertible<T, std::string>::value, std::string>
+string_cast(T &&arg)
 {
    pcomn::omemstream os ;
    os << std::forward<T>(arg) ;
    return os.checkout() ;
+}
+
+template<typename T>
+inline
+std::enable_if_t<std::is_convertible<T, std::string>::value, std::string>
+string_cast(T &&arg)
+{
+   return {std::forward<T>(arg)} ;
 }
 
 inline std::ostream &print_values(std::ostream &os) { return os ; }
