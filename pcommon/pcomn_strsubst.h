@@ -123,7 +123,7 @@ class substitution_map {
 
    public:
       _PCOMNEXP substitution_map() ;
-      _PCOMNEXP ~substitution_map() ;
+      _PCOMNEXP ~substitution_map() throw() ;
 
       bool empty() const { return _replacement_map.empty() ; }
 

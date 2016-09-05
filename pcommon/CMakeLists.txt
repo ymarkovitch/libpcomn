@@ -101,11 +101,14 @@ target_compile_definitions(pcommon
 
 target_compile_options(pcommon
   PUBLIC
-  $<$<CXX_COMPILER_ID:GNU>:-pthread>
-  $<$<CXX_COMPILER_ID:GNU>:-Wall>
-  $<$<CXX_COMPILER_ID:GNU>:-gdwarf-4 -fno-debug-types-section -grecord-gcc-switches>
+  $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>:-pthread>
+  $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>:-Wall>
+  $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>:-gdwarf-4>
+  $<$<CXX_COMPILER_ID:GNU>:-fno-debug-types-section -grecord-gcc-switches>
+  $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>>:-Wno-potentially-evaluated-expression -Wno-mismatched-tags>
+
   PRIVATE
-  $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:GNU>>:-Woverloaded-virtual>
+  $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>>:-Woverloaded-virtual>
   )
 
 target_link_libraries(pcommon

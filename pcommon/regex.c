@@ -1214,15 +1214,14 @@ static const char *regprop(const char *op)
       if (INRANGE(OP(op), OPEN, OPEN+MAXNUMEXP-1))
       {
          sprintf(buf+strlen(buf), "OPEN%d", OP(op)-OPEN) ;
-         p = NULL ;
       }
       else if (INRANGE(OP(op), CLOSE, CLOSE+MAXNUMEXP-1))
       {
          sprintf(buf+strlen(buf), "CLOSE%d", OP(op)-CLOSE);
-         p = NULL;
       }
       else
          FAIL_COMPLETELY("pcomn_regdump(): corrupted opcode");
+      p = NULL ;
      break;
    }
    if (p != NULL)

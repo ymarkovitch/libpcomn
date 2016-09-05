@@ -433,7 +433,10 @@ class closed_hashtable {
       }
 
    private:
-      template<bool UseStaticBuckets, nullptr_t> union combined_buckets ;
+      template<bool UseStaticBuckets, nullptr_t> union combined_buckets {
+            static_assert(UseStaticBuckets || !UseStaticBuckets,
+                          "The non-specialized version of combined_buckets must never be instantiated") ;
+      } ;
 
       /*************************************************************************
         Common state for both dynamic and static buckets.

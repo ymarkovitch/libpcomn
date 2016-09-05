@@ -355,6 +355,7 @@
 *******************************************************************************/
 #elif defined (__GNUC__)
 #  define __GNUC_VER__ (__GNUC__*100+__GNUC_MINOR__*10+__GNUC_PATCHLEVEL__)
+#  define __CLANG_VER__ (__clang_major__*100+__clang_minor__*10+__clang_patchlevel__)
 
 #  define PCOMN_COMPILER      GNU
 #  define PCOMN_COMPILER_NAME "GCC"
@@ -432,8 +433,8 @@
  Note MSVC++ does not define a correct __cplusplus macro value, so we explicitly
  test for MSVC version (1900 is Visual Studio 2015 compiler)
 *******************************************************************************/
-#if PCOMN_COMPILER_GNU && __GNUC_VER__ < 480
-#  error GNU C/C++ __GNUC__.__GNUC_MINOR__ detected. Versions of GNU C/C++ below 4.8 are not supported.
+#if PCOMN_COMPILER_GNU && __GNUC_VER__ < 480 && __CLANG_VER__ < 370
+#  error GNU C/C++ or Clang version is too old. Versions of GNU C/C++ earlier 4.8 or Clang earlier 3.7 are not supported.
 #elif PCOMN_COMPILER_MS && (__cplusplus  && _MSC_VER < 1900 && !defined(__INTEL_CXX11_MODE__))
 #  error Microsoft C/C++ _MSC_VER detected. Versions of MSVC below 19.00 (Visual Studio 2015) are not supported.
 #endif

@@ -592,8 +592,8 @@ struct bad_alloc_msg : public std::bad_alloc {
       char _errbuf[128] ;
 } ;
 
-template<bool> inline __noreturn void handle_bad_alloc() { throw_exception<std::bad_alloc>() ; }
-template<> inline void handle_bad_alloc<false>() {}
+template<bool> inline void handle_bad_alloc() {}
+template<> inline __noreturn void handle_bad_alloc<true>() { throw_exception<std::bad_alloc>() ; }
 
 template<typename T>
 inline T *ensure_allocated(T *p)

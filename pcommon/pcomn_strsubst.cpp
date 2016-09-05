@@ -21,7 +21,7 @@ namespace tpl {
 substitution_map::substitution_map()
 {}
 
-substitution_map::~substitution_map()
+substitution_map::~substitution_map() throw()
 {
    clear_icontainer(_replacement_map) ;
 }

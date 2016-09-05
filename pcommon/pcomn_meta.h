@@ -283,17 +283,17 @@ struct rebind___t {
 template<typename C, typename T, typename... A>
 using rebind_t = decltype(rebind___t<T, A...>::eval(autoval<C *>())) ;
 
-template<typename Functor, typename Argtype, template<class> typename Default>
+template<typename Functor, typename Argtype, template<class> class Default>
 struct select_functor {
       typedef Functor type ;
 } ;
 
-template<typename Argtype, template<class> typename Default>
+template<typename Argtype, template<class> class Default>
 struct select_functor<void, Argtype, Default> {
       typedef Default<Argtype> type ;
 } ;
 
-template<typename Functor, typename Argtype, template<class> typename Default>
+template<typename Functor, typename Argtype, template<class> class Default>
 using select_functor_t = typename select_functor<Functor, Argtype, Default>::type ;
 
 /******************************************************************************/
@@ -396,7 +396,7 @@ struct count_types_if<F, H, T...> :
  Note this contrived trait class is not a complete equivalent of the standard
  one: it does not consider move constructor/assignment.
 *******************************************************************************/
-#if PCOMN_WORKAROUND(__GNUC_VER__, < 700)
+#if !defined(__clang__) && PCOMN_WORKAROUND(__GNUC_VER__, < 700)
 namespace std {
 #if PCOMN_WORKAROUND(__GNUC_VER__, < 500)
 template<typename T, typename U>

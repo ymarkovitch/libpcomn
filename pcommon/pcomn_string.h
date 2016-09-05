@@ -663,7 +663,7 @@ __noinline std::string strvprintf_(const char *format, va_list args)
    if (actual_size > initsize)
       vsnprintf(&*result.begin(), actual_size + 1, format, args) ;
 
-   return std::move(result) ;
+   return result ;
 }
 
 template<nullptr_t>
@@ -699,7 +699,7 @@ inline std::string strprintf(const char *format, ...)
    std::string result (strvprintf(format, parm)) ;
    va_end(parm) ;
 
-   return std::move(result) ;
+   return result ;
 }
 
 inline std::string &strvappendf(std::string &s, const char *format, va_list args)

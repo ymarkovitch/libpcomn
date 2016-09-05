@@ -28,7 +28,7 @@
 
 namespace pcomn {
 
-template<typename> class basic_strslice ;
+template<typename> struct basic_strslice ;
 
 /******************************************************************************/
 /** This template class is intended to save an old variable value before it is

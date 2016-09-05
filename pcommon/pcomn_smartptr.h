@@ -530,7 +530,7 @@ inline void swap(sptr_wrapper<T> &x, sptr_wrapper<T> &y) { x.swap(y) ; }
    {                                                              \
       lhs.swap(rhs) ;                                             \
    }                                                              \
-   template<typename T> struct sptr_wrapper_tag<PTemplate<T> > {}
+   template<typename T> class sptr_wrapper_tag<PTemplate<T> > {}
 
 PCOMN_SPTR_DEF(shared_intrusive_ptr) ;
 PCOMN_SPTR_DEF(shared_ref) ;

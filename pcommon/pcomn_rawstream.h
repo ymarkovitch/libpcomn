@@ -764,7 +764,7 @@ class _PCOMNEXP raw_icachestream : public raw_istream {
       }
 
       void start_caching() { ++_caching ; }
-      void stop_caching() { _caching && !--_caching ; }
+      void stop_caching() { (void)(_caching && !--_caching) ; }
 
       bool caching() const { return !!_caching ; }
 

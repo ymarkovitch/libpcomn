@@ -331,7 +331,7 @@ void register_syslog_writer(syslog_writer writer, void *data)
    ctx::UNLOCK() ;
 }
 
-static inline constexpr void *fdlog_data(int fd, LogLevel level)
+static inline void *fdlog_data(int fd, LogLevel level)
 {
    return (void *)((uintptr_t)fd | ((level & 0xfU) << 28)) ;
 }

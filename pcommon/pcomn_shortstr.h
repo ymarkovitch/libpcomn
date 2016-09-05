@@ -115,7 +115,7 @@ class short_string {
       {
          const size_t sz = size() ;
          PCOMN_THROW_MSG_IF(pos >= sz, std::out_of_range,
-                            "Position %u is out of range for small string of size %u.", pos, size) ;
+                            "Position %u is out of range for small string of size %u.", pos, sz) ;
          return (*this)[pos] ;
       }
 
