@@ -28,6 +28,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <fcntl.h>
+#include <pthread.h>
 
 namespace pcomn {
 namespace sys {
@@ -233,6 +234,11 @@ inline nanotime_t clock_cputime_process() { return clock_gettime(CLOCK_PROCESS_C
 inline nanotime_t clock_cputime_thread()  { return clock_gettime(CLOCK_THREAD_CPUTIME_ID) ; }
 
 #endif
+
+inline unsigned long long thread_id()
+{
+   return pthread_self() ;
+}
 
 } // end of namespace pcomn::sys
 } // end of namespace pcomn

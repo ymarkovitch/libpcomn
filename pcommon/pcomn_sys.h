@@ -120,6 +120,12 @@ inline unsigned hw_threads_count()
    return result ;
 }
 
+/// Get platform-dependent 64-bit thread ID
+inline unsigned long long thread_id() ;
+
+/*******************************************************************************
+ Directory listing
+*******************************************************************************/
 const unsigned ODIR_SKIP_DOT     = 0x0001 ; /**< Skip '.' while writing filenames */
 const unsigned ODIR_SKIP_DOTDOT  = 0x0002 ; /**< Skip '..' while writing filenames */
 const unsigned ODIR_SKIP_DOTS    = 0x0003 ; /**< Skip both '.' and '..' */

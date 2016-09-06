@@ -41,6 +41,11 @@ inline fileoff_t filesize(const char *name)
    return result ;
 }
 
+inline unsigned long long thread_id()
+{
+   return GetCurrentThreadId() ;
+}
+
 } // end of namespace pcomn::sys
 } // end of namespace pcomn
 
