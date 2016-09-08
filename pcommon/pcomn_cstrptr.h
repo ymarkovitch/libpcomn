@@ -111,16 +111,15 @@ typename basic_cstrptr<C, Deleter>::deleter_type basic_cstrptr<C, Deleter>::_del
 /** String traits for basic_cstrptr_base<C> and basic_cstrptr<C, D>
 *******************************************************************************/
 template<typename C>
-struct string_traits<basic_cstrptr_base<C> > {
+struct string_traits<basic_cstrptr_base<C>> {
       typedef C                     char_type ;
       typedef basic_cstrptr_base<C> type ;
-      typedef const type            const_type ;
       typedef size_t                size_type ;
       typedef size_t                hash_type ;
 
-      static size_type len(const_type &s) { return s.size() ; }
-      static constexpr const char_type *cstr(const_type &s) { return s.c_str() ; }
-      static hash_type hash(const_type &s) { return string_traits<const char_type *>::hash(cstr(s)) ; }
+      static size_type len(const type &s) { return s.size() ; }
+      static constexpr const char_type *cstr(const type &s) { return s.c_str() ; }
+      static hash_type hash(const type &s) { return string_traits<const char_type *>::hash(str::cstr(s)) ; }
 } ;
 
 template<typename C, typename D>

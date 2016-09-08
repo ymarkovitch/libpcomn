@@ -163,8 +163,6 @@ using instance_if_t = std::enable_if_t<enabled, Instantiate> ;
 /*******************************************************************************
  Template compile-time logic operations.
 *******************************************************************************/
-#define PCOMN_CTVALUE(type, name, expr) static const type name = (expr)
-
 template<class L, class R>
 using ct_and = bool_constant<L::value && R::value> ;
 template<class L, class R>

@@ -46,6 +46,24 @@ namespace pcomn {
 
 typedef std::vector<std::string> string_vector ;
 
+template<typename>
+struct string_traits ;
+
+namespace str {
+
+template<typename S>
+inline constexpr const typename string_traits<S>::char_type *cstr(const S &str)
+{
+   return string_traits<S>::cstr(str) ;
+}
+
+template<typename S>
+inline typename string_traits<S>::size_type len(const S &str)
+{
+   return string_traits<S>::len(str) ;
+}
+}
+
 /*******************************************************************************
                      template<typename C>
                      struct ctype_traits
@@ -117,18 +135,17 @@ template<typename C>
 struct cstring_traits {
       typedef C               char_type ;
       typedef C *             type ;
-      typedef const C *       const_type ;
       typedef size_t          size_type ;
       // The definition of hash_type is essentially not necessary, but allows to
       // employ SFINAE while defining hasher functions
       typedef size_t          hash_type ;
 
-      PCOMN_CTVALUE(bool, has_std_read, false) ;
-      PCOMN_CTVALUE(bool, has_std_write, false) ;
+      static constexpr const bool has_std_read = false ;
+      static constexpr const bool has_std_write = false ;
 
-      static size_type len(const_type s) { return std::char_traits<char_type>::length(s) ; }
-      static constexpr const char_type *cstr(const_type s) { return s ; }
-      static hash_type hash(const_type s) { return hashFNV(s, len(s)) ; }
+      static size_type len(const char_type *s) { return std::char_traits<char_type>::length(s) ; }
+      static constexpr const char_type *cstr(const char_type *s) { return s ; }
+      static hash_type hash(const char_type *s) { return hashFNV(s, str::len(s)) ; }
 } ;
 
 /*******************************************************************************
@@ -138,17 +155,16 @@ struct cstring_traits {
 template<typename S, bool immutable>
 struct stdstring_traits {
       typedef S                           type ;
-      typedef const S                     const_type ;
       typedef typename type::value_type   char_type ;
       typedef typename type::size_type    size_type ;
       typedef size_t                      hash_type ;
 
-      PCOMN_CTVALUE(bool, has_std_read, true) ;
-      PCOMN_CTVALUE(bool, has_std_write, !immutable) ;
+      static constexpr const bool has_std_read = true ;
+      static constexpr const bool has_std_write = !immutable ;
 
-      static size_type len(const_type &s) { return s.size() ; }
-      static const char_type *cstr(const_type &s) { return s.c_str() ; }
-      static hash_type hash(const_type &s) { return hashFNV(cstr(s), len(s) * sizeof(char_type)) ; }
+      static size_type len(const type &s) { return s.size() ; }
+      static const char_type *cstr(const type &s) { return s.c_str() ; }
+      static hash_type hash(const type &s) { return hashFNV(str::cstr(s), str::len(s) * sizeof(char_type)) ; }
 } ;
 
 
@@ -157,22 +173,21 @@ struct stdstring_traits {
   Assumes c_str() return pointer to zero-delimited chartype sequence, which
   correctly represent the string.
 *******************************************************************************/
-template<typename Str, typename Char, typename Size = size_t>
+template<typename S, typename C, typename Z = size_t>
 struct anystring_traits {
-      typedef Char      char_type ;
-      typedef Str       type ;
-      typedef const Str const_type ;
-      typedef Size      size_type ;
+      typedef S      type ;
+      typedef C      char_type ;
+      typedef Z      size_type ;
       // The definition of hash_type is essentially not necessary, but allows to
       // employ SFINAE while defining hasher functions
-      typedef size_t    hash_type ;
+      typedef size_t hash_type ;
 
-      PCOMN_CTVALUE(bool, has_std_read, false) ;
-      PCOMN_CTVALUE(bool, has_std_write, false) ;
+      static constexpr const bool has_std_read = false ;
+      static constexpr const bool has_std_write = false ;
 
-      static size_type len(const_type &s) { return std::char_traits<char_type>::length(cstr(s)) ; }
-      static constexpr const char_type *cstr(const_type &s) { return s.c_str() ; }
-      static hash_type hash(const_type &s) { return hashFNV(cstr(s), len(s)) ; }
+      static size_type len(const type &s) { return std::char_traits<char_type>::length(str::cstr(s)) ; }
+      static constexpr const char_type *cstr(const type &s) { return s.c_str() ; }
+      static hash_type hash(const type &s) { return hashFNV(str::cstr(s), len(s)) ; }
 } ;
 
 /******************************************************************************/
@@ -182,16 +197,15 @@ template<typename P>
 struct pstring_traits {
       typedef typename std::remove_reference<decltype(*P().get())>::type  char_type ;
       typedef P               type ;
-      typedef const type      const_type ;
       typedef size_t          size_type ;
       typedef size_t          hash_type ;
 
-      PCOMN_CTVALUE(bool, has_std_read, false) ;
-      PCOMN_CTVALUE(bool, has_std_write, false) ;
+      static constexpr const bool has_std_read = false ;
+      static constexpr const bool has_std_write = false ;
 
-      static size_type len(const type &s) { return std::char_traits<char_type>::length(cstr(s)) ; }
+      static size_type len(const type &s) { return std::char_traits<char_type>::length(str::cstr(s)) ; }
       static constexpr const char_type *cstr(const type &s) { return s.get() ; }
-      static hash_type hash(const type &s) { return hashFNV(cstr(s), len(s)) ; }
+      static hash_type hash(const type &s) { return hashFNV(str::cstr(s), str::len(s)) ; }
 } ;
 
 /*******************************************************************************
@@ -311,18 +325,6 @@ using enable_if_compatible_strings_t = typename enable_if_compatible_strings<S1,
  pcomn::str
 *******************************************************************************/
 namespace str {
-
-template<typename S>
-inline constexpr const typename ::pcomn::string_traits<S>::char_type *cstr(const S &str)
-{
-   return ::pcomn::string_traits<S>::cstr(str) ;
-}
-
-template<typename S>
-inline typename ::pcomn::string_traits<S>::size_type len(const S &str)
-{
-   return ::pcomn::string_traits<S>::len(str) ;
-}
 
 /// @cond
 namespace detail {
