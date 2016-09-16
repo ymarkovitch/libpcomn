@@ -147,6 +147,9 @@
 #ifdef PCOMN_COMPILER_CXX17
 #undef PCOMN_COMPILER_CXX17
 #endif
+#ifdef PCOMN_STL_CXX17
+#undef PCOMN_STL_CXX17
+#endif
 #ifdef PCOMN_RTL_MS
 #undef PCOMN_RTL_MS
 #endif
@@ -201,7 +204,7 @@
 #  define PCOMN_PL_64BIT            1
 #  define PCOMN_PL_X86              1
 #  define PCOMN_CPU_LITTLE_ENDIAN   1
-#elif defined(_M_IX86) || defined(__x86_64__) || defined(i386) || defined(_X86_) || defined(__THW_INTEL__)
+#elif defined(_M_IX86) || defined(i386) || defined(_X86_) || defined(__THW_INTEL__)
 #  define PCOMN_PL_32BIT            1
 #  define PCOMN_PL_X86              1
 #  define PCOMN_CPU_LITTLE_ENDIAN   1
@@ -413,8 +416,9 @@
 #  if __cplusplus >= 201103L || (defined(_MSC_VER) && (_MSC_VER >= 1900 || defined(__INTEL_CXX11_MODE__)))
 #     define PCOMN_COMPILER_CXX11 1
 #     define PCOMN_STL_CXX11      1
-#     if (defined(_MSC_VER) && _MSC_VER >= 1800)
+#     if (defined(_MSC_VER) && _MSC_VER >= 1900)
 #        define PCOMN_STL_CXX14   1
+#        define PCOMN_STL_CXX17   1
 #        define PCOMN_RTL_MS      1
 #     endif
 #  endif
@@ -482,6 +486,13 @@
 #  define _PCOMNEXP   __IMPORT
 #else
 #  define _PCOMNEXP
+#endif
+
+/*******************************************************************************
+ We support only 64-bit platforms
+*******************************************************************************/
+#ifdef PCOMN_PL_32BIT
+#error Only 64-bit platforms are supported.
 #endif
 
 /******************************************************************************/

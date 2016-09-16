@@ -19,7 +19,29 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} CACHE PATH "")
 
 include(pcommon)
 
+set(UNITTESTS ON CACHE BOOL "Enable unittests building. Requires CPPUntit.")
+
 message("***** Processing ${PROJECT_NAME} *****")
+
+if (NOT UNIX)
+  if (NOT ZLIB_INCLUDE_DIR)
+    find_package(ZLIB)
+  endif()
+  if (NOT ZLIB_INCLUDE_DIR)
+    messsage(FATAL_ERROR "ZLib include path not found. Please specify -DZLIB_INCLUDE_DIR manually.")
+  endif()
+endif()
+
+if (${CMAKE_GENERATOR} MATCHES ".*Visual Studio.*")
+
+  if (NOT "${CMAKE_GENERATOR_PLATFORM}" STREQUAL "x64")
+    message(FATAL_ERROR "32-bit compilation is not supported. Please specify -DCMAKE_GENERATOR_PLATFORM=x64")
+  endif()
+
+  set(COMPILE_LANGUAGE_CXX "1:1")
+else()
+  set(COMPILE_LANGUAGE_CXX "COMPILE_LANGUAGE:CXX")
+endif()
 
 # Platform sources subdirectory
 if (UNIX)
@@ -57,9 +79,6 @@ add_library(pcommon STATIC
   pcomn_ziowrap.c
   pcomn_zstream.cpp
 
-  # Platform-dependent target sources
-  ${PLATFORM_SOURCES}/pcomn_sys.cpp
-
   $<$<NOT:$<PLATFORM_ID:Windows>>:
   pcomn_crypthash
   unix/pcomn_posix_exec.cpp
@@ -92,11 +111,16 @@ target_compile_features(pcommon
 target_include_directories(pcommon
   PUBLIC
   ${PROJECT_SOURCE_DIR}
+  ${ZLIB_INCLUDE_DIR}
   )
 
 target_compile_definitions(pcommon
   PUBLIC
   $<$<CONFIG:Debug>:${PCOMN_CHECK} ${PCOMN_TRACE}>
+  $<$<PLATFORM_ID:Windows>:_WIN32_WINNT=0x0600>
+
+  PRIVATE
+  $<$<PLATFORM_ID:Windows>:WIN32_LEAN_AND_MEAN=1 UNICODE _UNICODE>
   )
 
 target_compile_options(pcommon
@@ -105,10 +129,10 @@ target_compile_options(pcommon
   $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>:-Wall>
   $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>:-gdwarf-4>
   $<$<CXX_COMPILER_ID:GNU>:-fno-debug-types-section -grecord-gcc-switches>
-  $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:Clang>>:-Wno-potentially-evaluated-expression -Wno-mismatched-tags>
+  $<$<AND:$<CXX_COMPILER_ID:Clang>,$<${COMPILE_LANGUAGE_CXX}>>:-Wno-potentially-evaluated-expression -Wno-mismatched-tags>
 
   PRIVATE
-  $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>>:-Woverloaded-virtual>
+  $<$<AND:$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>,$<${COMPILE_LANGUAGE_CXX}>>:-Woverloaded-virtual>
   )
 
 target_link_libraries(pcommon
@@ -116,4 +140,6 @@ target_link_libraries(pcommon
   $<$<OR:$<PLATFORM_ID:Linux>,$<PLATFORM_ID:Cygwin>,$<PLATFORM_ID:MinGW>>:-pthread>
   )
 
-add_subdirectory(unittests EXCLUDE_FROM_ALL)
+if (${UNITTESTS})
+  add_subdirectory(unittests EXCLUDE_FROM_ALL)
+endif()

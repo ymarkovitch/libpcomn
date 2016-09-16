@@ -4,6 +4,7 @@ CTestTestfile.cmake
 Makefile
 cmake_install.cmake
 bin
+build
 Testing/
 scratch/
 maketags

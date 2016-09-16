@@ -163,7 +163,7 @@ constexpr inline T *padd(T *p, ptrdiff_t offset)
    return (T *)((char *)p + offset) ;
 }
 
-constexpr inline ptrdiff_t pdiff(const void *p1, const void *p2)
+inline ptrdiff_t pdiff(const void *p1, const void *p2)
 {
    return (const char *)p1 - (const char *)p2 ;
 }

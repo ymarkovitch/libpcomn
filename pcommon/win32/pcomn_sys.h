@@ -46,6 +46,18 @@ inline unsigned long long thread_id()
    return GetCurrentThreadId() ;
 }
 
+inline size_t pagesize()
+{
+   static SYSTEM_INFO info ;
+   static SYSTEM_INFO *pinfo ;
+   if (!pinfo)
+   {
+      GetSystemInfo(&info) ;
+      pinfo = &info ;
+   }
+   return info.dwAllocationGranularity ;
+}
+
 } // end of namespace pcomn::sys
 } // end of namespace pcomn
 

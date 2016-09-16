@@ -45,6 +45,8 @@ project pcommon
   <toolset>gcc,<variant-tag>release:<cxxflags>-fno-implement-inlines
 
   <toolset>msvc:<define>_SCL_SECURE_NO_WARNINGS
+  <toolset>msvc:<define>UNICODE
+  <toolset>msvc:<define>_UNICODE
 
   <os>NT:<define>_WIN32_WINNT=0x0600
   <os>NT:<define>WIN32_LEAN_AND_MEAN=1
