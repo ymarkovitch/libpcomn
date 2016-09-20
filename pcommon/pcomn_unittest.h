@@ -619,7 +619,7 @@ void TestFixture<private_dirname>::ensure_data_file_match(const strslice &data_s
 }
 
 inline int run_tests(TestRunner &runner, int argc, char ** const argv,
-                     const char *diag_profile, const char *title)
+                     const char *diag_profile = nullptr, const char *title = nullptr)
 {
    std::string test_path ;
    if (argc >= 2)
