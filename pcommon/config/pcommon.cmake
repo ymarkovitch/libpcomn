@@ -162,20 +162,30 @@ endfunction(unittests_directory)
 
 macro(set_executable_path path)
   if(IS_ABSOLUTE ${path})
-    set(EXECUTABLE_OUTPUT_PATH ${path})
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${path})
   else()
-    set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/bin)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin)
   endif()
-  set(LIBRARY_OUTPUT_PATH ${EXECUTABLE_OUTPUT_PATH} PARENT_SCOPE)
+  set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} PARENT_SCOPE)
 endmacro(set_executable_path)
 
 ################################################################################
 # unittest(<name> [source1 ...])
 #
-# Add an executable unittest target called <name> to be built either from
-# <name>.cpp if there are no source files specified or from the source files
-# listed in the command invocation.
+# Add an executable unittest target called <name>.
+# The target is built:
+#   - from <name>.cpp if there are no [source1 ...] files specified or
+#   - from the source files listed in the command invocation.
+#
+# unittest(foo) builds executable target foo from source file foo.cpp
+#
+# unittest(foo bar.cpp quux.cpp) builds executable target foo from sources
+# bar.cpp and quux.cpp
+#
+# Use set_project_link_libraries() to specify libraries and build requirements
+# for _all_ the unittests in the project directory.
 ################################################################################
+#
 function(unittest name)
 
   set_executable_path(bin)
@@ -203,9 +213,11 @@ function(unittest name)
 
   set_target_properties(${name} PROPERTIES EXCLUDE_FROM_ALL true)
 
+  get_target_property(BINARY_OUTPUT_DIR ${name} RUNTIME_OUTPUT_DIRECTORY)
+
   add_custom_command(
-    OUTPUT  ${EXECUTABLE_OUTPUT_PATH}/${name}.run
-    WORKING_DIRECTORY ${EXECUTABLE_OUTPUT_PATH}
+    OUTPUT  ${BINARY_OUTPUT_DIR}/${name}.run
+    WORKING_DIRECTORY ${BINARY_OUTPUT_DIR}
     DEPENDS ${name}
 
     COMMAND ${CMD_RM} ${name}.output ${name}.run
@@ -220,19 +232,76 @@ function(unittest name)
     COMMAND ln ${name}.output ${name}.run
     )
 
-  add_custom_target(${name}.test DEPENDS ${EXECUTABLE_OUTPUT_PATH}/${name}.run)
-  add_test(NAME ${name} WORKING_DIRECTORY ${EXECUTABLE_OUTPUT_PATH} COMMAND ${name})
+    add_custom_target(${name}.test
+        DEPENDS ${BINARY_OUTPUT_DIR}/${name}.run)
+
+    add_custom_target(${name}.view
+        DEPENDS ${name}.test
+        COMMAND ${CMD_CAT} ${BINARY_OUTPUT_DIR}/${name}.run)
+
+   add_test(NAME ${name} WORKING_DIRECTORY ${BINARY_OUTPUT_DIR} COMMAND ${name})
 
   add_dependencies(unittests ${name}.test)
 
 endfunction(unittest)
 
+################################################################################
+# add_adhoc_executable(<name> [source1 ...])
+#
+# Add an executable target called <name>, built from <name>.cpp
+#
+# Use set_project_link_libraries() to specify libraries and build requirements
+# for _all_ the ad-hoc executables in the project directory.
+################################################################################
+#
+function(add_adhoc_executable name)
+
+  set_executable_path(bin)
+
+  find_package(cppunit REQUIRED)
+
+  if (" ${ARGN}" STREQUAL " ")
+    set(sources ${name}.cpp)
+  else()
+    set(sources ${ARGN})
+  endif()
+
+  if (NOT WIN32)
+    set(LAST_EXIT_STATUS "$$?")
+  else()
+    set(LAST_EXIT_STATUS "%ERRORLEVEL%")
+  endif()
+
+  # Unittest executable
+  add_executable(${name} ${sources})
+
+  # All unittests depend on pcommon and cppunit libraries
+  target_link_libraries(${name} PRIVATE pcommon cppunit)
+  apply_project_requirements(${name})
+
+  set_target_properties(${name} PROPERTIES EXCLUDE_FROM_ALL true)
+
+endfunction(add_adhoc_executable)
+
+################################################################################
+# set_project_link_libraries([library-target-1 ...])
+#
+# Specify libraries to use when linking all targets specified by unitest() or
+# add_adhoc_executable() for the project directory the set_project_link_libraries()
+# is called in.
+#
+# Since usage requirements from linked library targets are propagated and affect
+# compilation of target sources, it is possible to set common build requirements
+# through INTERFACE-only "libraries".
+################################################################################
+#
 function(set_project_link_libraries)
   if (ARGC GREATER 0)
     set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY PCOMN_PROJECT_LINK_LIBRARIES ${ARGN})
   endif()
 endfunction(set_project_link_libraries)
 
+# Apply requirements specified by set_project_link_libraries
 function(apply_project_requirements target1)
   set(targets ${target1} ${ARGN})
 
@@ -243,7 +312,11 @@ function(apply_project_requirements target1)
   endforeach()
 endfunction()
 
+#
+# Prepare
+#
 unittests_directory()
+
 if (TARGET check)
     add_dependencies(check unittests)
 else()
