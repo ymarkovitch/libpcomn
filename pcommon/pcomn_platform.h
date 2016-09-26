@@ -269,6 +269,7 @@
 // GCC warning control
 #define GCC_IGNORE_WARNING(warn) GCC_MAKE_PRAGMA(GCC diagnostic ignored "-W"#warn)
 #define GCC_ENABLE_WARNING(warn) GCC_MAKE_PRAGMA(GCC diagnostic warning "-W"#warn)
+#define GCC_SETERR_WARNING(warn) GCC_MAKE_PRAGMA(GCC diagnostic error "-W"#warn)
 
 #define GCC_DIAGNOSTIC_PUSH() GCC_MAKE_PRAGMA(GCC diagnostic push)
 #define GCC_DIAGNOSTIC_POP() GCC_MAKE_PRAGMA(GCC diagnostic pop)

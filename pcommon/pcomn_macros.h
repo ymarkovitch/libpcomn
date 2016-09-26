@@ -42,6 +42,8 @@
 #define P_STRINGIFY_I(...) P_STRINGIFY(__VA_ARGS__)
 #define P_STRINGIFY_INDIRECT(...) P_STRINGIFY(__VA_ARGS__)
 
+#define P_ADD_COMMA(ARG) ARG,
+
 /*
  * Concatenate arguments
  */
