@@ -26,7 +26,7 @@
 /// @hideinitializer @ingroup ExceptionMacros
 #define PCOMN_THROW_S(exception, msg, ...)                              \
 do {                                                                    \
-   pcomn::bufstr_ostream<PCOMN_MSGBUFSIZE> msgstream ;                  \
+   pcomn::bufstr_ostream<pcomn::PCOMN_MSGBUFSIZE> msgstream ;                  \
    msgstream << msg << std::ends ;                                      \
    pcomn::throw_exception<exception >(msgstream.str(), ##__VA_ARGS__) ; \
 } while(false)
@@ -41,7 +41,7 @@ do {                                                        \
 
 #define PCOMN_THROW_MSGF(exception, format, ...)                        \
 do {                                                                    \
-   char message[PCOMN_MSGBUFSIZE] ;                                     \
+   char message[pcomn::PCOMN_MSGBUFSIZE] ;                                     \
    message[sizeof message - 1] = 0 ;                                    \
    const size_t sz = strlen(strncpy(message, PCOMN_PRETTY_FUNCTION, sizeof message - 3)) ; \
    message[sz] = ':' ; message[sz + 1] = '\n' ;                          \
@@ -71,7 +71,7 @@ do {                                                           \
 #define PCOMN_CHECK_POSIX(posix_result, format, ...)                    \
 do if (unlikely(pcomn::posix_fail((posix_result))))                     \
 {                                                                       \
-   char message[PCOMN_MSGBUFSIZE] ;                                     \
+   char message[pcomn::PCOMN_MSGBUFSIZE] ;                                     \
    snprintf(message, sizeof message, format, ##__VA_ARGS__) ;           \
    pcomn::throw_exception<pcomn::system_error>(message) ;               \
 } while(false)
