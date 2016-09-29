@@ -28,3 +28,12 @@ add_library(pcomn_cmdline STATIC
 
 target_link_libraries(pcomn_cmdline PUBLIC pcommon)
 target_include_directories(pcomn_cmdline PUBLIC ..)
+
+add_executable(cmdtest cmdtest.cpp)
+target_link_libraries(cmdtest PRIVATE pcomn_cmdline)
+
+add_executable(cmdtestext cmdtestext.cpp)
+target_link_libraries(cmdtestext PRIVATE pcomn_cmdline)
+
+add_executable(cmdtestglob cmdtestglob.cpp)
+target_link_libraries(cmdtestglob PRIVATE pcomn_cmdline)
