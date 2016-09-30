@@ -95,6 +95,8 @@ using make_signed_t = typename make_signed<T>::type ;
 
 namespace std {
 
+template<typename, typename, typename> class basic_string ;
+
 template<class C>
 constexpr auto size(const C &container) -> decltype(container.size()) { return container.size() ; }
 
@@ -109,6 +111,21 @@ constexpr bool empty(const T (&)[N]) noexcept { return false ; }
 
 template<typename E>
 constexpr bool empty(std::initializer_list<E> v) noexcept { return v.size() == 0 ; }
+
+template<typename C, size_t n>
+constexpr C *data(C (&arr)[n]) { return arr ; }
+
+template<typename C, typename R, typename A>
+constexpr C *data(std::basic_string<C, R, A> &s)
+{
+   return const_cast<C *>(s.data()) ;
+}
+
+template<typename T>
+constexpr auto data(T &&container) -> decltype(std::forward<T>(container).data())
+{
+   return std::forward<T>(container).data() ;
+}
 
 template<bool v>
 using bool_constant = std::integral_constant<bool, v> ;
