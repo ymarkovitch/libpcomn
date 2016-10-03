@@ -459,6 +459,14 @@
 #  define PCOMN_PL_MS 1 /* Pure Windows */
 #endif
 
+#if defined(__GLIBCXX__)
+#  define PCOMN_BEGIN_NAMESPACE_CXX11 _GLIBCXX_BEGIN_NAMESPACE_CXX11
+#  define PCOMN_END_NAMESPACE_CXX11   _GLIBCXX_END_NAMESPACE_CXX11
+#else
+#  define PCOMN_BEGIN_NAMESPACE_CXX11
+#  define PCOMN_END_NAMESPACE_CXX11
+#endif
+
 /*******************************************************************************
  SIMD instruction sets
 *******************************************************************************/

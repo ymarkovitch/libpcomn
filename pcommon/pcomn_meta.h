@@ -95,7 +95,11 @@ using make_signed_t = typename make_signed<T>::type ;
 
 namespace std {
 
+// Forward declaration of std::basic_string: we don't require <string> header for
+// pcomn_meta
+PCOMN_BEGIN_NAMESPACE_CXX11
 template<typename, typename, typename> class basic_string ;
+PCOMN_END_NAMESPACE_CXX11
 
 template<class C>
 constexpr auto size(const C &container) -> decltype(container.size()) { return container.size() ; }
