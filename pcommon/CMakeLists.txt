@@ -90,6 +90,8 @@ target_compile_features(pcommon
   PUBLIC
   cxx_alignas
   cxx_alignof
+  cxx_constexpr
+  cxx_decltype
   cxx_delegating_constructors
   )
 
@@ -98,14 +100,6 @@ set_target_properties(pcommon
   POSITION_INDEPENDENT_CODE ON
   VISIBILITY_INLINES_HIDDEN ON
   CXX_VISIBILITY_PRESET hidden
-  )
-
-target_compile_features(pcommon
-  PUBLIC
-  cxx_alignas
-  cxx_alignof
-  cxx_constexpr
-  cxx_decltype
   )
 
 target_include_directories(pcommon
@@ -128,7 +122,7 @@ target_compile_options(pcommon
   $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>:-pthread>
   $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>:-Wall>
   $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>:-gdwarf-4>
-  $<$<CXX_COMPILER_ID:GNU>:-fno-debug-types-section -grecord-gcc-switches>
+  $<$<CXX_COMPILER_ID:GNU>:-grecord-gcc-switches>
   $<$<AND:$<CXX_COMPILER_ID:Clang>,$<${COMPILE_LANGUAGE_CXX}>>:-Wno-potentially-evaluated-expression -Wno-mismatched-tags>
 
   PRIVATE
