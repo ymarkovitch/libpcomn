@@ -272,6 +272,9 @@
 #define GCC_SETERR_WARNING(warn) GCC_MAKE_PRAGMA(GCC diagnostic error "-W"#warn)
 
 #define GCC_DIAGNOSTIC_PUSH() GCC_MAKE_PRAGMA(GCC diagnostic push)
+#define GCC_DIAGNOSTIC_PUSH_IGNORE(warn) GCC_DIAGNOSTIC_PUSH() GCC_IGNORE_WARNING(warn)
+#define GCC_DIAGNOSTIC_PUSH_ENABLE(warn) GCC_DIAGNOSTIC_PUSH() GCC_ENABLE_WARNING(warn)
+#define GCC_DIAGNOSTIC_PUSH_SETERR(warn) GCC_DIAGNOSTIC_PUSH() GCC_SETERR_WARNING(warn)
 #define GCC_DIAGNOSTIC_POP() GCC_MAKE_PRAGMA(GCC diagnostic pop)
 
 // MS warning control
@@ -459,7 +462,7 @@
 #  define PCOMN_PL_MS 1 /* Pure Windows */
 #endif
 
-// Ensure __GLIBCXX__ defined if we are being compiled with libstdc++ 
+// Ensure __GLIBCXX__ defined if we are being compiled with libstdc++
 #if defined(__cplusplus) && defined(PCOMN_COMPILER_GNU)
 #  include <cstddef>
 #endif

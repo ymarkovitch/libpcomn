@@ -160,6 +160,12 @@ function(unittests_directory)
 
 endfunction(unittests_directory)
 
+function(unittests_project NAME)
+    project(${NAME}.unittests CXX C)
+    unittests_directory()
+    add_custom_target(${NAME}.unittests DEPENDS unittests)
+endfunction(unittests_project)
+
 macro(set_executable_path path)
   if(IS_ABSOLUTE ${path})
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${path})
@@ -241,7 +247,7 @@ function(unittest name)
 
    add_test(NAME ${name} WORKING_DIRECTORY ${BINARY_OUTPUT_DIR} COMMAND ${name})
 
-  add_dependencies(unittests ${name}.test)
+   add_dependencies(unittests ${name}.test)
 
 endfunction(unittest)
 
