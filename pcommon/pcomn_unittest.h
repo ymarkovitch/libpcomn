@@ -637,6 +637,29 @@ inline int run_tests(TestRunner &runner, int argc, char ** const argv,
       !runner.run(test_path) ;
 }
 
+template<typename S1, typename S2, typename... SN>
+inline void add_test_suites(TestRunner &runner)
+{
+   runner.addTest(S1::suite()) ;
+   add_test_suites<S2, SN...>(runner) ;
+}
+
+template<typename S>
+inline void add_test_suites(TestRunner &runner)
+{
+   runner.addTest(S::suite()) ;
+}
+
+template<typename TestSuite1, typename... TestSuiteN>
+inline int run_tests(int argc, char ** const argv,
+                     const char *diag_profile = nullptr, const char *title = nullptr)
+{
+   pcomn::unit::TestRunner runner ;
+   add_test_suites<TestSuite1, TestSuiteN...>(runner) ;
+   return
+      run_tests(runner, argc, argv, diag_profile, title) ;
+}
+
 /******************************************************************************/
 /** Convert an object to a string as specified by CppUnit::assertion_traits
 
