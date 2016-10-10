@@ -25,7 +25,6 @@
 #include <pcomn_algorithm.h>
 
 #include <array>
-
 #include <string>
 #include <vector>
 #include <algorithm>
@@ -320,6 +319,20 @@ using enable_if_other_string_t = typename enable_if_other_string<S, O, T>::type 
 
 template<typename S1, typename S2, typename T>
 using enable_if_compatible_strings_t = typename enable_if_compatible_strings<S1, S2, T>::type ;
+
+/*******************************************************************************
+ Specialization of trivially_swappable for std::string, std::vector, std::array
+*******************************************************************************/
+template<typename T>
+struct is_trivially_swappable<std::vector<T>> : std::true_type {} ;
+
+template<typename T, size_t n>
+struct is_trivially_swappable<std::array<T, n>> : is_trivially_swappable<T> {} ;
+
+#ifdef PCOMN_COMPILER_GNU
+template<typename C>
+struct is_trivially_swappable<std::basic_string<C>> : std::true_type {} ;
+#endif
 
 /*******************************************************************************
  pcomn::str
