@@ -56,6 +56,9 @@ project pcommon
   : usage-requirements
   <acceleration>off:<define>PCOMN_PL_NOACCELERATION
 
+  <os>NT:<define>WIN32_LEAN_AND_MEAN=1
+  <os>NT:<define>_WIN32_WINNT=0x0600
+
   : default-build debug <link>static <threading>multi
 
   : source-location . [ iif [ os.on-unix ] : unix : win32 ]
@@ -148,8 +151,4 @@ lib pcommon :
   <library>$(PROJROOT)//user32
   <include>$(VENDOR_PREFIX)/include
   <library-path>$(VENDOR_PREFIX)/lib
-
-  <os>NT:<define>WIN32_LEAN_AND_MEAN=1
-  <os>NT:<define>_WIN32_WINNT=0x0600
-
   ;

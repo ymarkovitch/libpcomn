@@ -145,6 +145,17 @@ do {                                                                 \
    CppUnit::Asserter::fail(__cpput_msg__, CPPUNIT_SOURCELINE()) ;       \
 } while(false)
 
+#define CPPUNIT_LOG_FAILURE(expression)                                 \
+   do {                                                                 \
+   CPPUNIT_LOG_MESSAGE((__CPPUNIT_CONCAT_SRC_LINE("RUNNING: '") #expression "', EXPECTING: exception... ")) ; \
+   try {                                                                \
+      CppUnit::Message __cpput_msg__("expected exception not thrown") ; \
+      expression ;                                                      \
+      CppUnit::Asserter::fail(__cpput_msg__, CPPUNIT_SOURCELINE()) ;    \
+   } catch (const std::exception &x) { CppUnit::Log::logExceptionWhat("OK", &x) ; \
+   } catch (...) { CPPUNIT_LOG_MESSAGE("OK\n") ; }                      \
+} while(false)
+
 #define CPPUNIT_LOG_EXCEPTION_CODE(expression, expected, expected_code) \
 do                                                                      \
    {                                                                    \
