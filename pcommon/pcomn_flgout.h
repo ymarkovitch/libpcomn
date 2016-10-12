@@ -23,6 +23,7 @@
 #include <iomanip>
 #include <string>
 #include <utility>
+#include <algorithm>
 
 #define PCOMN_FLGOUT_DESC(flag) {(flag), #flag}
 #define PCOMN_FLGOUT_DESCF(flag, mask) {(flag), (mask), #flag}
@@ -177,6 +178,13 @@ std::string enum_string(Enum value)
 #define PCOMN_DEFINE_ENUM_ELEMENTS(ns, Enum, count, ...)  \
    PCOMN_STARTDEF_ENUM_ELEMENTS(ns::Enum)                 \
    P_APPL1(PCOMN_ENUM_ELEMENT, ns, count, __VA_ARGS__),   \
+   {} } ; }
+
+#define PCOMN_DESCRIBE_ENUM(Enum, ...) PCOMN_DESCRIBE_ENUM_(Enum, P_VA_ARGC(__VA_ARGS__), __VA_ARGS__)
+
+#define PCOMN_DESCRIBE_ENUM_(Enum, va_argc, ...)             \
+   PCOMN_STARTDEF_ENUM_ELEMENTS(Enum)                        \
+   P_APPL1(PCOMN_ENUM_ELEMENT, Enum, va_argc, __VA_ARGS__),  \
    {} } ; }
 
 /******************************************************************************/
