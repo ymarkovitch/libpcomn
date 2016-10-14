@@ -1,3 +1,7 @@
+# Do not implicitly dereference IF arguments corresponding to variables.
+# Dereference variables only explicitly, like ${VAR}
+cmake_policy(SET CMP0012 NEW)
+
 if (WIN32)
   set(CMD_CAT cmd /c type)
 else()
