@@ -218,6 +218,27 @@ template<typename T, T x> struct ct_max<T, x> :
 template<typename T, T x, T...y> struct ct_max<T, x, y...> :
          std::integral_constant<T, (ct_max<T, y...>::value < x  ? x : ct_max<T, y...>::value)> {} ;
 
+/*******************************************************************************
+ Folding, until C++17 wil be the baseline standard
+*******************************************************************************/
+template<typename F, typename T>
+constexpr inline T fold_left(F &&, T a1) { return a1 ; }
+
+template<typename F, typename T, typename... TN>
+constexpr inline T fold_left(F &&monoid, T a1, T a2,  TN ...aN)
+{
+   return fold_left<F, T>(std::forward<F>(monoid), std::forward<F>(monoid)(a1, a2), aN...) ;
+}
+
+template<typename T>
+constexpr inline T fold_bitor(T a1) { return a1 ; }
+
+template<typename T, typename... TN>
+constexpr inline T fold_bitor(T a1, T a2, TN ...aN)
+{
+   return fold_bitor<T>(a1 | a2, aN...) ;
+}
+
 /******************************************************************************/
 /** Creates unique type from another type.
 
@@ -404,6 +425,36 @@ struct count_types_if<F> : std::integral_constant<int, 0> {} ;
 template<template<typename> class F, typename H, typename... T>
 struct count_types_if<F, H, T...> :
          std::integral_constant<int, ((int)!!F<H>::value + count_types_if<F, T...>::value)> {} ;
+
+/*******************************************************************************/
+/** Convert an enum value into the value of underlying integral type, or pass
+ through the paramter if it is already of interal type.
+*******************************************************************************/
+template<typename T, int mode = (int)std::is_enum<T>::value - (int)std::is_integral<T>::value>
+struct underlying_integral ;
+
+template<typename E>
+struct underlying_integral<E, 1> : std::underlying_type<E> {} ;
+
+template<typename I>
+struct underlying_integral<I, -1> { typedef I type ; } ;
+
+template<typename T>
+using underlying_integral_t = typename underlying_integral<T>::type ;
+
+template<typename E>
+constexpr inline std::enable_if_t<std::is_enum<E>::value, underlying_integral_t<E>>
+underlying_int(E value)
+{
+   return static_cast<std::underlying_type_t<E>>(value) ;
+}
+
+template<typename I>
+constexpr inline std::enable_if_t<std::is_integral<I>::value, I>
+underlying_int(I value)
+{
+   return value ;
+}
 
 } // end of namespace pcomn
 /// @endcond
