@@ -519,7 +519,7 @@ constexpr inline bool is_in(T v)
 template<typename T, typename M1, typename... Ms>
 constexpr inline bool is_in(T v, M1 m1, Ms...ms)
 {
-   return fold_bitor<underlying_integral_t<T>>
+   return fold_bitor<unsigned long long>
       ((1ULL << underlying_int(m1)), (1ULL << underlying_int(ms))...) & (1ULL << underlying_int(v)) ;
 }
 

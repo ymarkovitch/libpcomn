@@ -305,6 +305,7 @@ namespace CppUnit {
 namespace Log {
 
 #ifdef __GNUC__
+__attribute__((__noinline__))
 inline const char *demangle(const char *mangled)
 {
    static __thread char buf[2048] ;

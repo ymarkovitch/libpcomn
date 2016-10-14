@@ -372,7 +372,7 @@ void UtilityTests::Test_Folding()
    CPPUNIT_LOG_ASSERT((one_of<7, 3, 12>::is(3))) ;
    CPPUNIT_LOG_IS_FALSE((one_of<7, 3, 12>::is(1))) ;
 
-   enum class C { N1, N2, N3, N4, N5 } ;
+   enum class C : uint8_t { N1, N2, N3 = 40, N4, N5 } ;
 
    CPPUNIT_LOG_IS_FALSE(is_in<int>(3)) ;
    CPPUNIT_LOG_IS_FALSE(is_in<int>(0)) ;
