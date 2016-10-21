@@ -43,6 +43,7 @@
 #include <set>
 #include <stdexcept>
 #include <mutex>
+#include <chrono>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -849,6 +850,20 @@ struct assertion_traits<std::tuple<A...> > {
          return result.append(1, ')') ;
       }
 } ;
+
+template<typename Rep, intmax_t nom, intmax_t denom>
+struct assertion_traits<std::chrono::duration<Rep, std::ratio<nom, denom>>> {
+      typedef std::chrono::duration<Rep, std::ratio<nom, denom>> type ;
+
+      static bool equal(const type &lhs, const type &rhs) { return lhs == rhs ; }
+      static std::string toString(const type &value) ;
+} ;
+
+template<typename Rep, intmax_t nom, intmax_t denom>
+std::string assertion_traits<std::chrono::duration<Rep, std::ratio<nom, denom>>>::toString(const type &value)
+{
+   return pcomn::string_cast(nom * value.count(), '/', denom) ;
+}
 
 template<typename S>
 struct assertion_traits_str {
