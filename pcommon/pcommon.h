@@ -711,16 +711,16 @@ inline void *hextob(void *buf, size_t bufsz, const char *hexstr)
 
 /// Given that there is '<' operator for the type, define all remaining ordering operators
 /// as type methods.
-#define PCOMN_DEFINE_ORDER_METHODS(type)                          \
-   bool operator>(const type &rhs) { return rhs < *this ; }       \
-   bool operator<=(const type &rhs) { return !(rhs < *this) ; }   \
-   bool operator>=(const type &rhs) { return !(*this < rhs) ; }
+#define PCOMN_DEFINE_ORDER_METHODS(type, ...)                           \
+   __VA_ARGS__ bool operator>(const type &rhs) const { return rhs < *this ; }       \
+   __VA_ARGS__ bool operator<=(const type &rhs) const { return !(rhs < *this) ; }   \
+   __VA_ARGS__ bool operator>=(const type &rhs) const { return !(*this < rhs) ; }
 
 /// Given that there are operators '==' and '<' for the type, define through them all
 /// remaining relational operators as type methods.
-#define PCOMN_DEFINE_RELOP_METHODS(type)                          \
-   bool operator!=(const type &rhs) { return !(*this == rhs) ; }  \
-   PCOMN_DEFINE_ORDER_METHODS(P_PASS(type))
+#define PCOMN_DEFINE_RELOP_METHODS(type, ...)                           \
+   __VA_ARGS__ bool operator!=(const type &rhs) const { return !(*this == rhs) ; } \
+   PCOMN_DEFINE_ORDER_METHODS(P_PASS(type), ##__VA_ARGS__)
 
 /// Define operators '+' and '-' for the type through corresponding augmented operations
 /// '+=' and '-='.
