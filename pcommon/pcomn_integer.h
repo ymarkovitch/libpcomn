@@ -66,10 +66,13 @@ template<typename T>
 constexpr const T int_traits<T>::signbit ;
 
 /******************************************************************************/
-/** Type trait checks whether T is an integral type and not bool.
+/** Type trait checks whether T is an integral type and @em not bool.
 *******************************************************************************/
 template<typename T>
 struct is_integer : std::bool_constant<std::is_integral<T>::value && !std::is_same<T, bool>::value> {} ;
+
+template<typename T>
+struct is_numeric : std::bool_constant<std::is_arithmetic<T>::value && !std::is_same<T, bool>::value> {} ;
 
 /******************************************************************************/
 /** Overload enabler, a la enable_if<>.
@@ -87,6 +90,9 @@ if_signed_int : std::enable_if<(is_integer<T>::value && std::numeric_limits<T>::
 template<typename T, typename R = T> struct
 if_unsigned_int : std::enable_if<(is_integer<T>::value && !std::numeric_limits<T>::is_signed), R> {} ;
 
+template<typename T, typename R = T> struct
+if_numeric : std::enable_if<is_numeric<T>::value, R> {} ;
+
 template<typename T, typename R = T>
 using if_integer_t = typename if_integer<T, R>::type ;
 template<typename T, typename R = T>
@@ -95,6 +101,8 @@ template<typename T, typename R = T>
 using if_signed_int_t = typename if_signed_int<T, R>::type ;
 template<typename T, typename R = T>
 using if_unsigned_int_t = typename if_unsigned_int<T, R>::type ;
+template<typename T, typename R = T>
+using if_numeric_t = typename if_numeric<T, R>::type ;
 
 template<typename T>
 inline constexpr if_signed_int_t<T> sign_bit(T value)
