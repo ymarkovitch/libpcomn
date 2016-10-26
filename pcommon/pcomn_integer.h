@@ -93,6 +93,9 @@ if_unsigned_int : std::enable_if<(is_integer<T>::value && !std::numeric_limits<T
 template<typename T, typename R = T> struct
 if_numeric : std::enable_if<is_numeric<T>::value, R> {} ;
 
+template<typename T, typename R = T> struct
+if_arithmetic : std::enable_if<std::is_arithmetic<T>::value, R> {} ;
+
 template<typename T, typename R = T>
 using if_integer_t = typename if_integer<T, R>::type ;
 template<typename T, typename R = T>
@@ -103,6 +106,8 @@ template<typename T, typename R = T>
 using if_unsigned_int_t = typename if_unsigned_int<T, R>::type ;
 template<typename T, typename R = T>
 using if_numeric_t = typename if_numeric<T, R>::type ;
+template<typename T, typename R = T>
+using if_arithmetic_t = typename if_arithmetic<T, R>::type ;
 
 template<typename T>
 inline constexpr if_signed_int_t<T> sign_bit(T value)
