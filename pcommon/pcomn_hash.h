@@ -52,9 +52,10 @@ _PCOMNEXP uint32_t calc_crc32(uint32_t crc, const void *buf, size_t len) ;
 
 #ifdef __cplusplus
 
+#include <pcomn_meta.h>
+
 #include <string>
 #include <iostream>
-#include <type_traits>
 #include <functional>
 #include <utility>
 
@@ -451,6 +452,42 @@ PCOMN_STATIC_CHECK(sizeof(binary128_t) == 16) ;
 
 // Define !=, >, <=, >= for binary128_t
 PCOMN_DEFINE_RELOP_FUNCTIONS(, binary128_t) ;
+
+template<typename T>
+struct is_literal128 :
+   std::bool_constant<sizeof(T) == sizeof(binary128_t) && std::is_literal_type<binary128_t>::value>
+{} ;
+
+
+template<typename T>
+inline std::enable_if_t<is_literal128<T>::value, T *> cast128(binary128_t *v)
+{
+   return reinterpret_cast<T *>(v) ;
+}
+
+template<typename T>
+inline std::enable_if_t<is_literal128<T>::value, const T *> cast128(const binary128_t *v)
+{
+   return reinterpret_cast<const T *>(v) ;
+}
+
+template<typename T>
+inline std::enable_if_t<is_literal128<T>::value, T &> cast128(binary128_t &v)
+{
+   return *cast128<T>(&v) ;
+}
+
+template<typename T>
+inline std::enable_if_t<is_literal128<T>::value, const T &> cast128(const binary128_t &v)
+{
+   return *cast128<T>(&v) ;
+}
+
+template<typename T>
+inline std::enable_if_t<is_literal128<T>::value, T &&> cast128(binary128_t &&v)
+{
+   return std::move(*reinterpret_cast<T *>(&v)) ;
+}
 
 /******************************************************************************/
 /** MD5 hash POD type (no constructors, no destructors)

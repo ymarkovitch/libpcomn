@@ -29,11 +29,13 @@ class UUIDFixture : public unit::TestFixture<UUID_FIXTURE> {
 
       void Test_Empty_UUID() ;
       void Test_UUID() ;
+      void Test_Cast128() ;
 
       CPPUNIT_TEST_SUITE(UUIDFixture) ;
 
       CPPUNIT_TEST(Test_Empty_UUID) ;
       CPPUNIT_TEST(Test_UUID) ;
+      CPPUNIT_TEST(Test_Cast128) ;
 
       CPPUNIT_TEST_SUITE_END() ;
 } ;
@@ -126,6 +128,30 @@ void UUIDFixture::Test_UUID()
    CPPUNIT_LOG_IS_FALSE(random_uuid < small_uuid) ;
    CPPUNIT_LOG_ASSERT(small_uuid < random_uuid) ;
    CPPUNIT_LOG_ASSERT(uuid() < small_uuid) ;
+}
+
+void UUIDFixture::Test_Cast128()
+{
+   uuid mutable_uuid ("f47ac10b-58cc-4372-a567-0e02b2c3d479") ;
+   binary128_t mutable_bin ((binary128_t)mutable_uuid) ;
+
+   const uuid const_uuid  ("007ac10b-58cc-4372-a567-0e02b2c3d478") ;
+   const binary128_t const_bin ((binary128_t)const_uuid) ;
+
+   CPPUNIT_LOG_EQ(mutable_uuid.to_string(), "f47ac10b-58cc-4372-a567-0e02b2c3d479") ;
+   CPPUNIT_LOG_EQ(mutable_bin.to_string(),  "f47ac10b58cc4372a5670e02b2c3d479") ;
+
+   CPPUNIT_LOG_EQ(const_uuid.to_string(), "007ac10b-58cc-4372-a567-0e02b2c3d478") ;
+   CPPUNIT_LOG_EQ(const_bin.to_string(),  "007ac10b58cc4372a5670e02b2c3d478") ;
+
+   CPPUNIT_LOG_EQUAL(cast128<uuid>(const_bin), const_uuid) ;
+   CPPUNIT_LOG_EQUAL(cast128<uuid>(mutable_bin), mutable_uuid) ;
+
+   CPPUNIT_LOG_ASSERT(std::is_reference<decltype(cast128<uuid>(const_bin))>()) ;
+   CPPUNIT_LOG_ASSERT(std::is_const<std::remove_reference_t<decltype(cast128<uuid>(const_bin))>>()) ;
+
+   CPPUNIT_LOG_ASSERT(std::is_reference<decltype(cast128<uuid>(mutable_bin))>()) ;
+   CPPUNIT_LOG_IS_FALSE(std::is_const<std::remove_reference_t<decltype(cast128<uuid>(mutable_bin))>>()) ;
 }
 
 /*******************************************************************************
