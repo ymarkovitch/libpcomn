@@ -406,6 +406,7 @@ struct alignas(16) binary128_t {
       }
 
       static constexpr size_t size() { return sizeof _idata ; }
+      static constexpr size_t slen() { return 2*size() ; }
 
       _PCOMNEXP std::string to_string() const ;
       _PCOMNEXP char *to_strbuf(char *buf) const ;
