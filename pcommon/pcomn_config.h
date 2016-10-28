@@ -136,6 +136,11 @@
 #endif
 #define __noreturn   __attribute__((__noreturn__))
 
+#ifdef __may_alias
+#undef __may_alias
+#endif
+#define __may_alias  __attribute__((__may_alias__))
+
 #ifdef __deprecated
 #undef __deprecated
 #endif
@@ -180,6 +185,11 @@
 #undef __deprecated
 #endif
 #define __deprecated __declspec(deprecated)
+
+#ifdef __may_alias
+#undef __may_alias
+#endif
+#define __may_alias
 
 #else
 /*******************************************************************************
