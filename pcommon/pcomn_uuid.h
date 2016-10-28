@@ -19,21 +19,15 @@ namespace pcomn {
 /** Standard UUID
 *******************************************************************************/
 struct uuid {
-   private:
+   protected:
       union {
             uint64_t       _idata[2] ;
             uint16_t       _hdata[8] ;
             unsigned char  _cdata[16] ;
       } ;
 
-      static constexpr uint16_t be(uint16_t value)
-      {
-         #ifdef PCOMN_CPU_BIG_ENDIAN
-         return value ;
-         #else
-         return uint16_t((value >> 8) | (value << 8)) ;
-         #endif
-      }
+      template<typename T>
+      static constexpr T be(T value) { return value_to_big_endian(value) ; }
 
    public:
       enum : size_t {
@@ -53,6 +47,8 @@ struct uuid {
          _hdata{be(h1), be(h2), be(h3), be(h4), be(h5), be(h6), be(h7), be(h8)}
       {}
 
+      constexpr uuid(uint64_t h1, uint64_t h2) : _idata{be(h1), be(h2)} {}
+
       constexpr uuid(const binary128_t &bin) :
          _idata{*(const uint64_t *)(const void *)bin.data(), *((const uint64_t *)(const void *)bin.data() + 1)}
       {}
@@ -62,12 +58,16 @@ struct uuid {
       /// @param str Canonical form of UUID string representation, like
       /// e.g. "123e4567-e89b-12d3-a456-426655440000", or an empty string or nullptr,
       ///
-      uuid(const char *str, RaiseError raise_error = RAISE_ERROR) :
+      _PCOMNEXP
+      uuid(const strslice &str, RaiseError raise_error) ;
+
+      uuid(const strslice &str) : uuid (str, RAISE_ERROR) {}
+
+      uuid(const char *str, RaiseError raise_error) :
          uuid(str ? strslice(str) : strslice(), raise_error)
       {}
 
-      _PCOMNEXP
-      uuid(const strslice &str, RaiseError raise_error = RAISE_ERROR) ;
+      uuid(const char *str) : uuid(str, RAISE_ERROR) {}
 
       explicit constexpr operator bool() const { return !!(_idata[0] | _idata[1]) ; }
 
@@ -104,9 +104,8 @@ struct uuid {
 
       explicit operator binary128_t() const
       {
-         binary128_t result ;
-         memcpy(&result, this, sizeof result) ;
-         return result ;
+         const binary128_t * __may_alias result = reinterpret_cast<const binary128_t *>(this) ;
+         return *result ;
       }
 
       friend bool operator==(const uuid &x, const uuid &y)

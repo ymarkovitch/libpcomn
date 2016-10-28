@@ -84,6 +84,8 @@ void UUIDFixture::Test_UUID()
    const uuid small_uuid  ("E47AC10B-58cC-4372-a567-0e02b2c3d478") ;
    const uuid other_uuid_2 (0xf47a, 0xc10b, 0x58cc, 0x4372, 0xa567, 0x0e02, 0xb2c3, 0xd478) ;
 
+   const uuid other_uuid_3 (0x123456780a0b0c0dULL, 0x1a1b1c1d2a2b2c2dULL) ;
+
    CPPUNIT_LOG_ASSERT(random_uuid) ;
    CPPUNIT_LOG_EQ(random_uuid.to_string(), "f47ac10b-58cc-4372-a567-0e02b2c3d479") ;
    CPPUNIT_LOG_ASSERT(small_uuid) ;
@@ -92,6 +94,8 @@ void UUIDFixture::Test_UUID()
    CPPUNIT_LOG_EQ(other_uuid.to_string(),  "f47ac10b-58cc-4372-a567-0e02b2c3d478") ;
 
    CPPUNIT_LOG_EQUAL(other_uuid, other_uuid_2) ;
+
+   CPPUNIT_LOG_EQ(other_uuid_3.to_string(), "12345678-0a0b-0c0d-1a1b-1c1d2a2b2c2d") ;
 
    CPPUNIT_LOG_NOT_EQUAL(random_uuid, uuid()) ;
    CPPUNIT_LOG_NOT_EQUAL(random_uuid, small_uuid) ;
