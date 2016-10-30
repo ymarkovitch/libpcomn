@@ -477,6 +477,13 @@ inline C *strslicecpy(C (&dest)[n], const basic_strslice<C> &slice)
 }
 
 template<typename C>
+inline C *memslicemove(C *dest, const basic_strslice<C> &slice)
+{
+   memmove(dest, slice.begin(), slice.size()) ;
+   return dest ;
+}
+
+template<typename C>
 inline basic_strslice<C> &to_lower_inplace(basic_strslice<C> &s)
 {
    convert_inplace(s.begin(), ctype_traits<C>::tolower, 0, s.size()) ;
