@@ -157,6 +157,35 @@ struct basic_strslice {
       /// Indicate that the slice is nonempty.
       explicit operator bool() const { return begin() != end() ; }
 
+      /// Check if all characters in the slice satisfy the property.
+      ///
+      /// As @a isproperty is usually used a classifying function from the standard
+      /// <cctype> header, e.g. std::isdigit, etc. So, the call is like
+      /// s.all<std::isdigit>()
+      ///
+      /// @return true if all the characters in the slice satisfy @a isproperty @em or
+      /// the slice is empty.
+      ///
+      template<int(isproperty)(int)>
+      bool all() const { return std::all_of(begin(), end(), isproperty) ; }
+
+      /// Check if none of the characters in the slice satisfy the property.
+      ///
+      /// @return true if none the characters in the slice satisfy @a isproperty @em or
+      /// the slice is empty.
+      ///
+      template<int(isproperty)(int)>
+      bool none() const { return std::none_of(begin(), end(), isproperty) ; }
+
+      /// Check if there is at least one characters in the slice satisfying
+      /// the property.
+      ///
+      /// @return true if at least one characters in the slice satisfy @a isproperty
+      /// and false if not @em or the slice is empty.
+      ///
+      template<int(isproperty)(int)>
+      bool any() const { return std::any_of(begin(), end(), isproperty) ; }
+
       /// Compare slices lexicografically, like strcmp.
       /// @return 0 for equal, -1 for less, 1 for greater.
       ///
@@ -230,8 +259,6 @@ struct basic_strslice {
       }
 
       basic_strslice &strip_inplace() { return lstrip_inplace().rstrip_inplace() ; }
-
-      operator mongo::StringData() const ;
 
    private:
       const char_type *_begin ;

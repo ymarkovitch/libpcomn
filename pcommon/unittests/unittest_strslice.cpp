@@ -14,6 +14,8 @@
 #include <pcomn_meta.h>
 
 #include <memory>
+#include <cctype>
+#include <clocale>
 
 /*******************************************************************************
                      class StrSliceTests
@@ -23,6 +25,7 @@ class StrSliceTests : public CppUnit::TestFixture {
       void Test_Strslice_Construct() ;
       void Test_Strslice_Compare() ;
       void Test_Strslice_Compare_CaseInsensitive() ;
+      void Test_Strslice_IsProperty() ;
       void Test_String_Split() ;
       void Test_Strslice_Strip() ;
       void Test_Strslice_Strnew() ;
@@ -32,6 +35,7 @@ class StrSliceTests : public CppUnit::TestFixture {
       CPPUNIT_TEST(Test_Strslice_Construct) ;
       CPPUNIT_TEST(Test_Strslice_Compare) ;
       CPPUNIT_TEST(Test_Strslice_Compare_CaseInsensitive) ;
+      CPPUNIT_TEST(Test_Strslice_IsProperty) ;
       CPPUNIT_TEST(Test_String_Split) ;
       CPPUNIT_TEST(Test_Strslice_Strip) ;
       CPPUNIT_TEST(Test_Strslice_Strnew) ;
@@ -139,6 +143,20 @@ void StrSliceTests::Test_Strslice_Compare_CaseInsensitive()
    CPPUNIT_LOG_ASSERT(lti("bcd", "CD")) ;
    CPPUNIT_LOG_ASSERT(lti("BCD", "CD")) ;
    CPPUNIT_LOG_ASSERT(lti("BCD", "cd")) ;
+}
+
+void StrSliceTests::Test_Strslice_IsProperty()
+{
+   using namespace pcomn ;
+   CPPUNIT_LOG_ASSERT(strslice().all<std::isdigit>()) ;
+   CPPUNIT_LOG_IS_FALSE(strslice().any<std::isdigit>()) ;
+   CPPUNIT_LOG_ASSERT(strslice().none<std::isdigit>()) ;
+
+   CPPUNIT_LOG_ASSERT(strslice("256").all<std::isdigit>()) ;
+   CPPUNIT_LOG_IS_FALSE(strslice("Hello!").any<std::isdigit>()) ;
+   CPPUNIT_LOG_ASSERT(strslice("Hello, 42!").any<std::isdigit>()) ;
+   CPPUNIT_LOG_ASSERT(strslice("Hello!").none<std::isdigit>()) ;
+   CPPUNIT_LOG_IS_FALSE(strslice("Hello, 42!").none<std::isdigit>()) ;
 }
 
 void StrSliceTests::Test_String_Split()
