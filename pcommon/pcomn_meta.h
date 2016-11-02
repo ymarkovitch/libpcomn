@@ -65,7 +65,7 @@ using add_rvalue_reference_t = typename add_rvalue_reference<T>::type ;
 template<typename T>
 using add_pointer_t = typename add_pointer<T>::type ;
 
-template<bool B, typename T>
+template<bool B, typename T = void>
 using enable_if_t = typename enable_if<B, T>::type ;
 template<bool B, typename T, typename F>
 using conditional_t = typename conditional<B, T, F>::type ;
@@ -172,10 +172,10 @@ T autoval() ;
 /******************************************************************************/
 /** disable_if is a complement to std::enable_if
 *******************************************************************************/
-template<bool disabled, typename T>
+template<bool disabled, typename T = void>
 using disable_if = std::enable_if<!disabled, T> ;
 
-template<bool disabled, typename T>
+template<bool disabled, typename T = void>
 using disable_if_t = typename disable_if<disabled, T>::type ;
 
 template<bool enabled>
