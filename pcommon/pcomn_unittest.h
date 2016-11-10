@@ -814,6 +814,18 @@ inline std::string assertion_traits<std::type_info>::toString(const std::type_in
    return std::string(x.name()) ;
 }
 
+template<>
+std::string assertion_traits<unsigned char>::toString(const unsigned char &value)
+{
+   return std::to_string((unsigned)value) ;
+}
+
+template<>
+std::string assertion_traits<signed char>::toString(const signed char &value)
+{
+   return std::to_string((int)value) ;
+}
+
 template<typename T1, typename T2>
 struct assertion_traits<std::pair<T1, T2> > {
       typedef std::pair<T1, T2> type ;
