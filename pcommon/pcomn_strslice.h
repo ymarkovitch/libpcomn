@@ -86,6 +86,15 @@ struct basic_strslice {
          _begin(str::cstr(s)), _end(_begin + str::len(s))
       {}
 
+      /// Explicitly specify a constructor for const char* argument, despite the generic
+      /// one-parameter constructor handles this case, to prevent taking reference to the
+      /// argument, thus allowing to pass declared and initialized but not defined static
+      /// const class members of type const char*.
+      ///
+      basic_strslice(const char_type *s) :
+         _begin(s), _end(_begin + str::len(s))
+      {}
+
       template<typename S>
       basic_strslice(const S &s, size_t from,
                      enable_if_strchar_t<S, char_type, size_t> to = (size_t)-1) :
