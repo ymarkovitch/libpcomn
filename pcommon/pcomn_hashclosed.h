@@ -919,32 +919,27 @@ void closed_hashtable<V, X, H, P, S>::expand(size_type reserve_count)
 /*******************************************************************************
 
 *******************************************************************************/
-template<typename V, typename E, typename H, typename P, typename S>
-inline bool find_keyed_value(const closed_hashtable<V, E, H, P, S> &dict,
-                             const typename closed_hashtable<V, E, H, P, S>::key_type &key,
-                             V &value)
+template<typename V, typename E, typename H, typename P, typename S, typename K>
+inline bool find_keyed_value(const closed_hashtable<V, E, H, P, S> &dict, K &&key, V &value)
 {
-   const typename closed_hashtable<V, E, H, P, S>::const_iterator found (dict.find(key)) ;
+   const auto found (dict.find(std::forward<K>(key))) ;
    if (found == dict.end())
       return false ;
    value = *found ;
    return true ;
 }
 
-template<typename V, typename E, typename H, typename P, typename S>
-inline V get_keyed_value(const closed_hashtable<V, E, H, P, S> &dict,
-                         const typename closed_hashtable<V, E, H, P, S>::key_type &key,
-                         const V &default_value)
+template<typename V, typename E, typename H, typename P, typename S, typename K>
+inline V get_keyed_value(const closed_hashtable<V, E, H, P, S> &dict, K &&key, const V &default_value)
 {
-   const typename closed_hashtable<V, E, H, P, S>::const_iterator found (dict.find(key)) ;
+   const auto found (dict.find(std::forward<K>(key))) ;
    return found == dict.end() ? default_value : *found ;
 }
 
-template<typename V, typename E, typename H, typename P, typename S>
-inline V get_keyed_value(const closed_hashtable<V, E, H, P, S> &dict,
-                         const typename closed_hashtable<V, E, H, P, S>::key_type &key)
+template<typename V, typename E, typename H, typename P, typename S, typename K>
+inline V get_keyed_value(const closed_hashtable<V, E, H, P, S> &dict, K &&key)
 {
-   return get_keyed_value(dict, key, V()) ;
+   return get_keyed_value(dict, std::forward<K>(key), V()) ;
 }
 
 } // end of namespace pcomn

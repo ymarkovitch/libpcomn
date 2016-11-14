@@ -64,24 +64,23 @@ inline Container make_container(InputIterator first, InputIterator last, UnaryOp
 /*******************************************************************************
  Get a value from the keyed container
 *******************************************************************************/
-template<class KeyedContainer>
-inline bool find_keyed_value(const KeyedContainer &c,
-                             const typename KeyedContainer::key_type &key,
+template<class KeyedContainer, typename Key>
+inline bool find_keyed_value(const KeyedContainer &c, Key &&key,
                              typename KeyedContainer::mapped_type &result)
 {
-   const typename KeyedContainer::const_iterator i (c.find(key)) ;
+   const typename KeyedContainer::const_iterator i (c.find(std::forward<Key>(key))) ;
    if (i == c.end())
       return false ;
    result = i->second ;
    return true ;
 }
 
-template<class KeyedContainer>
+template<class KeyedContainer, typename Key>
 inline const typename KeyedContainer::mapped_type &
-get_keyed_value(const KeyedContainer &c, const typename KeyedContainer::key_type &key,
+get_keyed_value(const KeyedContainer &c, Key &&key,
                 const typename KeyedContainer::mapped_type &defval = typename KeyedContainer::mapped_type())
 {
-   const typename KeyedContainer::const_iterator i (c.find(key)) ;
+   const typename KeyedContainer::const_iterator i (c.find(std::forward<Key>(key))) ;
    return i == c.end() ? defval : i->second ;
 }
 
