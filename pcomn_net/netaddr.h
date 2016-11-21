@@ -138,6 +138,10 @@ public:
     /// @throw nothing
     std::string hostname() const;
 
+    /// Get the maximum length of dotted-decimal string representation of IPv4 address
+    /// (non including terminating zero).
+    static constexpr size_t slen() { return 15 ; }
+
     /// Get dotted-decimal representation of IP address.
     std::string dotted_decimal() const ;
 

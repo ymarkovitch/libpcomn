@@ -112,8 +112,10 @@ void data_socket::connect(const sock_address &peer_addr, int timeout)
         }
     }
     if (temporary_nonblock)
+    {
         // Restore socket flags
         fcntl(sockd, F_SETFL, sockflags) ;
+    }
 
 	if (status)
 	{
