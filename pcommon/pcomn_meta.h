@@ -219,7 +219,7 @@ template<typename T, T x, T...y> struct ct_max<T, x, y...> :
          std::integral_constant<T, (ct_max<T, y...>::value < x  ? x : ct_max<T, y...>::value)> {} ;
 
 /*******************************************************************************
- Folding, until C++17 wil be the baseline standard
+ Folding, until C++17 is the baseline standard
 *******************************************************************************/
 template<typename F, typename T>
 constexpr inline T fold_left(F &&, T a1) { return a1 ; }

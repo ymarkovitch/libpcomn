@@ -46,6 +46,15 @@ namespace net {
  conversions.
 *******************************************************************************/
 class inet_address {
+    union netaddr_init {
+        constexpr explicit netaddr_init(uint32_t horder_addr = 0) : _addr{horder_addr} {}
+        constexpr netaddr_init(uint8_t a, uint8_t b, uint8_t c, uint8_t d) :
+            _addr{((uint32_t)a << 24) | ((uint32_t)b << 16) | ((uint32_t)c << 8) | d}
+        {}
+        uint32_t _addr ;
+        uint8_t  _octets[4] ;
+    } ;
+
 public:
     /// inet_address construction mode flags
     enum ConstructFlags {
@@ -73,18 +82,9 @@ public:
 
     inet_address(const in_addr &addr) : _addr(ntohl(addr.s_addr)) {}
 
-    inet_address(uint8_t a, uint8_t b, uint8_t c, uint8_t d)
-    {
-        union {
-            in_addr_t   addr ;
-            uint8_t     octets[4] ;
-        } netaddr ;
-        netaddr.octets[0] = a ;
-        netaddr.octets[1] = b ;
-        netaddr.octets[2] = c ;
-        netaddr.octets[3] = d ;
-        _addr = ntohl(netaddr.addr) ;
-    }
+    constexpr inet_address(uint8_t a, uint8_t b, uint8_t c, uint8_t d) :
+        _addr(netaddr_init{a, b, c, d}._addr)
+    {}
 
     /// Create an IP address from its human-readable text representation.
     /// @param address_string Dot-delimited IP address or interface name, like "eth0", or
@@ -99,14 +99,9 @@ public:
     explicit constexpr operator bool() const { return !!_addr ; }
 
     /// Get one octet of an IP address by octet index (0-3).
-    uint8_t octet(unsigned ndx) const
+    constexpr uint8_t octet(unsigned ndx) const
     {
-        NOXCHECK(ndx < 4) ;
-        union {
-            in_addr_t   addr ;
-            uint8_t     octets[4] ;
-        } netaddr = { htonl(_addr) } ;
-        return netaddr.octets[ndx] ;
+        return (_addr >> 8*(3 - ndx)) ;
     }
 
     /// Get all four octets of an IP address.
@@ -129,6 +124,8 @@ public:
         return result ;
     }
     operator struct in_addr() const { return inaddr() ; }
+    /// Get an IP address as a 32-bit unsigned number in the host byte order.
+    explicit constexpr operator uint32_t() const { return ipaddr() ; }
 
     constexpr inet_address next() const { return inet_address(ipaddr() + 1) ; }
     constexpr inet_address prev() const { return inet_address(ipaddr() - 1) ; }
