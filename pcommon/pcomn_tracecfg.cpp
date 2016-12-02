@@ -21,21 +21,22 @@
 #include <windows.h>
 #endif
 
-#define PCOMN_MAXPATH 512
+static constexpr const size_t PCOMN_MAXPATH = 512 ;
 
-#define SECTION_ENABLED "ENABLED"
-#define SECTION_DEFAULT "DEFAULT"
-#define SECTION_EXT     "diag"
+static constexpr const char SECTION_ENABLED[] = "ENABLED" ;
+static constexpr const char SECTION_DEFAULT[] = "DEFAULT" ;
+static constexpr const char SECTION_EXT[]     = "diag" ;
 
-#define KEY_GROUP    "TRACE"
+static constexpr const char KEY_GROUP[] = "TRACE" ;
 
-#define KEY_LOGNAME  "LOG"
-#define KEY_ENABLED  "ENABLED"
-#define KEY_APPEND   "APPEND"
-#define KEY_FULLPATH "FULLPATH"
-#define KEY_LINENUM  "LINENUM"
-#define KEY_THREADID "THREADID"
-#define KEY_PID      "PID"
+static constexpr const char KEY_LOGNAME[]    = "LOG" ;
+static constexpr const char KEY_ENABLED[]    = "ENABLED" ;
+static constexpr const char KEY_APPEND[]     = "APPEND" ;
+static constexpr const char KEY_FULLPATH[]   = "FULLPATH" ;
+static constexpr const char KEY_LINENUM[]    = "LINENUM" ;
+static constexpr const char KEY_THREADID[]   = "THREADID" ;
+static constexpr const char KEY_PID[]        = "PID" ;
+static constexpr const char KEY_LEVEL[]      = "LEVEL" ;
 
 using namespace pcomn ;
 
@@ -121,8 +122,9 @@ bool PTraceConfig::readProfile()
    DIAG_READ_FLAG(AppendTrace,        KEY_APPEND,     !!) ;
    DIAG_READ_FLAG(EnableFullPath,     KEY_FULLPATH,   !!) ;
    DIAG_READ_FLAG(DisableLineNum,     KEY_LINENUM,    !) ;
-   DIAG_READ_FLAG(UseThreadId,        KEY_THREADID,   !!) ;
-   DIAG_READ_FLAG(UseProcessId,       KEY_PID,        !!) ;
+   DIAG_READ_FLAG(ShowThreadId,       KEY_THREADID,   !!) ;
+   DIAG_READ_FLAG(ShowProcessId,      KEY_PID,        !!) ;
+   DIAG_READ_FLAG(ShowLogLevel,       KEY_LEVEL,      !!) ;
 
    // Where to write the trace into?
    // If there is no corresponding profile item, don't change that was before
@@ -164,8 +166,9 @@ bool PTraceConfig::writeProfile()
    DIAG_WRITE_FLAG(AppendTrace,        KEY_APPEND,    !!) ;
    DIAG_WRITE_FLAG(EnableFullPath,     KEY_FULLPATH,  !!) ;
    DIAG_WRITE_FLAG(DisableLineNum,     KEY_LINENUM,   !) ;
-   DIAG_WRITE_FLAG(UseThreadId,        KEY_THREADID,  !!) ;
-   DIAG_WRITE_FLAG(UseProcessId,       KEY_PID,       !!) ;
+   DIAG_WRITE_FLAG(ShowThreadId,       KEY_THREADID,  !!) ;
+   DIAG_WRITE_FLAG(ShowProcessId,      KEY_PID,       !!) ;
+   DIAG_WRITE_FLAG(ShowLogLevel,       KEY_LEVEL,     !!) ;
 
    // Write enabled/disabled status for every supergroup
    for (iterator iter = begin() ; iter != end() ; ++iter)

@@ -255,6 +255,9 @@ int main(int argc, char *argv[])
    std::cout << "Press ENTER to end program..." << std::flush ;
    getchar() ;
 
+   TEST_TRACE(TTST_FirstGroup, DBGL_ALWAYS) ;
+   TEST_TRACE(TTST_SecondGroup, DBGL_ALWAYS) ;
+
    TEST_TRACE(TST0_Group2, DBGL_MIDLEV) ;
    TEST_WARN(TST0_Group2, false, DBGL_MIDLEV) ;
    TEST_WARN(TST0_Group2, true, DBGL_LOWLEV) ;

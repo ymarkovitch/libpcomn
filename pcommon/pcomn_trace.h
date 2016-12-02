@@ -37,10 +37,10 @@ const unsigned DBGL_MAXLEVEL = DBGL_VERBOSE ;
 
 namespace diag {
 
-const unsigned MaxGroupsNum      = 256 ; /**< Maximum overall number of groups */
+const unsigned MaxGroupsNum      = 512 ; /**< Maximum overall number of groups */
 const unsigned MaxSuperGroupsNum = 256 ; /**< Maximum overall number of supergroups */
 const char     GroupDelim        = '_' ; /**< A subgroup/supergroup name delimiter */
-const unsigned MaxSuperGroupLen  = 8 ;   /**< Maximum supergroup name length */
+const unsigned MaxSuperGroupLen  = 15 ;  /**< Maximum supergroup name length */
 
 /// Tracing mode flags
 enum DiagMode {
@@ -50,9 +50,13 @@ enum DiagMode {
    AppendTrace        = 0x0008, /**< Don't truncate the trace file on open */
    EnableFullPath     = 0x0010, /**< Output full source file paths into the trace log */
    DisableLineNum     = 0x0020, /**< Don't output source line numbers into the trace log */
-   UseThreadId        = 0x0040, /**< Output thread IDs into the trace log */
-   UseProcessId       = 0x0080  /**< Output process IDs into the trace log */
+   ShowThreadId       = 0x0040, /**< Output thread IDs into the trace log */
+   ShowProcessId      = 0x0080, /**< Output process IDs into the trace log */
+   ShowLogLevel       = 0x0100  /**< Output log level of the message into the trace log */
 } ;
+
+constexpr const DiagMode UseThreadId   = ShowThreadId ;  /**< Backward compatibility */
+constexpr const DiagMode UseProcessId  = ShowProcessId ; /**< Backward compatibility */
 
 /// Log levels
 enum LogLevel : unsigned {
@@ -165,10 +169,10 @@ class _PCOMNEXP PDiagBase {
    protected:
       PDiagBase(Properties *grp) ;
 
-      static void trace_message(const char *type, const char *group, const char *msg,
+      static void trace_message(const char *type, const Properties *group, const char *msg,
                                 const char *fname, unsigned line) ;
 
-      static void syslog_message(LogLevel level, const char *group, const char *msg,
+      static void syslog_message(LogLevel level, const Properties *group, const char *msg,
                                  const char *fname, unsigned line) ;
 } ;
 
@@ -278,7 +282,7 @@ class __VA_ARGS__ GRP : private PDiagBase                               \
    static void slog(LogLevel lvl, const char *fname, unsigned line)     \
    {                                                                    \
       PDiagBase::syslog_message                                         \
-         (lvl, properties()->name(), outstr(), fname, line) ;           \
+         (lvl, properties(), outstr(), fname, line) ;                   \
    }                                                                    \
                                                                         \
    static bool IsSuperGroupEnabled()                                    \
@@ -325,12 +329,12 @@ class __VA_ARGS__ GRP : private PDiagBase                               \
    void ::diag::grp::GRP::trace(const char *fname, unsigned line)       \
    {                                                                    \
       PDiagBase::trace_message                                          \
-         (" ", properties()->name(), outstr(), fname, line) ;           \
+         (" ", properties(), outstr(), fname, line) ;                   \
    }                                                                    \
    void ::diag::grp::GRP::warn(const char *fname, unsigned line)        \
    {                                                                    \
       PDiagBase::trace_message                                          \
-         ("!", properties()->name(), outstr(), fname, line) ;           \
+         ("!", properties(), outstr(), fname, line) ;                   \
    }
 
 #define DIAG_DECLARE_GROUP(GRP)            DECLARE_DIAG_GROUP(GRP, P_EMPTY_ARG)
@@ -354,7 +358,9 @@ class __VA_ARGS__ GRP : private PDiagBase                               \
 #define diag_getlevel(group)          (::diag::grp::group::GetLevel())
 
 #define diag_isenabled_output(group, level) \
-   (!(diag_getmode() & ::diag::DisableDebugOutput) && ::diag::grp::group::IsEnabled(level))
+   (diag_isenabled_diag() && ::diag::grp::group::IsEnabled(level))
+
+_PCOMNEXP bool diag_isenabled_diag() ;
 
 inline
 void diag_enable_supergroup(const char *name, bool enabled)
@@ -375,9 +381,6 @@ void diag_setmode(unsigned mode, bool onoff) { ::diag::PDiagBase::mode(mode, ono
 
 inline
 unsigned diag_getmode() { return ::diag::PDiagBase::mode() ; }
-
-inline
-bool diag_isenabled_diag() { return !(diag_getmode() & ::diag::DisableDebugOutput) ; }
 
 inline
 void diag_setlog(int fd) { ::diag::PDiagBase::setlog(fd) ; }
