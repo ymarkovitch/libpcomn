@@ -389,10 +389,10 @@ inline
 void diag_setlog(int fd, bool own) { ::diag::PDiagBase::setlog(fd, own) ; }
 
 inline
-void diag_readprofile() { ::diag::PTraceConfig::readProfile() ; }
+bool diag_readprofile() { return ::diag::PTraceConfig::readProfile() ; }
 
 inline
-void diag_writeprofile() { ::diag::PTraceConfig::writeProfile() ; }
+bool diag_writeprofile() { return ::diag::PTraceConfig::writeProfile() ; }
 
 inline
 void diag_syncprofile() { ::diag::PTraceConfig::syncProfile() ; }
@@ -452,8 +452,8 @@ DECLARE_DIAG_GROUP(Def, _PCOMNEXP) ;
 #define DIAG_SETMODE(mode, onoff)      ((void)0)
 #define DIAG_GETMODE()                 ((unsigned)::diag::DisableDebugOutput)
 #define DIAG_SETLOG(fd)                ((void)0)
-#define DIAG_READPROFILE()             ((void)0)
-#define DIAG_WRITEPROFILE()            ((void)0)
+#define DIAG_READPROFILE()             (false)
+#define DIAG_WRITEPROFILE()            (false)
 #define DIAG_SYNCPROFILE()             ((void)0)
 #define DIAG_SETPROFILE(filename)      ((void)0)
 #define DIAG_INITTRACE(filename)       ((void)0)
