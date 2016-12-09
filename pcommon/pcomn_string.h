@@ -736,6 +736,21 @@ inline std::string &strappendf(std::string &s, const char *format, ...)
 *******************************************************************************/
 char *bufprintf(char *buf, size_t n, const char *format, ...) PCOMN_ATTR_PRINTF(3, 4) ;
 
+template<size_t n>
+char *bufprintf(char (&buf)[n], const char *format, ...) PCOMN_ATTR_PRINTF(2, 3) ;
+
+inline char *vbufprintf(char *buf, size_t n, const char *format, va_list args)
+{
+   vsnprintf(buf, n, format, args) ;
+   return buf ;
+}
+
+template<size_t n>
+inline char *vbufprintf(char (&buf)[n], const char *format, va_list args)
+{
+   return vbufprintf(buf, n, format, args) ;
+}
+
 inline char *bufprintf(char *buf, size_t n, const char *format, ...)
 {
    va_list parm ;
@@ -745,9 +760,6 @@ inline char *bufprintf(char *buf, size_t n, const char *format, ...)
 
    return buf ;
 }
-
-template<size_t n>
-char *bufprintf(char (&buf)[n], const char *format, ...) PCOMN_ATTR_PRINTF(2, 3) ;
 
 template<size_t n>
 inline char *bufprintf(char (&buf)[n], const char *format, ...)
