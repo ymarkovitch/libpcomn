@@ -337,8 +337,8 @@ class __VA_ARGS__ GRP : private PDiagBase                               \
          ("!", properties(), outstr(), fname, line) ;                   \
    }
 
-#define DIAG_DECLARE_GROUP(GRP)            DECLARE_DIAG_GROUP(GRP, P_EMPTY_ARG)
-#define DIAG_DEFINE_GROUP(GRP, ENA, LVL)   DEFINE_DIAG_GROUP(GRP, ENA, LVL, P_EMPTY_ARG);
+#define DIAG_DECLARE_GROUP(GRP)            DECLARE_DIAG_GROUP(GRP)
+#define DIAG_DEFINE_GROUP(GRP, ENA, LVL)   DEFINE_DIAG_GROUP(GRP, ENA, LVL);
 
 /*******************************************************************************
  Global trace-controlling function.
