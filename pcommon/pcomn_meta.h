@@ -87,7 +87,10 @@ using make_unsigned_t = typename make_unsigned<T>::type ;
 template<typename T>
 using make_signed_t = typename make_signed<T>::type ;
 
-}
+template<typename T>
+using decay_t = typename decay<T>::type ;
+
+} // end of namespace std
 
 #endif /* PCOMN_STL_CXX14 */
 

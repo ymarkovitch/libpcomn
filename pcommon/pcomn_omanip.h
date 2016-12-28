@@ -27,6 +27,7 @@
 *******************************************************************************/
 #include <pcomn_platform.h>
 #include <pcomn_iterator.h>
+#include <pcomn_meta.h>
 
 #include <iomanip>
 #include <vector>
@@ -139,8 +140,6 @@ std::ostream &print_enum(std::ostream &, Enum) ;
  Various ostream manipulators
 *******************************************************************************/
 namespace detail {
-template<typename T>
-using decayed = typename std::decay<T>::type ;
 
 template<typename InputIterator, typename Before, typename After>
 std::ostream &o_sequence(std::ostream &os, InputIterator begin, InputIterator end,
@@ -178,9 +177,8 @@ inline std::ostream &o_callfun(std::ostream &os, const std::function<void(std::o
 
 template<typename InputIterator, typename Before, typename After>
 inline auto osequence(InputIterator begin, InputIterator end, const Before &before, const After &after)
-   PCOMN_MAKE_OMANIP(detail::o_sequence<InputIterator, detail::decayed<Before>, detail::decayed<After> >,
-                     begin, end, detail::decayed<Before>(before), detail::decayed<After>(after)) ;
-
+   PCOMN_MAKE_OMANIP(detail::o_sequence<InputIterator, std::decay_t<Before>, std::decay_t<After> >,
+                     begin, end, std::decay_t<Before>(before), std::decay_t<After>(after)) ;
 
 template<typename InputIterator, typename After>
 inline auto osequence(InputIterator begin, InputIterator end, const After &after)
@@ -204,8 +202,8 @@ inline auto ocontainer(const Container &container)
 
 template<typename InputIterator, typename Delim>
 inline auto oseqdelim(InputIterator begin, InputIterator end, const Delim &delim)
-   PCOMN_MAKE_OMANIP(detail::o_sequence<InputIterator, detail::decayed<Delim> >,
-                     begin, end, detail::decayed<Delim>(delim)) ;
+   PCOMN_MAKE_OMANIP(detail::o_sequence<InputIterator, std::decay_t<Delim> >,
+                     begin, end, std::decay_t<Delim>(delim)) ;
 
 template<typename InputIterator>
 inline auto oseqdelim(InputIterator begin, InputIterator end)
