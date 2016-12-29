@@ -262,6 +262,20 @@ struct default_constructed {
 template<typename T>
 const T default_constructed<T>::value = {} ;
 
+/******************************************************************************/
+/** Callable object to construct an object of its template parameter type.
+*******************************************************************************/
+template<typename T>
+struct make {
+      typedef T type ;
+
+      template<typename... Args>
+      type operator() (Args && ...args) const
+      {
+         return type(std::forward<Args>(args)...) ;
+      }
+} ;
+
 /*******************************************************************************
  Type testers
 *******************************************************************************/

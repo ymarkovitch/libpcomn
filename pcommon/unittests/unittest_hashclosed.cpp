@@ -11,6 +11,7 @@
 *******************************************************************************/
 #include <pcomn_hashclosed.h>
 #include <pcomn_string.h>
+#include <pcomn_strslice.h>
 #include <pcomn_unittest.h>
 
 #include <typeinfo>
@@ -53,6 +54,7 @@ class ClosedHashTests : public CppUnit::TestFixture {
       void Test_Closed_Hash_Copy() ;
       void Test_Closed_Hash_Move() ;
       void Test_Closed_Hash_Extract_Key() ;
+      void Test_Closed_Hash_CString() ;
 
       CPPUNIT_TEST_SUITE(ClosedHashTests) ;
 
@@ -69,6 +71,7 @@ class ClosedHashTests : public CppUnit::TestFixture {
       CPPUNIT_TEST(Test_Closed_Hash_Copy) ;
       CPPUNIT_TEST(Test_Closed_Hash_Move) ;
       CPPUNIT_TEST(Test_Closed_Hash_Extract_Key) ;
+      CPPUNIT_TEST(Test_Closed_Hash_CString) ;
 
       CPPUNIT_TEST_SUITE_END() ;
 } ;
@@ -675,6 +678,25 @@ void ClosedHashTests::Test_Closed_Hash_Extract_Key()
    CPPUNIT_LOG_EQUAL(TestHash.count(0), (size_t)1) ;
    CPPUNIT_LOG_EQUAL(std::string(TestHash.find(3467)->str), std::string("v:3467")) ;
    CPPUNIT_LOG_EQUAL(std::string(TestHash.find(0)->str), std::string("v:0")) ;
+}
+
+void ClosedHashTests::Test_Closed_Hash_CString()
+{
+   using namespace pcomn ;
+   typedef closed_hashtable<const char *, make<strslice>> testtable_type ;
+   CPPUNIT_LOG_EQUAL(typeid(testtable_type::key_type), typeid(strslice)) ;
+
+   testtable_type TestHash ;
+   const std::string hello ("Hello") ;
+
+   CPPUNIT_LOG_ASSERT(TestHash.insert("Hello").second) ;
+   CPPUNIT_LOG_ASSERT(TestHash.insert("world").second) ;
+   CPPUNIT_LOG_IS_FALSE(TestHash.insert(hello.c_str()).second) ;
+   CPPUNIT_LOG_EQ(TestHash.size(), 2) ;
+
+   CPPUNIT_LOG_ASSERT(TestHash.count("Hello")) ;
+   CPPUNIT_LOG_ASSERT(TestHash.count(hello)) ;
+   CPPUNIT_LOG_IS_FALSE(TestHash.count("")) ;
 }
 
 int main(int argc, char *argv[])
