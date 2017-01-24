@@ -52,7 +52,7 @@ enum DiagMode {
    DisableLineNum     = 0x0020, /**< Don't output source line numbers into the trace log */
    ShowThreadId       = 0x0040, /**< Output thread IDs into the trace log */
    ShowProcessId      = 0x0080, /**< Output process IDs into the trace log */
-   ShowLogLevel       = 0x0100  /**< Output log level of the message into the trace log */
+   ShowLogLevel       = 0x0100  /**< Show log level of the message in the trace log */
 } ;
 
 constexpr const DiagMode UseThreadId   = ShowThreadId ;  /**< Backward compatibility */

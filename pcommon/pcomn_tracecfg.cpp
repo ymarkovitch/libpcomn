@@ -27,7 +27,8 @@ static constexpr const char SECTION_ENABLED[] = "ENABLED" ;
 static constexpr const char SECTION_DEFAULT[] = "DEFAULT" ;
 static constexpr const char SECTION_EXT[]     = "diag" ;
 
-static constexpr const char KEY_GROUP[] = "TRACE" ;
+static constexpr const char TRACE_GROUP[] = "TRACE" ;
+static constexpr const char SHOW_GROUP[]  = "SHOW" ;
 
 static constexpr const char KEY_LOGNAME[]    = "LOG" ;
 static constexpr const char KEY_ENABLED[]    = "ENABLED" ;
@@ -113,23 +114,23 @@ bool PTraceConfig::readProfile()
 
    const char *cfgfile = profileFileName() ;
 
-#define DIAG_READ_FLAG(flag, keyname, yes_no_op)                        \
-   PDiagBase::mode(flag,                                                \
-                   yes_no_op(cfgfile_get_intval(cfgfile, KEY_GROUP, keyname, yes_no_op(PDiagBase::mode() & flag))))
+#define DIAG_READ_FLAG(flag, group, keyname, yes_no_op)                  \
+   PDiagBase::mode(flag, yes_no_op(cfgfile_get_intval(cfgfile, group##_GROUP, keyname, yes_no_op(PDiagBase::mode() & flag))))
 
    // Do we output trace at all?
-   DIAG_READ_FLAG(DisableDebugOutput, KEY_ENABLED,    !) ;
-   DIAG_READ_FLAG(AppendTrace,        KEY_APPEND,     !!) ;
-   DIAG_READ_FLAG(EnableFullPath,     KEY_FULLPATH,   !!) ;
-   DIAG_READ_FLAG(DisableLineNum,     KEY_LINENUM,    !) ;
-   DIAG_READ_FLAG(ShowThreadId,       KEY_THREADID,   !!) ;
-   DIAG_READ_FLAG(ShowProcessId,      KEY_PID,        !!) ;
-   DIAG_READ_FLAG(ShowLogLevel,       KEY_LEVEL,      !!) ;
+   DIAG_READ_FLAG(DisableDebugOutput, TRACE, KEY_ENABLED,    !) ;
+   DIAG_READ_FLAG(AppendTrace,        TRACE, KEY_APPEND,     !!) ;
+
+   DIAG_READ_FLAG(EnableFullPath,     SHOW, KEY_FULLPATH,   !!) ;
+   DIAG_READ_FLAG(DisableLineNum,     SHOW, KEY_LINENUM,    !) ;
+   DIAG_READ_FLAG(ShowThreadId,       SHOW, KEY_THREADID,   !!) ;
+   DIAG_READ_FLAG(ShowProcessId,      SHOW, KEY_PID,        !!) ;
+   DIAG_READ_FLAG(ShowLogLevel,       SHOW, KEY_LEVEL,      !!) ;
 
    // Where to write the trace into?
    // If there is no corresponding profile item, don't change that was before
    // the call to readProfile
-   if (cfgfile_get_value(cfgfile, KEY_GROUP, KEY_LOGNAME, buf, ""))
+   if (cfgfile_get_value(cfgfile, TRACE_GROUP, KEY_LOGNAME, buf, ""))
       PDiagBase::setlog(buf) ;
 
    for (iterator iter = begin() ; iter != end() ; ++iter)
@@ -155,20 +156,21 @@ bool PTraceConfig::writeProfile()
 
    char buf[64] ;
 
-   cfgfile_write_value(profileFileName(), KEY_GROUP, KEY_LOGNAME,
+   cfgfile_write_value(profileFileName(), TRACE_GROUP, KEY_LOGNAME,
                        PDiagBase::logname()) ;
 
-#define DIAG_WRITE_FLAG(flag, keyname, yes_no_op)                       \
-   cfgfile_write_value(profileFileName(), KEY_GROUP, keyname,           \
+#define DIAG_WRITE_FLAG(flag, group, keyname, yes_no_op)                \
+   cfgfile_write_value(profileFileName(), group##_GROUP, keyname,       \
                        numtostr(yes_no_op(PDiagBase::mode() & flag), buf))
 
-   DIAG_WRITE_FLAG(DisableDebugOutput, KEY_ENABLED,   !) ;
-   DIAG_WRITE_FLAG(AppendTrace,        KEY_APPEND,    !!) ;
-   DIAG_WRITE_FLAG(EnableFullPath,     KEY_FULLPATH,  !!) ;
-   DIAG_WRITE_FLAG(DisableLineNum,     KEY_LINENUM,   !) ;
-   DIAG_WRITE_FLAG(ShowThreadId,       KEY_THREADID,  !!) ;
-   DIAG_WRITE_FLAG(ShowProcessId,      KEY_PID,       !!) ;
-   DIAG_WRITE_FLAG(ShowLogLevel,       KEY_LEVEL,     !!) ;
+   DIAG_WRITE_FLAG(DisableDebugOutput, TRACE, KEY_ENABLED,   !) ;
+   DIAG_WRITE_FLAG(AppendTrace,        TRACE, KEY_APPEND,    !!) ;
+
+   DIAG_WRITE_FLAG(EnableFullPath,     SHOW, KEY_FULLPATH,  !!) ;
+   DIAG_WRITE_FLAG(DisableLineNum,     SHOW, KEY_LINENUM,   !) ;
+   DIAG_WRITE_FLAG(ShowThreadId,       SHOW, KEY_THREADID,  !!) ;
+   DIAG_WRITE_FLAG(ShowProcessId,      SHOW, KEY_PID,       !!) ;
+   DIAG_WRITE_FLAG(ShowLogLevel,       SHOW, KEY_LEVEL,     !!) ;
 
    // Write enabled/disabled status for every supergroup
    for (iterator iter = begin() ; iter != end() ; ++iter)
