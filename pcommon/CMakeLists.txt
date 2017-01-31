@@ -121,7 +121,7 @@ target_compile_options(pcommon
   PUBLIC
   $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>:-pthread>
   $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>:-Wall>
-  $<$<CXX_COMPILER_ID:GNU>:-grecord-gcc-switches>
+  $<$<CXX_COMPILER_ID:GNU>:-frecord-gcc-switches>
   $<$<AND:$<CXX_COMPILER_ID:Clang>,$<${COMPILE_LANGUAGE_CXX}>>:-Wno-potentially-evaluated-expression -Wno-mismatched-tags>
 
   $<$<AND:$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>,$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>>:-gdwarf-4>
