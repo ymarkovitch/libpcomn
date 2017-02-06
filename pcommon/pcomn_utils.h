@@ -162,12 +162,17 @@ inline T *&clear_deletev(T *&vec)
    return vec ;
 }
 
-template<class T>
-inline const T &assign_by_ptr(T *ptr, const T &value)
+template<typename O, typename V>
+inline void outparam_set(O *outparam_ptr, V &&value)
 {
-   if (ptr)
-      *ptr = value ;
-   return value ;
+   if (outparam_ptr)
+      *outparam_ptr = std::forward<V>(value) ;
+}
+
+template<typename T, typename P>
+constexpr inline auto nullable_get(P &&ptr, T &&default_value) -> decltype(*std::forward<P>(ptr))
+{
+   return std::forward<P>(ptr) ? *std::forward<P>(ptr) : std::forward<T>(default_value) ;
 }
 
 /*******************************************************************************

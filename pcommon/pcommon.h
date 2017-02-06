@@ -390,7 +390,7 @@ inline void ordered_swap(T &op1, T &op2, Compare comp)
 }
 
 template<typename T>
-inline std::pair<T, T> ordered_pair(T &&op1, T &&op2)
+constexpr inline std::pair<T, T> ordered_pair(T &&op1, T &&op2)
 {
    return (op1 < op2)
       ? std::pair<T, T>(std::forward<T>(op1), std::forward<T>(op2))
@@ -398,7 +398,7 @@ inline std::pair<T, T> ordered_pair(T &&op1, T &&op2)
 }
 
 template<typename T, typename Compare>
-inline std::pair<T, T> ordered_pair(T &&op1, T &&op2, Compare &&comp)
+constexpr inline std::pair<T, T> ordered_pair(T &&op1, T &&op2, Compare &&comp)
 {
    return std::forward<Compare>(comp)(op1, op2)
       ? std::pair<T, T>(std::forward<T>(op1), std::forward<T>(op2))
