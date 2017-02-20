@@ -272,6 +272,28 @@ inline std::vector<T> &unique_sort(std::vector<T> &v, BinaryPredicate pred)
                  ) ;
 }
 
+/*******************************************************************************
+ Test sequences/containers are equal
+*******************************************************************************/
+template<typename S1, typename S2>
+inline bool equal_seq(S1 &&x, S2 &&y)
+{
+   using namespace std ;
+   return
+      size(std::forward<S1>(x)) == size(std::forward<S2>(y)) &&
+      std::equal(begin(std::forward<S1>(x)), end(std::forward<S1>(x)), begin(std::forward<S2>(y))) ;
+}
+
+template<typename S1, typename S2, typename BinaryPredicate>
+inline bool equal_seq(S1 &&x, S2 &&y, BinaryPredicate &&pred)
+{
+   using namespace std ;
+   return
+      size(std::forward<S1>(x)) == size(std::forward<S2>(y)) &&
+      std::equal(begin(std::forward<S1>(x)), end(std::forward<S1>(x)), begin(std::forward<S2>(y)),
+                 std::forward<BinaryPredicate>(pred)) ;
+}
+
 } // end of namespace pcomn
 
 #endif /* __PCOMN_CALGORITHM_H */
