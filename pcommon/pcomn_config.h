@@ -151,6 +151,11 @@
 #endif
 #define __noinline __attribute__((__noinline__))
 
+#ifdef __cold
+#undef __cold
+#endif
+#define __cold __attribute__((__noinline__, __cold__))
+
 #ifdef __forceinline
 #undef __forceinline
 #endif
@@ -175,6 +180,11 @@
 #undef __noinline
 #endif
 #define __noinline __declspec(noinline)
+
+#ifdef __cold
+#undef __cold
+#endif
+#define __cold __noinline
 
 #ifdef __forceinline
 #undef __forceinline
@@ -207,6 +217,9 @@
 #endif
 #ifndef __noinline
 #define __noinline
+#endif
+#ifndef __cold
+#define __cold
 #endif
 
 #endif
