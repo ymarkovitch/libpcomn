@@ -189,7 +189,7 @@ using posix::dirname ;
 using posix::splitext ;
 
 /// @overload
-template<typename R, typename S>
+template<typename R = std::string, typename S>
 std::enable_if_t<is_compatible_strings<R, S>::value, R>
 abspath(const S &path)
 {
@@ -197,7 +197,7 @@ abspath(const S &path)
    return abspath(str::cstr(path), buf, sizeof buf) ? R(buf) : R() ;
 }
 
-template<typename R>
+template<typename R = std::string>
 enable_if_strchar_t<R, char, R>
 abspath(const basic_strslice<char> &path)
 {
@@ -206,7 +206,7 @@ abspath(const basic_strslice<char> &path)
 }
 
 /// @overload
-template<typename R, typename S>
+template<typename R = std::string, typename S>
 std::enable_if_t<is_compatible_strings<R, S>::value, R>
 normpath(const S &path)
 {
@@ -214,7 +214,7 @@ normpath(const S &path)
    return normpath(str::cstr(path), buf, sizeof buf) ? R(buf) : R() ;
 }
 
-template<typename R>
+template<typename R = std::string>
 enable_if_strchar_t<R, char, R>
 normpath(const basic_strslice<char> &path)
 {
@@ -223,7 +223,7 @@ normpath(const basic_strslice<char> &path)
 }
 
 /// @overload
-template<typename R, typename S>
+template<typename R = std::string, typename S>
 std::enable_if_t<is_compatible_strings<R, S>::value, R>
 realpath(const S &path)
 {
@@ -231,7 +231,7 @@ realpath(const S &path)
    return realpath(str::cstr(path), buf, sizeof buf) > 0 ? R(buf) : R() ;
 }
 
-template<typename R>
+template<typename R = std::string>
 enable_if_strchar_t<R, char, R>
 realpath(const basic_strslice<char> &path)
 {
@@ -240,7 +240,7 @@ realpath(const basic_strslice<char> &path)
 }
 
 /// @overload
-template<typename R>
+template<typename R = std::string>
 std::enable_if_t<is_strchar<R, char>::value, R>
 joinpath(const strslice &p1, const strslice &p2)
 {
@@ -249,14 +249,48 @@ joinpath(const strslice &p1, const strslice &p2)
 }
 
 /// @overload
-template<typename R>
+template<typename R = std::string>
 std::enable_if_t<is_strchar<R, char>::value, R>
 joinpath(const strslice &p1, const strslice &p2, const strslice &p3)
 {
    char buf1[PATH_MAX + 1] ;
-   char buf2[PATH_MAX + 1] ;
+   char buf2[sizeof buf1] ;
    return
       joinpath(p1, p2, buf1, sizeof buf1) && joinpath(buf1, p3, buf2, sizeof buf2) ? R(buf2) : R() ;
+}
+
+/// @overload
+template<typename R = std::string>
+std::enable_if_t<is_strchar<R, char>::value, R>
+joinpath(const strslice &p1, const strslice &p2, const strslice &p3, const strslice &p4)
+{
+   char buf1[PATH_MAX + 1] ;
+   char buf2[sizeof buf1] ;
+   char buf3[sizeof buf1] ;
+   return joinpath(p1, p2, buf1, sizeof buf1)
+       && joinpath(buf1, p3, buf2, sizeof buf2)
+       && joinpath(buf2, p4, buf3, sizeof buf3)
+
+      ? R(buf3) : R() ;
+}
+
+template<typename R = std::string, typename S>
+std::enable_if_t<is_compatible_strings<R, std::remove_reference_t<S>>::value, R>
+mkdirpath(S &&path)
+{
+   static constexpr const char separator[2] = {PCOMN_PATH_NATIVE_DELIM, 0} ;
+
+   return (!*str::cstr(std::forward<S>(path))
+           || is_pathname_separator(*(str::cstr(std::forward<S>(path)) + (str::len(std::forward<S>(path)) - 1))))
+      ? R(std::forward<S>(path))
+      : R(std::forward<S>(path)) + separator ;
+}
+
+template<typename R = std::string>
+inline std::enable_if_t<is_strchar<R, char>::value, R>
+mkdirpath(const strslice &p)
+{
+   return mkdirpath(R(p)) ;
 }
 
 } // end of namespace pcomn::path

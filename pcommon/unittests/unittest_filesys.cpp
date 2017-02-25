@@ -41,6 +41,7 @@ using pcomn::path::abspath ;
 using pcomn::path::normpath ;
 using pcomn::path::joinpath ;
 using pcomn::path::realpath ;
+using pcomn::path::mkdirpath ;
 using pcomn::path::posix::path_dots ;
 using pcomn::strslice_pair ;
 
@@ -85,8 +86,16 @@ void FilesystemTests::Test_Filesystem_Path()
    CPPUNIT_LOG_EQUAL(joinpath<std::string>("abc", ""), std::string("abc")) ;
 
    CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_EQUAL(mkdirpath<std::string>(""), std::string()) ;
+   CPPUNIT_LOG_EQUAL(mkdirpath<std::string>("/"), std::string("/")) ;
+   CPPUNIT_LOG_EQUAL(mkdirpath<>("."), std::string("./")) ;
+   CPPUNIT_LOG_EQUAL(mkdirpath<>(std::string("abc/de/")), std::string("abc/de/")) ;
+   CPPUNIT_LOG_EQUAL(mkdirpath<>(std::string("abc/de")), std::string("abc/de/")) ;
+   CPPUNIT_LOG_EQUAL(mkdirpath<>(strslice("abc/de")), std::string("abc/de/")) ;
 
-   CPPUNIT_LOG_EQUAL(normpath<std::string>(""), std::string()) ;
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_EQUAL(normpath<>(""), std::string()) ;
    CPPUNIT_LOG_EQUAL(normpath("", buf, sizeof buf), (size_t)0) ;
    CPPUNIT_LOG_EQUAL(normpath<std::string>("."), std::string(".")) ;
    CPPUNIT_LOG_EQUAL(normpath(".", buf, sizeof buf), (size_t)1) ;
@@ -120,7 +129,7 @@ void FilesystemTests::Test_Filesystem_Path()
 
    CPPUNIT_LOG_EQUAL(abspath<std::string>(""), std::string()) ;
    CPPUNIT_LOG_EQUAL(abspath("", buf, sizeof buf), (size_t)0) ;
-   CPPUNIT_LOG_EQUAL(abspath<std::string>("."), std::string(cwd)) ;
+   CPPUNIT_LOG_EQUAL(abspath<>("."), std::string(cwd)) ;
    CPPUNIT_LOG_EQUAL(abspath<std::string>(strslice(".")), std::string(cwd)) ;
    CPPUNIT_LOG(abspath<std::string>(".") << std::endl) ;
    CPPUNIT_LOG_EQUAL(abspath(".", buf, sizeof buf), strlen(cwd)) ;
