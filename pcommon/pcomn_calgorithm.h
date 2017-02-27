@@ -273,6 +273,11 @@ inline std::vector<T> &unique_sort(std::vector<T> &v, BinaryPredicate pred)
 }
 
 /*******************************************************************************
+ Erase all the elements satisfying specific criteria from the vector
+ and return the reference to the vector.
+*******************************************************************************/
+
+/*******************************************************************************
  Test sequences/containers are equal
 *******************************************************************************/
 template<typename S1, typename S2>
