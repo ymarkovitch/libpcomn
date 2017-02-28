@@ -245,10 +245,17 @@ constexpr inline T is_inverted(T flag, T mask, long test)
    return !(flag & mask) ^ !test ;
 }
 
+/// Select flags value or 0 depending on a boolean condition.
+/// Facilitates e.g. setting OR-combination of flags where presence of each flags
+/// depends on some individual bool value.
+/// @code
+/// enum FOOBAR { FL_FOO = 0x01, FL_BAR = 0x02 } ;
+/// unsigned foobar = flags_if(FL_FOO, is_foo()) | flags_if(FL_BAR, is_bar()) ;
+/// @endcode
 template<typename T>
-constexpr inline T flag_if(T flag, bool cond)
+constexpr inline T flags_if(T flags, bool cond)
 {
-   return (T)(static_cast<T>(-(long)!!cond) & flag) ;
+   return (T)(static_cast<T>(-(long long)!!cond) & flags) ;
 }
 
 template<typename T>
