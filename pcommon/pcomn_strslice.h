@@ -127,8 +127,8 @@ struct basic_strslice {
          return *this ;
       }
 
-      const char_type *begin() const { return _begin ; }
-      const char_type *end() const { return _end ; }
+      constexpr const char_type *begin() const { return _begin ; }
+      constexpr const char_type *end() const { return _end ; }
 
       char_type front() const { return *begin() ; }
       char_type back() const { NOXPRECONDITION(!empty()) ; return *(end() - 1) ; }
@@ -149,10 +149,10 @@ struct basic_strslice {
 
       explicit operator std::basic_string<C>() const { return {begin(), end()} ; }
 
-      size_t size() const { return end() - begin() ; }
+      constexpr size_t size() const { return end() - begin() ; }
 
       /// Indicate if the slice is empty
-      bool empty() const { return begin() == end() ; }
+      constexpr bool empty() const { return begin() == end() ; }
 
       /// Indicate if the slice has has both begin() and end() equal to NULL
       ///
@@ -164,7 +164,7 @@ struct basic_strslice {
       bool is_null() const { return !((uintptr_t)begin() | (uintptr_t)end()) ; }
 
       /// Indicate that the slice is nonempty.
-      explicit operator bool() const { return begin() != end() ; }
+      constexpr explicit operator bool() const { return begin() != end() ; }
 
       /// Check if all characters in the slice satisfy the property.
       ///
