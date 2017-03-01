@@ -299,25 +299,25 @@ disable_if_strchar : std::enable_if<!is_strchar<S, Char>::value, Type> {} ;
 template<typename S, typename Other, typename Type> struct
 enable_if_other_string : std::enable_if<is_string<Other>::value && !std::is_base_of<S, Other>::value, Type> {} ;
 
-template<typename S1, typename S2, typename Type> struct
+template<typename S1, typename S2, typename Type = std::nullptr_t> struct
 enable_if_compatible_strings : std::enable_if<is_compatible_strings<S1, S2>::value, Type> {} ;
 
-template<typename S, typename T>
+template<typename S, typename T = std::nullptr_t>
 using enable_if_string_t = typename enable_if_string<S, T>::type ;
 
-template<typename S, typename T>
+template<typename S, typename T = std::nullptr_t>
 using disable_if_string_t = typename disable_if_string<S, T>::type ;
 
-template<typename S, typename C, typename T>
+template<typename S, typename C, typename T = std::nullptr_t>
 using enable_if_strchar_t = typename enable_if_strchar<S, C, T>::type ;
 
-template<typename S, typename C, typename T>
+template<typename S, typename C, typename T = std::nullptr_t>
 using disable_if_strchar_t = typename disable_if_strchar<S, C, T>::type ;
 
-template<typename S, typename O, typename T>
+template<typename S, typename O, typename T = std::nullptr_t>
 using enable_if_other_string_t = typename enable_if_other_string<S, O, T>::type ;
 
-template<typename S1, typename S2, typename T>
+template<typename S1, typename S2, typename T = std::nullptr_t>
 using enable_if_compatible_strings_t = typename enable_if_compatible_strings<S1, S2, T>::type ;
 
 /*******************************************************************************
