@@ -416,18 +416,18 @@ constexpr inline std::pair<T, T> ordered_pair(T &&op1, T &&op2, Compare &&comp)
  Out-of-line exception throw
 *******************************************************************************/
 template<class X, typename... XArgs>
-__noreturn __noinline
+__noreturn __cold
 void throw_exception(XArgs&& ...args) { throw X(std::forward<XArgs>(args)...) ; }
 
 template<typename Msg>
-__noreturn __noinline
+__noreturn __cold
 void throw_system_error(std::errc errcode, const Msg &msg)
 {
    throw_exception<std::system_error>(std::make_error_code(errcode), msg) ;
 }
 
 template<typename Msg>
-__noreturn __noinline
+__noreturn __cold
 void throw_system_error(int errno_code, const Msg &msg)
 {
    throw_exception<std::system_error>(errno_code, std::system_category(), msg) ;
@@ -436,11 +436,11 @@ void throw_system_error(int errno_code, const Msg &msg)
 /// Throw exception with formatted message
 ///
 template<class X, size_t bufsize = PCOMN_MSGBUFSIZE>
-__noreturn __noinline
+__noreturn __cold
 void throwf(const char *, ...) PCOMN_ATTR_PRINTF(1, 2) ;
 
 template<class X, size_t bufsize>
-__noreturn __noinline
+__noreturn __cold
 void throwf(const char *format, ...)
 {
    char buf[bufsize] ;
@@ -476,7 +476,7 @@ inline V &&ensure_nonzero(V &&value, XArgs && ...args)
 
 namespace detail {
 template<typename X>
-__noinline __noreturn
+__noreturn __cold
 void throw_arg_null(const char *arg_name, const char *function_name)
 {
    char message[512] ;
@@ -489,7 +489,7 @@ void throw_arg_null(const char *arg_name, const char *function_name)
 }
 
 template<typename X>
-__noinline __noreturn
+__noreturn __cold
 void throw_arg_assert(const char *assertion_text, const char *function_name)
 {
    char message[512] ;
@@ -635,6 +635,12 @@ inline void destroy_ref(T &r)
 {
    r.~T() ;
 }
+
+template<typename T>
+constexpr inline T *as_ptr_mutable(const T *p) { return const_cast<T *>(p) ; }
+
+template<typename T>
+constexpr inline T &as_mutable(const T &v) { return const_cast<T &>(v) ; }
 
 } // end of namespace pcomn
 
