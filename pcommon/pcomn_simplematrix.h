@@ -38,16 +38,17 @@ class simple_slice {
       typedef std::conditional_t<std::is_const<T>::value, T, void> const_value_type ;
    public:
       typedef T value_type ;
-      typedef T * iterator ;
-      typedef iterator const_iterator ;
-      typedef T & reference ;
-      typedef reference const_reference ;
+
+      typedef value_type * iterator ;
+      typedef iterator     const_iterator ;
+      typedef value_type & reference ;
+      typedef reference    const_reference ;
 
       constexpr simple_slice() = default ;
       constexpr simple_slice(const simple_slice &src) : _start(src._start), _finish(src._finish) {}
 
       template<typename U, typename = instance_if_t<std::is_same<T, std::add_const_t<U> >::value> >
-      simple_slice(const simple_slice<U> &src) :
+      constexpr simple_slice(const simple_slice<U> &src) :
          _start(const_cast<T *>(src.begin())), _finish(const_cast<T *>(src.end()))
       {}
 
@@ -76,6 +77,16 @@ class simple_slice {
       /// Indicate that the slice is empty
       constexpr bool empty() const { return !size() ; }
 
+      constexpr value_type *data() const { return _start ; }
+
+      constexpr iterator begin() const { return _start ; }
+      constexpr iterator end() const { return _finish ; }
+
+      value_type &front() const { return *_start ; }
+      value_type &back() const { return *(_finish-1) ; }
+
+      value_type &operator[] (ptrdiff_t ndx) const { return _start[ndx] ; }
+
       simple_slice operator()(ptrdiff_t from, ptrdiff_t to = INT_MAX) const
       {
          const ptrdiff_t sz = size() ;
@@ -89,14 +100,6 @@ class simple_slice {
             ? simple_slice()
             : simple_slice(_start + from, _start + to) ;
       }
-
-      iterator begin() const { return _start ; }
-      iterator end() const { return _finish ; }
-
-      value_type &front() const { return *_start ; }
-      value_type &back() const { return *(_finish-1) ; }
-
-      value_type &operator[] (ptrdiff_t ndx) const { return _start[ndx] ; }
 
       void swap(simple_slice &other)
       {
