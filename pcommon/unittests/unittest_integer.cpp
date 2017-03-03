@@ -214,7 +214,13 @@ void IntegerTests::Test_OneOf()
    CPPUNIT_LOG_IS_TRUE((pcomn::one_of<1, 4>::is(4))) ;
    CPPUNIT_LOG_IS_FALSE((pcomn::one_of<1, 4>::is(5))) ;
    CPPUNIT_LOG_IS_FALSE((pcomn::one_of<1, 4>::is(1000))) ;
-   CPPUNIT_LOG_IS_TRUE((pcomn::one_of<1, 0>::is(0))) ;
+
+   CPPUNIT_LOG_ASSERT((pcomn::one_of<63, 0, 32, 8>::is(0))) ;
+   CPPUNIT_LOG_ASSERT((pcomn::one_of<63, 0, 32, 8>::is(32))) ;
+   CPPUNIT_LOG_ASSERT((pcomn::one_of<63, 0, 32, 8>::is(63))) ;
+   CPPUNIT_LOG_IS_FALSE((pcomn::one_of<63, 0, 32, 8>::is(64))) ;
+
+   CPPUNIT_LOG_ASSERT((pcomn::one_of<1, 0>::is(0))) ;
    CPPUNIT_LOG_IS_FALSE((pcomn::one_of<1>::is(0))) ;
 }
 

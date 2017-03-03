@@ -15,6 +15,7 @@
 #include <pcomn_meta.h>
 #include <pcomn_bitops.h>
 #include <pcomn_assert.h>
+#include <pcommon.h>
 
 #include <functional>
 #include <iterator>
@@ -514,9 +515,10 @@ struct ct_shl : public detail::_ct_shl<v, s, (s < bitsizeof(unsigned)) > {} ;
 
 template<unsigned long long v1, unsigned long long...vN>
 struct one_of {
+      static_assert(fold_bitor(v1, vN...) < 64, "Some values to test against exceed allowed maximum (63)") ;
       static constexpr bool is(unsigned long long value)
       {
-         return !!(fold_bitor((1ULL << v1), (1ULL << vN)...) & (1ULL << value)) ;
+         return !!(fold_bitor((1ULL << v1), (1ULL << vN)...) & flags_if((1ULL << value), !(value & (-1LL << 6)))) ;
       }
 } ;
 
