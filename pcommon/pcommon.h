@@ -137,8 +137,8 @@ struct bool_value {
 *******************************************************************************/
 struct RaiseError : bool_value { using bool_value::bool_value ; } ;
 
-static const RaiseError DONT_RAISE_ERROR (false) ;
-static const RaiseError RAISE_ERROR      (true) ;
+static constexpr const RaiseError DONT_RAISE_ERROR (false) ;
+static constexpr const RaiseError RAISE_ERROR      (true) ;
 
 /******************************************************************************/
 /** Not-a-pointer: something, which is both not NULL and is not a valid pointer
