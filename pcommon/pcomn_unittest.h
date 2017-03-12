@@ -168,6 +168,11 @@ int test_environment<n>::prepare_test_environment(int argc, char ** const argv, 
    }
    #endif
 
+   #ifdef __GLIBC__
+   // Suppress printing the program name and a colon by GLIBC's error_at_line()
+   error_print_progname = []{} ;
+   #endif
+
    if (diag_profile && *diag_profile)
       DIAG_INITTRACE(diag_profile) ;
 
