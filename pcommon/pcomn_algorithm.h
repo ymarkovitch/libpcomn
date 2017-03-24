@@ -79,10 +79,16 @@ std::pair<InputIterator, OutputIterator> bound_copy_if
  Member extractors
 *******************************************************************************/
 #define PCOMN_MEMBER_EXTRACTOR(member)                                  \
-   template<typename T>                                                 \
+   template<typename T = void>                                          \
    struct extract_##member {                                            \
       typedef decltype(std::declval<T>().member()) type ;               \
       type operator() (const T &t) const { return t.member() ; }        \
+   } ;                                                                  \
+                                                                        \
+   template<> struct extract_##member<void> {                           \
+      template<typename T>                                              \
+      auto operator() (T &&t) const ->decltype(std::declval<T>().member()) \
+      { return std::forward<T>(t).member() ; }                          \
    } ;                                                                  \
                                                                         \
    template<typename T>                                                 \
