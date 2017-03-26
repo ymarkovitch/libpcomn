@@ -27,6 +27,7 @@
 *******************************************************************************/
 #include <pcomn_platform.h>
 #include <pcomn_iterator.h>
+#include <pcomn_flgout.h>
 #include <pcomn_meta.h>
 
 #include <iomanip>
@@ -132,9 +133,6 @@ inline std::ostream &print_sequence(InputIterator begin, InputIterator end, std:
 {
    return print_sequence(begin, end, os, ", ") ;
 }
-
-template<typename Enum>
-std::ostream &print_enum(std::ostream &, Enum) ;
 
 /*******************************************************************************
  Various ostream manipulators
