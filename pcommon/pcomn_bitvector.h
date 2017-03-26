@@ -257,7 +257,7 @@ struct basic_bitvector : basic_bitvector<const E> {
       /// Set all the bits in this vector to specified @a value.
       basic_bitvector &fill(bool value)
       {
-         memset(data(), nelements() * sizeof(element_type), element_type() - (element_type)value) ;
+         memset(data(), element_type() - (element_type)value, nelements() * sizeof(element_type)) ;
          return *this ;
       }
 
