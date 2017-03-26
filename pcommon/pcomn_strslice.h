@@ -136,6 +136,8 @@ struct basic_strslice {
       const_reverse_iterator rbegin() const { return const_reverse_iterator(end()) ; }
       const_reverse_iterator rend() const { return const_reverse_iterator(begin()) ; }
 
+      constexpr const char_type *data() const { return begin() ; }
+
       char operator[](ptrdiff_t pos) const
       {
          NOXPRECONDITION((size_t)pos < size()) ;
