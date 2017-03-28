@@ -19,6 +19,7 @@
 #include <pcommon.h>
 
 #include <iomanip>
+#include <iostream>
 #include <string>
 #include <utility>
 #include <algorithm>

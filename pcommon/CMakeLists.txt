@@ -115,7 +115,7 @@ target_include_directories(pcommon
 
 target_compile_definitions(pcommon
   PUBLIC
-  $<$<CONFIG:Debug>:${PCOMN_CHECK} ${PCOMN_TRACE}>
+  $<$<OR:$<CONFIG:Debug>,$<CONFIG:DbgSanitize>>:${PCOMN_CHECK} ${PCOMN_TRACE}>
   $<$<PLATFORM_ID:Windows>:_WIN32_WINNT=0x0600>
 
   PRIVATE
@@ -129,7 +129,7 @@ target_compile_options(pcommon
   $<$<CXX_COMPILER_ID:GNU>:-frecord-gcc-switches>
   $<$<AND:$<CXX_COMPILER_ID:Clang>,$<${COMPILE_LANGUAGE_CXX}>>:-Wno-potentially-evaluated-expression -Wno-mismatched-tags>
 
-  $<$<AND:$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>,$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>>:-gdwarf-4>
+  $<$<AND:$<OR:$<CONFIG:Debug>,$<CONFIG:DbgSanitize>,$<CONFIG:RelWithDebInfo>>,$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>>:-gdwarf-4>
 
   PRIVATE
   $<$<AND:$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>,$<${COMPILE_LANGUAGE_CXX}>>:-Woverloaded-virtual>

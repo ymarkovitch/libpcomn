@@ -10,6 +10,7 @@
  CREATION DATE:   12 Oct 2016
 *******************************************************************************/
 #include <pcomn_flgout.h>
+#include <pcomn_omanip.h>
 #include <pcomn_unittest.h>
 
 class EnumDescriptionTests : public CppUnit::TestFixture {
