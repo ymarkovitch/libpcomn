@@ -518,7 +518,7 @@ struct one_of {
       static_assert(fold_bitor(v1, vN...) < 64, "Some values to test against exceed allowed maximum (63)") ;
       static constexpr bool is(unsigned long long value)
       {
-         return !!(fold_bitor((1ULL << v1), (1ULL << vN)...) & flags_if((1ULL << value), !(value & (-1LL << 6)))) ;
+         return !!(fold_bitor((1ULL << v1), (1ULL << vN)...) & flags_if((1ULL << value), !(value & (-1ULL << 6)))) ;
       }
 } ;
 
