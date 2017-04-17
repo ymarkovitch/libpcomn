@@ -161,8 +161,7 @@ do                                                                      \
    {                                                                    \
       long ___xc___ = (expected_code) ;                                 \
       CPPUNIT_LOG((__CPPUNIT_CONCAT_SRC_LINE("RUNNING: '") #expression "', EXPECTING: '" #expected) << '(' << #expected_code << ")'... ") ; \
-      long *___pc___ = 0 ;                                              \
-      long ___ac___ ;                                                   \
+      long *___pc___ = nullptr, ___ac___ = 0 ;                          \
       try { expression ; }                                              \
       catch(const expected &__x__) { *(___pc___ = &___ac___) = __x__.code() ; } \
       if (!___pc___ || ___ac___ != ___xc___)                            \

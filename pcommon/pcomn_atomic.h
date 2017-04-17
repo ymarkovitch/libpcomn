@@ -134,7 +134,7 @@ namespace atomic_op {
  even with kerenels it is available on due to abysmal performance
  (order of 1ms per call!)
 *******************************************************************************/
-template<nullptr_t = nullptr>
+template<std::nullptr_t = nullptr>
 struct process_membarrier_ {
       static void mb() ;
    #if !defined(PCOMN_PL_MS)
@@ -147,7 +147,7 @@ struct process_membarrier_ {
 
 #if defined(PCOMN_PL_MS)
 
-template<nullptr_t _>
+template<std::nullptr_t _>
 inline void process_membarrier_<_>::mb()
 {
    FlushProcessWriteBuffers() ;
@@ -155,13 +155,13 @@ inline void process_membarrier_<_>::mb()
 
 #else // Unix/Linux
 
-template<nullptr_t _>
-std::mutex       process_membarrier_<_>::pagelock_mutex ;
+template<std::nullptr_t _>
+std::mutex process_membarrier_<_>::pagelock_mutex ;
 
-template<nullptr_t _>
+template<std::nullptr_t _>
 std::atomic<int> process_membarrier_<_>::page_unlocked {1} ;
 
-template<nullptr_t _>
+template<std::nullptr_t _>
 int * const process_membarrier_<_>::dummy_page = ([]
    {
       void * const page = mmap(nullptr, sizeof(int), PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0) ;
@@ -169,7 +169,7 @@ int * const process_membarrier_<_>::dummy_page = ([]
       return static_cast<int *>(page) ;
    })() ;
 
-template<nullptr_t _>
+template<std::nullptr_t _>
 void process_membarrier_<_>::mb()
 {
    int unlocked = page_unlocked.load(std::memory_order_relaxed) ;

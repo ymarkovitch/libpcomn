@@ -69,7 +69,7 @@ struct basic_bitvector<const E> {
       constexpr size_t size() const { return nelements()*bits_per_element() ; }
 
       constexpr element_type *data() const { return _elements ; }
-      constexpr element_type *cdata() { return _elements ; }
+      constexpr element_type *cdata() const { return _elements ; }
 
       /// Get the count of 1 or 0 bit in vector
       size_t count(bool bitval = true) const

@@ -38,9 +38,9 @@ struct crqslot_tag {
       /// For future use
       static constexpr const uintptr_t reserved_bit = uintptr_t(1) << reserved_bit_pos ;
 
-      constexpr crqslot_tag() : crqslot_tag(0) {}
-      constexpr explicit crqslot_tag(uintptr_t tag) : _tag(tag) {}
-      constexpr crqslot_tag(bool safe, uintptr_t index) :
+      constexpr crqslot_tag() noexcept : crqslot_tag(0) {}
+      constexpr explicit crqslot_tag(uintptr_t tag) noexcept : _tag(tag) {}
+      constexpr crqslot_tag(bool safe, uintptr_t index) noexcept :
          crqslot_tag(index & ndx_bits | ((uintptr_t)!safe << unsafe_bit_pos))
       {}
 

@@ -19,6 +19,7 @@
 #include <pcomn_macros.h>
 #include <pcomn_except.h>
 #include <pcomn_shortstr.h>
+#include <pcomn_range.h>
 
 #include <functional>
 #include <iterator>

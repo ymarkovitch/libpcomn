@@ -57,7 +57,7 @@ struct refcounted_strdata {
       size_t   _size ;
       Char     _begin[1] ;
 
-      static constexpr const refcounted_strdata<Char, Atomic> zero { {}, 0, {0} } ;
+      static const refcounted_strdata<Char, Atomic> zero ;
 
       union alignment {
             intptr_t _1 ;
@@ -73,8 +73,8 @@ struct refcounted_strdata {
 } ;
 
 template<typename Char, bool Atomic>
-constexpr const refcounted_strdata<Char, Atomic>
-refcounted_strdata<Char, Atomic>::zero ;
+const refcounted_strdata<Char, Atomic>
+refcounted_strdata<Char, Atomic>::zero = {} ;
 
 /*******************************************************************************
                      template <typename Char, bool Atomic, class Allocator>

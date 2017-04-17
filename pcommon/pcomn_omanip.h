@@ -63,14 +63,18 @@ template<typename> struct omanip ;
 #  define PCOMN_MAKE_OMANIP_RETTYPE() -> omanip<decltype(std::bind(std::forward<F>(fn), std::placeholders::_1, std::forward<Args>(args)...))>
 #endif
 
-template<typename F, typename... Args>
-inline auto make_omanip(F &&fn, Args &&...args) PCOMN_MAKE_OMANIP_RETTYPE()
-{
-   using namespace std ;
+struct make_omanip_ {
+      template<typename F, typename... Args>
+      auto operator()(F &&fn, Args &&...args) const PCOMN_MAKE_OMANIP_RETTYPE()
+      {
+         using namespace std ;
 
-   typedef valtype_t<decltype(bind(forward<F>(fn), placeholders::_1, forward<Args>(args)...))> manip ;
-   return omanip<manip>(manip(bind(forward<F>(fn), placeholders::_1, forward<Args>(args)...))) ;
-}
+         typedef valtype_t<decltype(bind(forward<F>(fn), placeholders::_1, forward<Args>(args)...))> manip ;
+         return omanip<manip>(manip(bind(forward<F>(fn), placeholders::_1, forward<Args>(args)...))) ;
+      }
+} ;
+
+static constexpr const make_omanip_ make_omanip {} ;
 
 /******************************************************************************/
 /* Universal ostream manipulator
@@ -88,8 +92,7 @@ struct omanip final {
 
       std::ostream &operator()(std::ostream &os) const { return _fn(os) ; }
 
-      template<typename F, typename... Args>
-      friend auto make_omanip(F &&fn, Args &&...args) PCOMN_MAKE_OMANIP_RETTYPE() ;
+      friend make_omanip_  ;
 
    private:
       mutable Bind _fn ;
