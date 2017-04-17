@@ -78,7 +78,7 @@ struct uuid {
       unsigned char *data() { return _cdata ; }
 
       /// Get the nth octet of the UUID (RFC states "MSB-first order")
-      constexpr const unsigned octet(size_t n) const { return _cdata[n] ; }
+      constexpr unsigned octet(size_t n) const { return _cdata[n] ; }
 
       constexpr unsigned version() const { return (octet(12) & 0xf0U) >> 4 ; }
 
@@ -161,7 +161,7 @@ struct MAC {
       /// Get direct access to MAC octets
       constexpr const unsigned char *data() const { return _data ; }
       /// Get the nth octet of the MAC (MSB-first order)
-      constexpr const unsigned octet(size_t n) const { return _data[n] ; }
+      constexpr unsigned octet(size_t n) const { return _data[n] ; }
 
       /// Convert MAC to string of the form "XX:XX:XX:XX:XX:XX"
       _PCOMNEXP std::string to_string() const ;
