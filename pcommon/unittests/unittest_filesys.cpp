@@ -75,15 +75,21 @@ void FilesystemTests::Test_Filesystem_Path()
    CPPUNIT_LOG(std::endl) ;
 
    CPPUNIT_LOG_EQUAL(joinpath<std::string>("", ""), std::string()) ;
-   CPPUNIT_LOG_EQUAL(joinpath<std::string>(".", ""), std::string(".")) ;
-   CPPUNIT_LOG_EQUAL(joinpath<std::string>("/", "a/b"), std::string("/a/b")) ;
-   CPPUNIT_LOG_EQUAL(joinpath<std::string>("a", "b/c"), std::string("a/b/c")) ;
-   CPPUNIT_LOG_EQUAL(joinpath<std::string>("/a", "b/c"), std::string("/a/b/c")) ;
-   CPPUNIT_LOG_EQUAL(joinpath<std::string>("/a/", "b/c"), std::string("/a/b/c")) ;
-   CPPUNIT_LOG_EQUAL(joinpath<std::string>("/a", "/b/c"), std::string("/b/c")) ;
-   CPPUNIT_LOG_EQUAL(joinpath<std::string>("/a/", "/b/c"), std::string("/b/c")) ;
-   CPPUNIT_LOG_EQUAL(joinpath<std::string>("", "b/c"), std::string("b/c")) ;
-   CPPUNIT_LOG_EQUAL(joinpath<std::string>("abc", ""), std::string("abc")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<std::string>(".", ""), std::string("./")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<std::string>("", "."), std::string(".")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<>("/", "a/b"), std::string("/a/b")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<>("a", "b/c"), std::string("a/b/c")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<>("/a", "b/c"), std::string("/a/b/c")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<>("/a/", "b/c"), std::string("/a/b/c")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<>("/a", "/b/c"), std::string("/b/c")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<>("/a/", "/b/c"), std::string("/b/c")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<>("/a/", "/b/c", "d/"), std::string("/b/c/d/")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<>("/a", "/", "b", ""), std::string("/b/")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<>("", "", "d"), std::string("d")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<>("", "", "d", ""), std::string("d/")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<>("", "d", "", ""), std::string("d/")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<>("", "b/c"), std::string("b/c")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<>("abc", ""), std::string("abc/")) ;
 
    CPPUNIT_LOG(std::endl) ;
    CPPUNIT_LOG_EQUAL(mkdirpath<std::string>(""), std::string()) ;

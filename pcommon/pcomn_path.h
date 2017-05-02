@@ -126,6 +126,7 @@ inline strslice_pair splitext(const strslice &path)
    return strslice_pair(path, strslice()) ;
 }
 
+/// Join the two parts of a path intelligently and return the string length of result.
 size_t joinpath(const strslice &p1, const strslice &p2, char *result, size_t bufsize) ;
 
 inline bool is_basename(const strslice &name)
@@ -239,13 +240,38 @@ realpath(const basic_strslice<char> &path)
    return realpath<R>(strslicecpy(buf.get(), path, path.size() + 1)) ;
 }
 
-/// @overload
+/// Join one or more path components intelligently.
+///
+/// The return value is the concatenation of _nonempty_ parameters with exactly _one_
+/// directory separator following each _nonempty_ part except the last, meaning that the
+/// result will only end in a separator if there are nonempty arguments and the last
+/// argument is empty.
+/// @note If a parameter is an absolute path, all previous parameters are thrown away and
+/// joining continues from the absolute path parameter.
+/// @code
+/// joinpath("", "") == "" ;
+/// joinpath(".", "") == "./" ;
+/// joinpath("", "a", "", "b") == "a/b" ;
+/// joinpath("", "a/", "", "b") == "a/b" ;
+/// joinpath("", "a", "/", "b") == "/b" ;
+/// joinpath("a", "", "c", "") == "a/c/" ;
+/// @endcode
+///
 template<typename R = std::string>
 std::enable_if_t<is_strchar<R, char>::value, R>
 joinpath(const strslice &p1, const strslice &p2)
 {
-   char buf[PATH_MAX + 1] ;
-   return joinpath(p1, p2, buf, sizeof buf) ? R(buf) : R() ;
+   char buf[PATH_MAX + 2] ;
+   if (const size_t length = joinpath(p1, p2, buf, sizeof buf - 1))
+   {
+      if (!p2 && buf[length - 1] != PCOMN_PATH_NATIVE_DELIM)
+      {
+         buf[length] = PCOMN_PATH_NATIVE_DELIM ;
+         buf[length + 1] = 0 ;
+      }
+      return R(buf) ;
+   }
+   return R() ;
 }
 
 /// @overload
@@ -254,9 +280,8 @@ std::enable_if_t<is_strchar<R, char>::value, R>
 joinpath(const strslice &p1, const strslice &p2, const strslice &p3)
 {
    char buf1[PATH_MAX + 1] ;
-   char buf2[sizeof buf1] ;
-   return
-      joinpath(p1, p2, buf1, sizeof buf1) && joinpath(buf1, p3, buf2, sizeof buf2) ? R(buf2) : R() ;
+   joinpath(p1, p2, buf1, sizeof buf1) ;
+   return joinpath<R>(buf1, p3) ;
 }
 
 /// @overload
@@ -266,12 +291,19 @@ joinpath(const strslice &p1, const strslice &p2, const strslice &p3, const strsl
 {
    char buf1[PATH_MAX + 1] ;
    char buf2[sizeof buf1] ;
-   char buf3[sizeof buf1] ;
-   return joinpath(p1, p2, buf1, sizeof buf1)
-       && joinpath(buf1, p3, buf2, sizeof buf2)
-       && joinpath(buf2, p4, buf3, sizeof buf3)
+   joinpath(p1, p2, buf1, sizeof buf1) ;
+   joinpath(buf1, p3, buf2, sizeof buf2) ;
+   return joinpath<R>(buf2, p4) ;
+}
 
-      ? R(buf3) : R() ;
+/// @overload
+template<typename R = std::string>
+std::enable_if_t<is_strchar<R, char>::value, R>
+joinpath(const strslice &p1, const strslice &p2, const strslice &p3, const strslice &p4, const strslice &p5)
+{
+   char buf1[PATH_MAX + 1] ;
+   joinpath(p1, p2, buf1, sizeof buf1) ;
+   return joinpath<R>(buf1, p3, p4, p5) ;
 }
 
 template<typename R = std::string, typename S>

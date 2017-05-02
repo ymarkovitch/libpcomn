@@ -72,7 +72,10 @@ size_t joinpath(const strslice &p1, const strslice &p2, char *result, size_t buf
    {
       const size_t sz = sp->size() ;
       if (sz >= bufsize)
+      {
+         *result = 0 ;
          return 0 ;
+      }
       memmove(result, sp->begin(), sz) ;
       result[sz] = 0 ;
       return sz ;
@@ -83,7 +86,10 @@ size_t joinpath(const strslice &p1, const strslice &p2, char *result, size_t buf
    const size_t fullsz = p1sz + p2sz + (*(p1.end() - 1) != '/') ;
 
    if (fullsz >= bufsize)
+   {
+      *result = 0 ;
       return 0 ;
+   }
 
    memmove(result, p1.begin(), p1sz) ;
    if (p1sz + p2sz != fullsz)

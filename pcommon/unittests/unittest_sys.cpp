@@ -42,7 +42,7 @@ void SysDirTests::Test_Opendir()
    using namespace pcomn ;
    std::vector<std::string> content ;
 
-   CPPUNIT_LOG_ASSERT((intptr_t)sys::opendir(str::cstr(dataDir()), sys::ODIR_CLOSE_DIR, appender(content), RAISE_ERROR) >= 0) ;
+   CPPUNIT_LOG_ASSERT((intptr_t)sys::opendir(str::cstr(dataDir()), sys::ODIR_CLOSE_DIR, appender(content), RAISE_ERROR) < 0) ;
    CPPUNIT_LOG_EQUAL(CPPUNIT_SORTED(content), CPPUNIT_STRVECTOR((".")(".."))) ;
    swap_clear(content) ;
 
