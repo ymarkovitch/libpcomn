@@ -61,11 +61,13 @@ constexpr const DiagMode UseProcessId  = ShowProcessId ; /**< Backward compatibi
 /// Log levels
 enum LogLevel : unsigned {
    LOGL_ALERT,
+   LOGL_CRIT,
    LOGL_ERROR,
    LOGL_WARNING,
    LOGL_NOTE,
    LOGL_INFO,
-   LOGL_DEBUG
+   LOGL_DEBUG,
+   LOGL_TRACE
 } ;
 
 /// Callback type for writing syslog messages.
@@ -506,7 +508,7 @@ DECLARE_DIAG_GROUP(Def, _PCOMNEXP) ;
 #endif
 
 /*******************************************************************************
- The family of logging macros: LOGPXERR/LOGPXWARN/LOGPXINFO/LOGPXDBG
+ The family of logging macros: LOGPXERR/LOGPXWARN/LOGPXINFO/LOGPXNOTE/LOGPXDBG/LOGPXTRACE
 *******************************************************************************/
 /// Output debug message both into the diagnostics trace and system log, if tracing and
 /// specified diagnostics group are enabled and group's diagnostics level is greater or
@@ -517,8 +519,13 @@ DECLARE_DIAG_GROUP(Def, _PCOMNEXP) ;
 /// into the diagnostics trace log, it can write into syslog, subject to GRP and LVL.
 /// On Unix, writes into syslog with LOG_DEBUG priority
 ///
-#define LOGPXDBG(GRP, LVL, MSG)                                         \
+#define LOGPXTRACE(GRP, LVL, MSG)                                       \
    (diag_isenabled_output(GRP, LVL) && ::diag::PDiagBase::Lock() &&     \
+    LOGMSGPX(GRP, TRACE, MSG) && OUTMSGPX(GRP, trace))
+
+#define LOGPXDBG(GRP, MSG)                                              \
+   (::diag_isenabled_diag() && ::diag::grp::GRP::IsSuperGroupEnabled() && \
+    ::diag::PDiagBase::Lock() &&                                        \
     LOGMSGPX(GRP, DEBUG, MSG) && OUTMSGPX(GRP, trace))
 
 /// Output INFO message into the system log and, if tracing and specified

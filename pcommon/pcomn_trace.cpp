@@ -483,6 +483,7 @@ static int syslog_priority(LogLevel level)
       case LOGL_INFO:   return LOG_INFO ;
 
       case LOGL_DEBUG:
+      case LOGL_TRACE:
       default: return LOG_DEBUG ;
    }
 }
@@ -719,7 +720,7 @@ void PDiagBase::syslog_message(LogLevel level,
       return ;
 
    char threadid_buf[32] ;
-   const bool use_threadid = (mode() & UseThreadId) && level == LOGL_DEBUG ;
+   const bool use_threadid = (mode() & UseThreadId) && level >= LOGL_DEBUG ;
 
    if (use_threadid)
       ctx::syslog_write(ctx::syslog_data, level, "%s: %s", threadidtostr(threadid_buf), msg) ;

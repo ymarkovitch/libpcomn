@@ -21,7 +21,7 @@
 #include <functional>
 
 #define LOGINFO(output) LOGPXINFO(PCOMN_Journal, output)
-#define LOGDBG(output)  LOGPXDBG(PCOMN_Journal, DBGL_ALWAYS, output)
+#define LOGDBG(output)  LOGPXDBG(PCOMN_Journal, output)
 
 namespace pcomn {
 namespace jrn {
@@ -416,7 +416,7 @@ generation_t Journallable::take_checkpoint(unsigned flags)
 
 void Journallable::dispatch_exception(const std::exception *x, State s) const
 {
-   LOGPXDBG(PCOMN_Journal, DBGL_ALWAYS, "Dispatch_exception called at state " << s
+   LOGPXDBG(PCOMN_Journal, "Dispatch_exception called at state " << s
             << " due to " << PCOMN_DEREFTYPENAME(x) << ": " << (x ? x->what() : "UNKNOWN ERROR")) ;
 }
 

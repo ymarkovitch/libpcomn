@@ -108,7 +108,7 @@ void Storage::close_checkpoint(bool commit)
 {
    write_guard guard (_lock) ;
 
-   LOGPXDBG(PCOMN_Journal, DBGL_HIGHLEV, (commit ? "Commit" : "Rollback") << " checkpoint for " << *this) ;
+   LOGPXTRACE(PCOMN_Journal, DBGL_HIGHLEV, (commit ? "Commit" : "Rollback") << " checkpoint for " << *this) ;
 
    do_close_checkpoint(commit) ;
 }

@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
       TEST_TRACE(TTST_SecondGroup, DBGL_ALWAYS) ;
       TEST_TRACE(TTST_FirstGroup, DBGL_ALWAYS) ;
 
-      LOGPXDBG(TTST_SecondGroup, DBGL_MIDLEV, "LOGDBG") ;
+      LOGPXTRACE(TTST_SecondGroup, DBGL_MIDLEV, "LOGDBG") ;
       LOGPXINFO(TTST_FirstGroup, "LOGINFO") ;
       LOGPXWARN(TTST_SecondGroup, "LOGWARN") ;
       LOGPXERR(TTST_SecondGroup, "LOGERR") ;

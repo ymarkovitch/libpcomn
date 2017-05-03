@@ -33,7 +33,7 @@
 #define LOGERR(output)  LOGPXERR(PCOMN_Journmmap, output)
 #define LOGWARN(output) LOGPXWARN(PCOMN_Journmmap, output)
 #define LOGINFO(output) LOGPXINFO(PCOMN_Journmmap, output)
-#define LOGDBG(output)  LOGPXDBG(PCOMN_Journmmap, DBGL_ALWAYS, output)
+#define LOGDBG(output)  LOGPXDBG(PCOMN_Journmmap, output)
 
 namespace pcomn {
 namespace jrn {
