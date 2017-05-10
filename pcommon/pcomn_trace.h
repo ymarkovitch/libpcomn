@@ -564,6 +564,16 @@ DECLARE_DIAG_GROUP(Def, _PCOMNEXP) ;
     LOGMSGPX(GRP, ERROR, MSG) &&                                        \
     DIAG_ISENABLED_DIAG() && OUTMSGPX(GRP, warn))
 
+/// Always output CRITICAL message into the system log and, if tracing is enabled, also
+/// into diagnostics trace.
+/// @note When writes to the diagnostics trace, takes neither group enabled state nore
+/// diagnostics level into account (i.e. it is enough that the @em tracing is enabled).
+///
+#define LOGPXCRIT(GRP, MSG)                                             \
+   (::diag::PDiagBase::Lock() &&                                        \
+    LOGMSGPX(GRP, CRIT, MSG) &&                                         \
+    DIAG_ISENABLED_DIAG() && OUTMSGPX(GRP, warn))
+
 /// Always output ALERT message into the system log and, if tracing is enabled, also into
 /// diagnostics trace.
 /// @note When writes to the diagnostics trace, takes neither group enabled state nore
