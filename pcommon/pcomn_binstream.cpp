@@ -80,6 +80,7 @@ size_t binary_ibufstream::read_data(void *data, size_t size)
    size_t size_so_far = frombuf ;
 
    if (const size_t remains_to_read = size - size_so_far)
+   {
       if (remains_to_read > min_unbuffered_size())
       {
          TRACEPX(PCOMN_BinaryStream, DBGL_LOWLEV, "Read " << size - size_so_far
@@ -97,7 +98,7 @@ size_t binary_ibufstream::read_data(void *data, size_t size)
                  size_so_far != prevsize ;
 
               prevsize = size_so_far) ;
-
+   }
    return size_so_far ;
 }
 

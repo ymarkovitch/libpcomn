@@ -61,7 +61,7 @@ namespace unit {
 /*******************************************************************************
  Test environment
 *******************************************************************************/
-template<nullptr_t = nullptr>
+template<novalue = {}>
 struct test_environment {
 
       friend std::string resolve_test_path(const CppUnit::Test &, const std::string &, bool) ;
@@ -89,12 +89,12 @@ struct test_environment {
 /*******************************************************************************
  test_environment
 *******************************************************************************/
-template<nullptr_t n>
+template<novalue n>
 std::string test_environment<n>::_progdir (".") ;
-template<nullptr_t n>
+template<novalue n>
 std::string test_environment<n>::_testdir ;
 
-template<nullptr_t n>
+template<novalue n>
 std::string test_environment<n>::join_path(const std::string &dir, const strslice &path)
 {
    if (!path || path.size() == 1 && path.front() == '.')
@@ -104,7 +104,7 @@ std::string test_environment<n>::join_path(const std::string &dir, const strslic
    return (dir + PCOMN_PATH_NATIVE_DELIM).append(path.begin(), path.end()) ;
 }
 
-template<nullptr_t n>
+template<novalue n>
 std::string test_environment<n>::at_srcdir(const strslice &path)
 {
    if (_testdir.empty())
@@ -122,7 +122,7 @@ std::string test_environment<n>::at_srcdir(const strslice &path)
    return join_path(testdir(), path) ;
 }
 
-template<nullptr_t n>
+template<novalue n>
 std::string test_environment<n>::resolve_test_path(const CppUnit::Test &tests, const std::string &name, bool top)
 {
    using namespace CppUnit ;
@@ -152,7 +152,7 @@ std::string test_environment<n>::resolve_test_path(const CppUnit::Test &tests, c
    return pathstr ;
 }
 
-template<nullptr_t n>
+template<novalue n>
 int test_environment<n>::prepare_test_environment(int argc, char ** const argv, const char *diag_profile, const char *title)
 {
    #if PCOMN_PL_MS
@@ -334,7 +334,7 @@ unique_locked_ostream<Tag>::~unique_locked_ostream() = default ;
 /*******************************************************************************
                      class TestProgressListener
 *******************************************************************************/
-template<nullptr_t = nullptr>
+template<novalue = {}>
 class TestListener : public CppUnit::TextTestProgressListener {
    public:
       void startTest(CppUnit::Test *test)
@@ -360,12 +360,12 @@ class TestListener : public CppUnit::TextTestProgressListener {
       static void resetCurrentName() { *_current_fullname = 0 ; }
 } ;
 
-template<nullptr_t n>
+template<novalue n>
 char TestListener<n>::_current_fullname[2048] ;
-template<nullptr_t n>
+template<novalue n>
 const char *TestListener<n>::_current_shortname = _current_fullname ;
 
-template<nullptr_t n>
+template<novalue n>
 void TestListener<n>::setCurrentName(CppUnit::Test *test)
 {
    const std::string &name = test->getName() ;

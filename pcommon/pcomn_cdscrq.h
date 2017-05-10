@@ -291,6 +291,7 @@ std::pair<T, bool> crq<T>::dequeue()
          // ============================================
 
          if (xhead > slot_data.ndx())
+         {
             // We are ahead of enqueuers for k full rounds (k >= 1).
             // Mark node unsafe to prevent future enqueue.
             if (cas2(slot, &slot_data, crqslot_data({false, slot_data.ndx()}, slot_data._data)))
@@ -298,6 +299,7 @@ std::pair<T, bool> crq<T>::dequeue()
                break ;
             else
                continue ;
+         }
 
          // ============================================
          // === If we are here, this is our slot. ======

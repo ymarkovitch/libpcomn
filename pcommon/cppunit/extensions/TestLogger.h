@@ -204,6 +204,9 @@ do                                                                      \
 
 namespace CppUnit {
 namespace X {
+
+enum class nval : bool { _ } ;
+
 template<typename S, typename T>
 using enable_if_string__t = typename std::enable_if<std::is_convertible<S, std::string>::value, T>::type ;
 
@@ -314,7 +317,7 @@ inline const char *demangle(const char *mangled)
 }
 #endif
 
-template<std::nullptr_t = nullptr>
+template<X::nval = {}>
 struct Logger {
       /// Set global stream for CPPUnit test logging.
       /// The CPPUnit does not own the passed pointer, i.e. does not ever delete
@@ -329,10 +332,10 @@ struct Logger {
       static std::ostream *log ;
 } ;
 
-template<std::nullptr_t n>
+template<X::nval n>
 std::ostream *Logger<n>::log = &std::cerr ;
 
-template<std::nullptr_t n>
+template<X::nval n>
 std::ostream *Logger<n>::setLogStream(std::ostream *newlog)
 {
    std::ostream *result = log ;
@@ -340,14 +343,14 @@ std::ostream *Logger<n>::setLogStream(std::ostream *newlog)
    return result ;
 }
 
-template<std::nullptr_t n>
+template<X::nval n>
 std::ostream &Logger<n>::logStream()
 {
    static std::ofstream nul ("/dev/nul") ;
    return *(log ? log : static_cast<std::ostream *>(&nul)) ;
 }
 
-template<std::nullptr_t n>
+template<X::nval n>
 SourceLine Logger<n>::sourceLine(const char *file, int line)
 {
    return SourceLine(file, line) ;
@@ -371,7 +374,7 @@ void logExceptionWhat(S &&msg, ...)
    CPPUNIT_LOG(std::forward<S>(msg) << '\n') ;
 }
 
-template<std::nullptr_t n = nullptr>
+template<X::nval n = {}>
 void logFailure(const Exception &x)
 {
    Logger<n>::logStream() << "\nFAILURE" ;

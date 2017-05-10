@@ -505,11 +505,13 @@ void concurrent_dualqueue<T, A>::push_node(node_type *new_node) noexcept
       node_type * const current_tail = tail.get() ;
 
       if (!is_request_node(current_tail))
+      {
          // The queue is either empty or consists of data nodes.
          if (this->enqueue_node(current_tail, new_node))
             break ;
          else
             continue ;
+      }
 
       // The queue consists of requests.
       // Try to fulfill a request at the head.
