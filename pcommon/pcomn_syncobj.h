@@ -337,6 +337,46 @@ class ident_dispenser {
       RangeProvider           _provider ;
 } ;
 
+/******************************************************************************/
+/** Generator of integral identifiers which are unique insdide a process run.
+
+ Atomically allocates a range of integral numbers for a thread and then allocates
+ successive numbers from that range upon request from this thread until the range
+ depletion, when allocates new range.
+ Range allocation is atomic (interlocked), but the ident allocation is needn't
+ be atomic since it is thread-local, thus performing only one interlocked
+ operation per range (by default, per 65536 identifiers allocated).
+*******************************************************************************/
+template<typename Tag, typename Int = uint64_t, Int blocksize = 0x10000U>
+class ident_allocator {
+      PCOMN_STATIC_CHECK(is_atomic<Int>::value) ;
+      PCOMN_STATIC_CHECK(blocksize > 0) ;
+   public:
+      typedef Int type ;
+
+      /// Atomically allocate new ID.
+      static type allocate_id()
+      {
+         if (_next_id == _range_end)
+         {
+            _next_id = _next_start.fetch_add(blocksize) ;
+            _range_end = _next_id + blocksize ;
+         }
+         return _next_id++ ;
+      }
+   private:
+      thread_local static type _next_id ;
+      thread_local static type _range_end ;
+      static std::atomic<type> _next_start ;
+} ;
+
+template<typename Tag, typename Int, Int bsz>
+thread_local Int ident_allocator<Tag, Int, bsz>::_next_id {0} ;
+template<typename Tag, typename Int, Int bsz>
+thread_local Int ident_allocator<Tag, Int, bsz>::_range_end {0} ;
+template<typename Tag, typename Int, Int bsz>
+std::atomic<Int> ident_allocator<Tag, Int, bsz>::_next_start {bsz} ;
+
 } // end of namespace pcomn
 
 #endif /* __PCOMN_SYNCOBJ_H */
