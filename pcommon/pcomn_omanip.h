@@ -23,6 +23,7 @@
   @li oskip
 
   @li ohrsize
+  @li ohrsizex
   @li ostrq
 *******************************************************************************/
 #include <pcomn_platform.h>
@@ -233,7 +234,7 @@ inline auto oskip(unsigned width)
 inline char *hrsize(unsigned long long sz, char *buf)
 {
    if (sz < KiB)
-      sprintf(buf, "%lluB", sz) ;
+      sprintf(buf, "%llu", sz) ;
    else if (sz < MiB)
       sprintf(buf, "%.1fK", sz/(KiB * 1.0)) ;
    else if (sz < GiB)
@@ -243,11 +244,42 @@ inline char *hrsize(unsigned long long sz, char *buf)
    return buf ;
 }
 
+inline char *hrsize_exact(unsigned long long sz, char *buf)
+{
+   char m ;
+   if (!sz || (sz % KiB))
+      m = 0 ;
+
+   else if (!(sz % GiB))
+   {
+      sz /= GiB ;
+      m = 'G' ;
+   }
+   else if (!(sz % MiB))
+   {
+      sz /= MiB ;
+      m = 'M' ;
+   }
+   else
+   {
+      sz /= KiB ;
+      m = 'K' ;
+   }
+   sprintf(buf, "%llu%c", sz, m) ;
+   return buf ;
+}
+
 namespace detail {
 inline std::ostream &print_hrsize(std::ostream &os, unsigned long long sz)
 {
    char buf[64] ;
    return os << hrsize(sz, buf) ;
+}
+
+inline std::ostream &print_hrsizex(std::ostream &os, unsigned long long sz)
+{
+   char buf[64] ;
+   return os << hrsize_exact(sz, buf) ;
 }
 
 template<typename T>
@@ -260,6 +292,10 @@ std::ostream &print_quoted_string(std::ostream &os, const T &str)
 template<typename T>
 inline auto ohrsize(const T &sz)
    PCOMN_MAKE_OMANIP(&detail::print_hrsize, (unsigned long long)(sz)) ;
+
+template<typename T>
+inline auto ohrsizex(const T &sz)
+   PCOMN_MAKE_OMANIP(&detail::print_hrsizex, (unsigned long long)(sz)) ;
 
 template<typename T>
 inline auto ostrq(const T &str)

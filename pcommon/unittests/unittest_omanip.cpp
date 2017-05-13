@@ -22,10 +22,12 @@
 class OmanipTests : public CppUnit::TestFixture {
    private:
       void Test_OSequence() ;
+      void Test_OHRSize() ;
 
       CPPUNIT_TEST_SUITE(OmanipTests) ;
 
       CPPUNIT_TEST(Test_OSequence) ;
+      CPPUNIT_TEST(Test_OHRSize) ;
 
       CPPUNIT_TEST_SUITE_END() ;
    protected:
@@ -65,6 +67,38 @@ void OmanipTests::Test_OSequence()
       CPPUNIT_LOG_ASSERT(os << pcomn::ocontdelim(strvec)) ;
       CPPUNIT_LOG_EQ(os.str(), "zero, one, two, three") ;
    }
+}
+
+void OmanipTests::Test_OHRSize()
+{
+   using namespace pcomn ;
+   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsize(0)), "0") ;
+   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsize(900)), "900") ;
+   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsize(1023)), "1023") ;
+   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsize(1024)), "1.0K") ;
+   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsize(1025)), "1.0K") ;
+   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsize(1536)), "1.5K") ;
+   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsize(1023*KiB)), "1023.0K") ;
+   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsize(1024*KiB)), "1.0M") ;
+   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsize(1024*KiB + 1)), "1.0M") ;
+   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsize(1024*MiB)), "1.0G") ;
+   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsize(1024*MiB + 1)), "1.0G") ;
+   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsize(1100*MiB)), "1.1G") ;
+
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsizex(0)), "0") ;
+   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsizex(900)), "900") ;
+   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsizex(1023)), "1023") ;
+   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsizex(1024)), "1K") ;
+   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsizex(1025)), "1025") ;
+   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsizex(1536)), "1536") ;
+   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsizex(1023*KiB)), "1023K") ;
+   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsizex(1024*KiB)), "1M") ;
+   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsizex(1024*KiB + 1)), "1048577") ;
+   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsizex(1025*KiB)), "1025K") ;
+   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsizex(1024*MiB)), "1G") ;
+   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsizex(1024*MiB + 1)), "1073741825") ;
+   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsizex(1100*MiB)), "1100M") ;
 }
 
 int main(int argc, char *argv[])
