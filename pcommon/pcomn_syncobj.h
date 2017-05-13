@@ -348,7 +348,7 @@ class ident_dispenser {
  operation per range (by default, per 65536 identifiers allocated).
 *******************************************************************************/
 template<typename Tag, typename Int = uint64_t, Int blocksize = 0x10000U>
-class ident_allocator {
+class local_ident_dispenser {
       PCOMN_STATIC_CHECK(is_atomic<Int>::value) ;
       PCOMN_STATIC_CHECK(blocksize > 0) ;
    public:
@@ -371,11 +371,11 @@ class ident_allocator {
 } ;
 
 template<typename Tag, typename Int, Int bsz>
-thread_local Int ident_allocator<Tag, Int, bsz>::_next_id {0} ;
+thread_local Int local_ident_dispenser<Tag, Int, bsz>::_next_id {0} ;
 template<typename Tag, typename Int, Int bsz>
-thread_local Int ident_allocator<Tag, Int, bsz>::_range_end {0} ;
+thread_local Int local_ident_dispenser<Tag, Int, bsz>::_range_end {0} ;
 template<typename Tag, typename Int, Int bsz>
-std::atomic<Int> ident_allocator<Tag, Int, bsz>::_next_start {bsz} ;
+std::atomic<Int> local_ident_dispenser<Tag, Int, bsz>::_next_start {bsz} ;
 
 } // end of namespace pcomn
 
