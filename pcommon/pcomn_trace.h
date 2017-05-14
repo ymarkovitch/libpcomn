@@ -511,43 +511,49 @@ DECLARE_DIAG_GROUP(Def, _PCOMNEXP) ;
  The family of logging macros: LOGPXERR/LOGPXWARN/LOGPXINFO/LOGPXNOTE/LOGPXDBG/LOGPXTRACE
 *******************************************************************************/
 /// Output debug message both into the diagnostics trace and system log, if tracing and
-/// specified diagnostics group are enabled and group's diagnostics level is greater or
-/// equal to @a LVL.
+/// specified diagnostics group are enabled.
 ///
 /// This macro closely resembles TRACEPX, but in contrast to the latter its code doesn't
 /// disappear from compiled code in release mode. While in release mode it never writes
-/// into the diagnostics trace log, it can write into syslog, subject to GRP and LVL.
-/// On Unix, writes into syslog with LOG_DEBUG priority
+/// into the diagnostics trace log, it can write into syslog, subject to @a GRP.
+/// On Unix, writes into syslog with LOG_TRACE priority
 ///
-#define LOGPXTRACE(GRP, LVL, MSG)                                       \
-   (diag_isenabled_output(GRP, LVL) && ::diag::PDiagBase::Lock() &&     \
+#define LOGPXTRACE(GRP, MSG)                                            \
+   (diag_isenabled_output(GRP, DBGL_ALWAYS) && ::diag::PDiagBase::Lock() && \
     LOGMSGPX(GRP, TRACE, MSG) && OUTMSGPX(GRP, trace))
 
+/// Output debug message both into the diagnostics trace and system log, if *both*
+/// tracing and **supergroup** of the specified @a GRP are enabled
+///
 #define LOGPXDBG(GRP, MSG)                                              \
    (::diag_isenabled_diag() && ::diag::grp::GRP::IsSuperGroupEnabled() && \
     ::diag::PDiagBase::Lock() &&                                        \
     LOGMSGPX(GRP, DEBUG, MSG) && OUTMSGPX(GRP, trace))
 
-/// Output INFO message into the system log and, if tracing and specified
-/// diagnostics group are enabled, also into diagnostics trace.
-/// @note Doesn't take group diagnostics level into account (i.e. it is enough that the
-/// group is enabled).
+/// Output INFO message into the system log and, if *both* tracing and **supergroup**
+/// of the specified @a GRP are enabled, also into diagnostics trace.
+///
+/// @note Doesn't take subgroup and diagnostics level into account (i.e. it is enough
+/// that the **supergroup** is enabled).
 ///
 #define LOGPXINFO(GRP, MSG)                                             \
    (::diag::PDiagBase::Lock() &&                                        \
     LOGMSGPX(GRP, INFO, MSG) &&                                         \
-    DIAG_ISENABLED_OUTPUT(GRP, DBGL_ALWAYS) && OUTMSGPX(GRP, trace))
+    DIAG_ISENABLED_DIAG() && DIAG_ISENABLED_SUPERGROUP(GRP) && OUTMSGPX(GRP, trace))
 
-/// Output NOTICE message into the system log and, if tracing and specified
-/// diagnostics @em supergroup are enabled, also into diagnostics trace.
+/// Output NOTICE message into the system log and, if *both* tracing and **supergroup**
+/// of the specified @a GRP are enabled, also into diagnostics trace.
+///
+/// @note Doesn't take subgroup and diagnostics level into account (i.e. it is enough
+/// that the **supergroup** is enabled).
 ///
 #define LOGPXNOTE(GRP, MSG)                                             \
    (::diag::PDiagBase::Lock() &&                                        \
     LOGMSGPX(GRP, NOTE, MSG) &&                                         \
     DIAG_ISENABLED_DIAG() && DIAG_ISENABLED_SUPERGROUP(GRP) && OUTMSGPX(GRP, trace))
 
-/// Always output WARNING message into the system log and, if tracing and specified
-/// diagnostics @em supergroup are enabled, also into diagnostics trace.
+/// Output WARNING message into the system log and, if *both* tracing and **supergroup**
+/// of the specified @a GRP are enabled, also into diagnostics trace.
 /// @note On Unix, writes into syslog with LOG_WARNING priority.
 ///
 #define LOGPXWARN(GRP, MSG)                                             \
@@ -555,7 +561,7 @@ DECLARE_DIAG_GROUP(Def, _PCOMNEXP) ;
     LOGMSGPX(GRP, WARNING, MSG) &&                                      \
     DIAG_ISENABLED_DIAG() && DIAG_ISENABLED_SUPERGROUP(GRP) && OUTMSGPX(GRP, warn))
 
-/// Always output ERROR message into the system log and, if tracing enabled, also into
+/// Output  ERROR message into the system log and, if tracing enabled, also into
 /// diagnostics trace.
 /// @note On Unix, writes into syslog with LOG_ERR priority.
 ///
