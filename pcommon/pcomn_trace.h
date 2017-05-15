@@ -10,6 +10,9 @@
 
  CREATION DATE:   17 Jun 1996
 *******************************************************************************/
+/** @file
+  Logging and debugging trace framework.
+*******************************************************************************/
 #include <pcommon.h>
 #include <pcomn_omanip.h>
 
@@ -21,6 +24,11 @@
 #if defined(__PCOMN_TRACE) && !defined(__PCOMN_WARN)
 #define __PCOMN_WARN
 #endif
+
+/******************************************************************************/
+/** @addtogroup pcomn_trace Tracing and logging framework
+ * @{
+*******************************************************************************/
 
 /// Diagnostics levels
 const unsigned DBGL_ALWAYS  = 0 ;
@@ -42,7 +50,7 @@ const unsigned MaxSuperGroupsNum = 256 ; /**< Maximum overall number of supergro
 const char     GroupDelim        = '_' ; /**< A subgroup/supergroup name delimiter */
 const unsigned MaxSuperGroupLen  = 15 ;  /**< Maximum supergroup name length */
 
-/// Tracing mode flags
+/// Tracing mode flags.
 enum DiagMode {
    DisableDebugOutput = 0x0001, /**< Turn off tracing completely */
    DisableDebuggerLog = 0x0002, /**< Don't output trace into debugger log (like Win32 OutpudDebugString) */
@@ -815,5 +823,8 @@ using diag::EndArgs ;
 
 #define SCOPEMEMFNOUT(ARGS)   MEMFNOUT(__FUNCTION__, ARGS)
 
+/******************************************************************************/
+/** @} */ // End of pcomn::trace
+/******************************************************************************/
 
 #endif /* __PTRACE_H */
