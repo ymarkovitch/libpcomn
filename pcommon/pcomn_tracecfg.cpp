@@ -65,7 +65,7 @@ void PTraceSuperGroup::ena(bool onOff)
 
 const char *PTraceSuperGroup::parseName(const char *fullName)
 {
-   static char buf[MaxSuperGroupLen+1] ;
+   static thread_local_trivial char buf[MaxSuperGroupLen+1] ;
 
    const char *_ = strchr (fullName, '_') ;
    size_t l ;

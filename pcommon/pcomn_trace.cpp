@@ -245,6 +245,7 @@ struct trace_context {
 
       static syslog_writer syslog_write ;
       static void *        syslog_data ;
+      static const char *  syslog_ident ;
 
       static time_t        last_cfgcheck ; /* The time of last configuration check */
       static struct stat   last_cfgstat ;
@@ -331,6 +332,7 @@ void *        trace_context::dbglog_data ;
 
 syslog_writer trace_context::syslog_write = output_syslog_msg ;
 void *        trace_context::syslog_data ;
+const char *  trace_context::syslog_ident = nullptr ;
 
 typedef trace_context ctx ;
 
@@ -417,6 +419,11 @@ void register_syslog(int fd, LogLevel level)
    }
 }
 
+const char *syslog_ident()
+{
+   return ctx::syslog_ident ;
+}
+
 /*******************************************************************************
  Debug output
 *******************************************************************************/
@@ -477,6 +484,7 @@ static int syslog_priority(LogLevel level)
    switch (level)
    {
       case LOGL_ALERT:  return LOG_ALERT ;
+      case LOGL_CRIT:   return LOG_CRIT ;
       case LOGL_ERROR:  return LOG_ERR ;
       case LOGL_WARNING:return LOG_WARNING ;
       case LOGL_NOTE:   return LOG_NOTICE ;
@@ -713,7 +721,7 @@ void PDiagBase::trace_message(const char *type,
 // On Unix, use syslog; on Windows, use event log (?) or OutputDebugString
 //
 void PDiagBase::syslog_message(LogLevel level,
-                               const Properties * /*group*/, const char *msg,
+                               const Properties *group, const char *msg,
                                const char * /*fname*/, unsigned /*line*/)
 {
    if (mode() & DisableSyslog)
@@ -721,6 +729,8 @@ void PDiagBase::syslog_message(LogLevel level,
 
    char threadid_buf[32] ;
    const bool use_threadid = (mode() & UseThreadId) && level >= LOGL_DEBUG ;
+
+   pcomn::vsaver<const char *> current_ident (ctx::syslog_ident, group->subName()) ;
 
    if (use_threadid)
       ctx::syslog_write(ctx::syslog_data, level, "%s: %s", threadidtostr(threadid_buf), msg) ;

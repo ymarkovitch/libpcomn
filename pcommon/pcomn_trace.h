@@ -267,6 +267,8 @@ _PCOMNEXP void register_syslog_writer(syslog_writer writer, void *data= NULL) ;
 
 _PCOMNEXP void register_syslog(int fd, LogLevel level = LOGL_WARNING) ;
 
+_PCOMNEXP const char *syslog_ident() ;
+
 }   // end of diag namespace
 
 /******************************************************************************/
