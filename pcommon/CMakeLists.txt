@@ -71,6 +71,7 @@ add_library(pcommon STATIC
   pcomn_diag.cpp
   pcomn_exec.cpp
   pcomn_fileutils.cpp
+  pcomn_fileread.cpp
 
   pcomn_mmap.cpp
   pcomn_path.cpp
