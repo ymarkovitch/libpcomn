@@ -33,6 +33,16 @@
 namespace pcomn {
 namespace sys {
 
+inline fileoff_t filesize_from_stat(const struct stat &st)
+{
+   if (!S_ISREG(st.st_mode) && !S_ISBLK(st.st_mode))
+   {
+      errno = EINVAL ;
+      return -1 ;
+   }
+   return st.st_size ;
+}
+
 inline const char *strlasterr()
 {
    static thread_local char errbuf[128] ;
@@ -49,13 +59,13 @@ inline size_t pagesize()
 inline fileoff_t filesize(int fd)
 {
    struct stat st ;
-   return fstat(fd, &st) == 0 ? (fileoff_t)st.st_size : (fileoff_t)-1 ;
+   return fstat(fd, &st) == 0 ? filesize_from_stat(st) : (fileoff_t)-1 ;
 }
 
 inline fileoff_t filesize(const char *name)
 {
    struct stat st ;
-   return stat(name, &st) == 0 ? (fileoff_t)st.st_size : (fileoff_t)-1 ;
+   return stat(name, &st) == 0 ? filesize_from_stat(st) : (fileoff_t)-1 ;
 }
 
 inline void *pagealloc()
