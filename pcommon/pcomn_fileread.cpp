@@ -34,7 +34,10 @@ std::string readfile(int fd)
    if (sz > 0)
    {
       result.resize(sz) ;
-      PCOMN_ENSURE_POSIX(read(fd, &result[0], sz), "read") ;
+      const ssize_t rsz = PCOMN_ENSURE_POSIX(read(fd, &result[0], sz), "read") ;
+      if (rsz == sz)
+         return result ;
+      result.resize(rsz) ;
    }
 
    char buf[32*1024] ;
