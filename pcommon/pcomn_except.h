@@ -237,6 +237,8 @@ class _PCOMNEXP system_error : public virtual environment_error {
 
       int platform_code() const { return _errcode.platform_code() ; }
 
+      int code() const { return posix_code() ; }
+
       static int lasterr() { return errcode::lasterr() ; }
 
       static
