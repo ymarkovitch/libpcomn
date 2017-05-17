@@ -150,11 +150,7 @@ void RawStreamTests::Test_StdStream_Exceptions()
    CPPUNIT_LOG_RUN(is.stream().exceptions(std::ios_base::failbit)) ;
    CPPUNIT_LOG_EQUAL(is.exceptions(), (unsigned)(pcomn::raw_ios::eofbit)) ;
 
-   #if _GLIBCXX_USE_CXX11_ABI && PCOMN_WORKAROUND(__GNUC_VER__, < 700)
    CPPUNIT_LOG_FAILURE(is.read(buf, sizeof buf - 1)) ;
-   #else
-   CPPUNIT_LOG_EXCEPTION(is.read(buf, sizeof buf - 1), std::ios_base::failure) ;
-   #endif
 
    CPPUNIT_LOG_EQUAL(is.last_read(), (size_t)0) ;
    CPPUNIT_LOG_EQUAL(is.rdstate(), (unsigned)(pcomn::raw_ios::failbit|pcomn::raw_ios::eofbit)) ;
@@ -178,11 +174,7 @@ void RawStreamTests::Test_StdStream_Exceptions()
 
    CPPUNIT_LOG_RUN(answer.exceptions(std::ios::eofbit)) ;
 
-   #if _GLIBCXX_USE_CXX11_ABI && PCOMN_WORKAROUND(__GNUC_VER__, < 700)
    CPPUNIT_LOG_FAILURE(answer.read(buf, sizeof buf - 1)) ;
-   #else
-   CPPUNIT_LOG_EXCEPTION(answer.read(buf, sizeof buf - 1), std::ios::failure) ;
-   #endif
 
    CPPUNIT_LOG_EQUAL(std::string(buf), std::string("42")) ;
    CPPUNIT_LOG_IS_FALSE(answer.bad()) ;

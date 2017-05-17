@@ -29,7 +29,7 @@ unittest(unittest_strshims)
 unittest(unittest_strslice)
 
 unittest(unittest_cacher)
-unittest(unittest_cdsqueue)
+#unittest(unittest_cdsqueue)
 unittest(unittest_cdscrq)
 unittest(unittest_crypthash)
 unittest(unittest_enum)
