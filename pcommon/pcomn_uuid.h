@@ -135,14 +135,15 @@ PCOMN_DEFINE_RELOP_FUNCTIONS(, uuid) ;
 
 PCOMN_STATIC_CHECK(sizeof(uuid) == 16) ;
 
-/******************************************************************************/
-/** Network Media Access Address (MAC)
+/***************************************************************************//**
+ Network Media Access Address (MAC)
 *******************************************************************************/
 struct MAC {
       constexpr MAC() : _idata{0} {}
 
+      /// Explicit conversion from 64-bit integer.
       constexpr MAC(uint8_t o1, uint8_t o2, uint8_t o3, uint8_t o4, uint8_t o5, uint8_t o6) :
-      _data{o1, o2, o3, o4, o5, o6} {}
+         _data{o6, o5, o4, o3, o2, o1, 0, 0} {}
 
       MAC(const char *str, RaiseError raise_error = RAISE_ERROR) :
          MAC(str ? strslice(str) : strslice(), raise_error)
@@ -151,17 +152,22 @@ struct MAC {
       _PCOMNEXP
       MAC(const strslice &str, RaiseError raise_error = RAISE_ERROR) ;
 
+      template<typename I, typename=std::enable_if_t<(sizeof(I) == 8 && std::is_unsigned<I>::value)>>
+      explicit constexpr MAC(I data) : _idata{value_to_little_endian(data & 0x00FFFFFFFFFFFFFFULL)} {}
+
       explicit constexpr operator bool() const { return !!_idata ; }
+      explicit constexpr operator uint64_t() const { return value_from_little_endian(_idata) ; }
 
       /// Get the count of MAC octets (6)
-      static constexpr size_t size() { return sizeof _data ; }
+      static constexpr size_t size() { return 6 ; }
       /// Get the canonical string representation length of a MAC (17 chars)
       static constexpr size_t slen() { return 3*size() - 1 ; }
 
-      /// Get direct access to MAC octets
-      constexpr const unsigned char *data() const { return _data ; }
       /// Get the nth octet of the MAC (MSB-first order)
-      constexpr unsigned octet(size_t n) const { return _data[n] ; }
+      constexpr unsigned octet(size_t n) const
+      {
+         return (_idata >> (n * 8)) & 0xFFU  ;
+      }
 
       /// Convert MAC to string of the form "XX:XX:XX:XX:XX:XX"
       _PCOMNEXP std::string to_string() const ;
@@ -178,14 +184,14 @@ struct MAC {
       friend bool operator==(const MAC &x, const MAC &y) { return x._idata == y._idata ; }
       friend bool operator<(const MAC &x, const MAC &y)
       {
-         return value_from_big_endian(x._idata) < value_from_big_endian(y._idata) ;
+         return value_from_little_endian(x._idata) < value_from_little_endian(y._idata) ;
       }
 
       size_t hash() const { return hasher(_idata) ; }
 
    private:
       union {
-            unsigned char  _data[6] ;
+            unsigned char  _data[8] ;
             uint64_t       _idata ;
       } ;
 } ;
