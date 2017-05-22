@@ -641,6 +641,18 @@ inline typename disable_if
    return cptr ? int(cptr - begin) : -1 ;
 }
 
+inline size_t strbuflen(const char *s, size_t n)
+{
+   const char * const end = static_cast<const char *>(memchr(s, 0, n)) ;
+   return end ? end - s : n ;
+}
+
+template<size_t n>
+inline size_t strbuflen(const char (&s)[n]) { return strbuflen(s, n) ; }
+
+template<size_t n>
+inline size_t strbuflen(char (&s)[n]) { return strbuflen(s, n) ; }
+
 /*******************************************************************************
  strchr/strrchr, overloaded for both char and wchar_t
 *******************************************************************************/
