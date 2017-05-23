@@ -14,6 +14,7 @@
 #include <pcomn_tuple.h>
 
 #include <vector>
+#include <list>
 #include <sstream>
 
 /*******************************************************************************
@@ -22,12 +23,14 @@
 class OmanipTests : public CppUnit::TestFixture {
    private:
       void Test_OSequence() ;
+      void Test_OContainer() ;
       void Test_OHRSize() ;
 
       CPPUNIT_TEST_SUITE(OmanipTests) ;
 
       CPPUNIT_TEST(Test_OSequence) ;
       CPPUNIT_TEST(Test_OHRSize) ;
+      CPPUNIT_TEST(Test_OContainer) ;
 
       CPPUNIT_TEST_SUITE_END() ;
    protected:
@@ -66,6 +69,46 @@ void OmanipTests::Test_OSequence()
       std::ostringstream os ;
       CPPUNIT_LOG_ASSERT(os << pcomn::ocontdelim(strvec)) ;
       CPPUNIT_LOG_EQ(os.str(), "zero, one, two, three") ;
+   }
+}
+
+void OmanipTests::Test_OContainer()
+{
+   {
+      const std::list<int> c {3, -1, 2} ;
+      pcomn::omemstream os ;
+      CPPUNIT_LOG_ASSERT(os << pcomn::ocontdelim(c, '|')) ;
+      CPPUNIT_LOG_EQ(os.checkout(), "3|-1|2") ;
+      CPPUNIT_LOG_ASSERT(os << pcomn::ocontdelim(c, "|")) ;
+      CPPUNIT_LOG_EQ(os.checkout(), "3|-1|2") ;
+      CPPUNIT_LOG_ASSERT(os << pcomn::ocontdelim(c, ", ")) ;
+      CPPUNIT_LOG_EQ(os.checkout(), "3, -1, 2") ;
+   }
+   {
+      const std::vector<int> c ;
+      pcomn::omemstream os ;
+      CPPUNIT_LOG_ASSERT(os << pcomn::ocontdelim(c, '|')) ;
+      CPPUNIT_LOG_EQ(os.checkout(), "") ;
+      CPPUNIT_LOG_ASSERT(os << pcomn::ocontdelim(c, "|")) ;
+      CPPUNIT_LOG_EQ(os.checkout(), "") ;
+      CPPUNIT_LOG_ASSERT(os << pcomn::ocontdelim(c, ", ")) ;
+      CPPUNIT_LOG_EQ(os.checkout(), "") ;
+   }
+   {
+      const char * const c[] = {"Hello", "world!" } ;
+      pcomn::omemstream os ;
+      CPPUNIT_LOG_ASSERT(os << pcomn::ocontdelim(c, ", ")) ;
+      CPPUNIT_LOG_EQ(os.checkout(), "Hello, world!") ;
+   }
+   {
+      const char * const c[] = {"Hello", "world!" } ;
+      const std::list<int> n {3, -1, 2} ;
+      pcomn::omemstream os ;
+      CPPUNIT_LOG_ASSERT(print_range(c, os, "", [](std::ostream &s, const char *v) { s << '(' << strlen(v) << ')' ; })) ;
+      CPPUNIT_LOG_EQ(os.checkout(), "(5)(6)") ;
+      CPPUNIT_LOG_ASSERT(print_range(c, os, pcomn::ocontdelim(n, '?'),
+                                     [](std::ostream &s, const char *v) { s << strlen(v) ; })) ;
+      CPPUNIT_LOG_EQ(os.checkout(), "53?-1?26") ;
    }
 }
 

@@ -104,38 +104,35 @@ struct omanip final {
 /*******************************************************************************
  Printing algorithms
 *******************************************************************************/
-template<typename InputIterator, typename Delim>
-std::ostream &print_sequence(InputIterator begin, InputIterator end, std::ostream &os,
-                             const Delim &delimiter)
-{
-   int count = -1 ;
-   for (; begin != end ; ++begin)
-   {
-      if (++count)
-         os << delimiter ;
-      os << *begin ;
-   }
-   return os ;
-}
-
 template<typename InputIterator, typename Delim, typename Fn>
 std::ostream &print_sequence(InputIterator begin, InputIterator end, std::ostream &os,
                              Delim &&delimiter, Fn &&fn)
 {
-   int count = -1 ;
+   bool init = false ;
    for (; begin != end ; ++begin)
    {
-      if (++count)
+      if (init)
          os << std::forward<Delim>(delimiter) ;
+      else
+         init = true ;
       std::forward<Fn>(fn)(os, *begin) ;
    }
    return os ;
 }
 
-template<typename InputIterator>
-inline std::ostream &print_sequence(InputIterator begin, InputIterator end, std::ostream &os)
+template<typename Range, typename Delim, typename Fn>
+std::ostream &print_range(Range &&r, std::ostream &os, Delim &&delimiter, Fn &&fn)
 {
-   return print_sequence(begin, end, os, ", ") ;
+   bool init = false ;
+   for (const auto &v: std::forward<Range>(r))
+   {
+      if (init)
+         os << std::forward<Delim>(delimiter) ;
+      else
+         init = true ;
+      std::forward<Fn>(fn)(os, v) ;
+   }
+   return os ;
 }
 
 /*******************************************************************************
@@ -156,13 +153,14 @@ template<typename InputIterator, typename Delim>
 inline std::ostream &o_sequence(std::ostream &os, InputIterator begin, InputIterator end,
                                 const Delim &delimiter)
 {
-   return print_sequence(begin, end, os, delimiter) ;
+   return print_sequence(begin, end, os, delimiter,
+                         [](std::ostream &s, decltype(*begin) &v) { s << v ; }) ;
 }
 
 template<typename InputIterator>
 inline std::ostream &o_sequence(std::ostream &os, InputIterator begin, InputIterator end)
 {
-   return print_sequence(begin, end, os) ;
+   return o_sequence(os, begin, end, ", ") ;
 }
 
 inline std::ostream &o_nothing(std::ostream &os) { return os ; }
