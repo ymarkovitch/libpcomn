@@ -823,10 +823,22 @@ inline detail::quote_<typename string_traits<S>::char_type> quote(const S &s)
 }
 
 template<typename S>
-inline detail::quote_<typename string_traits<S>::char_type>
-quote(const S &s, typename string_traits<S>::char_type q)
+inline detail::quote_<string_char_type_t<S>>
+quote(const S &s, string_char_type_t<S> q)
 {
    return detail::quote_<decltype(q)>(s, q) ;
+}
+
+template<typename S>
+inline auto squote(const S &s) -> decltype(quote(s, string_char_type_t<S>()))
+{
+   return quote(s, string_char_type_t<S>('\'')) ;
+}
+
+template<typename S>
+inline auto dquote(const S &s) -> decltype(quote(s, string_char_type_t<S>()))
+{
+   return quote(s, string_char_type_t<S>('"')) ;
 }
 
 /*******************************************************************************
