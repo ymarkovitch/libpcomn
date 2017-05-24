@@ -320,6 +320,9 @@ using enable_if_other_string_t = typename enable_if_other_string<S, O, T>::type 
 template<typename S1, typename S2, typename T = std::nullptr_t>
 using enable_if_compatible_strings_t = typename enable_if_compatible_strings<S1, S2, T>::type ;
 
+template<typename S>
+using string_char_type_t = typename string_traits<S>::char_type ;
+
 /*******************************************************************************
  Specialization of trivially_swappable for std::string, std::vector, std::array
 *******************************************************************************/
