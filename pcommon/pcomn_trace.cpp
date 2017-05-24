@@ -727,15 +727,9 @@ void PDiagBase::syslog_message(LogLevel level,
    if (mode() & DisableSyslog)
       return ;
 
-   char threadid_buf[32] ;
-   const bool use_threadid = (mode() & UseThreadId) && level >= LOGL_DEBUG ;
-
    pcomn::vsaver<const char *> current_ident (ctx::syslog_ident, group->subName()) ;
 
-   if (use_threadid)
-      ctx::syslog_write(ctx::syslog_data, level, "%s: %s", threadidtostr(threadid_buf), msg) ;
-   else
-      ctx::syslog_write(ctx::syslog_data, level, "%s", msg) ;
+   ctx::syslog_write(ctx::syslog_data, level, "%s", msg) ;
 }
 
 std::ostream &PDiagBase::stream(bool reset)
