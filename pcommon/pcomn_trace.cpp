@@ -769,10 +769,25 @@ void tee_syslog(LogLevel level, int fd, const char *s)
  Among other things, periodically checks if the trace configuration has been changed
  since last read.
 *******************************************************************************/
+static int force_enabled = 0 ;
+
 bool diag_isenabled_diag()
 {
+   if (force_enabled < 0)
+      return false ;
+
    diag::ctx::check_configuration_changes() ;
-   return !(diag_getmode() & diag::DisableDebugOutput) ;
+   return force_enabled > 0 || !(diag_getmode() & diag::DisableDebugOutput) ;
+}
+
+void diag_force_diag(bool ena)
+{
+   force_enabled = 1 | (-(int)!ena) ;
+}
+
+void diag_unforce_diag()
+{
+   force_enabled = 0 ;
 }
 
 // Definition of the default diagnostic group "Def" (expands to PDiagGroupDef)

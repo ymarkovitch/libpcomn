@@ -374,6 +374,13 @@ class __VA_ARGS__ GRP : private PDiagBase                               \
 
 _PCOMNEXP bool diag_isenabled_diag() ;
 
+/// Force diagnostics trace to enabled or disabled state regardless or mode flags.
+/// Does _not_ change the mode flags. To reset enabled/disabled state to specified by
+/// mode flags (e.g. by configuration file), call diag_unforce_diag().
+_PCOMNEXP void diag_force_diag(bool ena) ;
+
+_PCOMNEXP void diag_unforce_diag() ;
+
 inline
 void diag_enable_supergroup(const char *name, bool enabled)
 {
