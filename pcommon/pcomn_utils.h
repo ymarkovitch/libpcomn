@@ -175,6 +175,19 @@ constexpr inline auto nullable_get(P &&ptr, T &&default_value) -> decltype(*std:
    return std::forward<P>(ptr) ? *std::forward<P>(ptr) : std::forward<T>(default_value) ;
 }
 
+/// Compare two values for equality through pointers to that values or pointer-like
+/// objects, taking into account NULL pointers.
+///
+/// @a x and @a y must be pointers or pointer-like objects (i.e. implementing
+/// operator*). @a x and @a y are considered equal if both are NULL, or both are nonnull
+/// _and_ referenced values are equal.
+///
+template<typename P1, typename P2>
+constexpr inline auto nullable_eq(const P1 &x, const P2 &y) -> decltype(*x == *y)
+{
+   return !x == !y && (!x || *x == *y) ;
+}
+
 /*******************************************************************************
  Tagged pointer
 *******************************************************************************/

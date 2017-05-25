@@ -200,10 +200,10 @@ make_before_by_ndx(RandomAccessIter &&iter, Compare &&comp)
 /// @a begin and @a end iterators, returns 'true', otherwise 'false'.
 /// @note For equality test uses operator==
 template<class InputIterator, class T>
-inline bool exists(InputIterator begin, InputIterator end, const T &value)
+inline bool exists(InputIterator begin, InputIterator end, T &&value)
 {
    for (; begin != end ; ++begin)
-      if (*begin == value)
+      if (*begin == std::forward<T>(value))
          return true ;
    return false ;
 }
