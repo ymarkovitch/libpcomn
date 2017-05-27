@@ -503,12 +503,18 @@ static const std::thread::id main_thread_id = std::this_thread::get_id() ;
 static char *threadidtostr(char *buf)
 {
    const std::thread::id id = std::this_thread::get_id() ;
-   if (std::this_thread::get_id() == main_thread_id)
+   if (id == main_thread_id)
       return strcpy(buf, "<mainthrd>") ;
 
+   #if PCOMN_PL_LINUX
+   sprintf(buf, "%010lx", (unsigned long)pthread_self()) ;
+   memmove(buf, buf + (strlen(buf) - 10), 10) ;
+   #else
    pcomn::bufstr_ostream<0> out (buf, 16) ;
    out << std::right << std::setw(10) << id ;
+   #endif
    buf[10] = 0 ;
+
    return buf ;
 }
 
