@@ -128,12 +128,13 @@ target_compile_options(pcommon
   $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>:-pthread>
   $<$<CXX_COMPILER_ID:GNU>:-frecord-gcc-switches>
 
-  $<$<AND:$<OR:$<CONFIG:Debug>,$<CONFIG:DbgSanitize>,$<CONFIG:RelWithDebInfo>>,$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>>:-gdwarf-4>
-
   PRIVATE
   $<$<CXX_COMPILER_ID:GNU>:-Wall -Wno-error>
   $<$<CXX_COMPILER_ID:Clang>:-Wall -Wno-error -Wno-mismatched-tags>
   $<$<AND:$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>,$<${COMPILE_LANGUAGE_CXX}>>:-Woverloaded-virtual>
+
+  $<$<AND:$<OR:$<CONFIG:Debug>,$<CONFIG:DbgSanitize>,$<CONFIG:RelWithDebInfo>>,$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>>:-gdwarf-4>
+  $<$<PLATFORM_ID:Linux>:-fvisibility=hidden>
 
   PUBLIC
   $<$<AND:$<CXX_COMPILER_ID:Clang>,$<${COMPILE_LANGUAGE_CXX}>>:
