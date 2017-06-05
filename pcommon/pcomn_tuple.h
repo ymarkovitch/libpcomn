@@ -33,13 +33,10 @@ using tuple_element_t = typename tuple_element<I, Tuple>::type ;
 namespace pcomn {
 
 /// Convenience typdef, like unipair
-template<typename A, typename B, typename C>
+template<typename A, typename B = A, typename C = B>
 using triple = std::tuple<A, B, C> ;
 
-template<typename T>
-using unitriple = triple<T, T, T> ;
-
-template<typename A, typename B, typename C, typename D>
+template<typename A, typename B = A, typename C = B, typename D = C>
 using quad = std::tuple<A, B, C, D> ;
 
 /******************************************************************************/
