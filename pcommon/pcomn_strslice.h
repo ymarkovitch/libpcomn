@@ -96,8 +96,7 @@ struct basic_strslice {
       {}
 
       template<typename S>
-      basic_strslice(const S &s, size_t from,
-                     enable_if_strchar_t<S, char_type, size_t> to = (size_t)-1) :
+      basic_strslice(const S &s, size_t from, enable_if_strchar_t<S, char_type, size_t> to) :
          _begin(str::cstr(s)), _end(_begin)
       {
          const size_t len = str::len(s) ;
