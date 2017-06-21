@@ -143,6 +143,8 @@ using bool_constant = std::integral_constant<bool, v> ;
 
 namespace pcomn {
 
+inline namespace traits {
+
 using std::bool_constant ;
 
 template<int v>
@@ -162,6 +164,53 @@ using longlong_constant = std::integral_constant<long long, v> ;
 
 template<unsigned long long v>
 using ulonglong_constant = std::integral_constant<unsigned long long, v> ;
+
+/***************************************************************************//**
+ @name TypeTraits
+ Type properties checks that are evaluated to std::bool_constant<>.
+
+ While many (most?) implementations of STL implement type traits classes by deriving
+ from std::integral_constant<bool, ...>, it is not mandated by the Standard.
+ So, if protable code needs to get bool_constant<> as a result of type trait check,
+ it has to use `typename is_xxx<T>::type`.
+ So we provide corresponding template typedefs to reduce such verbosity.
+*******************************************************************************/
+/**@{*/
+template<typename T> using is_abstract_t     = typename std::is_abstract<T>::type ;
+template<typename T> using is_arithmetic_t   = typename std::is_arithmetic<T>::type ;
+template<typename T> using is_array_t        = typename std::is_array<T>::type ;
+template<typename T> using is_class_t        = typename std::is_class<T>::type ;
+template<typename T> using is_compound_t     = typename std::is_compound<T>::type ;
+template<typename T> using is_const_t        = typename std::is_const<T>::type ;
+template<typename T> using is_empty_t        = typename std::is_empty<T>::type ;
+template<typename T> using is_enum_t         = typename std::is_enum<T>::type ;
+template<typename T> using is_floating_point_t = typename std::is_floating_point<T>::type ;
+template<typename T> using is_function_t     = typename std::is_function<T>::type ;
+template<typename T> using is_fundamental_t  = typename std::is_fundamental<T>::type ;
+template<typename T> using is_integral_t     = typename std::is_integral<T>::type ;
+template<typename T> using is_literal_type_t = typename std::is_literal_type<T>::type ;
+template<typename T> using is_lvalue_reference_t = typename std::is_lvalue_reference<T>::type ;
+template<typename T> using is_member_function_pointer_t = typename std::is_member_function_pointer<T>::type ;
+template<typename T> using is_member_object_pointer_t = typename std::is_member_object_pointer<T>::type ;
+template<typename T> using is_member_pointer_t = typename std::is_member_pointer<T>::type ;
+template<typename T> using is_object_t       = typename std::is_object<T>::type ;
+template<typename T> using is_pod_t          = typename std::is_pod<T>::type ;
+template<typename T> using is_pointer_t      = typename std::is_pointer<T>::type ;
+template<typename T> using is_polymorphic_t  = typename std::is_polymorphic<T>::type ;
+template<typename T> using is_reference_t    = typename std::is_reference<T>::type ;
+template<typename T> using is_rvalue_reference_t = typename std::is_rvalue_reference<T>::type ;
+template<typename T> using is_scalar_t       = typename std::is_scalar<T>::type ;
+template<typename T> using is_signed_t       = typename std::is_signed<T>::type ;
+template<typename T> using is_standard_layout_t = typename std::is_standard_layout<T>::type ;
+template<typename T> using is_trivial_t      = typename std::is_trivial<T>::type ;
+template<typename T> using is_trivially_copyable_t = typename std::is_trivially_copyable<T>::type ;
+template<typename T> using is_union_t        = typename std::is_union<T>::type ;
+template<typename T> using is_unsigned_t     = typename std::is_unsigned<T>::type ;
+template<typename T> using is_void_t         = typename std::is_void<T>::type ;
+template<typename T> using is_volatile_t     = typename std::is_volatile<T>::type ;
+/**@}*/
+
+} // end of inline namespace pcomn::traits
 
 /******************************************************************************/
 /** Function for getting T value in unevaluated context for e.g. passsing
