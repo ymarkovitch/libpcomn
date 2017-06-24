@@ -180,7 +180,11 @@ macro(set_executable_path path)
 endmacro(set_executable_path)
 
 ################################################################################
-# unittest(<name> [source1 ...])
+# unittest(<name>
+#          [SOURCES [source1...]]
+#          [LIBS [lib1...]]
+#          [DEFS [def1...]]
+#          [OPTS [opt1...]])
 #
 # Add an executable unittest target called <name>.
 # The target is built:
@@ -189,7 +193,7 @@ endmacro(set_executable_path)
 #
 # unittest(foo) builds executable target foo from source file foo.cpp
 #
-# unittest(foo bar.cpp quux.cpp) builds executable target foo from sources
+# unittest(foo SOURCES bar.cpp quux.cpp) builds executable target foo from sources
 # bar.cpp and quux.cpp
 #
 # Use set_project_link_libraries() to specify libraries and build requirements
@@ -198,14 +202,25 @@ endmacro(set_executable_path)
 #
 function(unittest name)
 
+  cmake_parse_arguments(PARSE_ARGV 1
+    PCOMN_UNITTEST
+    "" # No options
+    "" # No one_value_keywords
+    "SOURCES;LIBS;OPTS;DEFS")
+
+  if (NOT ("${PCOMN_UNITTEST_UNPARSED_ARGUMENTS}" STREQUAL ""))
+    list_join(PCOMN_UNITTEST_UNPARSED_ARGUMENTS " ")
+    message(FATAL_ERROR "Invalid arguments passed to unittest ${name}: ${PCOMN_UNITTEST_UNPARSED_ARGUMENTS}")
+  endif()
+
   set_executable_path(bin)
 
   find_package(cppunit REQUIRED)
 
-  if (" ${ARGN}" STREQUAL " ")
+  if ("${PCOMN_UNITTEST_SOURCES}" STREQUAL "")
     set(sources ${name}.cpp)
   else()
-    set(sources ${ARGN})
+    set(sources ${PCOMN_UNITTEST_SOURCES})
   endif()
 
   if (NOT WIN32)
@@ -220,6 +235,10 @@ function(unittest name)
   # All unittests depend on pcommon and cppunit libraries
   target_link_libraries(${name} PRIVATE pcommon cppunit)
   apply_project_requirements(${name})
+
+  target_link_libraries     (${name} PRIVATE ${PCOMN_UNITTEST_LIBS})
+  target_compile_options    (${name} PRIVATE ${PCOMN_UNITTEST_OPTS})
+  target_compile_definitions(${name} PRIVATE ${PCOMN_UNITTEST_DEFS})
 
   set_target_properties(${name} PROPERTIES EXCLUDE_FROM_ALL true)
 
