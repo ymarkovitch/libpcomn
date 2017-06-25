@@ -359,10 +359,36 @@ P_BIND_THISPTR_(8) ;
 #undef P_PLACELIST_
 #undef P_BIND_THISPTR_
 
+template<typename> struct function_type ;
+
+template<typename Ret, typename Class, typename... Args>
+struct function_type<Ret(Class::*)(Args...) const>
+{
+    typedef std::function<Ret(Args...)> type ;
+} ;
+
+template<typename Ret, typename Class, typename... Args>
+struct function_type<Ret(Class::*)(Args...)>
+{
+    typedef std::function<Ret(Args...)> type ;
+} ;
+
+template<typename Callable>
+using function_type_t = typename function_type<decltype(&Callable::operator())>::type ;
+
+/// Make std::function from a function pointer.
 template<typename R, typename... Args>
 std::function<R(Args...)> make_function(R (*fn)(Args...))
 {
    return {fn} ;
+}
+
+/// Make std::function from lambda or any object with `operator()`.
+/// @note Does not work with objects with several overloaded `operator()`.
+template<typename Callable>
+function_type_t<Callable> make_function(Callable &&fn)
+{
+   return {std::forward<Callable>(fn)} ;
 }
 
 template<typename, typename>
