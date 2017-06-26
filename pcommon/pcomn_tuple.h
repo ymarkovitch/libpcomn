@@ -11,6 +11,9 @@
  PROGRAMMED BY:   Yakov Markovitch
  CREATION DATE:   8 Dec 2006
 *******************************************************************************/
+/** @file
+  Tuple and typelist manipulation routines.
+*******************************************************************************/
 #include <pcomn_meta.h>
 #include <pcomn_macros.h>
 
@@ -32,12 +35,35 @@ using tuple_element_t = typename tuple_element<I, Tuple>::type ;
 
 namespace pcomn {
 
-/// Convenience typdef, like unipair
+/***************************************************************************//**
+ Template typedefs for 0-,1-,3-,4-item tuples.
+*******************************************************************************/
+/**@{*/
+using nulltuple = std::tuple<> ;
+
+template<typename T>
+using single = std::tuple<T> ;
+
 template<typename A, typename B = A, typename C = B>
 using triple = std::tuple<A, B, C> ;
 
 template<typename A, typename B = A, typename C = B, typename D = C>
 using quad = std::tuple<A, B, C, D> ;
+/**@}*/
+
+/***************************************************************************//**
+ Typelists: type sequence tags.
+*******************************************************************************/
+template<typename... Types>
+using tlist = std::tuple<Types...>* ;
+
+using tnull = tlist<> ;
+
+template<typename T>
+using tsingle = tlist<T> ;
+
+template<typename T1, typename T2 = T1>
+using tpair = tlist<T1, T2> ;
 
 /******************************************************************************/
 /** Visit every item of any object compatible with std::get<n> function (this
@@ -46,16 +72,10 @@ using quad = std::tuple<A, B, C, D> ;
 template<unsigned tuplesz>
 struct for_each_visit {
       template<typename T, typename F>
-      static void visit_lvalue(T &value, F &visitor)
+      static void visit(T &value, F &&visitor)
       {
-         for_each_visit<tuplesz-1>::visit_lvalue(value, visitor) ;
-         visitor(std::get<tuplesz-1>(value)) ;
-      }
-
-      template<typename T, typename F>
-      static void visit(T &value, const F &visitor)
-      {
-         visit_lvalue(value, visitor) ;
+         for_each_visit<tuplesz-1>::visit(value, std::forward<F>(visitor)) ;
+         std::forward<F>(visitor)(std::get<tuplesz-1>(value)) ;
       }
 } ;
 
@@ -66,9 +86,7 @@ struct for_each_visit {
 *******************************************************************************/
 template<> struct for_each_visit<0> {
       template<typename T, typename F>
-      static void visit_lvalue(T &, F &) {}
-      template<typename T, typename F>
-      static void visit(T &, const F &) {}
+      static void visit(T &, F &&) {}
 } ;
 /// @endcond
 
@@ -78,19 +96,14 @@ template<> struct for_each_visit<0> {
  std::tuple, std::pair, and std::array).
 *******************************************************************************/
 template<class Tuple>
-struct tuple_for_each : for_each_visit<std::tuple_size<std::remove_const_t<Tuple> >::value> {
+struct tuple_for_each : for_each_visit<std::tuple_size<std::remove_const_t<Tuple>>::value> {
       template<typename F>
-      static void apply(Tuple &value, const F &visitor)
+      static void apply(Tuple &value, F &&visitor)
       {
-         applier::visit_lvalue(value, visitor) ;
-      }
-      template<typename F>
-      static void apply_lvalue(Tuple &value, F &visitor)
-      {
-         applier::visit_lvalue(value, visitor) ;
+         applier::visit(value, std::forward<F>(visitor)) ;
       }
    private:
-      typedef for_each_visit<std::tuple_size<std::remove_const_t<Tuple> >::value> applier ;
+      typedef for_each_visit<std::tuple_size<std::remove_const_t<Tuple>>::value> applier ;
 } ;
 
 /******************************************************************************/
@@ -218,11 +231,9 @@ struct out_element {
 }
 
 template<typename... T>
-std::ostream &operator<<(std::ostream &os, const std::tuple<T...> &v)
+__noinline std::ostream &operator<<(std::ostream &os, const std::tuple<T...> &v)
 {
-   detail::out_element out_element = { os << '{', false } ;
-   pcomn::tuple_for_each<const std::tuple<T...> >::apply_lvalue(v, out_element) ;
-
+   pcomn::tuple_for_each<const std::tuple<T...> >::apply(v, (detail::out_element{ os << '{', false })) ;
    return os << '}' ;
 }
 } // end of namespace std
