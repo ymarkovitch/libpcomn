@@ -265,70 +265,23 @@ inline size_t hash_fundamental(T value, std::true_type)
 }
 
 /*******************************************************************************
- Hasher functions for fundamental types.
- By default, template functor hash_fn<T> calls hasher(T)
-
- Note that according to dependent name lookup rules hasher() overloads for fundamental
- types must be declared _before_ hash_fn<> definition; for all other types, hasher()
- may be declared before hash_fn<> _instantiation_ (since ADL rules apply)
-*******************************************************************************/
-inline size_t hasher(const char *mem)
-{
-   return !mem ? 0 : hashFNV(mem, strlen(mem)) ;
-}
-
-#define PCOMN_HASH_IDENT_FN(type) \
-   constexpr inline size_t hasher(type val) { return (size_t)val ; }
-
-PCOMN_HASH_IDENT_FN(bool) ;
-PCOMN_HASH_IDENT_FN(char) ;
-PCOMN_HASH_IDENT_FN(unsigned char) ;
-PCOMN_HASH_IDENT_FN(signed char) ;
-
-#define PCOMN_HASH_INT_FN(type) \
-   inline size_t hasher(type value) { return detail::hash_fundamental(value, std::integral_constant<bool, (sizeof value > 4)>())  ; }
-
-PCOMN_HASH_INT_FN(short) ;
-PCOMN_HASH_INT_FN(unsigned short) ;
-PCOMN_HASH_INT_FN(int) ;
-PCOMN_HASH_INT_FN(unsigned) ;
-PCOMN_HASH_INT_FN(long) ;
-PCOMN_HASH_INT_FN(unsigned long) ;
-PCOMN_HASH_INT_FN(ulonglong_t) ;
-PCOMN_HASH_INT_FN(longlong_t) ;
-PCOMN_HASH_INT_FN(const void *) ;
-
-inline size_t hasher(double value)
-{
-   const uint64_t *p_ui64 = reinterpret_cast<const uint64_t *>(&value) ;
-   return hash_64(*p_ui64) ;
-}
-
-inline size_t hasher(float value) { return hasher((double)value) ; }
-
-inline size_t hasher(long double value) { return hasher((double)value) ; }
-
-template<class T1, class T2>
-size_t hasher(const std::pair<T1, T2> &) ;
-
-/*******************************************************************************
  Hasher functors
 *******************************************************************************/
 /** Functor returning its parameter unchanged (but converted to size_t).
 *******************************************************************************/
-template<class T>
+template<typename T>
 struct hash_identity : public std::unary_function<T, size_t> {
-      size_t operator() (const T &val) const
-      {
-         return (size_t)val ;
-      }
+      size_t operator() (const T &val) const { return static_cast<size_t>(val) ; }
 } ;
 
 /*******************************************************************************
  Forward declarations of hash functor templates
 *******************************************************************************/
-template<class T> struct hash_fn ;
-template<class T> struct hash_fn_raw ;
+template<typename> struct hash_fn ;
+template<typename> struct hash_fn_raw ;
+
+template<typename T>
+inline size_t hasher(T &&data) { return hash_fn<T>()(std::forward<T>(data)) ; }
 
 /******************************************************************************/
 /** Hash accumulator: "reduces" a sequence of hash value to single hash value.
@@ -360,8 +313,8 @@ struct Hash {
          return *this ;
       }
 
-      template<class T>
-      Hash &append_data(const T &data) { return append(hasher(data)) ; }
+      template<typename T>
+      Hash &append_data(T &&data) { return append(hasher(std::forward<T>(data))) ; }
 
       template<typename InputIterator>
       Hash &append_data(InputIterator b, InputIterator e)
@@ -371,7 +324,7 @@ struct Hash {
       }
 
       template<typename T>
-      Hash &operator+=(const T &data) { return append_data(data) ; }
+      Hash &operator+=(T &&data) { return append_data(std::forward<T>(data)) ; }
 
    private:
       uint64_t _accumulator = 0x345678L ;
@@ -392,7 +345,7 @@ struct crypthash : T {
 /******************************************************************************/
 /** 128-bit aligned binary big-endian POD data
 *******************************************************************************/
-struct alignas(16) binary128_t {
+struct binary128_t {
 
       constexpr binary128_t() : _idata() {}
 
@@ -710,25 +663,24 @@ inline sha1hash_t sha1hash_file(FILE *file, size_t *size = NULL)
 
 /******************************************************************************/
 /** Generic hashing functor.
-
  Uses pcomn::hasher() function for hashing values.
 *******************************************************************************/
 template<typename T>
-struct hash_fn : std::unary_function<T, size_t> {
-      size_t operator() (const T &val) const { return hasher(val) ; }
-} ;
-
-template<typename T>
-struct hash_fn<const T> : hash_fn<T> {} ;
-
-template<typename T>
-struct hash_fn<T &> : hash_fn<T> {} ;
+struct hash_fn : std::hash<std::remove_cv_t<std::remove_reference_t<T>>> {} ;
 
 /******************************************************************************/
 /** Hash functor for std::reference_wrapper<T> is the same as for T itself
 *******************************************************************************/
 template<typename T>
-struct hash_fn<std::reference_wrapper<T> > : hash_fn<T> {} ;
+struct hash_fn<std::reference_wrapper<T>> : hash_fn<T> {} ;
+
+template<typename T1, typename T2>
+struct hash_fn<std::pair<T1, T2>> {
+      size_t operator()(const std::pair<T1, T2> &data) const
+      {
+         return Hash(hasher(data.first)).append_data(data.second) ;
+      }
+} ;
 
 /******************************************************************************/
 /** Hashing functor, which uses pcomn::hash_fn<> for hashing non-integral values, and
@@ -742,12 +694,13 @@ struct hash_fn_raw : hash_fn<T> {} ;
 /******************************************************************************/
 /** Hashing functor for any sequence
 *******************************************************************************/
-template<typename T, typename H = hash_fn<T> >
-struct hash_fn_seq : H {
+template<typename T, typename H = hash_fn<T>>
+struct hash_fn_seq : private H {
       template<typename  S>
-      size_t operator()(const S &sequence) const
+      size_t operator()(S &&sequence) const
       {
-         return (*this)(std::begin(sequence), std::end(sequence)) ;
+         using namespace std ;
+         return (*this)(begin(std::forward<S>(sequence)), end(std::forward<S>(sequence))) ;
       }
 
       template<typename InputIterator>
@@ -777,22 +730,6 @@ template<typename T>
 struct hash_fn_member : public std::unary_function<T, size_t> {
       size_t operator()(const T &instance) const { return instance.hash() ; }
 } ;
-
-/*******************************************************************************
- Hasher functions
-*******************************************************************************/
-template<class T1, class T2>
-inline size_t hasher(const std::pair<T1, T2> &data)
-{
-   Hash hash(hash_fn<T1>()(*(T1 *)&data.first)) ;
-   return hash += *(T2 *)&data.second ;
-}
-
-inline size_t hasher(const binary128_t &data) { return data.hash() ; }
-
-inline size_t hasher(const md5hash_pod_t &data) { return data.hash() ; }
-
-inline size_t hasher(const sha1hash_pod_t &data) { return data.hash() ; }
 
 } // end of namespace pcomn
 
