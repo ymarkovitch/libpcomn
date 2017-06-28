@@ -55,12 +55,18 @@ else()
   set(PLATFORM_SOURCES win32)
 endif(UNIX)
 
+set(T1HA_SOURCES t1ha/src)
+
 add_library(pcommon STATIC
 
   regex.c
 
   pcomn_crc32.c
-  pcomn_hash.c
+
+  ${T1HA_SOURCES}/t1ha0.c
+  ${T1HA_SOURCES}/t1ha1.c
+  ${T1HA_SOURCES}/t1ha0_ia32aes_avx.c
+  ${T1HA_SOURCES}/t1ha0_ia32aes_noavx.c
 
   pcomn_trace.cpp
   pcomn_tracecfg.cpp
