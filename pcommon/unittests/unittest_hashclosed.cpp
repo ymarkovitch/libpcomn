@@ -95,10 +95,6 @@ void ClosedHashTests::Test_Hash_Functions()
    CPPUNIT_LOG_EQUAL(pcomn::hash_fn<bool>()(true), (size_t)1) ;
    CPPUNIT_LOG_EQUAL(pcomn::hash_fn<bool>()(false), (size_t)0) ;
 
-   CPPUNIT_LOG_EQUAL(pcomn::hash_fn_raw<int>()(13), (size_t)13) ;
-   CPPUNIT_LOG_EQUAL(pcomn::hash_fn_raw<int>()(0), (size_t)0) ;
-   CPPUNIT_LOG_EQUAL(pcomn::hash_fn_raw<std::string>()("Hello!"), pcomn::hash_fn<std::string>()("Hello!")) ;
-
    const char * const Hello = "Hello, world!" ;
    CPPUNIT_LOG_ASSERT(pcomn::hasher(Hello) != pcomn::hasher((const void *)Hello)) ;
    CPPUNIT_LOG_EQUAL(pcomn::hasher(Hello), pcomn::hasher("Hello, world!")) ;
@@ -126,10 +122,6 @@ void ClosedHashTests::Test_Hash_Functions()
    CPPUNIT_LOG(std::endl) ;
    CPPUNIT_LOG_EQUAL(pcomn::hash_fn_seq<int>()(CPPUNIT_CONTAINER(std::vector<int>, (1)(2)(3))),
                      pcomn::Hash().append_data(1).append_data(2).append_data(3).value()) ;
-   CPPUNIT_LOG_NOT_EQUAL((pcomn::hash_fn_seq<int, pcomn::hash_fn_raw<int> >()(CPPUNIT_CONTAINER(std::vector<int>, (1)(2)(3)))),
-                         pcomn::Hash().append_data(1).append_data(2).append_data(3).value()) ;
-   CPPUNIT_LOG_EQUAL((pcomn::hash_fn_seq<int, pcomn::hash_fn_raw<int> >()(CPPUNIT_CONTAINER(std::vector<int>, (1)(2)(3)))),
-                     pcomn::Hash().append(1).append(2).append(3).value()) ;
 }
 
 void ClosedHashTests::Test_Hashtable_Bucket()

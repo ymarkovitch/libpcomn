@@ -18,6 +18,8 @@
 #include <pcommon.h>
 #include <pcomn_assert.h>
 
+#include "t1ha/t1ha.h"
+
 #include <wchar.h>
 
 #include <stddef.h>
@@ -28,21 +30,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/* hashPJW
-    *
-    *  An adaptation of Peter Weinberger's (PJW) generic hashing
-    *  algorithm based on Allen Holub's version.
-    */
-_PCOMNEXP unsigned int hashPJWstr(const char *datum) ;
-_PCOMNEXP unsigned int hashPJWmem(const void *datum, size_t size) ;
-
-/* hashELF
- *
- * The hash algorithm used in the UNIX ELF format for object files.
- */
-_PCOMNEXP uintptr_t hashELFstr(const char *name) ;
-_PCOMNEXP uintptr_t hashELFmem(const void *mem, size_t size) ;
 
 _PCOMNEXP uint32_t calc_crc32(uint32_t crc, const void *buf, size_t len) ;
 
@@ -64,31 +51,6 @@ namespace pcomn {
 /*******************************************************************************
  Overloaded generic hash algorithms
 *******************************************************************************/
-inline unsigned int hashPJW(const char *str)
-{
-   return hashPJWstr(str) ;
-}
-inline unsigned int hashPJW(const wchar_t *str)
-{
-   return hashPJWmem(str, wcslen(str) * sizeof(wchar_t)) ;
-}
-inline unsigned int hashPJW(const void *datum, size_t size)
-{
-   return hashPJWmem(datum, size) ;
-}
-inline uintptr_t hashELF(const char *str)
-{
-   return hashELFstr(str) ;
-}
-inline uintptr_t hashELF(const wchar_t *str)
-{
-   return hashELFmem(str, wcslen(str) * sizeof(wchar_t)) ;
-}
-inline uintptr_t hashELF(const void *mem, size_t size)
-{
-   return hashELFmem(mem, size) ;
-}
-
 inline uint32_t calc_crc32(uint32_t prev_crc, const char *str)
 {
    return ::calc_crc32(prev_crc, (const uint8_t *)str, strlen(str)) ;
@@ -249,22 +211,6 @@ inline size_t hash_64(uint64_t x)
 }
 
 /*******************************************************************************
-
-*******************************************************************************/
-namespace detail {
-template<typename T>
-inline size_t hash_fundamental(T value, std::false_type)
-{
-   return hash_32((uint32_t)value) ;
-}
-template<typename T>
-inline size_t hash_fundamental(T value, std::true_type)
-{
-   return hash_64((uint64_t)value) ;
-}
-}
-
-/*******************************************************************************
  Hasher functors
 *******************************************************************************/
 /** Functor returning its parameter unchanged (but converted to size_t).
@@ -278,7 +224,12 @@ struct hash_identity : public std::unary_function<T, size_t> {
  Forward declarations of hash functor templates
 *******************************************************************************/
 template<typename> struct hash_fn ;
-template<typename> struct hash_fn_raw ;
+
+template<typename T> struct hash_fn<const T> : hash_fn<T> {} ;
+template<typename T> struct hash_fn<volatile T> : hash_fn<T> {} ;
+template<typename T> struct hash_fn<T &> : hash_fn<T> {} ;
+template<typename T> struct hash_fn<T &&> : hash_fn<T> {} ;
+template<typename T> struct hash_fn<const T *> : hash_fn<T *> {} ;
 
 template<typename T>
 inline size_t hasher(T &&data) { return hash_fn<T>()(std::forward<T>(data)) ; }
@@ -665,8 +616,47 @@ inline sha1hash_t sha1hash_file(FILE *file, size_t *size = NULL)
 /** Generic hashing functor.
  Uses pcomn::hasher() function for hashing values.
 *******************************************************************************/
+template<typename T> struct hash_fn : std::hash<T> {} ;
+
+template<> struct hash_fn<bool> { size_t operator()(bool v) const { return v ; } } ;
+
 template<typename T>
-struct hash_fn : std::hash<std::remove_cv_t<std::remove_reference_t<T>>> {} ;
+struct hash_fundamental {
+      PCOMN_STATIC_CHECK(std::is_fundamental<T>::value) ;
+
+      size_t operator()(T value) const { return hash_64((uint64_t)value) ; }
+} ;
+
+template<> struct hash_fn<double> {
+      size_t operator()(double value) const
+      {
+         return hash_64(*reinterpret_cast<uint64_t *>(&value)) ;
+      }
+} ;
+
+template<> struct hash_fn<void *> {
+      size_t operator()(const void *value) const
+      {
+         return hash_64(*reinterpret_cast<uint64_t *>(&value)) ;
+      }
+} ;
+
+template<> struct hash_fn<float> : hash_fn<double> {} ;
+template<> struct hash_fn<long double> : hash_fn<double> {} ;
+
+#define PCOMN_HASH_INT_FN(type) template<> struct hash_fn<type> : hash_fundamental<type> {}
+
+PCOMN_HASH_INT_FN(char) ;
+PCOMN_HASH_INT_FN(unsigned char) ;
+PCOMN_HASH_INT_FN(signed char) ;
+PCOMN_HASH_INT_FN(short) ;
+PCOMN_HASH_INT_FN(unsigned short) ;
+PCOMN_HASH_INT_FN(int) ;
+PCOMN_HASH_INT_FN(unsigned) ;
+PCOMN_HASH_INT_FN(long) ;
+PCOMN_HASH_INT_FN(unsigned long) ;
+PCOMN_HASH_INT_FN(long long) ;
+PCOMN_HASH_INT_FN(unsigned long long) ;
 
 /******************************************************************************/
 /** Hash functor for std::reference_wrapper<T> is the same as for T itself
@@ -681,15 +671,6 @@ struct hash_fn<std::pair<T1, T2>> {
          return Hash(hasher(data.first)).append_data(data.second) ;
       }
 } ;
-
-/******************************************************************************/
-/** Hashing functor, which uses pcomn::hash_fn<> for hashing non-integral values, and
- pcomn::hash_identity<> for hashing integral values.
-
- Such hashing requires the number of hashtable buckets to be a primary number.
-*******************************************************************************/
-template<class T>
-struct hash_fn_raw : hash_fn<T> {} ;
 
 /******************************************************************************/
 /** Hashing functor for any sequence
@@ -712,19 +693,6 @@ struct hash_fn_seq : private H {
          return accu ;
       }
 } ;
-
-#define PCOMN_HASH_RAW_FN(type) template<> struct hash_fn_raw<type > : hash_identity<type > {}
-
-PCOMN_HASH_RAW_FN(short) ;
-PCOMN_HASH_RAW_FN(unsigned short) ;
-PCOMN_HASH_RAW_FN(int) ;
-PCOMN_HASH_RAW_FN(unsigned) ;
-PCOMN_HASH_RAW_FN(long) ;
-PCOMN_HASH_RAW_FN(unsigned long) ;
-PCOMN_HASH_RAW_FN(ulonglong_t) ;
-PCOMN_HASH_RAW_FN(longlong_t) ;
-
-#undef PCOMN_HASH_RAW_FN
 
 template<typename T>
 struct hash_fn_member : public std::unary_function<T, size_t> {
