@@ -207,6 +207,7 @@ struct visitor {
 } ;
 }
 
+
 void UtilityTests::Test_TupleUtils()
 {
    const std::tuple<> empty_tuple ;
@@ -241,6 +242,20 @@ void UtilityTests::Test_TupleUtils()
    s.clear() ;
    CPPUNIT_LOG_RUN(tuple_zip(v, empty_tuple, p1)) ;
    CPPUNIT_LOG_EQ(s, "") ;
+
+   CPPUNIT_LOG(std::endl) ;
+   using namespace pcomn ;
+
+   CPPUNIT_LOG_IS_FALSE(std::less<std::tuple<>>()(std::tuple<>(), std::tuple<>())) ;
+   CPPUNIT_LOG_IS_FALSE(less_tuple(unipair<int>(5, 10), unipair<int>(5, 10))) ;
+   CPPUNIT_LOG_ASSERT(less_tuple(unipair<int>(5, 9), unipair<int>(5, 10))) ;
+   CPPUNIT_LOG_ASSERT(less_tuple(unipair<int>(4, 15), unipair<int>(5, 10))) ;
+   CPPUNIT_LOG_IS_FALSE(less_tuple(unipair<int>(5, 11), unipair<int>(5, 10))) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_IS_FALSE(less_tuple(single<std::string>("BBB"), single<std::string>("BBB"))) ;
+   CPPUNIT_LOG_IS_FALSE(less_tuple(single<std::string>("BBB"), single<std::string>("BAA"))) ;
+   CPPUNIT_LOG_ASSERT(less_tuple(single<std::string>("ABB"), single<std::string>("BAA"))) ;
 }
 
 void UtilityTests::Test_StreamUtils()

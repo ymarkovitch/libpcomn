@@ -95,8 +95,8 @@ template<> struct for_each_visit<0> {
  std::get<n> function and std::tuple_size<T> class (this includes at least
  std::tuple, std::pair, and std::array).
 *******************************************************************************/
-template<class Tuple>
-struct tuple_for_each : for_each_visit<std::tuple_size<std::remove_const_t<Tuple>>::value> {
+template<typename Tuple>
+struct tuple_for_each : for_each_visit<std::tuple_size<valtype_t<Tuple>>::value> {
       template<typename F>
       static void apply(Tuple &value, F &&visitor)
       {
@@ -176,6 +176,7 @@ using decay_argtype_t = typename decay_argtype<T>::type ;
 
 /*******************************************************************************
  const_tie
+ Now mostly supeseeded with std::forward_as_tuple
 *******************************************************************************/
 inline std::tuple<> const_tie() { return std::tuple<>() ; }
 
@@ -208,34 +209,81 @@ inline constexpr ssize_t tuplesize()
 template<typename T>
 inline constexpr ssize_t tuplesize(T &&) { return tuplesize<T>() ; }
 
-} // end of namespace pcomn
+template<typename...T>
+inline bool less_tuple(const std::tuple<T...> &x, const std::tuple<T...> &y)
+{
+   return std::less<std::tuple<T...>>()(x, y) ;
+}
 
-// We need std namespace to ensure proper Koenig lookup
-namespace std {
+template<typename T1, typename T2>
+inline bool less_tuple(const std::pair<T1,T2> &x, const std::pair<T1,T2> &y)
+{
+   return std::less<std::pair<T1,T2>>()(x, y) ;
+}
 
+/*******************************************************************************
+
+*******************************************************************************/
 namespace detail {
 struct out_element {
       template<typename T>
-      void operator()(const T &v)
-      {
-         if (next)
-            os << ',' ;
-         else
-            next = true ;
-         os << v ;
-      }
-
+      void operator()(const T &v) { if (next) os << ',' ; else next = true ; os << v ; }
       std::ostream &os ;
       bool next ;
 } ;
 }
 
+} // end of namespace pcomn
+
+namespace std {
+
 template<typename... T>
 __noinline std::ostream &operator<<(std::ostream &os, const std::tuple<T...> &v)
 {
-   pcomn::tuple_for_each<const std::tuple<T...> >::apply(v, (detail::out_element{ os << '{', false })) ;
+   pcomn::tuple_for_each<const std::tuple<T...> >::apply(v, (pcomn::detail::out_element{ os << '{', false })) ;
    return os << '}' ;
 }
+
+template<typename T1, typename T2>
+struct less<pair<T1,T2>> {
+      bool operator()(const pair<T1,T2> &x, const pair<T1,T2> &y) const
+      {
+         constexpr const less<T1> less_first ;
+         constexpr const less<T2> less_second ;
+         return less_first(x.first, y.first) || !less_first(y.first, x.first) && less_second(x.second, y.second) ;
+      }
+} ;
+
+template<> struct less<tuple<>> {
+      constexpr bool operator()(const tuple<> &, const tuple<> &) const { return false ; }
+} ;
+
+template<typename T1, typename...T>
+struct less<tuple<T1, T...>> {
+      typedef tuple<T1, T...> type ;
+
+      bool operator()(const type &x, const type &y) const
+      {
+         return less_tail(x, y, integral_constant<size_t, 0>()) ;
+      }
+
+   private:
+      static bool less_tail(const type &x, const type &y, integral_constant<size_t, sizeof...(T)>)
+      {
+         constexpr const size_t i = sizeof...(T) ;
+         return less<tuple_element_t<i, type>>()(get<i>(x), get<i>(y)) ;
+      }
+
+      template<size_t i>
+      static bool less_tail(const type &x, const type &y, integral_constant<size_t, i>)
+      {
+         constexpr const less<tuple_element_t<i, type>> less_head ;
+         return
+             less_head(get<i>(x), get<i>(y)) ||
+            !less_head(get<i>(y), get<i>(x)) && less_tail(x, y, integral_constant<size_t, i-1>()) ;
+      }
+} ;
+
 } // end of namespace std
 
 #endif /* __PCOMN_TUPLE_H */
