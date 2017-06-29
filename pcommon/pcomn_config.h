@@ -27,6 +27,10 @@
    instead of standard names
 */
 
+#if PCOMN_WORKAROUND(__cplusplus, >= 201402L)
+#define __deprecated(...) [[deprecated __VA_ARG__]]
+#endif
+
 /*******************************************************************************
  Microsoft C++ compilers
 *******************************************************************************/
@@ -141,11 +145,6 @@
 #endif
 #define __may_alias  __attribute__((__may_alias__))
 
-#ifdef __deprecated
-#undef __deprecated
-#endif
-#define __deprecated __attribute__((__deprecated__))
-
 #ifdef __noinline
 #undef __noinline
 #endif
@@ -160,6 +159,10 @@
 #undef __forceinline
 #endif
 #define __forceinline inline __attribute__((__always_inline__))
+
+#ifndef __deprecated
+#define __deprecated(...) __attribute__((deprecated __VA_ARGS__))
+#endif
 
 #elif defined(PCOMN_COMPILER_MS)
 /*******************************************************************************
@@ -191,10 +194,9 @@
 #endif
 #define __forceinline inline __forceinline
 
-#ifdef __deprecated
-#undef __deprecated
+#ifndef __deprecated
+#define __deprecated(...) __declspec(deprecated __VA_ARGS__)
 #endif
-#define __deprecated __declspec(deprecated)
 
 #ifdef __may_alias
 #undef __may_alias
@@ -213,7 +215,7 @@
 #define __noreturn
 #endif
 #ifndef __deprecated
-#define __deprecated
+#define __deprecated(...)
 #endif
 #ifndef __noinline
 #define __noinline
