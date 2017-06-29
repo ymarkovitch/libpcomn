@@ -12,6 +12,7 @@
 #include <pcomn_hash.h>
 #include <pcomn_string.h>
 #include <pcomn_strslice.h>
+#include <pcomn_cstrptr.h>
 #include <pcomn_unittest.h>
 
 #include <typeinfo>
@@ -25,12 +26,15 @@
 *******************************************************************************/
 class HashFnTests : public CppUnit::TestFixture {
 
-   private:
       void Test_Hash_Functions() ;
+      void Test_String_Hash() ;
+      void Test_Tuple_Hash() ;
 
       CPPUNIT_TEST_SUITE(HashFnTests) ;
 
       CPPUNIT_TEST(Test_Hash_Functions) ;
+      CPPUNIT_TEST(Test_String_Hash) ;
+      CPPUNIT_TEST(Test_Tuple_Hash) ;
 
       CPPUNIT_TEST_SUITE_END() ;
 } ;
@@ -47,47 +51,102 @@ void HashFnTests::Test_Hash_Functions()
    CPPUNIT_LOG_NOT_EQUAL(pcomn::hash_fn<int>()(1), (size_t)1) ;
    CPPUNIT_LOG_NOT_EQUAL(pcomn::hash_fn<int>()(1), pcomn::hash_fn<int>()(0)) ;
 
-   CPPUNIT_LOG_EQUAL(pcomn::hash_fn<int>()(13), pcomn::hash_fn<long>()(13)) ;
-   CPPUNIT_LOG_EQUAL(pcomn::hash_fn<unsigned short>()(13), pcomn::hash_fn<int>()(13)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::hash_fn<int>()(13), size_t(12198420960622345777ULL)) ;
 
-   CPPUNIT_LOG_EQUAL(pcomn::hash_fn<unsigned char>()(13), (size_t)13) ;
+   CPPUNIT_LOG_EQUAL(pcomn::hash_fn<int>()(13), pcomn::hash_fn<long>()(13)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::hash_fn<unsigned short>()(13), pcomn::hash_fn<size_t>()(13)) ;
+
    CPPUNIT_LOG_EQUAL(pcomn::hash_fn<bool>()(true), (size_t)1) ;
    CPPUNIT_LOG_EQUAL(pcomn::hash_fn<bool>()(false), (size_t)0) ;
 
    const char * const Hello = "Hello, world!" ;
-   CPPUNIT_LOG_ASSERT(pcomn::hasher(Hello) != pcomn::hasher((const void *)Hello)) ;
-   CPPUNIT_LOG_EQUAL(pcomn::hasher(Hello), pcomn::hasher("Hello, world!")) ;
-   CPPUNIT_LOG_EQUAL(pcomn::hasher(Hello), pcomn::hasher(std::string("Hello, world!"))) ;
+   CPPUNIT_LOG_ASSERT(pcomn::valhash(Hello) != pcomn::valhash((const void *)Hello)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::valhash(Hello), pcomn::valhash("Hello, world!")) ;
+   CPPUNIT_LOG_EQUAL(pcomn::valhash(Hello), pcomn::valhash(std::string("Hello, world!"))) ;
 
    CPPUNIT_LOG(std::endl) ;
-   CPPUNIT_LOG_EQUAL(pcomn::hash_fn_seq<std::string>()(CPPUNIT_CONTAINER(std::vector<const char *>, ("Foo")("Bar"))),
-                     pcomn::tuple_hash().append_data("Foo").append_data("Bar").value()) ;
+   typedef std::vector<const char *> cstr_vector ;
 
-   CPPUNIT_LOG_NOT_EQUAL(pcomn::hash_fn_seq<std::string>()(CPPUNIT_CONTAINER(std::vector<const char *>, ("Foo"))),
-                     pcomn::tuple_hash().append_data("Foo").append_data("Bar").value()) ;
+   CPPUNIT_LOG_EQUAL(pcomn::hash_fn_sequence<cstr_vector>()(cstr_vector{"Foo", "Bar"}),
+                     pcomn::hash_combinator().append_data("Foo").append_data("Bar").value()) ;
+
+   CPPUNIT_LOG_NOT_EQUAL(pcomn::hash_fn_sequence<cstr_vector>()(cstr_vector{"Foo"}),
+                         pcomn::hash_combinator().append_data("Foo").append_data("Bar").value()) ;
 
    const char * const Foo = "Foo" ;
    const char * const Bar = "Bar" ;
-   CPPUNIT_LOG_EQUAL(pcomn::hash_fn_seq<const char *>()(CPPUNIT_CONTAINER(std::vector<const char *>, (Foo)(Bar))),
-                     pcomn::tuple_hash().append_data(Foo).append_data(Bar).value()) ;
-   CPPUNIT_LOG_NOT_EQUAL(pcomn::hash_fn_seq<const void *>()(CPPUNIT_CONTAINER(std::vector<const char *>, (Foo)(Bar))),
-                         pcomn::tuple_hash().append_data(Foo).append_data(Bar).value()) ;
+   CPPUNIT_LOG_EQUAL(pcomn::hash_sequence(cstr_vector{Foo, Bar}),
+                     pcomn::hash_combinator().append_data(Foo).append_data(Bar).value()) ;
 
-   CPPUNIT_LOG_EQUAL(pcomn::hash_fn_seq<const char *>()(CPPUNIT_CONTAINER(std::vector<const char *>, (Foo)(Bar))),
-                     pcomn::tuple_hash().append(pcomn::hasher(Foo)).append_data(Bar).value()) ;
-   CPPUNIT_LOG_EQUAL(pcomn::hash_fn_seq<const char *>()(CPPUNIT_CONTAINER(std::vector<const char *>, (Foo)(Bar))),
-                     pcomn::tuple_hash(pcomn::hasher(Foo)).append_data(Bar).value()) ;
+   CPPUNIT_LOG_NOT_EQUAL((pcomn::hash_fn_sequence<cstr_vector, pcomn::hash_fn<void *>>()(cstr_vector{Foo, Bar})),
+                         pcomn::hash_combinator().append_data(Foo).append_data(Bar).value()) ;
+
+   CPPUNIT_LOG_EQUAL(pcomn::hash_fn_sequence<cstr_vector>()(cstr_vector{Foo, Bar}),
+                     pcomn::hash_combinator().append(pcomn::valhash(Foo)).append_data(Bar).value()) ;
+   CPPUNIT_LOG_EQUAL(pcomn::hash_fn_sequence<cstr_vector>()(cstr_vector{Foo, Bar}),
+                     pcomn::hash_combinator(pcomn::valhash(Foo)).append_data(Bar).value()) ;
 
    CPPUNIT_LOG(std::endl) ;
-   CPPUNIT_LOG_EQUAL(pcomn::hash_fn_seq<int>()(CPPUNIT_CONTAINER(std::vector<int>, (1)(2)(3))),
-                     pcomn::tuple_hash().append_data(1).append_data(2).append_data(3).value()) ;
+   CPPUNIT_LOG_EQUAL(pcomn::hash_sequence({1, 2, 3}), pcomn::hash_combinator().append_data(1).append_data(2).append_data(3).value()) ;
+}
+
+void HashFnTests::Test_String_Hash()
+{
+   const pcomn::hash_fn<char *> cstr_hash ;
+   const pcomn::hash_fn<std::string> str_hash ;
+   const pcomn::hash_fn<pcomn::strslice> sslice_hash ;
+   const pcomn::hash_fn<pcomn::cstrptr> cstrptr_hash ;
+
+   using pcomn::strslice ;
+   using pcomn::cstrptr ;
+
+   CPPUNIT_LOG_EQUAL(cstr_hash(nullptr), cstr_hash("")) ;
+   CPPUNIT_LOG_NOT_EQUAL(cstr_hash(" "), cstr_hash("")) ;
+
+   CPPUNIT_LOG_EQUAL(cstr_hash(""), str_hash(std::string())) ;
+   CPPUNIT_LOG_EQUAL(pcomn::valhash(cstrptr("")), cstr_hash("")) ;
+   CPPUNIT_LOG_EQUAL(cstrptr_hash(cstrptr()), cstr_hash("")) ;
+   CPPUNIT_LOG_EQUAL(sslice_hash(strslice()), cstr_hash("")) ;
+   CPPUNIT_LOG_EQUAL(sslice_hash(strslice("")), cstr_hash("")) ;
+
+   CPPUNIT_LOG_EQUAL(cstr_hash("Hello"), str_hash(std::string("Hello"))) ;
+   CPPUNIT_LOG_NOT_EQUAL(cstr_hash("Hello"), cstr_hash("")) ;
+   CPPUNIT_LOG_NOT_EQUAL(cstr_hash("Hello"), cstr_hash("hello")) ;
+   CPPUNIT_LOG_EQUAL(pcomn::valhash(cstrptr("Hello")), cstr_hash("Hello")) ;
+   CPPUNIT_LOG_EQUAL(cstrptr_hash(cstrptr("Hello")), cstr_hash("Hello")) ;
+}
+
+void HashFnTests::Test_Tuple_Hash()
+{
+   using pcomn::strslice ;
+   using std::tuple ;
+   using std::pair ;
+   using std::string ;
+
+   CPPUNIT_LOG_EQUAL(pcomn::hash_fn<tuple<>>()(tuple<>()), pcomn::tuplehash()) ;
+   CPPUNIT_LOG_EQUAL((pcomn::hash_fn<pair<int, string>>()({10, "Foo"})),  pcomn::tuplehash(10, "Foo")) ;
+   CPPUNIT_LOG_EQUAL((pcomn::hash_fn<pair<int, string>>()({10, "Foo"})),  pcomn::valhash(pair<int, string>(10, "Foo"))) ;
+   CPPUNIT_LOG_EQUAL((pcomn::hash_fn<tuple<int, string>>()({10, "Foo"})), pcomn::valhash(pair<int, string>(10, "Foo"))) ;
+
+   CPPUNIT_LOG_NOT_EQUAL(pcomn::tuplehash(10), pcomn::tuplehash(10, "Foo")) ;
+   CPPUNIT_LOG_NOT_EQUAL(pcomn::tuplehash("Foo"), pcomn::tuplehash(10, "Foo")) ;
+   CPPUNIT_LOG_NOT_EQUAL(pcomn::tuplehash("Foo", 10), pcomn::tuplehash(10, "Foo")) ;
+
+   CPPUNIT_LOG_NOT_EQUAL(pcomn::tuplehash(10), pcomn::valhash(10)) ;
+   CPPUNIT_LOG_EQUAL((pcomn::hash_fn<tuple<int>>()({10})), pcomn::tuplehash(10)) ;
+
+   CPPUNIT_LOG_EQUAL((pcomn::hash_fn<tuple<int, double, strslice>>()({10, 0.25, "Bar"})),
+                     pcomn::tuplehash((char)10, 0.25, string("Bar"))) ;
+
+   CPPUNIT_LOG_EQUAL((pcomn::hash_fn<tuple<int, float, strslice, size_t, char>>()({10, 0.25, "Bar", 1024*1024*8192ULL, 'A'})),
+                     pcomn::tuplehash(10, 0.25, "Bar", 1024*1024*8192LL, 'A')) ;
 }
 
 int main(int argc, char *argv[])
 {
-   pcomn::unit::TestRunner runner ;
-   runner.addTest(HashFnTests::suite()) ;
-
-   return
-      pcomn::unit::run_tests(runner, argc, argv, "unittest.diag.ini", "Closed hashtable tests") ;
+   return pcomn::unit::run_tests
+      <
+         HashFnTests
+      >
+      (argc, argv) ;
 }

@@ -413,30 +413,26 @@ inline std::ostream& operator<<(std::ostream &os, const sock_address &addr)
 }
 
 } // end of namespace pcomn::net
+} // end of namespace pcomn
 
+namespace std {
 /***************************************************************************//**
  Network address hashing
 *******************************************************************************/
 /**@{*/
-template<> struct hash_fn<inet_address> {
-    size_t operator()(const inet_address &addr) const
+template<> struct hash<pcomn::net::inet_address> {
+    size_t operator()(const pcomn::net::inet_address &addr) const
     {
-        return hasher(addr.ipaddr()) ;
+        return pcomn::valhash(addr.ipaddr()) ;
     }
 } ;
-
-template<> struct hash_fn<sock_address> {
-    size_t operator()(const sock_address &addr) const
+template<> struct hash<pcomn::net::sock_address> {
+    size_t operator()(const pcomn::net::sock_address &addr) const
     {
-        return tuplehasher(addr.addr().ipaddr(), addr.port()) ;
+        return pcomn::tuplehash(addr.addr().ipaddr(), addr.port()) ;
     }
 } ;
 /**@}*/
-} // end of namespace pcomn
-
-namespace std {
-template<> struct hash<pcomn::net::inet_address> : pcomn::hash_fn<pcomn::net::inet_address> {} ;
-template<> struct hash<pcomn::net::sock_address> : pcomn::hash_fn<pcomn::net::sock_address> {} ;
 } // end of namespace std
 
 #endif /* __NET_NETADDR_H */

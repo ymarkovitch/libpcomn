@@ -27,11 +27,10 @@ inline std::string assertion_traits<pcomn::bucket_state>::toString(const pcomn::
 {
    return std::to_string((uintptr_t)s) ;
 }
-
 }
 
 /*******************************************************************************
-                     class ClosedHashTests
+  ClosedHashTests
 *******************************************************************************/
 class ClosedHashTests : public CppUnit::TestFixture {
 

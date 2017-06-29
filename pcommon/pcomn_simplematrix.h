@@ -1239,7 +1239,7 @@ PCOMN_DEFINE_SWAP(simple_ivector<T *>, template<typename T>) ;
 /** simple_slice hash functor
 *******************************************************************************/
 template<typename T>
-struct hash_fn<simple_slice<T> > : hash_fn_seq<T> {} ;
+struct hash_fn<simple_slice<T>> : hash_fn_sequence<simple_slice<T>> {} ;
 
 /*******************************************************************************
  Slice equality comparison

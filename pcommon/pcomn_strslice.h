@@ -722,16 +722,6 @@ inline bool is_identifier(const basic_strslice<C> &s)
    return true ;
 }
 
-/******************************************************************************/
-/** pcomn::hasher(str) is used as a default implementation of the hash function
- in pcomn::hash_fn functor (and thus in pcomn::hashtable, too).
-*******************************************************************************/
-template<typename C>
-inline size_t hasher(const basic_strslice<C> &slice)
-{
-   return hashFNV(slice.begin(), slice.size()) ;
-}
-
 /*******************************************************************************
  Typedefs for narrow and wide chars
 *******************************************************************************/
@@ -967,12 +957,11 @@ inline bool endswith(const pcomn::wstrslice &lhs, const pcomn::wstrslice &rhs)
 namespace std {
 template<typename T> struct hash ;
 
-/// std::hash specialization for basic_strslice
+/***************************************************************************//**
+ std::hash specialization for basic_strslice.
+*******************************************************************************/
 template<typename C>
-struct hash<pcomn::basic_strslice<C> > : public std::unary_function<pcomn::basic_strslice<C>, size_t> {
-
-      size_t operator()(const pcomn::basic_strslice<C> &slice) const { return pcomn::hasher(slice) ; }
-} ;
+struct hash<pcomn::basic_strslice<C>> : pcomn::hash_fn_rawdata<pcomn::basic_strslice<C>> {} ;
 
 } // end of namespace std
 

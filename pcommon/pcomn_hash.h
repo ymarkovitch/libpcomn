@@ -46,6 +46,7 @@ _PCOMNEXP uint32_t calc_crc32(uint32_t crc, const void *buf, size_t len) ;
 #include <functional>
 #include <utility>
 #include <tuple>
+#include <initializer_list>
 
 namespace pcomn {
 
@@ -233,7 +234,7 @@ struct hash_identity : public std::unary_function<T, size_t> {
 /*******************************************************************************
  Forward declarations of hash functor templates
 *******************************************************************************/
-template<typename> struct hash_fn ;
+template<typename = void> struct hash_fn ;
 
 // "Unwrap" type being hashed from const, volatile, and reference wrappers.
 template<typename T> struct hash_fn<const T> : hash_fn<T> {} ;
@@ -244,75 +245,91 @@ template<typename T> struct hash_fn<const T *> : hash_fn<T *> {} ;
 template<typename T>
 struct hash_fn<std::reference_wrapper<T>> : hash_fn<T> {} ;
 
-/*******************************************************************************
- Universal hashing function
+/***************************************************************************//**
+ Universal hashing functor.
+*******************************************************************************/
+template<> struct hash_fn<void> {
+      template<typename T>
+      auto operator()(T &&v) const -> decltype(std::declval<hash_fn<T>>()(std::forward<T>(v)))
+      {
+         hash_fn<T> h ;
+         return h(std::forward<T>(v)) ;
+      }
+} ;
+
+/***************************************************************************//**
+ Universal hashing function.
 *******************************************************************************/
 template<typename T>
-inline decltype(hash_fn<std::decay_t<T>>()(std::declval<T>())) hasher(T &&data)
+inline decltype(hash_fn<std::decay_t<T>>()(std::declval<T>())) valhash(T &&data)
 {
    return hash_fn<std::decay_t<T>>()(std::forward<T>(data)) ;
 }
 
-/******************************************************************************/
-/** Hash accumulator: "reduces" a sequence of hash value to single hash value.
- Useful for hashing structures and sequences (i.e. complex objects).
- The algorith is from Python's tuplehash.
-*******************************************************************************/
-struct tuple_hash {
-      constexpr tuple_hash() = default ;
+/***************************************************************************//**
+ Hash combinator: "reduces" a sequence of hash value to single hash value.
 
-      explicit constexpr tuple_hash(uint64_t initial_hash) :
-         _accumulator((uint64_t)0x31E9D059168ULL ^ initial_hash),
-         _count(1)
-      {}
+ Useful for hashing tuples, structures and sequences, i.e. complex objects.
+ Uses a part of 64-bit MurmurHash2 to combine hash values.
+*******************************************************************************/
+struct hash_combinator {
+      constexpr hash_combinator() = default ;
+
+      explicit hash_combinator(uint64_t initial_hash) { append(initial_hash) ; }
 
       template<typename InputIterator>
-      tuple_hash(const InputIterator &b, const InputIterator &e) : tuple_hash()
+      hash_combinator(const InputIterator &b, const InputIterator &e) : hash_combinator()
       {
          append_data(b, e) ;
       }
 
-      constexpr uint64_t value() const { return _accumulator ^ _count ; }
+      constexpr uint64_t value() const { return _combined ; }
       constexpr operator uint64_t() const { return value() ; }
 
-      tuple_hash &append(uint64_t hash)
+      hash_combinator &append(uint64_t hash_value)
       {
-         _accumulator = (1000003 * _accumulator) ^ hash ;
-         ++_count ;
+         constexpr const uint64_t mask = 0xc6a4a7935bd1e995ULL ;
+         constexpr const int r = 47 ;
+
+         hash_value *= mask ;
+         hash_value ^= hash_value >> r ;
+         hash_value *= mask ;
+
+         _combined ^= hash_value ;
+         _combined *= mask ;
          return *this ;
       }
 
       template<typename T>
-      tuple_hash &append_data(T &&data) { return append(hasher(std::forward<T>(data))) ; }
+      hash_combinator &append_data(T &&data) { return append(valhash(std::forward<T>(data))) ; }
 
       template<typename InputIterator>
-      tuple_hash &append_data(InputIterator b, InputIterator e)
+      hash_combinator &append_data(InputIterator b, InputIterator e)
       {
          for (; b != e ; *this += *b, ++b) ;
          return *this ;
       }
 
       template<typename T>
-      tuple_hash &operator+=(T &&data) { return append_data(std::forward<T>(data)) ; }
+      hash_combinator &operator+=(T &&data) { return append_data(std::forward<T>(data)) ; }
 
       template<typename...T>
-      tuple_hash &append_as_tuple(const std::tuple<T...> &data)
+      hash_combinator &append_as_tuple(const std::tuple<T...> &data)
       {
          append_item<sizeof...(T)>::append(*this, data) ;
-         return this ;
+         return *this ;
       }
 
    private:
-      uint64_t _accumulator = 0x345678L ;
-      uint64_t _count       = 0 ;
+      uint64_t _combined = 0 ;
 
       template<unsigned tuplesz, typename=void>
       struct append_item {
             template<typename T>
-            static void append(tuple_hash &accumulator, T &&tuple_data)
+            static void append(hash_combinator &accumulator, T &&tuple_data)
             {
                append_item<tuplesz-1>::append(accumulator, std::forward<T>(tuple_data)) ;
-               accumulator.append(std::get<tuplesz-1>(std::forward<T>(tuple_data))) ;
+               accumulator.append_data(std::get<tuplesz-1>(std::forward<T>(tuple_data))) ;
             }
       } ;
       template<typename D> struct append_item<0, D> {
@@ -323,27 +340,27 @@ struct tuple_hash {
 /***************************************************************************//**
  Function that hashes its arguments and returns combined hash value.
 *******************************************************************************/
-inline size_t tuplehasher() { return 0 ; }
+inline size_t tuplehash() { return 0 ; }
 
 template<typename A1>
-inline size_t tuplehasher(A1 &&a1)
+inline size_t tuplehash(A1 &&a1)
 {
-   return tuple_hash(hasher(std::forward<A1>(a1))) ;
+   return hash_combinator(valhash(std::forward<A1>(a1))) ;
 }
 
 template<typename A1, typename A2>
-inline size_t tuplehasher(A1 &&a1, A2 &&a2)
+inline size_t tuplehash(A1 &&a1, A2 &&a2)
 {
-   return tuple_hash(hasher(std::forward<A1>(a1))).append_data(std::forward<A2>(a2)) ;
+   return hash_combinator(valhash(std::forward<A1>(a1))).append_data(std::forward<A2>(a2)) ;
 }
 
 template<typename A1, typename A2, typename A3, typename... Args>
-inline size_t tuplehasher(A1 &&a1, A2 &&a2, A3 &&a3, Args &&...args)
+inline size_t tuplehash(A1 &&a1, A2 &&a2, A3 &&a3, Args &&...args)
 {
-   tuple_hash result (hasher(std::forward<A1>(a1))) ;
-   result.append_data(std::forward<A2>(a2)).append_data(std::forward<A2>(a3)) ;
+   hash_combinator result (valhash(std::forward<A1>(a1))) ;
+   result.append_data(std::forward<A2>(a2)).append_data(std::forward<A3>(a3)) ;
 
-   const size_t h[] = { hasher(std::forward<Args>(args))...} ;
+   const size_t h[] = { valhash(std::forward<Args>(args))...} ;
    for (size_t v: h) result.append(v) ;
    return result ;
 }
@@ -667,19 +684,27 @@ inline sha1hash_t sha1hash_file(FILE *file, size_t *size = NULL)
    return crypthasher.value() ;
 }
 
-/******************************************************************************/
-/** Generic hashing functor.
- Uses pcomn::hasher() function for hashing values.
+/***************************************************************************//**
+ Generic hashing functor.
 *******************************************************************************/
 template<typename T> struct hash_fn : std::hash<T> {} ;
 
 template<> struct hash_fn<bool> { size_t operator()(bool v) const { return v ; } } ;
 
 template<typename T>
-struct hash_fundamental {
+struct hash_fn_fundamental {
       PCOMN_STATIC_CHECK(std::is_fundamental<T>::value) ;
 
       size_t operator()(T value) const { return hash_64((uint64_t)value) ; }
+} ;
+
+template<typename T>
+struct hash_fn_rawdata {
+      size_t operator()(const T &v) const
+      {
+         using namespace std ;
+         return hash_bytes(data(v), (sizeof *data(v)) * size(v)) ;
+      }
 } ;
 
 template<> struct hash_fn<double> {
@@ -699,7 +724,7 @@ template<> struct hash_fn<void *> {
 template<> struct hash_fn<float> : hash_fn<double> {} ;
 template<> struct hash_fn<long double> : hash_fn<double> {} ;
 
-#define PCOMN_HASH_INT_FN(type) template<> struct hash_fn<type> : hash_fundamental<type> {}
+#define PCOMN_HASH_INT_FN(type) template<> struct hash_fn<type> : hash_fn_fundamental<type> {}
 
 PCOMN_HASH_INT_FN(char) ;
 PCOMN_HASH_INT_FN(unsigned char) ;
@@ -714,7 +739,7 @@ PCOMN_HASH_INT_FN(long long) ;
 PCOMN_HASH_INT_FN(unsigned long long) ;
 
 /***************************************************************************//**
- tuple_hash C string, return 0 for NULL and empty string
+ hash_combinator C string, return 0 for NULL and empty string
 *******************************************************************************/
 template<> struct hash_fn<char *> {
       size_t operator()(const char *s) const
@@ -723,18 +748,13 @@ template<> struct hash_fn<char *> {
       }
 } ;
 
-template<> struct hash_fn<std::string> {
-      size_t operator()(const std::string &s) const
-      {
-         return hash_bytes(s.data(), s.size()) ;
-      }
-} ;
+template<> struct hash_fn<std::string> : hash_fn_rawdata<std::string> {} ;
 
 template<typename T1, typename T2>
 struct hash_fn<std::pair<T1, T2>> {
       size_t operator()(const std::pair<T1, T2> &data) const
       {
-         return tuplehasher(data.first, data.second) ;
+         return tuplehash(data.first, data.second) ;
       }
 } ;
 
@@ -747,34 +767,54 @@ template<typename T1, typename...T>
 struct hash_fn<std::tuple<T1, T...>> {
       size_t operator()(const std::tuple<T1, T...> &data) const
       {
-         return tuple_hash().append_as_tuple(data) ;
+         return hash_combinator().append_as_tuple(data) ;
       }
 } ;
 
-/******************************************************************************/
-/** Hashing functor for any sequence
+/***************************************************************************//**
+ Hashing functor for any sequence
 *******************************************************************************/
-template<typename T, typename H = hash_fn<T>>
-struct hash_fn_seq : private H {
-      template<typename  S>
-      size_t operator()(S &&sequence) const
+template<typename S, typename ItemHasher = hash_fn<decltype(*std::begin(std::declval<S>()))>>
+struct hash_fn_sequence : private ItemHasher {
+      size_t operator()(const S &sequence) const
       {
-         tuple_hash accumulator ;
-         for (auto &v: sequence)
-            accumulator.append(H::operator()(v)) ;
-         return accumulator ;
-      }
-
-      template<typename InputIterator>
-      size_t operator()(InputIterator b, InputIterator e) const
-      {
-         tuple_hash accumulator ;
-         for ( ; b != e ; ++b)
-            accumulator.append(H::operator()(*b)) ;
+         hash_combinator accumulator ;
+         for (const auto &v: sequence)
+            accumulator.append(ItemHasher::operator()(v)) ;
          return accumulator ;
       }
 } ;
 
+template<typename InputIterator>
+inline size_t hash_sequence(InputIterator b, InputIterator e)
+{
+   hash_combinator accumulator ;
+   for (; b != e ; ++b)
+      accumulator.append_data(*b) ;
+   return accumulator ;
+}
+
+template<typename InputIterator, typename ItemHasher>
+inline size_t hash_sequence(InputIterator b, InputIterator e, ItemHasher &&h)
+{
+   hash_combinator accumulator ;
+   for (; b != e ; ++b)
+      accumulator.append(std::forward<ItemHasher>(h)(*b)) ;
+   return accumulator ;
+}
+
+template<typename Container>
+inline size_t hash_sequence(Container &&c)
+{
+   return hash_fn_sequence<Container>()(std::forward<Container>(c)) ;
+}
+
+template<typename T>
+inline size_t hash_sequence(std::initializer_list<T> s) { return hash_sequence(s.begin(), s.end()) ; }
+
+/***************************************************************************//**
+ Hashing functor using object's `hash()` member function.
+*******************************************************************************/
 template<typename T>
 struct hash_fn_member : public std::unary_function<T, size_t> {
       size_t operator()(const T &instance) const { return instance.hash() ; }

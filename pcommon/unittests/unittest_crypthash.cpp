@@ -153,10 +153,10 @@ void CryptHashFixture::Test_MD5Hash()
 
    // Check hashtalble hasher for MD5 hash objects
    CPPUNIT_LOG(std::endl) ;
-   CPPUNIT_LOG_ASSERT(pcomn::hasher(md5hash_t("fa81534d5beb66b72c8acb613aa6f2db"))) ;
-   CPPUNIT_LOG_ASSERT(pcomn::hasher(md5hash_t("47cda3f0617a7876d716fd341291a7b9"))) ;
-   CPPUNIT_LOG_NOT_EQUAL(pcomn::hasher(md5hash_t("fa81534d5beb66b72c8acb613aa6f2db")),
-                         pcomn::hasher(md5hash_t("47cda3f0617a7876d716fd341291a7b9"))) ;
+   CPPUNIT_LOG_ASSERT(pcomn::valhash(md5hash_t("fa81534d5beb66b72c8acb613aa6f2db"))) ;
+   CPPUNIT_LOG_ASSERT(pcomn::valhash(md5hash_t("47cda3f0617a7876d716fd341291a7b9"))) ;
+   CPPUNIT_LOG_NOT_EQUAL(pcomn::valhash(md5hash_t("fa81534d5beb66b72c8acb613aa6f2db")),
+                         pcomn::valhash(md5hash_t("47cda3f0617a7876d716fd341291a7b9"))) ;
 
    // Check MD5 POD objects
    CPPUNIT_LOG(std::endl) ;

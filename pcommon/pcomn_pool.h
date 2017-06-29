@@ -44,9 +44,7 @@ class keyed_pool {
       /// @param szlimit
       /// @param hf
       /// @param keq
-      explicit keyed_pool(size_t szlimit,
-                          const hasher &hf = hasher(),
-                          const key_equal &keq = key_equal()) :
+      explicit keyed_pool(size_t szlimit, const hasher &hf = {}, const key_equal &keq = {}) :
          _size(0),
          _size_limit(szlimit),
          _emptykey_count(0),

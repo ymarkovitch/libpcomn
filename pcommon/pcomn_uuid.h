@@ -126,7 +126,7 @@ struct uuid {
          std::swap(_idata[1], rhs._idata[1]) ;
       }
 
-      size_t hash() const { return pcomn::hasher(std::make_pair(_idata[0], _idata[1])) ; }
+      size_t hash() const { return pcomn::tuplehash(_idata[0], _idata[1]) ; }
 } ;
 
 inline void swap(uuid &lhs, uuid &rhs) { lhs.swap(rhs) ; }
@@ -187,7 +187,7 @@ struct MAC {
          return value_from_little_endian(x._idata) < value_from_little_endian(y._idata) ;
       }
 
-      size_t hash() const { return hasher(_idata) ; }
+      size_t hash() const { return valhash(_idata) ; }
 
    private:
       union {
