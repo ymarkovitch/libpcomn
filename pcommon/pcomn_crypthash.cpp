@@ -20,6 +20,7 @@
 #include <openssl/md5.h>
 #include <openssl/sha.h>
 #include <stdexcept>
+#include <iostream>
 
 namespace pcomn {
 /*******************************************************************************
@@ -239,6 +240,20 @@ SHA1Hash &SHA1Hash::append_file(FILE *file)
 SHA1Hash &SHA1Hash::append_file(const char *filename)
 {
    return hash_append_file(*this, filename) ;
+}
+
+/*******************************************************************************
+ ostream
+*******************************************************************************/
+std::ostream &operator<<(std::ostream &os, const sha1hash_pod_t &v)
+{
+   return os << v.to_string() ;
+}
+
+std::ostream &operator<<(std::ostream &os, const binary128_t &v)
+{
+   char buf[64] ;
+   return os << v.to_strbuf(buf) ;
 }
 
 } // namespace pcomn

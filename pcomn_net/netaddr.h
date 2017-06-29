@@ -405,21 +405,6 @@ inline bool operator<(const subnet_address &x, const subnet_address &y)
 PCOMN_DEFINE_RELOP_FUNCTIONS(, subnet_address) ;
 
 /*******************************************************************************
- Network address hashing
-*******************************************************************************/
-inline size_t hasher(const inet_address &addr)
-{
-    using pcomn::hasher ;
-    return hasher(addr.ipaddr()) ;
-}
-
-inline size_t hasher(const sock_address &addr)
-{
-    using pcomn::hasher ;
-    return hasher(std::make_pair(addr.addr().ipaddr(), addr.port())) ;
-}
-
-/*******************************************************************************
  Ostream output operators
 *******************************************************************************/
 inline std::ostream& operator<<(std::ostream &os, const sock_address &addr)
@@ -428,30 +413,30 @@ inline std::ostream& operator<<(std::ostream &os, const sock_address &addr)
 }
 
 } // end of namespace pcomn::net
+
+/***************************************************************************//**
+ Network address hashing
+*******************************************************************************/
+/**@{*/
+template<> struct hash_fn<inet_address> {
+    size_t operator()(const inet_address &addr) const
+    {
+        return hasher(addr.ipaddr()) ;
+    }
+} ;
+
+template<> struct hash_fn<sock_address> {
+    size_t operator()(const sock_address &addr) const
+    {
+        return tuplehasher(addr.addr().ipaddr(), addr.port()) ;
+    }
+} ;
+/**@}*/
 } // end of namespace pcomn
 
 namespace std {
-
-template<> struct hash<pcomn::net::inet_address> :
-        public std::unary_function<pcomn::net::inet_address, std::size_t> {
-
-    std::size_t operator()(const pcomn::net::inet_address &addr) const
-    {
-        using pcomn::hasher ;
-        return hasher(addr) ;
-    }
-} ;
-
-template<> struct hash<pcomn::net::sock_address> :
-        public std::unary_function<pcomn::net::sock_address, std::size_t> {
-
-    std::size_t operator()(const pcomn::net::sock_address &addr) const
-    {
-        using pcomn::hasher ;
-        return hasher(addr) ;
-    }
-} ;
-
+template<> struct hash<pcomn::net::inet_address> : pcomn::hash_fn<pcomn::net::inet_address> {} ;
+template<> struct hash<pcomn::net::sock_address> : pcomn::hash_fn<pcomn::net::sock_address> {} ;
 } // end of namespace std
 
 #endif /* __NET_NETADDR_H */
