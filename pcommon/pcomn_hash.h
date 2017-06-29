@@ -328,8 +328,8 @@ struct hash_combinator {
             template<typename T>
             static void append(hash_combinator &accumulator, T &&tuple_data)
             {
+               accumulator.append_data(std::get<std::tuple_size<valtype_t<T>>::value - tuplesz>(std::forward<T>(tuple_data))) ;
                append_item<tuplesz-1>::append(accumulator, std::forward<T>(tuple_data)) ;
-               accumulator.append_data(std::get<tuplesz-1>(std::forward<T>(tuple_data))) ;
             }
       } ;
       template<typename D> struct append_item<0, D> {
