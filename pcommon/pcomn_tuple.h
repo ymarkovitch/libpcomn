@@ -200,6 +200,11 @@ inline constexpr ssize_t tuplesize_(std::array<T, n> *) { return std::tuple_size
 inline constexpr ssize_t tuplesize_(void *) { return -1  ; }
 }
 
+/***************************************************************************//**
+ tuplesize<T>() constexpr is like std::tuple_size<T>::value except for
+ it is applicable to _any_ T and returns -1 for those T that std::tuple_size<T>
+ is not applicable to.
+*******************************************************************************/
 template<typename T>
 inline constexpr ssize_t tuplesize()
 {
@@ -219,6 +224,18 @@ template<typename T1, typename T2>
 inline bool less_tuple(const std::pair<T1,T2> &x, const std::pair<T1,T2> &y)
 {
    return std::less<std::pair<T1,T2>>()(x, y) ;
+}
+
+template<typename...T>
+inline bool equal_tuple(const std::tuple<T...> &x, const std::tuple<T...> &y)
+{
+   return std::equal_to<std::tuple<T...>>()(x, y) ;
+}
+
+template<typename T1, typename T2>
+inline bool equal_tuple(const std::pair<T1,T2> &x, const std::pair<T1,T2> &y)
+{
+   return std::equal_to<std::pair<T1,T2>>()(x, y) ;
 }
 
 /*******************************************************************************
@@ -244,13 +261,23 @@ __noinline std::ostream &operator<<(std::ostream &os, const std::tuple<T...> &v)
    return os << '}' ;
 }
 
+/***************************************************************************//**
+ Specializations of std::less<> for pairs and tuples.
+ Comparison is lexicographical, by applying to ith item the `less<Ti>`
+ instead of `operator<`.
+
+ @note less<tuple<>>, i.e. for empty tuples, always returns `false'.
+*******************************************************************************/
+/**@{*/
 template<typename T1, typename T2>
 struct less<pair<T1,T2>> {
       bool operator()(const pair<T1,T2> &x, const pair<T1,T2> &y) const
       {
          constexpr const less<T1> less_first ;
          constexpr const less<T2> less_second ;
-         return less_first(x.first, y.first) || !less_first(y.first, x.first) && less_second(x.second, y.second) ;
+         return
+             less_first(x.first, y.first) ||
+            !less_first(y.first, x.first) && less_second(x.second, y.second) ;
       }
 } ;
 
@@ -264,25 +291,70 @@ struct less<tuple<T1, T...>> {
 
       bool operator()(const type &x, const type &y) const
       {
-         return less_tail(x, y, integral_constant<size_t, 0>()) ;
+         return less_tail(x, y, pcomn::size_constant<0>()) ;
       }
 
    private:
-      static bool less_tail(const type &x, const type &y, integral_constant<size_t, sizeof...(T)>)
+      static constexpr bool less_tail(const type &x, const type &y, pcomn::size_constant<sizeof...(T)+1>)
       {
-         constexpr const size_t i = sizeof...(T) ;
-         return less<tuple_element_t<i, type>>()(get<i>(x), get<i>(y)) ;
+         return false ;
       }
 
       template<size_t i>
-      static bool less_tail(const type &x, const type &y, integral_constant<size_t, i>)
+      static bool less_tail(const type &x, const type &y, pcomn::size_constant<i>)
       {
          constexpr const less<tuple_element_t<i, type>> less_head ;
          return
              less_head(get<i>(x), get<i>(y)) ||
-            !less_head(get<i>(y), get<i>(x)) && less_tail(x, y, integral_constant<size_t, i-1>()) ;
+            !less_head(get<i>(y), get<i>(x)) && less_tail(x, y, pcomn::size_constant<i+1>()) ;
       }
 } ;
+/**@}*/
+
+/***************************************************************************//**
+ Specializations of std::equal_to<> for pairs and tuples.
+ Comparison is lexicographical, by applying to ith item the `equal_to<Ti>`,
+ instead of `operator==`.
+
+ @note equal_to<tuple<>>, i.e. for empty tuples, always returns `true'.
+*******************************************************************************/
+/**@{*/
+template<typename T1, typename T2>
+struct equal_to<pair<T1,T2>> {
+      bool operator()(const pair<T1,T2> &x, const pair<T1,T2> &y) const
+      {
+         return equal_to<T1>()(x.first, y.first) && equal_to<T2>()(x.second, y.second) ;
+      }
+} ;
+
+template<> struct equal_to<tuple<>> {
+      constexpr bool operator()(const tuple<> &, const tuple<> &) const { return true ; }
+} ;
+
+template<typename T1, typename...T>
+struct equal_to<tuple<T1, T...>> {
+      typedef tuple<T1, T...> type ;
+
+      bool operator()(const type &x, const type &y) const
+      {
+         return equal_tail(x, y, pcomn::size_constant<0>()) ;
+      }
+
+   private:
+      static constexpr bool equal_tail(const type &, const type &, pcomn::size_constant<sizeof...(T)+1>)
+      {
+         return true ;
+      }
+
+      template<size_t i>
+      static bool equal_tail(const type &x, const type &y, pcomn::size_constant<i>)
+      {
+         return
+            equal_to<tuple_element_t<i, type>>()(get<i>(x), get<i>(y)) &&
+            equal_tail(x, y, pcomn::size_constant<i+1>()) ;
+      }
+} ;
+/**@}*/
 
 } // end of namespace std
 
