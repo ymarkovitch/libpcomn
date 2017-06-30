@@ -43,20 +43,18 @@ typedef select<1> select2nd ;
 /*******************************************************************************
  Predicate functors.
 *******************************************************************************/
+template<typename A1>
+using unary_predicate = std::unary_function<A1, bool> ;
+template<typename A1, typename A2 = A1>
+using binary_predicate = std::binary_function<A1, A2, bool> ;
+
 /// Predicate adaptor, the opposite to std::unary_negate.
 /// Reevaluates the result of Predicate (which must not necessary return bool value)
 /// as a boolean value.
-template<class Predicate>
-struct unary_affirm : std::unary_function<typename Predicate::argument_type, bool>
-{
-      explicit unary_affirm(const Predicate& x) :
-         pred(x)
-      {}
-
-      bool operator() (const typename Predicate::argument_type& x) const
-      {
-         return !!pred(x) ;
-      }
+template<typename Predicate>
+struct unary_affirm : unary_predicate<typename Predicate::argument> {
+      explicit unary_affirm(const Predicate& x) : pred(x) {}
+      bool operator() (const typename Predicate::argument_type& x) const { return !!pred(x) ; }
 
    protected:
       Predicate pred ;
@@ -65,14 +63,11 @@ struct unary_affirm : std::unary_function<typename Predicate::argument_type, boo
 /// Predicate adaptor, the opposite to std::binary_negate.
 /// Reevaluates the result of Predicate (which must not necessary return bool value)
 /// as a boolean value.
-template<class Predicate>
-struct binary_affirm : std::binary_function<typename Predicate::first_argument_type,
-                                            typename Predicate::second_argument_type,
-                                            bool>
+template<typename Predicate>
+struct binary_affirm : binary_predicate<typename Predicate::first_argument_type,
+                                        typename Predicate::second_argument_type>
 {
-      explicit binary_affirm(const Predicate& x) :
-         pred(x)
-      {}
+      explicit binary_affirm(const Predicate& x) : pred(x) {}
 
       bool operator() (const typename Predicate::first_argument_type& a1,
                        const typename Predicate::second_argument_type& a2) const
