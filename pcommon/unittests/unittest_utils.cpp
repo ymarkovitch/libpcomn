@@ -244,59 +244,75 @@ void UtilityTests::Test_TupleUtils()
    CPPUNIT_LOG_EQ(s, "") ;
 }
 
+namespace {
+#if PCOMN_STL_CXX14
+typedef std::less<void> lt ;
+typedef std::equal_to<void> eq ;
+#else
+struct lt {
+      template<typename T>
+      bool operator()(const T &x, const T &y) const { return std::less<T>()(x, y) ; }
+} ;
+struct eq {
+      template<typename T>
+      bool operator()(const T &x, const T &y) const { return std::equal_to<T>()(x, y) ; }
+} ;
+#endif
+}
+
 void UtilityTests::Test_TupleCompare()
 {
    using namespace pcomn ;
 
    CPPUNIT_LOG_IS_FALSE(std::less<std::tuple<>>()(std::tuple<>(), std::tuple<>())) ;
 
-   CPPUNIT_LOG_IS_FALSE(less_tuple(unipair<int>(5, 10), unipair<int>(5, 10))) ;
-   CPPUNIT_LOG_ASSERT(less_tuple(unipair<int>(5, 9), unipair<int>(5, 10))) ;
-   CPPUNIT_LOG_ASSERT(less_tuple(unipair<int>(4, 15), unipair<int>(5, 10))) ;
-   CPPUNIT_LOG_IS_FALSE(less_tuple(unipair<int>(5, 11), unipair<int>(5, 10))) ;
+   CPPUNIT_LOG_IS_FALSE(less_tuple<lt>(unipair<int>(5, 10), unipair<int>(5, 10))) ;
+   CPPUNIT_LOG_ASSERT(less_tuple<lt>(unipair<int>(5, 9), unipair<int>(5, 10))) ;
+   CPPUNIT_LOG_ASSERT(less_tuple<lt>(unipair<int>(4, 15), unipair<int>(5, 10))) ;
+   CPPUNIT_LOG_IS_FALSE(less_tuple<lt>(unipair<int>(5, 11), unipair<int>(5, 10))) ;
 
-   CPPUNIT_LOG_IS_FALSE(less_tuple(std::tuple<int,int>(5, 10), std::tuple<int,int>(5, 10))) ;
-   CPPUNIT_LOG_ASSERT(less_tuple(std::tuple<int,int>(5, 9), std::tuple<int,int>(5, 10))) ;
-   CPPUNIT_LOG_ASSERT(less_tuple(std::tuple<int,int>(4, 15), std::tuple<int,int>(5, 10))) ;
-   CPPUNIT_LOG_IS_FALSE(less_tuple(std::tuple<int,int>(5, 11), std::tuple<int,int>(5, 10))) ;
+   CPPUNIT_LOG_IS_FALSE(less_tuple<lt>(std::tuple<int,int>(5, 10), std::tuple<int,int>(5, 10))) ;
+   CPPUNIT_LOG_ASSERT(less_tuple<lt>(std::tuple<int,int>(5, 9), std::tuple<int,int>(5, 10))) ;
+   CPPUNIT_LOG_ASSERT(less_tuple<lt>(std::tuple<int,int>(4, 15), std::tuple<int,int>(5, 10))) ;
+   CPPUNIT_LOG_IS_FALSE(less_tuple<lt>(std::tuple<int,int>(5, 11), std::tuple<int,int>(5, 10))) ;
 
    CPPUNIT_LOG(std::endl) ;
-   CPPUNIT_LOG_IS_FALSE(less_tuple(single<std::string>("BBB"), single<std::string>("BBB"))) ;
-   CPPUNIT_LOG_IS_FALSE(less_tuple(single<std::string>("BBB"), single<std::string>("BAA"))) ;
-   CPPUNIT_LOG_ASSERT(less_tuple(single<std::string>("ABB"), single<std::string>("BAA"))) ;
+   CPPUNIT_LOG_IS_FALSE(less_tuple<lt>(single<std::string>("BBB"), single<std::string>("BBB"))) ;
+   CPPUNIT_LOG_IS_FALSE(less_tuple<lt>(single<std::string>("BBB"), single<std::string>("BAA"))) ;
+   CPPUNIT_LOG_ASSERT(less_tuple<lt>(single<std::string>("ABB"), single<std::string>("BAA"))) ;
 
-   CPPUNIT_LOG_ASSERT(less_tuple(triple<int>(5, 10, 15), triple<int>(5, 10, 16))) ;
-   CPPUNIT_LOG_IS_FALSE(less_tuple(triple<int>(5, 10, 15), triple<int>(5, 10, 15))) ;
-   CPPUNIT_LOG_IS_FALSE(less_tuple(triple<int>(5, 10, 16), triple<int>(5, 10, 15))) ;
-   CPPUNIT_LOG_ASSERT(less_tuple(triple<int>(5, 9, 16), triple<int>(5, 10, 15))) ;
+   CPPUNIT_LOG_ASSERT(less_tuple<lt>(triple<int>(5, 10, 15), triple<int>(5, 10, 16))) ;
+   CPPUNIT_LOG_IS_FALSE(less_tuple<lt>(triple<int>(5, 10, 15), triple<int>(5, 10, 15))) ;
+   CPPUNIT_LOG_IS_FALSE(less_tuple<lt>(triple<int>(5, 10, 16), triple<int>(5, 10, 15))) ;
+   CPPUNIT_LOG_ASSERT(less_tuple<lt>(triple<int>(5, 9, 16), triple<int>(5, 10, 15))) ;
 
    CPPUNIT_LOG_ASSERT(std::equal_to<std::tuple<>>()(std::tuple<>(), std::tuple<>())) ;
-   CPPUNIT_LOG_ASSERT(equal_tuple(unipair<int>(5, 10), unipair<int>(5, 10))) ;
+   CPPUNIT_LOG_ASSERT(equal_tuple<eq>(unipair<int>(5, 10), unipair<int>(5, 10))) ;
 
-   CPPUNIT_LOG_IS_FALSE(equal_tuple(unipair<int>(5, 9), unipair<int>(5, 10))) ;
-   CPPUNIT_LOG_IS_FALSE(equal_tuple(unipair<int>(4, 15), unipair<int>(5, 10))) ;
-   CPPUNIT_LOG_IS_FALSE(equal_tuple(unipair<int>(5, 11), unipair<int>(5, 10))) ;
+   CPPUNIT_LOG_IS_FALSE(equal_tuple<eq>(unipair<int>(5, 9), unipair<int>(5, 10))) ;
+   CPPUNIT_LOG_IS_FALSE(equal_tuple<eq>(unipair<int>(4, 15), unipair<int>(5, 10))) ;
+   CPPUNIT_LOG_IS_FALSE(equal_tuple<eq>(unipair<int>(5, 11), unipair<int>(5, 10))) ;
 
    CPPUNIT_LOG(std::endl) ;
-   CPPUNIT_LOG_ASSERT(equal_tuple(single<std::string>("BBB"), single<std::string>("BBB"))) ;
-   CPPUNIT_LOG_IS_FALSE(equal_tuple(single<std::string>("BBB"), single<std::string>("BAA"))) ;
-   CPPUNIT_LOG_IS_FALSE(equal_tuple(single<std::string>("ABB"), single<std::string>("BAA"))) ;
+   CPPUNIT_LOG_ASSERT(equal_tuple<eq>(single<std::string>("BBB"), single<std::string>("BBB"))) ;
+   CPPUNIT_LOG_IS_FALSE(equal_tuple<eq>(single<std::string>("BBB"), single<std::string>("BAA"))) ;
+   CPPUNIT_LOG_IS_FALSE(equal_tuple<eq>(single<std::string>("ABB"), single<std::string>("BAA"))) ;
 
-   CPPUNIT_LOG_ASSERT(equal_tuple(triple<std::string>("ABB", "ABB", "ABB"),
-                                  triple<std::string>("ABB", "ABB", "ABB"))) ;
-   CPPUNIT_LOG_IS_FALSE(equal_tuple(triple<std::string>("BAB", "ABB", "ABB"),
-                                    triple<std::string>("ABB", "ABB", "ABB"))) ;
-   CPPUNIT_LOG_IS_FALSE(equal_tuple(triple<std::string>("ABB", "BAB", "ABB"),
-                                    triple<std::string>("ABB", "ABB", "ABB"))) ;
-   CPPUNIT_LOG_IS_FALSE(equal_tuple(triple<std::string>("ABB", "ABB", "BAB"),
-                                    triple<std::string>("ABB", "ABB", "ABB"))) ;
+   CPPUNIT_LOG_ASSERT(equal_tuple<eq>(triple<std::string>("ABB", "ABB", "ABB"),
+                                      triple<std::string>("ABB", "ABB", "ABB"))) ;
+   CPPUNIT_LOG_IS_FALSE(equal_tuple<eq>(triple<std::string>("BAB", "ABB", "ABB"),
+                                        triple<std::string>("ABB", "ABB", "ABB"))) ;
+   CPPUNIT_LOG_IS_FALSE(equal_tuple<eq>(triple<std::string>("ABB", "BAB", "ABB"),
+                                        triple<std::string>("ABB", "ABB", "ABB"))) ;
+   CPPUNIT_LOG_IS_FALSE(equal_tuple<eq>(triple<std::string>("ABB", "ABB", "BAB"),
+                                        triple<std::string>("ABB", "ABB", "ABB"))) ;
 
-   CPPUNIT_LOG_ASSERT(equal_tuple(std::tuple<std::string, std::string>("ABB", "ABB"),
-                                  std::tuple<std::string, std::string>("ABB", "ABB"))) ;
-   CPPUNIT_LOG_IS_FALSE(equal_tuple(std::tuple<std::string, std::string>("BAB", "ABB"),
-                                    std::tuple<std::string, std::string>("ABB", "ABB"))) ;
-   CPPUNIT_LOG_IS_FALSE(equal_tuple(std::tuple<std::string, std::string>("ABB", "BAB"),
-                                    std::tuple<std::string, std::string>("ABB", "ABB"))) ;
+   CPPUNIT_LOG_ASSERT(equal_tuple<eq>(std::tuple<std::string, std::string>("ABB", "ABB"),
+                                      std::tuple<std::string, std::string>("ABB", "ABB"))) ;
+   CPPUNIT_LOG_IS_FALSE(equal_tuple<eq>(std::tuple<std::string, std::string>("BAB", "ABB"),
+                                        std::tuple<std::string, std::string>("ABB", "ABB"))) ;
+   CPPUNIT_LOG_IS_FALSE(equal_tuple<eq>(std::tuple<std::string, std::string>("ABB", "BAB"),
+                                        std::tuple<std::string, std::string>("ABB", "ABB"))) ;
 }
 
 void UtilityTests::Test_StreamUtils()
