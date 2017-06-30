@@ -165,6 +165,9 @@ using longlong_constant = std::integral_constant<long long, v> ;
 template<unsigned long long v>
 using ulonglong_constant = std::integral_constant<unsigned long long, v> ;
 
+template<size_t v>
+using size_constant = std::integral_constant<size_t, v> ;
+
 /***************************************************************************//**
  @name TypeTraits
  Type properties checks that are evaluated to std::bool_constant<>.
