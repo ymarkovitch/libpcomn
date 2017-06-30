@@ -3,7 +3,7 @@
 #define __PCOMN_ASSERT_H
 /*******************************************************************************
  FILE         :   pcomn_assert.h
- COPYRIGHT    :   Yakov Markovitch, 1999-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1999-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Inline-debugging macros for C and C++

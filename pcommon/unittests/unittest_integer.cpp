@@ -1,7 +1,7 @@
 /*-*- tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   unittest_integer.cpp
- COPYRIGHT    :   Yakov Markovitch, 2006-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2006-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Unittest for pcomn_integer classes/functions

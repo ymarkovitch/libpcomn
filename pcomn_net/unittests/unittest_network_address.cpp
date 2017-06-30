@@ -1,7 +1,7 @@
 /*-*- tab-width:4;c-file-style:"stroustrup";c-file-offsets:((innamespace . 0) (inline-open . 0) (case-label . +)) -*-*/
 /*******************************************************************************
  FILE         :   unittest_network_address.cpp
- COPYRIGHT    :   Yakov Markovitch, 2008-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2008-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Internet address classes unit tests.

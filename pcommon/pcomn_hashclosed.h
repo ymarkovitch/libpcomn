@@ -3,7 +3,7 @@
 #define __PCOMN_HASHCLOSED_H
 /*******************************************************************************
  FILE         :   pcomn_hashclosed.h
- COPYRIGHT    :   Yakov Markovitch, 2008-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2008-2017. All rights reserved.
 
  DESCRIPTION  :   Exteremely simple closed hashing hashtable implementation, optimized
                   for small data items, especially POD data.

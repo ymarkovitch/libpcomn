@@ -3,7 +3,7 @@
 #define __PCOMN_BINASCII_H
 /*******************************************************************************
  FILE         :   pcomn_binascii.h
- COPYRIGHT    :   Yakov Markovitch, 2001-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2001-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Binary-to-ASCII and ASCII-to-binary encoding routines

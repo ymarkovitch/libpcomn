@@ -3,7 +3,7 @@
 #define __PCOMN_JOURSTORAGE_H
 /*******************************************************************************
  FILE         :   journstorage.h
- COPYRIGHT    :   Yakov Markovitch, 2008-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2008-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Abstract storage for journalling engine.

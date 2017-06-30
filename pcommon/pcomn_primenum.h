@@ -3,7 +3,7 @@
 #define __PCOMN_PRIMENUM_H
 /*******************************************************************************
  FILE         :   pcomn_primenum.h
- COPYRIGHT    :   Yakov Markovitch, 2010-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2010-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Primary numbers

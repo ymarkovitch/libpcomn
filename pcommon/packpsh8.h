@@ -2,7 +2,7 @@
 /*******************************************************************************
  FILE         :   packpsh8.h
 
- COPYRIGHT    :   Yakov Markovitch, 1998-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1998-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   This file turns 8 byte packing of structures on.  (That is, it disables

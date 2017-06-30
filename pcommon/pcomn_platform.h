@@ -3,7 +3,7 @@
 #define __PCOMN_PLATFORM_H
 /*******************************************************************************
  FILE         :   pcomn_platform.h
- COPYRIGHT    :   Yakov Markovitch, 1996-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1996-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Platform identification macros
