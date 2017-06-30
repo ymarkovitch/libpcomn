@@ -27,7 +27,7 @@
    instead of standard names
 */
 
-#if PCOMN_WORKAROUND(__cplusplus, >= 201402L)
+#if PCOMN_COMPILER_CXX14
 #define __deprecated(...) [[deprecated __VA_ARG__]]
 #endif
 
