@@ -54,35 +54,33 @@ template<typename> struct omanip ;
  Note the MSVC++ does allow C++14 constructs in C++11 code, but frequently
  unable to compile pretty valid C++11 constructs!
 *******************************************************************************/
-#if defined(PCOMN_COMPILER_CXX14) || PCOMN_WORKAROUND(_MSC_VER, >=1800)
+#ifdef PCOMN_STL_CXX14
 #  define PCOMN_DERIVE_OMANIP(basecall) { return basecall ; }
 #  define PCOMN_MAKE_OMANIP(...) { return pcomn::make_omanip(__VA_ARGS__) ; }
-#  define PCOMN_MAKE_OMANIP_RETTYPE()
 #else
 #  define PCOMN_DERIVE_OMANIP(basecall) ->decltype(basecall) { return basecall ; }
 #  define PCOMN_MAKE_OMANIP(...) ->decltype(pcomn::make_omanip(__VA_ARGS__)) { return pcomn::make_omanip(__VA_ARGS__) ; }
-#  define PCOMN_MAKE_OMANIP_RETTYPE() -> omanip<decltype(std::bind(std::forward<F>(fn), std::placeholders::_1, std::forward<Args>(args)...))>
 #endif
 
-struct make_omanip_ {
+namespace detail {
+struct omanip_maker {
       template<typename F, typename... Args>
-      auto operator()(F &&fn, Args &&...args) const PCOMN_MAKE_OMANIP_RETTYPE()
+      auto operator()(F &&fn, Args &&...args) const
+         ->omanip<decltype(std::bind(std::forward<F>(fn), std::placeholders::_1, std::forward<Args>(args)...))>
       {
-         using namespace std ;
-
-         typedef valtype_t<decltype(bind(forward<F>(fn), placeholders::_1, forward<Args>(args)...))> manip ;
-         return omanip<manip>(manip(bind(forward<F>(fn), placeholders::_1, forward<Args>(args)...))) ;
+         return {std::bind(std::forward<F>(fn), std::placeholders::_1, std::forward<Args>(args)...)} ;
       }
 } ;
+}
 
-static constexpr const make_omanip_ make_omanip {} ;
+static constexpr const detail::omanip_maker make_omanip {} ;
 
 /******************************************************************************/
 /* Universal ostream manipulator
 *******************************************************************************/
-template<typename Bind>
+template<typename F>
 struct omanip final {
-      static_assert(std::is_same<typename std::remove_reference<typename std::result_of<Bind(std::ostream &)>::type>::type, std::ostream>::value,
+      static_assert(std::is_same<std::remove_reference_t<std::result_of_t<F(std::ostream &)>>, std::ostream>::value,
                     "Invalid pcomn::omanip template argument: must be callable with std::ostream & argument and return std::ostream &") ;
 
       omanip(omanip &&other) : _fn(std::move(other._fn)) {}
@@ -93,12 +91,12 @@ struct omanip final {
 
       std::ostream &operator()(std::ostream &os) const { return _fn(os) ; }
 
-      friend make_omanip_  ;
+      friend detail::omanip_maker ;
 
    private:
-      mutable Bind _fn ;
+      mutable F _fn ;
 
-      omanip(Bind &&f) : _fn(std::move(f)) {}
+      omanip(F &&fn) : _fn(std::move(fn)) {}
 } ;
 
 /*******************************************************************************
@@ -139,29 +137,30 @@ std::ostream &print_range(Range &&r, std::ostream &os, Delim &&delimiter, Fn &&f
  Various ostream manipulators
 *******************************************************************************/
 namespace detail {
+struct o_sequence {
+      template<typename InputIterator, typename Before, typename After>
+      __noinline std::ostream &operator()(std::ostream &os, InputIterator begin, InputIterator end,
+                                          const Before &before, const After &after) const
+      {
+         for (; begin != end ; ++begin)
+            os << before << *begin << after ;
+         return os ;
+      }
 
-template<typename InputIterator, typename Before, typename After>
-std::ostream &o_sequence(std::ostream &os, InputIterator begin, InputIterator end,
-                         const Before &before, const After &after)
-{
-   for (; begin != end ; ++begin)
-      os << before << *begin << after ;
-   return os ;
-}
+      template<typename InputIterator, typename Delim>
+      std::ostream &operator()(std::ostream &os, InputIterator begin, InputIterator end,
+                               const Delim &delimiter) const
+      {
+         return print_sequence(begin, end, os, delimiter,
+                               [](std::ostream &s, decltype(*begin) &v) { s << v ; }) ;
+      }
 
-template<typename InputIterator, typename Delim>
-inline std::ostream &o_sequence(std::ostream &os, InputIterator begin, InputIterator end,
-                                const Delim &delimiter)
-{
-   return print_sequence(begin, end, os, delimiter,
-                         [](std::ostream &s, decltype(*begin) &v) { s << v ; }) ;
-}
-
-template<typename InputIterator>
-inline std::ostream &o_sequence(std::ostream &os, InputIterator begin, InputIterator end)
-{
-   return o_sequence(os, begin, end, ", ") ;
-}
+      template<typename InputIterator>
+      std::ostream &operator()(std::ostream &os, InputIterator begin, InputIterator end) const
+      {
+         return (*this)(os, begin, end, ", ") ;
+      }
+} ;
 
 inline std::ostream &o_nothing(std::ostream &os) { return os ; }
 
@@ -177,8 +176,7 @@ inline std::ostream &o_callfun(std::ostream &os, const std::function<void(std::o
 
 template<typename InputIterator, typename Before, typename After>
 inline auto osequence(InputIterator begin, InputIterator end, const Before &before, const After &after)
-   PCOMN_MAKE_OMANIP(detail::o_sequence<InputIterator, std::decay_t<Before>, std::decay_t<After> >,
-                     begin, end, std::decay_t<Before>(before), std::decay_t<After>(after)) ;
+   PCOMN_MAKE_OMANIP(detail::o_sequence(), begin, end, std::decay_t<Before>(before), std::decay_t<After>(after)) ;
 
 template<typename InputIterator, typename After>
 inline auto osequence(InputIterator begin, InputIterator end, const After &after)
@@ -202,12 +200,11 @@ inline auto ocontainer(const Container &container)
 
 template<typename InputIterator, typename Delim>
 inline auto oseqdelim(InputIterator begin, InputIterator end, const Delim &delim)
-   PCOMN_MAKE_OMANIP(detail::o_sequence<InputIterator, std::decay_t<Delim> >,
-                     begin, end, std::decay_t<Delim>(delim)) ;
+   PCOMN_MAKE_OMANIP(detail::o_sequence(), begin, end, std::decay_t<Delim>(delim)) ;
 
 template<typename InputIterator>
 inline auto oseqdelim(InputIterator begin, InputIterator end)
-   PCOMN_MAKE_OMANIP(detail::o_sequence<InputIterator>, begin, end) ;
+   PCOMN_MAKE_OMANIP(detail::o_sequence(), begin, end) ;
 
 template<class Container, typename Delim>
 inline auto ocontdelim(const Container &container, const Delim &delim)
@@ -363,7 +360,7 @@ ostream &operator<<(ostream &os, const pair<T1,T2> &p)
 template<typename T, typename A>
 inline ostream &operator<<(ostream &os, const vector<T,A> &v)
 {
-   return os << pcomn::oseqdelim(v.begin(), v.end(), ' ') ;
+   return os << pcomn::ocontdelim(v, ' ') ;
 }
 
 template<typename T, typename D>
