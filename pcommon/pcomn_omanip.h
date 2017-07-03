@@ -162,17 +162,18 @@ struct o_sequence {
       }
 } ;
 
+struct o_call {
+      template<typename F>
+      std::ostream &operator()(std::ostream &os, F &&fn) const
+      {
+         std::forward<F>(fn)(os) ; return os ;
+      }
+} ;
+
 inline std::ostream &o_nothing(std::ostream &os) { return os ; }
-
 inline std::ostream &o_skip(std::ostream &os, unsigned w) { return !w ? os : (os << std::setw(w) << "") ; }
+}
 
-inline std::ostream &o_callfun(std::ostream &os, const std::function<void(std::ostream &)> &fn)
-{
-   if (fn)
-      fn(os) ;
-   return os ;
-}
-}
 
 template<typename InputIterator, typename Before, typename After>
 inline auto osequence(InputIterator begin, InputIterator end, const Before &before, const After &after)
@@ -296,9 +297,9 @@ template<typename T>
 inline auto ostrq(const T &str)
    PCOMN_MAKE_OMANIP((&detail::print_quoted_string<T>), std::cref(str)) ;
 
-template<typename T>
-inline auto ocall(T &&functor)
-   PCOMN_MAKE_OMANIP(&detail::o_callfun, std::forward<T>(functor)) ;
+template<typename F>
+inline auto ocall(F &&fn)
+   PCOMN_MAKE_OMANIP(detail::o_call(), std::forward<F>(fn)) ;
 
 template<typename Enum>
 inline auto oenum(Enum value)
