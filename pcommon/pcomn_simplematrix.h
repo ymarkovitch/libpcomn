@@ -162,6 +162,8 @@ class simple_vector {
       template<size_t n, typename U>
       simple_vector(U (&data)[n]) : simple_vector(data + 0, data + n) {}
 
+      simple_vector(std::initializer_list<value_type> init) : simple_vector(init.begin(), init.end()) {}
+
       ~simple_vector() { clear() ; }
 
       /// Get the count of vector elements
