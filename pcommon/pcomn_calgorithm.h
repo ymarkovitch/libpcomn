@@ -56,7 +56,7 @@ append_container(KeyedContainer &&c1, const Container &c2)
 template<class Container, typename InputIterator, typename UnaryOperation>
 inline Container make_container(InputIterator first, InputIterator last, UnaryOperation &&op)
 {
-   auto start = xform_iter(first, std::ref(op)) ;
+   auto start = xform_iter(first, std::ref(std::forward<UnaryOperation>(op))) ;
 
    return Container(start, xform_iter(last, std::ref(op))) ;
 }

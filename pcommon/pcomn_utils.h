@@ -189,6 +189,22 @@ constexpr inline auto nullable_eq(const P1 &x, const P2 &y) -> decltype(*x == *y
 }
 
 /*******************************************************************************
+ Helper functions to get key or value from value_type of STL keyed containers.
+ i->first and i->second are good but unclear.
+*******************************************************************************/
+template<typename K, typename V>
+constexpr inline const K &mkey(const std::pair<const K, V> &v) { return v.first ; }
+
+template<typename K, typename V>
+constexpr inline const V &mvalue(const std::pair<const K, V> &v) { return v.second ; }
+
+template<typename Iterator>
+inline auto mkey(Iterator i) -> decltype(i->first) & { return i->first ; }
+
+template<typename Iterator>
+inline auto mvalue(Iterator i) -> decltype(i->second) & { return i->second ; }
+
+/*******************************************************************************
  Tagged pointer
 *******************************************************************************/
 /// Check if T* is assignable to U*, providing that valtypes of T and U are the same
