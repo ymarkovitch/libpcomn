@@ -28,6 +28,7 @@ unittest(unittest_immutablestr)
 unittest(unittest_strshims)
 unittest(unittest_strslice)
 
+unittest(unittest_algorithms)
 unittest(unittest_cacher)
 #unittest(unittest_cdsqueue)
 unittest(unittest_cdscrq)

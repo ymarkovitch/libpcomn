@@ -685,11 +685,12 @@ inline sha1hash_t sha1hash_file(FILE *file, size_t *size = NULL)
 }
 
 /***************************************************************************//**
- Generic hashing functor.
+ Hashing functor using object's `hash()` member function.
 *******************************************************************************/
-template<typename T> struct hash_fn : std::hash<T> {} ;
-
-template<> struct hash_fn<bool> { size_t operator()(bool v) const { return v ; } } ;
+template<typename T>
+struct hash_fn_member : public std::unary_function<T, size_t> {
+      size_t operator()(const T &instance) const { return instance.hash() ; }
+} ;
 
 template<typename T>
 struct hash_fn_fundamental {
@@ -706,6 +707,17 @@ struct hash_fn_rawdata {
          return hash_bytes(data(v), (sizeof *data(v)) * size(v)) ;
       }
 } ;
+
+/***************************************************************************//**
+ Generic hashing functor.
+*******************************************************************************/
+template<typename T>
+struct hash_fn : std::conditional_t<std::is_default_constructible<std::hash<T>>::value,
+                                    std::hash<T>,
+                                    hash_fn_member<T>>
+{} ;
+
+template<> struct hash_fn<bool> { size_t operator()(bool v) const { return v ; } } ;
 
 template<> struct hash_fn<double> {
       size_t operator()(double value) const
@@ -811,14 +823,6 @@ inline size_t hash_sequence(Container &&c)
 
 template<typename T>
 inline size_t hash_sequence(std::initializer_list<T> s) { return hash_sequence(s.begin(), s.end()) ; }
-
-/***************************************************************************//**
- Hashing functor using object's `hash()` member function.
-*******************************************************************************/
-template<typename T>
-struct hash_fn_member : public std::unary_function<T, size_t> {
-      size_t operator()(const T &instance) const { return instance.hash() ; }
-} ;
 
 /*******************************************************************************
  ostream

@@ -45,6 +45,15 @@ static const char * const StrArray[] =
    "Str1", "Str2", "Str3", "Str4", "Str5", "Str6", "Str7", "Str8", "Str9", "Str10"
 } ;
 
+struct trivial {
+      trivial() = default ;
+      explicit trivial(size_t h) : _hash(h) {}
+
+      size_t hash() const { return _hash ; }
+
+      size_t _hash = 0 ;
+} ;
+
 void HashFnTests::Test_Hash_Functions()
 {
    CPPUNIT_LOG_NOT_EQUAL(pcomn::hash_fn<int>()(0), (size_t)0) ;
@@ -88,6 +97,11 @@ void HashFnTests::Test_Hash_Functions()
 
    CPPUNIT_LOG(std::endl) ;
    CPPUNIT_LOG_EQUAL(pcomn::hash_sequence({1, 2, 3}), pcomn::hash_combinator().append_data(1).append_data(2).append_data(3).value()) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_EQ(pcomn::valhash(trivial()), 0) ;
+   CPPUNIT_LOG_EQ(pcomn::valhash(trivial(5)), 5) ;
+   CPPUNIT_LOG_EQ(pcomn::valhash(trivial(777)), 777) ;
 }
 
 void HashFnTests::Test_String_Hash()
