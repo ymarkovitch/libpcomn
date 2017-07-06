@@ -76,6 +76,7 @@ class simple_slice {
 
       /// Indicate that the slice is empty
       constexpr bool empty() const { return !size() ; }
+      constexpr explicit operator bool() const { return !empty() ; }
 
       constexpr value_type *data() const { return _start ; }
 
