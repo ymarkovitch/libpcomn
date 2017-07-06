@@ -54,9 +54,21 @@ append_container(KeyedContainer &&c1, const Container &c2)
  result
 *******************************************************************************/
 template<class Container, typename InputIterator, typename UnaryOperation>
-inline Container make_container(InputIterator first, InputIterator last, UnaryOperation &&op)
+inline Container make_container(InputIterator first, InputIterator last, UnaryOperation &&xform)
 {
-   return Container(xform_iter(first, std::ref(op)), xform_iter(last, std::ref(op))) ;
+   return Container(xform_iter(first, std::ref(xform)), xform_iter(last, std::ref(xform))) ;
+}
+
+template<class Container, class Source, typename UnaryOperation>
+inline Container make_container(const Source &source, UnaryOperation &&xform)
+{
+   return make_container<Container>(std::begin(source), std::end(source), std::forward<UnaryOperation>(xform)) ;
+}
+
+template<class Container, typename T, size_t N, typename UnaryOperation>
+inline Container make_container(T (&source)[N], UnaryOperation &&xform)
+{
+   return make_container<Container>(source + 0, source + N, std::forward<UnaryOperation>(xform)) ;
 }
 
 /*******************************************************************************
@@ -215,18 +227,19 @@ inline C &&extend_container(C &&container, size_t extra)
 /*******************************************************************************
  Sort a container
 *******************************************************************************/
-template<typename T>
-inline std::vector<T> &sort(std::vector<T> &v)
+template<typename C, bool=std::is_pointer<decltype(std::declval<C>().data())>::value>
+inline C &&sort(C &&container)
 {
-   std::sort(v.begin(), v.end()) ;
-   return v ;
+   std::sort(std::forward<C>(container).begin(), std::forward<C>(container).end()) ;
+   return std::forward<C>(container) ;
 }
 
-template<typename T, typename BinaryPredicate>
-inline std::vector<T> &sort(std::vector<T> &v, BinaryPredicate &&pred)
+template<typename C, typename BinaryPredicate, bool=std::is_pointer<decltype(std::declval<C>().data())>::value>
+inline C &&sort(C &&container, BinaryPredicate &&pred)
 {
-   std::sort(v.begin(), v.end(), std::forward<BinaryPredicate>(pred)) ;
-   return v ;
+   std::sort(std::forward<C>(container).begin(), std::forward<C>(container).end(),
+             std::forward<BinaryPredicate>(pred)) ;
+   return std::forward<C>(container) ;
 }
 
 /*******************************************************************************
@@ -250,6 +263,20 @@ inline std::vector<T> &unique(std::vector<T> &v, BinaryPredicate &&pred)
    return v ;
 }
 
+template<typename T>
+inline std::vector<T> &&unique(std::vector<T> &&v)
+{
+   return std::move<std::vector<T>>
+      (unique(static_cast<std::vector<T> &>(v))) ;
+}
+
+template<typename T, typename BinaryPredicate>
+inline std::vector<T> &&unique(std::vector<T> &&v, BinaryPredicate &&pred)
+{
+   return std::move<std::vector<T>>
+      (unique(static_cast<std::vector<T> &>(v), std::forward<BinaryPredicate>(pred))) ;
+}
+
 /// Sort the items of a vector and ensure they are unique
 template<typename T>
 inline std::vector<T> &unique_sort(std::vector<T> &v)
@@ -259,15 +286,30 @@ inline std::vector<T> &unique_sort(std::vector<T> &v)
 
 /// @overload
 template<typename T, typename BinaryPredicate>
-inline std::vector<T> &unique_sort(std::vector<T> &v, BinaryPredicate pred)
+inline std::vector<T> &unique_sort(std::vector<T> &v, BinaryPredicate &&pred)
 {
-   return unique(sort(v, pred),
+   auto &p = std::forward<BinaryPredicate>(pred) ;
+   return unique(sort(v, p),
                  #ifdef PCOMN_STL_CXX14
-                 [&](const auto &x, const auto &y) { return !pred(x, y) ; }
+                 [&](const auto &x, const auto &y) { return !p(x, y) ; }
                  #else
-                 std::binary_negate<BinaryPredicate>(pred)
+                 std::binary_negate<BinaryPredicate>(p)
                  #endif
                  ) ;
+}
+
+template<typename T>
+inline std::vector<T> &&unique_sort(std::vector<T> &&v)
+{
+   return std::move<std::vector<T>>
+      (unique_sort(static_cast<std::vector<T> &>(v))) ;
+}
+
+template<typename T, typename BinaryPredicate>
+inline std::vector<T> &&unique_sort(std::vector<T> &&v, BinaryPredicate &&pred)
+{
+   return std::move<std::vector<T>>
+      (unique_sort(static_cast<std::vector<T> &>(v), std::forward<BinaryPredicate>(pred))) ;
 }
 
 /*******************************************************************************
