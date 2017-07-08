@@ -252,17 +252,18 @@ void assertEquals(const T &expected, const T &actual, const SourceLine &sourceLi
 /// removed by specializing the CppUnit::assertion_traits.
 ///
 template<typename Actual, typename Expected, typename S>
-inline enable_if_string__t<S, void> assertEq(const Expected &expected, const Actual &actual,
+inline enable_if_string__t<S, void> assertEq(Expected &&expected, Actual &&actual,
                                              const SourceLine &line, S &&msg)
 {
-   X::assertEquals<Actual>(expected, actual, line, std::forward<S>(msg)) ;
+   X::assertEquals<typename std::remove_reference<Actual>::type>
+      (std::forward<Expected>(expected), std::forward<Actual>(actual), line, std::forward<S>(msg)) ;
 }
 
 template<typename Actual, typename Expected>
-void assertEq(const Expected &expected, const Actual &actual, const SourceLine &line)
+void assertEq(Expected &&expected, Actual &&actual, const SourceLine &line)
 {
    static const char * const es = "" ;
-   X::assertEq(expected, actual, line, es) ;
+   X::assertEq(std::forward<Expected>(expected), std::forward<Actual>(actual), line, es) ;
 }
 
 template<typename T, typename S>

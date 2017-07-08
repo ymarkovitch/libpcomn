@@ -34,8 +34,10 @@ namespace pcomn {
 *******************************************************************************/
 template<typename T>
 class simple_slice {
-      typedef std::remove_const_t<T> mutable_value_type ;
-      typedef std::conditional_t<std::is_const<T>::value, T, void> const_value_type ;
+      template<typename P, typename U=P>
+      using enable_if_src_pointer =
+         std::enable_if_t<(std::is_same<P, T *>::value || std::is_same<P, std::remove_cv_t<T> *>::value) &&
+                          (std::is_same<U, T *>::value || std::is_same<U, std::remove_cv_t<T> *>::value)> ;
    public:
       typedef T value_type ;
 
@@ -45,12 +47,7 @@ class simple_slice {
       typedef reference    const_reference ;
 
       constexpr simple_slice() = default ;
-      constexpr simple_slice(const simple_slice &src) : _start(src._start), _finish(src._finish) {}
-
-      template<typename U, typename = instance_if_t<std::is_same<T, std::add_const_t<U> >::value> >
-      constexpr simple_slice(const simple_slice<U> &src) :
-         _start(const_cast<T *>(src.begin())), _finish(const_cast<T *>(src.end()))
-      {}
+      constexpr simple_slice(const simple_slice &) = default ;
 
       constexpr simple_slice(value_type *start, value_type *finish) :
          _start(start), _finish(finish) {}
@@ -62,13 +59,14 @@ class simple_slice {
       constexpr simple_slice(value_type (&data)[n]) :
          _start(data), _finish(data + n) {}
 
-      simple_slice(const std::vector<mutable_value_type> &src) :
-         _start(const_cast<T *>(&*src.begin())), _finish(const_cast<T *>(&*src.end()))
+      template<typename V, typename = enable_if_src_pointer<decltype(std::declval<V>().data()),
+                                                            decltype(&*std::declval<V>().begin())>>
+      constexpr simple_slice(V &&src) :
+         _start(&*std::forward<V>(src).begin()), _finish(&*std::forward<V>(src).end())
       {}
 
-      template<typename U, typename = instance_if_t<std::is_same<const_value_type, U>::value>>
-      simple_slice(const std::vector<U> &src) :
-         _start(&*src.begin()), _finish(&*src.end())
+      constexpr simple_slice(std::initializer_list<std::remove_cv_t<value_type>> init) :
+         _start(init.begin()), _finish(init.end())
       {}
 
       /// Get the count of slice elements
@@ -1193,33 +1191,32 @@ catch(...)
  simple_slice
 *******************************************************************************/
 template<typename T>
-inline const simple_slice<T> make_simple_slice(T *b, T *e)
+inline simple_slice<T> make_simple_slice(T *b, T *e)
 {
    return simple_slice<T>(b, e) ;
 }
 
-template <typename T>
-inline simple_slice<const T> make_simple_slice(const std::vector<T> &v)
+template<typename V>
+inline auto make_simple_slice(V &&v) -> simple_slice<std::remove_reference_t<decltype(*v.data())>>
 {
-   return simple_slice<const T>(v) ;
+   return {std::forward<V>(v)} ;
 }
 
-template <typename T, size_t maxsize>
-inline simple_slice<const T> make_simple_slice(const static_vector<T, maxsize> &v)
+template<typename V>
+inline auto make_simple_cslice(V &&v) -> simple_cslice<std::remove_reference_t<decltype(*v.data())>>
 {
-   return v(0) ;
+   return {std::forward<V>(v)} ;
 }
 
 template<typename T>
-inline constexpr simple_slice<const T> make_simple_slice(std::initializer_list<T> v)
-{
-   return {v.begin(), v.end()} ;
-}
+inline constexpr simple_cslice<T> make_simple_slice(std::initializer_list<T> v) { return {v.begin(), v.end()} ; }
+template<typename T>
+inline constexpr simple_cslice<T> make_simple_cslice(std::initializer_list<T> v) { return make_simple_slice(v) ; }
 
-template <typename T>
-inline simple_slice<T> make_simple_slice(const simple_slice<T> &v)
+template<typename T, typename U>
+inline simple_slice<T> cat_slices(T *dest, const simple_slice<U> &src)
 {
-   return v ;
+   return {dest, std::copy(src.begin(), src.end(), dest)} ;
 }
 
 template<typename T, typename U, typename V>
