@@ -17,6 +17,8 @@
 #include <pcomn_omanip.h>
 
 #include <iostream>
+#include <memory>
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -726,6 +728,12 @@ inline std::ostream &print_file(std::ostream &os, FILE *file)
 *******************************************************************************/
 template<typename T>
 inline auto otptr(const T *ptr) PCOMN_MAKE_OMANIP(tptr_printer<T>::print, ptr) ;
+
+template<typename T>
+inline auto otptr(const std::unique_ptr<T> &ptr) PCOMN_DERIVE_OMANIP(otptr(ptr.get())) ;
+
+template<typename T>
+inline auto otptr(const std::shared_ptr<T> &ptr) PCOMN_DERIVE_OMANIP(otptr(ptr.get())) ;
 
 template<typename P>
 inline auto oderef(const P &ptr) PCOMN_MAKE_OMANIP(print_dereferenced<P>, std::cref(ptr)) ;

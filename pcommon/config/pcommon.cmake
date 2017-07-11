@@ -238,7 +238,7 @@ function(unittest name)
 
   target_link_libraries     (${name} PRIVATE ${PCOMN_UNITTEST_LIBS})
   target_compile_options    (${name} PRIVATE ${PCOMN_UNITTEST_OPTS})
-  target_compile_definitions(${name} PRIVATE ${PCOMN_UNITTEST_DEFS})
+  target_compile_definitions(${name} PRIVATE ${PCOMN_UNITTEST_DEFS} -DCPPUNIT_USE_TYPEINFO_NAME)
 
   set_target_properties(${name} PROPERTIES EXCLUDE_FROM_ALL true)
 
