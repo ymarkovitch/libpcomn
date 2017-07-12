@@ -649,6 +649,17 @@ constexpr inline T *as_ptr_mutable(const T *p) { return const_cast<T *>(p) ; }
 template<typename T>
 constexpr inline T &as_mutable(const T &v) { return const_cast<T &>(v) ; }
 
+template<size_t alignment>
+constexpr inline bool is_aligned_to(const void *p)
+{
+   static_assert(!((alignment - 1) & alignment),
+                 "Invalid alignment specifiesd, the alignment must be a power of 2") ;
+   return !((uintptr_t)p & (alignment - 1)) ;
+}
+
+template<typename T>
+constexpr inline bool is_aligned_as(const void *p) { return is_aligned_to<alignof(T)>(p) ; }
+
 } // end of namespace pcomn
 
 /******************************************************************************/
