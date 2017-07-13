@@ -144,9 +144,13 @@ void UUIDFixture::Test_Cast128()
 
    CPPUNIT_LOG_EQ(mutable_uuid.to_string(), "f47ac10b-58cc-4372-a567-0e02b2c3d479") ;
    CPPUNIT_LOG_EQ(mutable_bin.to_string(),  "f47ac10b58cc4372a5670e02b2c3d479") ;
+   CPPUNIT_LOG_EQ(string_cast(mutable_uuid),"f47ac10b-58cc-4372-a567-0e02b2c3d479") ;
+   CPPUNIT_LOG_EQ(string_cast(mutable_bin), "f47ac10b58cc4372a5670e02b2c3d479") ;
 
    CPPUNIT_LOG_EQ(const_uuid.to_string(), "007ac10b-58cc-4372-a567-0e02b2c3d478") ;
    CPPUNIT_LOG_EQ(const_bin.to_string(),  "007ac10b58cc4372a5670e02b2c3d478") ;
+   CPPUNIT_LOG_EQ(string_cast(const_uuid),"007ac10b-58cc-4372-a567-0e02b2c3d478") ;
+   CPPUNIT_LOG_EQ(string_cast(const_bin), "007ac10b58cc4372a5670e02b2c3d478") ;
 
    CPPUNIT_LOG_EQUAL(cast128<uuid>(const_bin), const_uuid) ;
    CPPUNIT_LOG_EQUAL(cast128<uuid>(mutable_bin), mutable_uuid) ;

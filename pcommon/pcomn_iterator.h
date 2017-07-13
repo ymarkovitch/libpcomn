@@ -788,7 +788,13 @@ inline enable_if_t<pcomn::is_iterator<I>::value, I> end(const pair<I, I> &range)
 }
 
 template<typename I>
-inline auto size(const pair<I, I> &range) -> decltype(range.second - range.first)
+inline enable_if_t<pcomn::is_iterator<I>::value, bool> empty(const pair<I, I> &range)
+{
+   return range.second == range.first ;
+}
+
+template<typename I>
+inline auto size(const pair<I, I> &range) -> decltype(end(range) - begin(range))
 {
    return range.second - range.first ;
 }

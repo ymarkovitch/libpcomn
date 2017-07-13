@@ -253,7 +253,7 @@ std::ostream &operator<<(std::ostream &os, const sha1hash_pod_t &v)
 std::ostream &operator<<(std::ostream &os, const binary128_t &v)
 {
    char buf[64] ;
-   return os << v.to_strbuf(buf) ;
+   return os.write(buf, v.to_strbuf(buf) - buf) ;
 }
 
 } // namespace pcomn
