@@ -816,7 +816,7 @@ struct assertion_traits<pcomn::simple_matrix<T, r> > :
 template<>
 inline std::string assertion_traits<std::type_info>::toString(const std::type_info &x)
 {
-   return std::string(x.name()) ;
+   return PCOMN_DEMANGLE(x.name()) ;
 }
 
 template<>
