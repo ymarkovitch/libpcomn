@@ -188,9 +188,10 @@ constexpr inline auto nullable_eq(const P1 &x, const P2 &y) -> decltype(*x == *y
    return !x == !y && (!x || *x == *y) ;
 }
 
-/*******************************************************************************
+/***************************************************************************//**
  Tagged pointer
 *******************************************************************************/
+/**{@*/
 /// Check if T* is assignable to U*, providing that valtypes of T and U are the same
 /// (i.e. assigning to base class or void pointer is _not_ allowed)
 template<typename T, typename U>
@@ -229,8 +230,8 @@ template<bool dir, typename U>
 struct find_exact_copyable<dir, U> : int_constant<-1> {} ;
 } ;
 
-/******************************************************************************/
-/** Tagged union of two pointers with sizof(tagged_ptr_union)==sizeof(void *).
+/***************************************************************************//**
+ Tagged union of two pointers with sizof(tagged_ptr_union)==sizeof(void *).
 
  The alignment of the memory pointed to by any of union members MUST be at least 2
 *******************************************************************************/
@@ -352,6 +353,74 @@ struct tagged_ptr_union {
 template<typename T1, typename T2, typename... T>
 using tagged_cptr_union = tagged_ptr_union<const T1, const T2, const T ...> ;
 
+/**}@*/
+
+/***************************************************************************//**
+ Strong typedef is a type wrapper that guarentees that two types are distinguised
+ even when they share the same underlying implementation.
+
+ Unlike typedef, strong typedef _does_ create a new type.
+*******************************************************************************/
+/**{@*/
+template<typename Data, typename Tag, bool literal=std::is_literal_type<Data>::value> struct tdef ;
+
+template<typename Data, typename Tag>
+using strong_typedef = tdef<Data, Tag> ;
+
+template<typename Data, typename Tag>
+struct tdef<Data, Tag, true> {
+
+      constexpr tdef() = default ;
+      explicit constexpr tdef(const Data &v) : _data(v) {}
+      constexpr tdef(const tdef &) = default ;
+      constexpr tdef(tdef &&) = default ;
+
+      tdef &operator=(const tdef &) = default ;
+      tdef &operator=(tdef &&) = default ;
+      tdef &operator=(const Data &rhs) { _data = rhs ; return *this ;}
+      tdef &operator=(Data &&rhs) { _data = std::move(rhs) ; return *this ;}
+
+      constexpr operator Data() const { return _data ; }
+      operator Data &() & { return _data ; }
+      operator Data &&() && { return std::move(_data) ; }
+
+      friend constexpr bool operator==(const tdef &x, const tdef &y) { return x._data == y._data ; }
+      friend constexpr bool operator<(const tdef &x, const tdef &y) { return x._data <  y._data ; }
+
+      PCOMN_DEFINE_RELOP_FUNCTIONS(friend constexpr, tdef) ;
+      friend std::ostream &operator<<(std::ostream &os, const tdef &v) { return os << v._data ; }
+
+   private:
+      Data _data {} ;
+} ;
+
+template<typename Data, typename Tag>
+struct tdef<Data, Tag, false> {
+      tdef() = default ;
+      explicit tdef(const Data &v) : _data(v) {}
+      tdef(const tdef &) = default ;
+      tdef(tdef &&) = default ;
+
+      tdef &operator=(const tdef &) = default ;
+      tdef &operator=(tdef &&) = default ;
+      tdef &operator=(const Data &rhs) { _data = rhs ; return *this ;}
+      tdef &operator=(Data &&rhs) { _data = std::move(rhs) ; return *this ;}
+
+      operator const Data &() const { return _data ; }
+      operator Data &() & { return _data ; }
+      operator Data &&() && { return std::move(_data) ; }
+
+      friend bool operator==(const tdef &x, const tdef &y) { return x._data == y._data ; }
+      friend bool operator<(const tdef &x, const tdef &y)  { return x._data <  y._data ; }
+
+      PCOMN_DEFINE_RELOP_FUNCTIONS(friend, tdef) ;
+      friend std::ostream &operator<<(std::ostream &os, const tdef &v) { return os << v._data ; }
+
+   private:
+      Data _data {} ;
+} ;
+/**}@*/
+
 /******************************************************************************/
 /**
 *******************************************************************************/
@@ -380,12 +449,12 @@ struct auto_buffer final {
       PCOMN_NONASSIGNABLE(auto_buffer) ;
 } ;
 
-/******************************************************************************/
-/** Output stream with "embedded" stream buffer (i.e. the memory buffer is a C array -
- the member of of the class).
+/***************************************************************************//**
+ Output stream with "embedded" stream buffer, the memory buffer is a C array
+ the member of of the class.
 
-The template argument defines (fixed) size of the output buffer. This class doesn't make
-dynamic allocations.
+ The template argument defines (fixed) size of the output buffer.
+ This class never makes dynamic allocations.
 *******************************************************************************/
 template<size_t sz>
 class bufstr_ostream : private std::basic_streambuf<char>, public std::ostream {
