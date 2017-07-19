@@ -730,14 +730,14 @@ inline void *hextob(void *buf, size_t bufsz, const char *hexstr)
 /// Given that there is '<' operator for the type, define all remaining ordering operators
 /// as global functions.
 #define PCOMN_DEFINE_ORDER_FUNCTIONS(pfx, type)                         \
-   pfx inline bool operator>(const type &lhs, const type &rhs) { return rhs < lhs ; } \
-   pfx inline bool operator<=(const type &lhs, const type &rhs) { return !(rhs < lhs) ; } \
-   pfx inline bool operator>=(const type &lhs, const type &rhs) { return !(lhs < rhs) ; }
+   pfx inline auto operator> (const type &x, const type &y)->decltype(!(x<y)) { return !!(y < x) ; } \
+   pfx inline auto operator<=(const type &x, const type &y)->decltype(!(x<y)) { return !(y < x) ; }  \
+   pfx inline auto operator>=(const type &x, const type &y)->decltype(!(x<y)) { return !(x < y) ; }
 
 /// Given that there are operators '==' and '<' for the type, define through them all
 /// remaining relational operators as global functions.
 #define PCOMN_DEFINE_RELOP_FUNCTIONS(pfx, type)                         \
-   pfx inline bool operator!=(const type &lhs, const type &rhs) { return !(lhs == rhs) ; } \
+   pfx inline auto operator!=(const type &x, const type &y)->decltype(!(x==y)) { return !(x == y) ; } \
    PCOMN_DEFINE_ORDER_FUNCTIONS(P_PASS(pfx), P_PASS(type))
 
 /// Given that there is '<' operator for the type, define all remaining ordering operators

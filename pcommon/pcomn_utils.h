@@ -367,6 +367,9 @@ template<typename Data, typename Tag, bool literal=std::is_literal_type<Data>::v
 template<typename Data, typename Tag>
 using strong_typedef = tdef<Data, Tag> ;
 
+/***************************************************************************//**
+ Strong typedef implementation.
+*******************************************************************************/
 template<typename Data, typename Tag>
 struct tdef<Data, Tag, true> {
 
@@ -380,15 +383,10 @@ struct tdef<Data, Tag, true> {
       tdef &operator=(const Data &rhs) { _data = rhs ; return *this ;}
       tdef &operator=(Data &&rhs) { _data = std::move(rhs) ; return *this ;}
 
+      constexpr const Data &data() const { return _data ; }
       constexpr operator Data() const { return _data ; }
       operator Data &() & { return _data ; }
       operator Data &&() && { return std::move(_data) ; }
-
-      friend constexpr bool operator==(const tdef &x, const tdef &y) { return x._data == y._data ; }
-      friend constexpr bool operator<(const tdef &x, const tdef &y) { return x._data <  y._data ; }
-
-      PCOMN_DEFINE_RELOP_FUNCTIONS(friend constexpr, tdef) ;
-      friend std::ostream &operator<<(std::ostream &os, const tdef &v) { return os << v._data ; }
 
    private:
       Data _data {} ;
@@ -406,19 +404,32 @@ struct tdef<Data, Tag, false> {
       tdef &operator=(const Data &rhs) { _data = rhs ; return *this ;}
       tdef &operator=(Data &&rhs) { _data = std::move(rhs) ; return *this ;}
 
+      const Data &data() const { return _data ; }
       operator const Data &() const { return _data ; }
       operator Data &() & { return _data ; }
       operator Data &&() && { return std::move(_data) ; }
 
-      friend bool operator==(const tdef &x, const tdef &y) { return x._data == y._data ; }
-      friend bool operator<(const tdef &x, const tdef &y)  { return x._data <  y._data ; }
-
-      PCOMN_DEFINE_RELOP_FUNCTIONS(friend, tdef) ;
-      friend std::ostream &operator<<(std::ostream &os, const tdef &v) { return os << v._data ; }
-
    private:
       Data _data {} ;
 } ;
+
+template<typename D, typename T>
+constexpr inline auto operator==(const tdef<D,T> &x, const tdef<D,T> &y)->decltype(x.data()==y.data())
+{
+   return x.data() == y.data() ;
+}
+
+template<typename D, typename T>
+constexpr inline auto operator<(const tdef<D,T> &x, const tdef<D,T> &y)->decltype(x.data()<y.data())
+{
+   return x.data() < y.data() ;
+}
+
+PCOMN_DEFINE_RELOP_FUNCTIONS(P_PASS(template<typename D, typename T> constexpr), P_PASS(tdef<D,T>)) ;
+
+template<typename D, typename T>
+inline std::ostream &operator<<(std::ostream &os, const tdef<D,T> &v) { return os << v.data() ; }
+
 /**}@*/
 
 /******************************************************************************/
@@ -705,5 +716,13 @@ std::string string_cast(T1 &&a1, T2 &&a2, Tn &&...an)
 }
 
 } // end of pcomn namespace
+
+namespace std {
+/***************************************************************************//**
+ The hash for a strong typedef is by default the hash of the wrapped type.
+*******************************************************************************/
+template<typename D, typename T>
+struct hash<pcomn::tdef<D,T>> : hash<D> {} ;
+} // end of std namespace
 
 #endif /* __PCOMN_UTILS_H */
