@@ -154,5 +154,6 @@ target_link_libraries(pcommon
   )
 
 if (${UNITTESTS})
+  enable_testing()
   add_subdirectory(unittests EXCLUDE_FROM_ALL)
 endif()

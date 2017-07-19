@@ -154,11 +154,19 @@ function(unittests_directory)
     return()
   endif()
 
-  add_custom_target(unittests.start COMMENT
-    "\n+++++++++++++++++++++++ Building and running unittests +++++++++++++++++++++++")
-  add_custom_target(unittests DEPENDS unittests.start)
+  add_custom_target(unittests)
+  add_custom_target(unittests.build)
+
+  add_custom_target(unittests.start true COMMENT
+      "\n\n++++++++ Building and/or running unittests in ${CMAKE_CURRENT_SOURCE_DIR} ++++++++\n")
+
   add_custom_command(TARGET unittests POST_BUILD COMMENT
-    "+++++++++++++++++++++++ Finished running unittests +++++++++++++++++++++++++++")
+      "++++++++ Finished running unittests in ${CMAKE_CURRENT_SOURCE_DIR} ++++++++\n ")
+  add_custom_command(TARGET unittests.build POST_BUILD COMMENT
+      "++++++++ Finished building unittests in ${CMAKE_CURRENT_SOURCE_DIR} ++++++++\n ")
+
+  add_dependencies(unittests unittests.start)
+  add_dependencies(unittests.build unittests.start)
 
   set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY UNITTESTS_DIRECTORY TRUE)
 
@@ -167,7 +175,8 @@ endfunction(unittests_directory)
 function(unittests_project NAME)
     project(${NAME}.unittests CXX C)
     unittests_directory()
-    add_custom_target(${NAME}.unittests DEPENDS unittests)
+    add_custom_target(${CMAKE_PROJECT_NAME} DEPENDS unittests)
+    add_custom_target(${CMAKE_PROJECT_NAME}.build DEPENDS unittests.build)
 endfunction(unittests_project)
 
 macro(set_executable_path path)
@@ -250,14 +259,14 @@ function(unittest name)
     DEPENDS ${name}
 
     COMMAND ${CMD_RM} ${name}.output ${name}.run
-    COMMAND ${CMD_ECHO} "  running: ${name}"
+    COMMAND ${CMD_ECHO} "----running:   ${name}"
 
     COMMAND
     PCOMN_TESTDIR=${CMAKE_CURRENT_SOURCE_DIR} flock -w 7200 ${CMAKE_BINARY_DIR} $<TARGET_FILE:${name}> >${name}.output 2>&1 ||
     (${CMD_CMAKE} -DUNITTEST_OUTPUT=${name}.output -DUNITTEST_STATUS=${LAST_EXIT_STATUS} -P ${PCOMN_CONFIG}/put_status.cmake && exit 1)
 
     COMMAND ${CMD_CMAKE} -DUNITTEST_OUTPUT=${name}.output -DUNITTEST_STATUS=0 -P ${PCOMN_CONFIG}/put_status.cmake
-    COMMAND ${CMD_ECHO} "**passed** ${name}"
+    COMMAND ${CMD_ECHO} "****passed**** ${name}"
     COMMAND ln ${name}.output ${name}.run
     )
 
@@ -270,7 +279,9 @@ function(unittest name)
 
    add_test(NAME ${name} WORKING_DIRECTORY ${BINARY_OUTPUT_DIR} COMMAND ${name})
 
+   add_dependencies(unittests.build ${name})
    add_dependencies(unittests ${name}.test)
+   add_dependencies(${name} unittests.start)
 
 endfunction(unittest)
 
