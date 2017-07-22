@@ -356,79 +356,90 @@ using tagged_cptr_union = tagged_ptr_union<const T1, const T2, const T ...> ;
 /**}@*/
 
 /***************************************************************************//**
- Strong typedef is a type wrapper that guarentees that two types are distinguised
+ Strong typedef is a type wrapper that guarentees that two types are distinguished
  even when they share the same underlying implementation.
 
  Unlike typedef, strong typedef _does_ create a new type.
 *******************************************************************************/
 /**{@*/
-template<typename Data, typename Tag, bool literal=std::is_literal_type<Data>::value> struct tdef ;
+template<typename Principal, typename Tag, bool=std::is_literal_type<Principal>::value> struct tdef ;
 
-template<typename Data, typename Tag>
-using strong_typedef = tdef<Data, Tag> ;
+template<typename Principal, typename Tag>
+using strong_typedef = tdef<Principal, Tag> ;
+
+/// If T is a strong typedef type, provides a member typedef type that names the
+/// underlying type of T.
+template<typename T>
+struct principal_type ;
+
+template<typename P, typename G>
+struct principal_type<strong_typedef<P, G>> : identity_type<P> {} ;
+
+template<typename T>
+using principal_type_t = typename principal_type<T>:: type ;
 
 /***************************************************************************//**
  Strong typedef implementation.
 *******************************************************************************/
-template<typename Data, typename Tag>
-struct tdef<Data, Tag, true> {
+template<typename Principal, typename Tag>
+struct tdef<Principal, Tag, true> {
 
       constexpr tdef() = default ;
-      explicit constexpr tdef(const Data &v) : _data(v) {}
+      explicit constexpr tdef(const Principal &v) : _data(v) {}
       constexpr tdef(const tdef &) = default ;
       constexpr tdef(tdef &&) = default ;
 
       tdef &operator=(const tdef &) = default ;
       tdef &operator=(tdef &&) = default ;
-      tdef &operator=(const Data &rhs) { _data = rhs ; return *this ;}
-      tdef &operator=(Data &&rhs) { _data = std::move(rhs) ; return *this ;}
+      tdef &operator=(const Principal &rhs) { _data = rhs ; return *this ;}
+      tdef &operator=(Principal &&rhs) { _data = std::move(rhs) ; return *this ;}
 
-      constexpr const Data &data() const { return _data ; }
-      constexpr operator Data() const { return _data ; }
-      operator Data &() & { return _data ; }
-      operator Data &&() && { return std::move(_data) ; }
+      constexpr const Principal &data() const { return _data ; }
+      constexpr operator Principal() const { return _data ; }
+      operator Principal &() & { return _data ; }
+      operator Principal &&() && { return std::move(_data) ; }
 
    private:
-      Data _data {} ;
+      Principal _data {} ;
 } ;
 
-template<typename Data, typename Tag>
-struct tdef<Data, Tag, false> {
+template<typename Principal, typename Tag>
+struct tdef<Principal, Tag, false> {
       tdef() = default ;
-      explicit tdef(const Data &v) : _data(v) {}
+      explicit tdef(const Principal &v) : _data(v) {}
       tdef(const tdef &) = default ;
       tdef(tdef &&) = default ;
 
       tdef &operator=(const tdef &) = default ;
       tdef &operator=(tdef &&) = default ;
-      tdef &operator=(const Data &rhs) { _data = rhs ; return *this ;}
-      tdef &operator=(Data &&rhs) { _data = std::move(rhs) ; return *this ;}
+      tdef &operator=(const Principal &rhs) { _data = rhs ; return *this ;}
+      tdef &operator=(Principal &&rhs) { _data = std::move(rhs) ; return *this ;}
 
-      const Data &data() const { return _data ; }
-      operator const Data &() const { return _data ; }
-      operator Data &() & { return _data ; }
-      operator Data &&() && { return std::move(_data) ; }
+      const Principal &data() const { return _data ; }
+      operator const Principal &() const { return _data ; }
+      operator Principal &() & { return _data ; }
+      operator Principal &&() && { return std::move(_data) ; }
 
    private:
-      Data _data {} ;
+      Principal _data {} ;
 } ;
 
-template<typename D, typename T>
-constexpr inline auto operator==(const tdef<D,T> &x, const tdef<D,T> &y)->decltype(x.data()==y.data())
+template<typename P, typename G>
+constexpr inline auto operator==(const tdef<P,G> &x, const tdef<P,G> &y)->decltype(x.data()==y.data())
 {
    return x.data() == y.data() ;
 }
 
-template<typename D, typename T>
-constexpr inline auto operator<(const tdef<D,T> &x, const tdef<D,T> &y)->decltype(x.data()<y.data())
+template<typename P, typename G>
+constexpr inline auto operator<(const tdef<P,G> &x, const tdef<P,G> &y)->decltype(x.data()<y.data())
 {
    return x.data() < y.data() ;
 }
 
-PCOMN_DEFINE_RELOP_FUNCTIONS(P_PASS(template<typename D, typename T> constexpr), P_PASS(tdef<D,T>)) ;
+PCOMN_DEFINE_RELOP_FUNCTIONS(P_PASS(template<typename P, typename G> constexpr), P_PASS(tdef<P,G>)) ;
 
-template<typename D, typename T>
-inline std::ostream &operator<<(std::ostream &os, const tdef<D,T> &v) { return os << v.data() ; }
+template<typename P, typename G>
+inline std::ostream &operator<<(std::ostream &os, const tdef<P,G> &v) { return os << v.data() ; }
 
 /**}@*/
 
@@ -721,8 +732,8 @@ namespace std {
 /***************************************************************************//**
  The hash for a strong typedef is by default the hash of the wrapped type.
 *******************************************************************************/
-template<typename D, typename T>
-struct hash<pcomn::tdef<D,T>> : hash<D> {} ;
+template<typename P, typename G>
+struct hash<pcomn::tdef<P,G>> : hash<P> {} ;
 } // end of std namespace
 
 #endif /* __PCOMN_UTILS_H */
