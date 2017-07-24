@@ -20,12 +20,21 @@
 
 namespace pcomn {
 
-/******************************************************************************/
-/** Functor to pass through its argument; effectively calls std::forward<T>.
+/***************************************************************************//**
+ Functor to pass through its argument; effectively calls std::forward<T>.
 *******************************************************************************/
 struct identity {
       template<typename T>
       T &&operator() (T &&t) const { return std::forward<T>(t) ; }
+} ;
+
+/***************************************************************************//**
+ Converter functor
+*******************************************************************************/
+template<typename T>
+struct cast_to {
+      template<typename S>
+      T operator() (S &&source) const { return static_cast<T>(std::forward<S>(source)) ; }
 } ;
 
 template<size_t n>
@@ -34,6 +43,11 @@ struct select {
       auto operator()(T &&x) const -> decltype(std::get<n>(std::forward<T>(x)))
       {
          return std::get<n>(std::forward<T>(x)) ;
+      }
+      template<typename T>
+      auto operator()(T *x) const -> decltype(std::get<n>(*x))
+      {
+         return std::get<n>(*x) ;
       }
 } ;
 
@@ -102,15 +116,6 @@ struct destroy_object : std::unary_function<T &, T *>
          (&object)->~T() ;
          return &object ;
       }
-} ;
-
-/*******************************************************************************
- Converter functors
-*******************************************************************************/
-template<typename S, typename T>
-struct convert_object : std::unary_function<S, T>
-{
-      T operator() (S &source) const { return T(source) ; }
 } ;
 
 /*******************************************************************************
