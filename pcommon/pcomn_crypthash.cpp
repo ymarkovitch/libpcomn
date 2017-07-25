@@ -2,7 +2,7 @@
 /*******************************************************************************
  FILE         :   pcomn_crypthash.cpp
  COPYRIGHT    :   Yakov Markovitch, Maxim Dementiev, 2010-2011. All rights reserved.
-                  Yakov Markovitch, 2012-2016. All rights reserved.
+                  Yakov Markovitch, 2012-2017. All rights reserved.
                   All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
@@ -174,7 +174,7 @@ md5hash_t md5hash_file(int fd, size_t *size, RaiseError raise_error)
 /*******************************************************************************
  sha1hash_t
 *******************************************************************************/
-std::string sha1hash_pod_t::to_string() const { return b2a_hex(data(), sizeof _idata) ; }
+std::string sha1hash_t::to_string() const { return b2a_hex(data(), sizeof _idata) ; }
 
 sha1hash_t sha1hash(const void *buf, size_t size)
 {
@@ -245,7 +245,7 @@ SHA1Hash &SHA1Hash::append_file(const char *filename)
 /*******************************************************************************
  ostream
 *******************************************************************************/
-std::ostream &operator<<(std::ostream &os, const sha1hash_pod_t &v)
+std::ostream &operator<<(std::ostream &os, const sha1hash_t &v)
 {
    return os << v.to_string() ;
 }

@@ -94,6 +94,8 @@ void CryptHashFixture::Test_MD5Hash()
    // MD5 of empty string
    CPPUNIT_LOG_EQUAL(md5hash_file(f0.c_str()).to_string(), std::string("d41d8cd98f00b204e9800998ecf8427e")) ;
    CPPUNIT_LOG_EQUAL(md5hash_file(f0.c_str()), md5hash_t("d41d8cd98f00b204e9800998ecf8427e")) ;
+   CPPUNIT_LOG_EQUAL(md5hash_t("d41d8cd98f00b204e9800998ecf8427e"),
+                     md5hash_t(binary128_t{0xd4, 0x1d, 0x8c, 0xd9, 0x8f, 0x00, 0xb2, 0x04, 0xe9, 0x80, 0x09, 0x98, 0xec, 0xf8, 0x42, 0x7e})) ;
    CPPUNIT_LOG_NOT_EQUAL(md5hash_file(f0.c_str()), md5hash_t()) ;
    CPPUNIT_LOG_NOT_EQUAL(md5hash_file(f0.c_str()), md5hash_t("d41d8cd98f00b204e9800998ecf8427f")) ;
 
@@ -161,7 +163,7 @@ void CryptHashFixture::Test_MD5Hash()
    // Check MD5 POD objects
    CPPUNIT_LOG(std::endl) ;
    union local1 {
-         pcomn::md5hash_pod_t md5 ;
+         pcomn::md5hash_t md5 ;
          double dummy ;
    } ;
 }
@@ -173,7 +175,7 @@ void CryptHashFixture::Test_SHA1Hash()
    // Check SHA1 POD objects
    CPPUNIT_LOG(std::endl) ;
    union local1 {
-         pcomn::sha1hash_pod_t sha1 ;
+         pcomn::sha1hash_t sha1 ;
          double dummy ;
    } ;
 }

@@ -3,33 +3,26 @@
 #define __PCOMN_UUID_H
 /*******************************************************************************
  FILE         :   pcomn_uuid.h
- COPYRIGHT    :   Yakov Markovitch, 2014-2016
+ COPYRIGHT    :   Yakov Markovitch, 2014-2017
 
  DESCRIPTION  :   UUID data type
 
  PROGRAMMED BY:   Yakov Markovitch
  CREATION DATE:   15 Sep 2014
 *******************************************************************************/
+/** @flie
+ UUID and MAC (Network Media Access Address) data types.
+*******************************************************************************/
 #include <pcomn_hash.h>
 #include <pcomn_strslice.h>
 
 namespace pcomn {
 
-/******************************************************************************/
-/** Standard UUID
+/***************************************************************************//**
+ Standard UUID
 *******************************************************************************/
-struct uuid {
-   protected:
-      union {
-            uint64_t       _idata[2] ;
-            uint16_t       _hdata[8] ;
-            unsigned char  _cdata[16] ;
-      } ;
+struct uuid : binary128_t {
 
-      template<typename T>
-      static constexpr T be(T value) { return value_to_big_endian(value) ; }
-
-   public:
       enum : size_t {
          SZ_BIN = 16, /**< Binary representation length */
          SZ_STR = 36  /**< String representation length (RFC4122, Section 3)   */
@@ -40,18 +33,14 @@ struct uuid {
       /// Null UUID has all its octets set to 0; operator bool() returns false
       /// for such UUID.
       ///
-      constexpr uuid() : _idata{0, 0} {}
-
+      constexpr uuid() = default ;
       constexpr uuid(uint16_t h1, uint16_t h2, uint16_t h3, uint16_t h4,
                      uint16_t h5, uint16_t h6, uint16_t h7, uint16_t h8) :
-         _hdata{be(h1), be(h2), be(h3), be(h4), be(h5), be(h6), be(h7), be(h8)}
+         binary128_t(h1, h2, h3, h4, h5, h6, h7, h8)
       {}
 
-      constexpr uuid(uint64_t h1, uint64_t h2) : _idata{be(h1), be(h2)} {}
-
-      constexpr uuid(const binary128_t &bin) :
-         _idata{*(const uint64_t *)(const void *)bin.data(), *((const uint64_t *)(const void *)bin.data() + 1)}
-      {}
+      constexpr uuid(uint64_t h1, uint64_t h2) : binary128_t(h1, h2) {}
+      constexpr uuid(const binary128_t &bin) : binary128_t(bin) {}
 
       /// Create a UUID from "standard" string representation
       ///
@@ -69,8 +58,6 @@ struct uuid {
 
       uuid(const char *str) : uuid(str, RAISE_ERROR) {}
 
-      explicit constexpr operator bool() const { return !!(_idata[0] | _idata[1]) ; }
-
       /// Get the pointer to 16-octets-sequence representing UUID in "most significant
       /// byte first" order, as stated in RFC 4122
       constexpr const unsigned char *data() const { return _cdata ; }
@@ -82,8 +69,6 @@ struct uuid {
 
       constexpr unsigned version() const { return (octet(12) & 0xf0U) >> 4 ; }
 
-      /// Get the count of UUID octets (16)
-      static constexpr size_t size() { return sizeof _cdata ; }
       /// Get the length of canonical string representation of UUID (36 chars)
       static constexpr size_t slen() { return 2*size() + 4 ; }
 
@@ -101,37 +86,7 @@ struct uuid {
          char buf[slen() + 1] ;
          return std::string(to_strbuf(buf)) ;
       }
-
-      explicit operator binary128_t() const
-      {
-         const binary128_t * __may_alias result = reinterpret_cast<const binary128_t *>(this) ;
-         return *result ;
-      }
-
-      friend bool operator==(const uuid &x, const uuid &y)
-      {
-         return !((x._idata[0] ^ y._idata[0]) | (x._idata[1] ^ y._idata[1])) ;
-      }
-
-      friend bool operator<(const uuid &x, const uuid &y)
-      {
-         return
-            (value_from_big_endian(x._idata[0]) < value_from_big_endian(y._idata[0])) ||
-            (x._idata[0] == y._idata[0] && value_from_big_endian(x._idata[1]) < value_from_big_endian(y._idata[1])) ;
-      }
-
-      void swap(uuid &rhs)
-      {
-         std::swap(_idata[0], rhs._idata[0]) ;
-         std::swap(_idata[1], rhs._idata[1]) ;
-      }
-
-      size_t hash() const { return pcomn::tuplehash(_idata[0], _idata[1]) ; }
 } ;
-
-inline void swap(uuid &lhs, uuid &rhs) { lhs.swap(rhs) ; }
-
-PCOMN_DEFINE_RELOP_FUNCTIONS(, uuid) ;
 
 PCOMN_STATIC_CHECK(sizeof(uuid) == 16) ;
 
@@ -198,9 +153,6 @@ struct MAC {
 
 PCOMN_DEFINE_RELOP_FUNCTIONS(, MAC) ;
 
-template<> struct hash_fn<uuid> : hash_fn_member<uuid> {} ;
-template<> struct hash_fn<MAC> : hash_fn_member<MAC> {} ;
-
 /*******************************************************************************
  Debug output
 *******************************************************************************/
@@ -219,14 +171,14 @@ inline std::ostream &operator<<(std::ostream &os, const MAC &v)
 } // end of namespace pcomn
 
 namespace std {
-/******************************************************************************/
-/** std::hash specialization for pcomn::uuid
+/***************************************************************************//**
+ std::hash specialization for pcomn::uuid
 *******************************************************************************/
-template<> struct hash<pcomn::uuid> : pcomn::hash_fn<pcomn::uuid> {} ;
-/******************************************************************************/
-/** std::hash specialization for pcomn::MAC
+template<> struct hash<pcomn::uuid> : pcomn::hash_fn_member<pcomn::uuid> {} ;
+/***************************************************************************//**
+ std::hash specialization for pcomn::MAC
 *******************************************************************************/
-template<> struct hash<pcomn::MAC> : pcomn::hash_fn<pcomn::MAC> {} ;
+template<> struct hash<pcomn::MAC> : pcomn::hash_fn_member<pcomn::MAC> {} ;
 }
 
 #endif /* __PCOMN_UUID_H */

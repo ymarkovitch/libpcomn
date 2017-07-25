@@ -376,23 +376,42 @@ struct crypthash : T {
       explicit crypthash(const char *hashstr) { T::init(hashstr) ; }
 } ;
 
-/******************************************************************************/
-/** 128-bit aligned binary big-endian POD data
+/***************************************************************************//**
+ 128-bit binary big-endian POD data, aligned to 64-bit boundary.
 *******************************************************************************/
 struct binary128_t {
 
       constexpr binary128_t() : _idata() {}
+      constexpr binary128_t(uint64_t h1, uint64_t h2) : _idata{be(h1), be(h2)} {}
+      constexpr binary128_t(uint16_t h1, uint16_t h2, uint16_t h3, uint16_t h4,
+                            uint16_t h5, uint16_t h6, uint16_t h7, uint16_t h8) :
+         _hdata{be(h1), be(h2), be(h3), be(h4), be(h5), be(h6), be(h7), be(h8)}
+      {}
+      constexpr binary128_t(uint8_t c0, uint8_t c1, uint8_t c2, uint8_t c3,
+                            uint8_t c4, uint8_t c5, uint8_t c6, uint8_t c7,
+                            uint8_t c8, uint8_t c9, uint8_t ca, uint8_t cb,
+                            uint8_t cc, uint8_t cd, uint8_t ce, uint8_t cf) :
+         _cdata{c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, ca, cb, cc, cd, ce, cf}
+      {}
+
+      /// Create value from a hex string representation.
+      /// @note @a hexstr need not be null-terminated, the constructor will scan at most
+      /// 32 characters, or until '\0' encountered, whatever comes first.
+      explicit binary128_t(const char *hexstr)
+      {
+         if (!hextob(_idata, sizeof _idata, hexstr))
+            _idata[1] = _idata[0] = 0 ;
+      }
 
       /// Check helper
       explicit constexpr operator bool() const { return !!(_idata[0] | _idata[1]) ; }
 
-      unsigned char *data() { return reinterpret_cast<unsigned char *>(&_idata) ; }
-      constexpr const unsigned char *data() const
-      {
-         return (const unsigned char *)(const void *)&_idata ;
-      }
+      unsigned char *data() { return _cdata ; }
+      constexpr const unsigned char *data() const { return _cdata ; }
 
+      /// Get the count of octets (16)
       static constexpr size_t size() { return sizeof _idata ; }
+      /// Get the length of string representation (32 chars)
       static constexpr size_t slen() { return 2*size() ; }
 
       _PCOMNEXP std::string to_string() const ;
@@ -410,34 +429,32 @@ struct binary128_t {
             l._idata[0] == r._idata[0] && value_from_big_endian(l._idata[1]) < value_from_big_endian( r._idata[1]) ;
       }
 
-      constexpr size_t hash() const { return _idata[0] ^ _idata[1] ; }
+      size_t hash() const { return tuplehash(_idata[0], _idata[1]) ; }
 
    protected:
-      /// Create a hash filled with zeros.
-      void init() { _idata[1] = _idata[0] = 0 ; }
-      void init(const char *hexstr)
-      {
-         init() ;
-         uint64_t idata[2] ;
-         if (hextob(idata, sizeof idata, hexstr))
-         {
-            _idata[0] = idata[0] ;
-            _idata[1] = idata[1] ;
-         }
-      }
+      union {
+            uint64_t       _idata[2] ;
+            uint32_t       _wdata[4] ;
+            uint16_t       _hdata[8] ;
+            unsigned char  _cdata[16] ;
+      } ;
 
-   private:
-      uint64_t _idata[2] ;
+   protected:
+      template<typename T>
+      static constexpr T be(T value) { return value_to_big_endian(value) ; }
 } ;
 
 PCOMN_STATIC_CHECK(sizeof(binary128_t) == 16) ;
+PCOMN_STATIC_CHECK(alignof(binary128_t) == 8) ;
 
 // Define !=, >, <=, >= for binary128_t
 PCOMN_DEFINE_RELOP_FUNCTIONS(, binary128_t) ;
 
 template<typename T>
 struct is_literal128 :
-   std::bool_constant<sizeof(T) == sizeof(binary128_t) && std::is_literal_type<binary128_t>::value>
+   std::bool_constant<sizeof(T) == sizeof(binary128_t) &&
+                      alignof(T) == alignof(binary128_t) &&
+                      std::is_literal_type<binary128_t>::value>
 {} ;
 
 
@@ -471,17 +488,33 @@ inline std::enable_if_t<is_literal128<T>::value, T &&> cast128(binary128_t &&v)
    return std::move(*reinterpret_cast<T *>(&v)) ;
 }
 
-/******************************************************************************/
-/** MD5 hash POD type (no constructors, no destructors)
+/***************************************************************************//**
+ MD5 hash
 *******************************************************************************/
-struct md5hash_pod_t : binary128_t {} ;
+struct md5hash_t : binary128_t {
 
-/******************************************************************************/
-/** SHA1 hash POD type (no constructors, no destructors)
+      constexpr md5hash_t() = default ;
+      explicit constexpr md5hash_t(const binary128_t &src) : binary128_t(src) {}
+      explicit md5hash_t(const char *hexstr) : binary128_t(hexstr) {}
+
+      constexpr size_t hash() const { return _idata[0] ^ _idata[1] ; }
+} ;
+
+/***************************************************************************//**
+ SHA1 hash
 *******************************************************************************/
-struct sha1hash_pod_t {
+struct sha1hash_t {
 
-      constexpr sha1hash_pod_t() : _idata() {}
+      constexpr sha1hash_t() : _idata() {}
+
+      /// Create a hash from a hex string representation.
+      /// @note @a hexstr need not be null-terminated, the constructor will scan at most
+      /// 40 characters, or until '\0' encountered, whatever comes first.
+      explicit sha1hash_t(const char *hexstr)
+      {
+         if (!hextob(_idata, sizeof _idata, hexstr))
+            _idata[4] = _idata[3] = _idata[2] = _idata[1] = _idata[0] = 0 ;
+      }
 
       /// Check helper.
       explicit constexpr operator bool() const
@@ -496,55 +529,34 @@ struct sha1hash_pod_t {
 
       _PCOMNEXP std::string to_string() const ;
 
-      friend bool operator==(const sha1hash_pod_t &l, const sha1hash_pod_t &r)
+      friend bool operator==(const sha1hash_t &l, const sha1hash_t &r)
       {
          return !memcmp(l._idata, r._idata, sizeof l._idata) ;
       }
 
-      friend bool operator<(const sha1hash_pod_t &l, const sha1hash_pod_t &r)
+      friend bool operator<(const sha1hash_t &l, const sha1hash_t &r)
       {
          return memcmp(l._idata, r._idata, sizeof l._idata) < 0 ;
       }
 
-      size_t hash() const
-      {
-         return ((uint64_t)_idata[3] << 32) | (uint64_t)_idata[4] ;
-      }
-
-   protected:
-      void init() { _idata[4] = _idata[3] = _idata[2] = _idata[1] = _idata[0] = 0 ; }
-      void init(const char *hexstr)
-      {
-         init() ;
-         uint32_t idata[5] ;
-         if (hextob(idata, sizeof idata, hexstr))
-         {
-            _idata[0] = idata[0] ;
-            _idata[1] = idata[1] ;
-            _idata[2] = idata[2] ;
-            _idata[3] = idata[3] ;
-            _idata[4] = idata[4] ;
-         }
-      }
+      constexpr size_t hash() const { return ((uint64_t)_idata[3] << 32) | (uint64_t)_idata[4] ; }
 
    private:
       uint32_t _idata[5] ;
 } ;
 
-PCOMN_STATIC_CHECK(sizeof(sha1hash_pod_t) == 20) ;
+PCOMN_STATIC_CHECK(sizeof(sha1hash_t) == 20) ;
 
-// Define !=, >, <=, >= for sha1hash_pod_t
-PCOMN_DEFINE_RELOP_FUNCTIONS(, sha1hash_pod_t) ;
+// Define !=, >, <=, >= for sha1hash_t
+PCOMN_DEFINE_RELOP_FUNCTIONS(, sha1hash_t) ;
 
-/******************************************************************************/
-/** MD5 hash (has constructors)
+/***************************************************************************//**
+ Backward compatibility typedefs
 *******************************************************************************/
-typedef crypthash<md5hash_pod_t> md5hash_t ;
-
-/******************************************************************************/
-/** SHA1 hash non-POD (has constructors)
-*******************************************************************************/
-typedef crypthash<sha1hash_pod_t> sha1hash_t ;
+/**{@*/
+typedef md5hash_t  md5hash_pod_t ;
+typedef sha1hash_t sha1hash_pod_t ;
+/**}@*/
 
 /*******************************************************************************
 
@@ -828,7 +840,7 @@ inline size_t hash_sequence(std::initializer_list<T> s) { return hash_sequence(s
  ostream
 *******************************************************************************/
 std::ostream &operator<<(std::ostream &, const binary128_t &) ;
-std::ostream &operator<<(std::ostream &, const sha1hash_pod_t &) ;
+std::ostream &operator<<(std::ostream &, const sha1hash_t &) ;
 
 } // end of namespace pcomn
 
@@ -836,12 +848,9 @@ namespace std {
 /*******************************************************************************
  std::hash specializations for cryptohashes
 *******************************************************************************/
-template<> struct hash<pcomn::binary128_t>    : pcomn::hash_fn_member<pcomn::binary128_t> {} ;
-template<> struct hash<pcomn::md5hash_pod_t>  : pcomn::hash_fn_member<pcomn::md5hash_pod_t> {} ;
-template<> struct hash<pcomn::sha1hash_pod_t> : pcomn::hash_fn_member<pcomn::sha1hash_pod_t> {} ;
-
-template<typename T>
-struct hash<pcomn::crypthash<T> > : public hash<T> {} ;
+template<> struct hash<pcomn::binary128_t>: pcomn::hash_fn_member<pcomn::binary128_t> {} ;
+template<> struct hash<pcomn::md5hash_t>  : pcomn::hash_fn_member<pcomn::md5hash_t> {} ;
+template<> struct hash<pcomn::sha1hash_t> : pcomn::hash_fn_member<pcomn::sha1hash_t> {} ;
 }
 
 #endif /* __cplusplus */
