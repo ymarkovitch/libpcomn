@@ -734,14 +734,16 @@ template<> struct hash_fn<bool> { size_t operator()(bool v) const { return v ; }
 template<> struct hash_fn<double> {
       size_t operator()(double value) const
       {
-         return hash_64(*reinterpret_cast<uint64_t *>(&value)) ;
+         union { double _ ; uint64_t value ; } _ {value} ;
+         return hash_64(_.value) ;
       }
 } ;
 
 template<> struct hash_fn<void *> {
       size_t operator()(const void *value) const
       {
-         return hash_64(*reinterpret_cast<uint64_t *>(&value)) ;
+         union { const void * _ ; uint64_t value ; } _ {value} ;
+         return hash_64(_.value) ;
       }
 } ;
 
