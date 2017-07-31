@@ -692,6 +692,9 @@ struct assertion_traits<T &> : assertion_traits<T> {} ;
 template<typename T>
 struct assertion_traits<const T> : assertion_traits<T> {} ;
 
+template<typename T>
+struct assertion_traits<std::reference_wrapper<T>> : assertion_traits<T> {} ;
+
 struct stringify_item {
       stringify_item(std::string &result, char delimiter) :
          _result(result), _delimiter(delimiter), _count(0)
