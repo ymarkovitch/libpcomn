@@ -270,7 +270,8 @@ template<typename T, typename S>
 enable_if_string__t<S, void> assertNotEquals(const T &left, const T &right,
                                              S &&expr, const SourceLine &line)
 {
-   if (left != right)
+
+   if (!assertion_traits<T>::equal(left, right))
       return ;
    const std::string leftrepr(CppUnit::assertion_traits<T>::toString(left)) ;
    const std::string rightrepr(CppUnit::assertion_traits<T>::toString(right)) ;
