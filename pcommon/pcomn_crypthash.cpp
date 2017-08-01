@@ -146,9 +146,14 @@ static inline V &calc_hash_file(F calc, int fd, size_t *size, RaiseError raise_e
 /*******************************************************************************
  binary128_t
 *******************************************************************************/
-std::string binary128_t::to_string() const { return b2a_hex(data(), sizeof _idata) ; }
+std::string binary128_t::to_string() const { return b2a_hex(data(), size()) ; }
 
-char *binary128_t::to_strbuf(char *buf) const { return b2a_hex(data(), sizeof _idata, buf) ; }
+char *binary128_t::to_strbuf(char *buf) const
+{
+   b2a_hex(data(), size(), buf) ;
+   buf[slen()] = 0 ;
+   return buf ;
+}
 
 /*******************************************************************************
  md5hash_t
@@ -252,8 +257,8 @@ std::ostream &operator<<(std::ostream &os, const sha1hash_t &v)
 
 std::ostream &operator<<(std::ostream &os, const binary128_t &v)
 {
-   char buf[64] ;
-   return os.write(buf, v.to_strbuf(buf) - buf) ;
+   char buf[binary128_t::slen() + 1] ;
+   return os.write(v.to_strbuf(buf), binary128_t::slen()) ;
 }
 
 } // namespace pcomn

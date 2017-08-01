@@ -141,9 +141,17 @@ void UUIDFixture::Test_Cast128()
 
    const uuid const_uuid  ("007ac10b-58cc-4372-a567-0e02b2c3d478") ;
    const binary128_t &const_bin {const_uuid} ;
+   char buf[64] ;
+   std::fill_n(buf, sizeof buf, 'A') ;
 
    CPPUNIT_LOG_EQ(mutable_uuid.to_string(), "f47ac10b-58cc-4372-a567-0e02b2c3d479") ;
    CPPUNIT_LOG_EQ(mutable_bin.to_string(),  "f47ac10b58cc4372a5670e02b2c3d479") ;
+
+   std::fill_n(buf + 0, sizeof buf, 'A') ;
+   CPPUNIT_LOG_EQ(strslice(mutable_uuid.to_strbuf(buf)), "f47ac10b-58cc-4372-a567-0e02b2c3d479") ;
+   std::fill_n(buf + 0, sizeof buf, 'A') ;
+   CPPUNIT_LOG_EQ(strslice(mutable_bin.to_strbuf(buf)), "f47ac10b58cc4372a5670e02b2c3d479") ;
+
    CPPUNIT_LOG_EQ(string_cast(mutable_uuid),"f47ac10b-58cc-4372-a567-0e02b2c3d479") ;
    CPPUNIT_LOG_EQ(string_cast(mutable_bin), "f47ac10b58cc4372a5670e02b2c3d479") ;
 
