@@ -99,6 +99,25 @@ macro(print_all_variables)
 endmacro(print_all_variables)
 
 ################################################################################
+# Adds generated file target <target> by copying <source> file to the <target> file
+# and substituting variable values referenced as @VAR@ in the input file content.
+#
+# Each variable reference will be replaced with the current value of the variable,
+# or the empty string if the variable is not defined.
+#
+# The path to the <source> is relative to CMAKE_CURRENT_SOURCE_DIR.
+# The path to the <target> is relative to CMAKE_CURRENT_BINARY_DIR.
+################################################################################
+function(add_configured_file target source)
+    add_custom_command(OUTPUT ${target}
+        MAIN_DEPENDENCY "${CMAKE_CURRENT_SOURCE_DIR}/${source}"
+        COMMAND ${CMAKE_COMMAND} -P /dev/stdin "<<<'configure_file(${source} ${CMAKE_CURRENT_BINARY_DIR}/${target} @ONLY)'"
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+
+    add_custom_target(${target}.configured SOURCES ${target})
+endfunction()
+
+################################################################################
 # CMake does not allow linking OBJECT libraries for usage requirements
 ################################################################################
 function(target_requirements target depends_on)
