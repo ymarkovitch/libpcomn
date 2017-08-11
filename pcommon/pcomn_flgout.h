@@ -119,7 +119,7 @@ std::basic_ostream<C> &oflags::out(std::basic_ostream<C> &os) const
 /******************************************************************************/
 /** Names of enum values.
 *******************************************************************************/
-template<typename Enum, nullptr_t = nullptr> struct enum_names ;
+template<typename Enum, std::nullptr_t = nullptr> struct enum_names ;
 
 template<typename Enum>
 const char *enum_name(Enum value)
@@ -170,10 +170,10 @@ std::string enum_string(Enum value)
 *******************************************************************************/
 #define PCOMN_STARTDEF_ENUM_ELEMENTS(Enum)                              \
    namespace pcomn {                                                    \
-   template<nullptr_t dummy>                                            \
+   template<std::nullptr_t dummy>                                       \
    struct enum_names< Enum, dummy>                                      \
    { static const std::pair<const char *, Enum> values[] ; } ;          \
-   template<nullptr_t dummy>                                            \
+   template<std::nullptr_t dummy>                                            \
    const std::pair<const char *, Enum> enum_names< Enum, dummy>::values[] = {
 
 #define PCOMN_ENUM_ELEMENT(ns, value) {#value, ns::value}
