@@ -71,6 +71,13 @@ inline Container make_container(T (&source)[N], UnaryOperation &&xform)
    return make_container<Container>(source + 0, source + N, std::forward<UnaryOperation>(xform)) ;
 }
 
+template<class Container, typename Source>
+inline Container make_container(Source &&source)
+{
+   return Container(std::begin(std::forward<Source>(source)),
+                    std::end(std::forward<Source>(source))) ;
+}
+
 /*******************************************************************************
  Get a value from the keyed container
 *******************************************************************************/
@@ -301,15 +308,13 @@ inline std::vector<T> &unique_sort(std::vector<T> &v, BinaryPredicate &&pred)
 template<typename T>
 inline std::vector<T> &&unique_sort(std::vector<T> &&v)
 {
-   return std::move<std::vector<T>>
-      (unique_sort(static_cast<std::vector<T> &>(v))) ;
+   return std::move(unique_sort(static_cast<std::vector<T> &>(v))) ;
 }
 
 template<typename T, typename BinaryPredicate>
 inline std::vector<T> &&unique_sort(std::vector<T> &&v, BinaryPredicate &&pred)
 {
-   return std::move<std::vector<T>>
-      (unique_sort(static_cast<std::vector<T> &>(v), std::forward<BinaryPredicate>(pred))) ;
+   return std::move(unique_sort(static_cast<std::vector<T> &>(v), std::forward<BinaryPredicate>(pred))) ;
 }
 
 /*******************************************************************************
