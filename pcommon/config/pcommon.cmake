@@ -129,6 +129,41 @@ function(target_requirements target depends_on)
 endfunction(target_requirements)
 
 ################################################################################
+# Recursively get interface libraries
+################################################################################
+function(_get_interface_libraries target)
+
+    set_global(_gil_visited ${_gil_visited} ${target})
+
+    get_target_property(interface_libraries ${target} INTERFACE_LINK_LIBRARIES)
+    if (NOT interface_libraries)
+        return()
+    endif()
+
+    foreach(lib ${interface_libraries})
+        if (NOT ("${lib}" IN_LIST _gil_visited))
+            set_global(_gil_result ${_gil_result} ${lib})
+            if (TARGET ${lib})
+                _get_interface_libraries(${lib})
+            endif()
+        endif()
+    endforeach()
+endfunction()
+
+macro(get_interface_libraries result target1)
+    set_global(_gil_visited)
+    set_global(_gil_result)
+    foreach(target ${target1} ${ARGN})
+        if ((NOT TARGET ${target}) OR ("${target}" IN_LIST _gil_visited))
+            continue()
+        endif()
+        _get_interface_libraries(${target})
+    endforeach()
+    list(REMOVE_ITEM _gil_result "-Wl,--whole-archive" "-Wl,--no-whole-archive")
+    set(${result} ${_gil_result})
+endmacro()
+
+################################################################################
 #
 # Global variables
 #
@@ -262,9 +297,8 @@ function(unittest name)
 
   # All unittests depend on pcommon and cppunit libraries
   target_link_libraries(${name} PRIVATE pcommon cppunit)
-  apply_project_requirements(${name})
+  apply_project_requirements(${name} LIBS ${PCOMN_UNITTEST_LIBS})
 
-  target_link_libraries     (${name} PRIVATE ${PCOMN_UNITTEST_LIBS})
   target_compile_options    (${name} PRIVATE ${PCOMN_UNITTEST_OPTS})
   target_compile_definitions(${name} PRIVATE ${PCOMN_UNITTEST_DEFS} -DCPPUNIT_USE_TYPEINFO_NAME)
 
@@ -355,20 +389,30 @@ endfunction(add_adhoc_executable)
 ################################################################################
 #
 function(set_project_link_libraries)
-  if (ARGC GREATER 0)
-    set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY PCOMN_PROJECT_LINK_LIBRARIES ${ARGN})
-  endif()
+    if (ARGC GREATER 0)
+        set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY PCOMN_PROJECT_LINK_LIBRARIES ${ARGN})
+    endif()
 endfunction(set_project_link_libraries)
 
 # Apply requirements specified by set_project_link_libraries
 function(apply_project_requirements target1)
-  set(targets ${target1} ${ARGN})
 
-  get_property(link_requirements DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY PCOMN_PROJECT_LINK_LIBRARIES)
+    cmake_parse_arguments(PARSE_ARGV 1
+        PCOMN_PROJREQ
+        "" # No options
+        "" # No one_value_keywords
+        "LIBS")
 
-  foreach(target IN LISTS targets)
-    target_link_libraries(${target} PRIVATE ${link_requirements})
-  endforeach()
+    set(targets ${target1} ${ARGN})
+
+    get_property(link_requirements DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY PCOMN_PROJECT_LINK_LIBRARIES)
+    set(libraries ${link_requirements} ${PCOMN_PROJREQ_LIBS})
+    get_interface_libraries(interface_libraries ${libraries})
+    list(APPEND libraries ${interface_libraries})
+
+    foreach(target IN LISTS target1 PCOMN_PROJREQ_UNPARSED_ARGUMENTS)
+        target_link_libraries(${target} PRIVATE -Wl,--start-group ${libraries} -Wl,--end-group)
+    endforeach()
 endfunction()
 
 #
