@@ -694,10 +694,10 @@ class omemstream : private std::basic_streambuf<char>, public std::ostream {
 template<typename T>
 __noinline
 disable_if_t<std::is_convertible<T, std::string>::value, std::string>
-string_cast(T &&arg)
+string_cast(const T &arg)
 {
    pcomn::omemstream os ;
-   os << std::forward<T>(arg) ;
+   os << arg ;
    return os.checkout() ;
 }
 
@@ -712,17 +712,17 @@ string_cast(T &&arg)
 inline std::ostream &print_values(std::ostream &os) { return os ; }
 
 template<typename T, typename... Tn>
-inline std::ostream &print_values(std::ostream &os, T &&a1, Tn &&...an)
+inline std::ostream &print_values(std::ostream &os, const T &a1, const Tn &...an)
 {
-   return print_values(os << std::forward<T>(a1), std::forward<Tn>(an)...) ;
+   return print_values(os << a1, an...) ;
 }
 
 template<typename T1, typename T2, typename... Tn>
 __noinline
-std::string string_cast(T1 &&a1, T2 &&a2, Tn &&...an)
+std::string string_cast(const T1 &a1, const T2 &a2, const Tn &...an)
 {
    pcomn::omemstream os ;
-   print_values(os, std::forward<T1>(a1), std::forward<T2>(a2), std::forward<Tn>(an)...) ;
+   print_values(os, a1, a2, an...) ;
    return os.checkout() ;
 }
 
