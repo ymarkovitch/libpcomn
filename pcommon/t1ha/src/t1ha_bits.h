@@ -40,6 +40,8 @@
  * for The 1Hippeus project - zerocopy messaging in the spirit of Sparta!
  */
 
+#define T1HA_USE_FAST_ONESHOT_READ 0
+
 #ifndef T1HA_USE_FAST_ONESHOT_READ
 
 /* Define it to 1 for little bit faster code.

@@ -48,7 +48,7 @@
  @param lock_expr       The expression that should return PTScopeGuard<T> value.
 *******************************************************************************/
 #define PCOMN_SCOPE_LOCK(guard_varname, lock_expr, ...)                 \
-   std::lock_guard<typename std::remove_reference<decltype((lock_expr))>::type> guard_varname ((lock_expr), ##__VA_ARGS__)
+   const std::lock_guard<typename std::remove_reference<decltype((lock_expr))>::type> guard_varname ((lock_expr), ##__VA_ARGS__)
 
 #define PCOMN_SCOPE_XLOCK(guard_varname, lock_expr, ...)                 \
    std::unique_lock<typename std::remove_reference<decltype((lock_expr))>::type> guard_varname ((lock_expr), ##__VA_ARGS__)
