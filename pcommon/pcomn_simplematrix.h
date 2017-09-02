@@ -960,15 +960,13 @@ class simple_matrix : matrix_internal_storage<T, resizable>, public matrix_slice
 
 PCOMN_DEFINE_SWAP(simple_matrix<P_PASS(T, r)>, template<typename T, bool r>) ;
 
-/******************************************************************************/
-/** Movable, non-copyable sorted set of trivially copyable items
-
+/***************************************************************************//**
+ Movable, non-copyable sorted set of trivially copyable items.
  Avoids dynamic allocation in the single-item case.
 *******************************************************************************/
 template<typename T>
 class trivial_set {
       static_assert(std::is_trivially_copyable<T>::value, "trivial_set<> item type must be trivially copyable, but is not") ;
-
       typedef pcomn::simple_slice<T> value_set ;
    public:
       typedef T value_type ;
@@ -1055,6 +1053,7 @@ class trivial_set {
       value_type _item_single ;
       value_set  _item_set ;
 
+   private:
       template<typename ForwardIterator>
       void construct(ForwardIterator b, ForwardIterator e, std::true_type)
       {
