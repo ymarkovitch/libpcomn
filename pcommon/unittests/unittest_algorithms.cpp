@@ -16,6 +16,9 @@
 
 #include <vector>
 #include <map>
+#include <set>
+#include <unordered_map>
+#include <unordered_set>
 
 /*******************************************************************************
                      class AlgorithmsTests
@@ -38,11 +41,13 @@ class CAlgorithmsTests : public CppUnit::TestFixture {
    private:
       void Test_OSequence() ;
       void Test_MakeContainer() ;
+      void Test_GetKeyedValue() ;
 
       CPPUNIT_TEST_SUITE(CAlgorithmsTests) ;
 
       CPPUNIT_TEST(Test_OSequence) ;
       CPPUNIT_TEST(Test_MakeContainer) ;
+      CPPUNIT_TEST(Test_GetKeyedValue) ;
 
       CPPUNIT_TEST_SUITE_END() ;
    protected:
@@ -120,6 +125,50 @@ void CAlgorithmsTests::Test_MakeContainer()
 
    CPPUNIT_LOG_EQUAL(make_container<std::vector<unsigned>>(std::begin(v1), std::end(v1), std::bind(std::plus<int>(), _1, 10)),
                      (std::vector<unsigned>{12, 14, 16})) ;
+}
+
+void CAlgorithmsTests::Test_GetKeyedValue()
+{
+   using namespace pcomn ;
+
+   const std::set<int> iset_0 ;
+   const std::set<int> iset_1 {-5, 12, 1} ;
+
+   CPPUNIT_LOG_EQUAL(get_keyed_value(iset_0, 1), 0) ;
+   CPPUNIT_LOG_EQUAL(get_keyed_value(iset_0, 0), 0) ;
+   CPPUNIT_LOG_EQUAL(get_keyed_value(iset_0, 0, 20), 20) ;
+
+   CPPUNIT_LOG_EQUAL(get_keyed_value(iset_1, 1), 1) ;
+   CPPUNIT_LOG_EQUAL(get_keyed_value(iset_1, 1, 20), 1) ;
+   CPPUNIT_LOG_EQUAL(get_keyed_value(iset_1, -1, 20), 20) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   const std::set<std::string> sset_0 ;
+   const std::set<std::string> sset_1 {"", "hello", "world"} ;
+
+   CPPUNIT_LOG_EQUAL(get_keyed_value(sset_0, " "), std::string()) ;
+   CPPUNIT_LOG_EQUAL(get_keyed_value(sset_0, ""), std::string()) ;
+   CPPUNIT_LOG_EQUAL(get_keyed_value(sset_0, "", "bye"), std::string("bye")) ;
+
+   CPPUNIT_LOG_EQUAL(get_keyed_value(sset_1, " "), std::string()) ;
+   CPPUNIT_LOG_EQUAL(get_keyed_value(sset_1, " ", "bye"), std::string("bye")) ;
+   CPPUNIT_LOG_EQUAL(get_keyed_value(sset_1, "", "bye"), std::string()) ;
+   CPPUNIT_LOG_EQUAL(get_keyed_value(sset_1, "hello", "bye"), std::string("hello")) ;
+   CPPUNIT_LOG_EQUAL(get_keyed_value(sset_1, "world"), std::string("world")) ;
+
+   std::map<std::string, std::string> smap_1 {{"hello", "world"}, {"bye", "baby"}} ;
+
+   CPPUNIT_LOG_EQUAL(get_keyed_value(smap_1, " "), std::string()) ;
+   CPPUNIT_LOG_EQUAL(get_keyed_value(smap_1, " ", "foo"), std::string("foo")) ;
+   CPPUNIT_LOG_EQUAL(get_keyed_value(smap_1, "hello", "bye"), std::string("world")) ;
+   CPPUNIT_LOG_EQUAL(get_keyed_value(smap_1, "hello"), std::string("world")) ;
+   CPPUNIT_LOG_EQ(smap_1.count("bye"), 1) ;
+
+   std::string value ;
+   CPPUNIT_LOG_ASSERT(erase_keyed_value(smap_1, "bye", value)) ;
+   CPPUNIT_LOG_EQUAL(value, std::string("baby")) ;
+   CPPUNIT_LOG_EQ(smap_1.count("bye"), 0) ;
 }
 
 int main(int argc, char *argv[])

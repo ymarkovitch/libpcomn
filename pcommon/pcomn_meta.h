@@ -302,8 +302,8 @@ constexpr inline T fold_bitor(T a1, T a2, TN ...aN)
 *******************************************************************************/
 template<typename T> struct identity_type { typedef T type ; } ;
 
-/******************************************************************************/
-/** Provides globally placed default-constructed value of its parameter type.
+/***************************************************************************//**
+ Provides globally placed default-constructed value of its parameter type.
 *******************************************************************************/
 template<typename T>
 struct default_constructed {

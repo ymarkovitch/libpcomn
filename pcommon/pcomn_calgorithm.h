@@ -81,42 +81,39 @@ inline Container make_container(Source &&source)
 /*******************************************************************************
  Get a value from the keyed container
 *******************************************************************************/
-template<class KeyedContainer, typename Key>
-inline bool find_keyed_value(const KeyedContainer &c, Key &&key,
-                             typename KeyedContainer::mapped_type &result)
+template<class Map, typename Key>
+inline bool find_keyed_value(const Map &c, Key &&key, typename Map::mapped_type &result)
 {
-   const typename KeyedContainer::const_iterator i (c.find(std::forward<Key>(key))) ;
+   const auto i (c.find(std::forward<Key>(key))) ;
    if (i == c.end())
       return false ;
    result = i->second ;
    return true ;
 }
 
-template<class KeyedContainer, typename Key>
-inline const typename KeyedContainer::mapped_type &
-get_keyed_value(const KeyedContainer &c, Key &&key,
-                const typename KeyedContainer::mapped_type &defval = typename KeyedContainer::mapped_type())
+template<class Map, typename Key>
+inline const typename Map::mapped_type &
+get_keyed_value(const Map &c, Key &&key,
+                const typename Map::mapped_type &defval = default_constructed<typename Map::mapped_type>::value)
 {
-   const typename KeyedContainer::const_iterator i (c.find(std::forward<Key>(key))) ;
+   const auto i (c.find(std::forward<Key>(key))) ;
    return i == c.end() ? defval : i->second ;
 }
 
 template<class Set, typename Key,
-         typename C = typename Set::key_compare, typename = typename C::is_transparent>
-inline const typename Set::key_type &
+         typename C = typename Set::key_compare, typename K = typename Set::key_type>
+inline std::enable_if_t<std::is_same<K, typename Set::value_type>::value, const K> &
 get_keyed_value(const Set &c, Key &&key,
-                const typename Set::key_type &defval = typename Set::key_type())
+                const typename Set::key_type &defval = default_constructed<typename Set::key_type>::value)
 {
-   const typename Set::const_iterator i (c.find(std::forward<Key>(key))) ;
+   const auto i (c.find(std::forward<Key>(key))) ;
    return i == c.end() ? defval : *i ;
 }
 
-template<class KeyedContainer>
-inline bool erase_keyed_value(KeyedContainer &c,
-                              const typename KeyedContainer::key_type &key,
-                              typename KeyedContainer::mapped_type &result)
+template<class Map, typename Key>
+inline bool erase_keyed_value(Map &c, Key &&key, typename Map::mapped_type &result)
 {
-   const typename KeyedContainer::iterator i (c.find(key)) ;
+   const auto i (c.find(std::forward<Key>(key))) ;
    if (i == c.end())
       return false ;
    result = std::move(i->second) ;
