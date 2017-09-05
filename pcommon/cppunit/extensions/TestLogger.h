@@ -331,17 +331,33 @@ struct Logger {
       static std::ostream &logStream() ;
       static SourceLine sourceLine(const char *file, int line) ;
    private:
-      static std::ostream *log ;
+      static std::ostream *         log ;
+      static std::ostream::fmtflags log_fmtflags ;
+      static unsigned               log_precision ;
+      static unsigned               log_width ;
 } ;
 
 template<X::nval n>
 std::ostream *Logger<n>::log = &std::cerr ;
 
 template<X::nval n>
+std::ostream::fmtflags Logger<n>::log_fmtflags = log->flags() ;
+template<X::nval n>
+unsigned Logger<n>::log_precision = log->precision() ;
+template<X::nval n>
+unsigned Logger<n>::log_width = log->width() ;
+
+template<X::nval n>
 std::ostream *Logger<n>::setLogStream(std::ostream *newlog)
 {
    std::ostream *result = log ;
    log = newlog ;
+   if (log)
+   {
+      log_fmtflags = log->flags() ;
+      log_precision = log->precision() ;
+      log_width = log->width() ;
+   }
    return result ;
 }
 
@@ -349,6 +365,12 @@ template<X::nval n>
 std::ostream &Logger<n>::logStream()
 {
    static std::ofstream nul ("/dev/nul") ;
+   if (log)
+   {
+      log->flags(log_fmtflags) ;
+      log->precision(log_precision) ;
+      log->width(log_width) ;
+   }
    return *(log ? log : static_cast<std::ostream *>(&nul)) ;
 }
 

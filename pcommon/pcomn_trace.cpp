@@ -220,6 +220,12 @@ struct trace_context {
          {
             os_ptr = new (static_cast<void *>(os_buf + 0)) trace_stream ;
             *os_ptr << std::boolalpha ;
+
+            // Store initial foramtting settings, restored every time
+            // PDiagBase::stream(true) is called.
+            os_fmtflags = os_ptr->flags() ;
+            os_precision = os_ptr->precision() ;
+            os_width = os_ptr->width() ;
          }
          return *os_ptr ;
       }
@@ -232,6 +238,9 @@ struct trace_context {
       char           os_buf[sizeof(trace_stream)] ; /* The buffer in which the _os stream is allocated by
                                                      * the "placement new" operator.
                                                      * Properly aligned (follows the os_ptr pointer). */
+      std::ios_base::fmtflags os_fmtflags ;
+      size_t                  os_precision ;
+      size_t                  os_width ;
 
       /*************************************************************************
        Global trace context
@@ -742,7 +751,12 @@ std::ostream &PDiagBase::stream(bool reset)
 {
    trace_stream &os = context.os() ;
    if (reset)
+   {
       os.reset() ;
+      os.flags(context.os_fmtflags) ;
+      os.precision(context.os_precision) ;
+      os.width(context.os_width) ;
+   }
    return os ;
 }
 

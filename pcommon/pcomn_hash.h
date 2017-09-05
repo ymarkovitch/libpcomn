@@ -382,7 +382,8 @@ struct crypthash : T {
 struct binary128_t {
 
       constexpr binary128_t() : _idata() {}
-      constexpr binary128_t(uint64_t h1, uint64_t h2) : _idata{be(h1), be(h2)} {}
+      constexpr binary128_t(uint64_t hi, uint64_t lo) : _idata{be(hi), be(lo)} {}
+
       constexpr binary128_t(uint16_t h1, uint16_t h2, uint16_t h3, uint16_t h4,
                             uint16_t h5, uint16_t h6, uint16_t h7, uint16_t h8) :
          _hdata{be(h1), be(h2), be(h3), be(h4), be(h5), be(h6), be(h7), be(h8)}
