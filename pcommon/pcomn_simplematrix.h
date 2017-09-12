@@ -438,6 +438,12 @@ class static_vector {
 
       void clear() { _size = 0 ; }
 
+      void resize(size_t newsize)
+      {
+         NOXPRECONDITION(newsize <= size()) ;
+         _size = std::min(newsize, _size) ;
+      }
+
       void swap(static_vector &vec)
       {
          size_t len = std::max(size(), vec.size()) ;

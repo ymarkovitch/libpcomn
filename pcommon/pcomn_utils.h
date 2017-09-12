@@ -488,6 +488,9 @@ class bufstr_ostream : private std::basic_streambuf<char>, public std::ostream {
       const char *str() const { return _buffer ; }
       char *str() { return _buffer ; }
 
+      const char *begin() const { return this->pbase() ; }
+      const char *end() const { return this->pptr() ; }
+
       bufstr_ostream &reset()
       {
          clear() ;
@@ -521,6 +524,8 @@ class bufstr_ostream<0> : private std::basic_streambuf<char>, public std::ostrea
       /// Get the pouinter to internal buffer memory
       const char *str() const { return _buffer ; }
       char *str() { return _buffer ; }
+      const char *begin() const { return this->pbase() ; }
+      const char *end() const { return this->pptr() ; }
 
       bufstr_ostream &reset()
       {
