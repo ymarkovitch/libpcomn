@@ -94,7 +94,8 @@ add_library(pcommon STATIC
   $<$<NOT:$<PLATFORM_ID:Windows>>:
   pcomn_crypthash
   unix/pcomn_posix_exec.cpp
-  unix/pcomn_shutil.cpp>
+  unix/pcomn_shutil.cpp
+  unix/pcomn_stacktrace.cpp>
 )
 
 # At least C++11
