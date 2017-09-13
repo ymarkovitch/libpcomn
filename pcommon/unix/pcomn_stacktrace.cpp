@@ -126,6 +126,13 @@ __noinline stack_trace::stack_trace(void *from, size_t maxdepth)
     _begin = _stacktrace.begin() + std::min(_skip,  _stacktrace.size()) ;
 }
 
+stack_trace::stack_trace(const stack_trace &other) :
+    _thread_id(other._thread_id),
+    _skip(other._skip),
+    _stacktrace(other._stacktrace),
+    _begin(_stacktrace.begin() + (other._begin - other.begin()))
+{}
+
 void stack_trace::load_thread_info()
 {
     const size_t id = syscall(SYS_gettid) ;
@@ -377,22 +384,18 @@ resolved_frame &frame_resolver::resolve(resolved_frame &fframe)
 
             case DW_TAG_inlined_subroutine:
             {
-                resolved_frame::source_loc sloc;
-                Dwarf_Attribute attr_mem;
-                const char * const function_name = dwarf_diename(die) ;
-                const char * const filename = find_call_file(die) ;
+                if (fframe._inliners.size() == fframe._inliners.max_size())
+                    break ;
 
-                sloc.function = safe_strslice(function_name) ;
-                sloc.filename = safe_strslice(filename) ;
+                fframe._inliners.push_back({}) ;
+                resolved_frame::source_loc &location = fframe._inliners.back() ;
 
-                Dwarf_Word line = 0, col = 0 ;
-                dwarf_formudata(dwarf_attr(die, DW_AT_call_line, &attr_mem), &line) ;
-                dwarf_formudata(dwarf_attr(die, DW_AT_call_column, &attr_mem), &col) ;
-                sloc.line = line ;
-                sloc.col = col ;
-
-                fframe._inliners.push_back(sloc);
-                break;
+                Dwarf_Word line = 0 ;
+                fframe.init_member(location._function, safe_strslice(dwarf_diename(die))) ;
+                fframe.init_member(location._filename, safe_strslice(find_call_file(die))) ;
+                dwarf_formudata(dwarf_attr(die, DW_AT_call_line, &as_mutable(Dwarf_Attribute())), &line) ;
+                location._line = line ;
+                break ;
             }
         }
     }) ;
@@ -434,7 +437,7 @@ bool frame_resolver::depth_first_search_by_pc(Dwarf_Die *parent, Dwarf_Addr pc, 
 /*******************************************************************************
  Signal handler
 *******************************************************************************/
-coredump_handler coredump_handler::signal_handler ;
+//coredump_handler coredump_handler::signal_handler ;
 
 coredump_handler::coredump_handler()
 {

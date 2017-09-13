@@ -29,6 +29,17 @@
 #include <iostream>
 
 namespace pcomn {
+
+class stack_trace ;
+class resolved_frame ;
+class frame_resolver ;
+
+enum class StackFrameDetails {
+    FUNCTION,
+    LOCATION,
+    FULL
+} ;
+
 /***************************************************************************//**
  Object that stores the call stack trace.
 *******************************************************************************/
@@ -40,12 +51,7 @@ public:
     explicit stack_trace(void *addr, size_t depth = -1) ;
     explicit stack_trace(size_t depth = -1) : stack_trace(nullptr, depth) {}
 
-    stack_trace(const stack_trace &other) :
-        _thread_id(other._thread_id),
-        _skip(other._skip),
-        _stacktrace(other._stacktrace),
-        _begin(_stacktrace.begin() + (other._begin - other.begin()))
-    {}
+    stack_trace(const stack_trace &other) ;
 
     size_t size() const { return _stacktrace.end() - _begin ; }
 
@@ -55,6 +61,8 @@ public:
     unsigned thread_id() const { return _thread_id ; }
 
     constexpr static size_t maxdepth() { return _MAXDEPTH ; }
+
+    resolved_frame *resolve(resolved_frame *begin, resolved_frame *end) const ;
 
 private:
     size_t              _thread_id = 0 ;
@@ -76,11 +84,13 @@ private:
 class resolved_frame final {
     PCOMN_NONCOPYABLE(resolved_frame) ;
     PCOMN_NONASSIGNABLE(resolved_frame) ;
+    friend frame_resolver ;
 public:
     static const size_t NAMES_MAXMEM = 4*KiB ;
 
     struct source_loc {
         friend resolved_frame ;
+        friend frame_resolver ;
 
         constexpr source_loc() = default ;
 
@@ -97,13 +107,25 @@ public:
         unsigned _line = 0 ;
     } ;
 
+    /// Create an empty object with nullptr frame and empty source location (all names
+    /// are empty, line number is 0).
     resolved_frame() = default ;
-    resolved_frame(stack_trace::frame unresolved) ;
+
+    /// Resolve a frame for a specified program counter value.
+    ///
+    /// If @a pc is valid (points inside the code of some function), at least
+    /// object_function() will be resolved.
+    ///
+    /// @note It is safe to pass invalid PC, including NULL.
+    ///
+    resolved_frame(stack_trace::frame pc) ;
 
     stack_trace::frame frame() const { return _frame ; }
     const strslice &object_filename() const { return _object_filename ; }
     const strslice &object_function() const { return _object_function ; }
     const source_loc &source() const { return _source ; }
+
+    bool is_resolved() const { return !!object_function() ; }
 
     explicit operator bool() const { return !!frame() ; }
 
