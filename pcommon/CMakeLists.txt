@@ -19,36 +19,55 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} CACHE PATH "")
 
 include(pcommon)
 
-set(UNITTESTS ON CACHE BOOL "Enable unittests building. Requires CPPUntit.")
+set(UNITTESTS       ON  CACHE BOOL "Enable unittests building. Requires CPPUntit.")
+set(WITH_STACKTRACE OFF CACHE BOOL "Enable stacktrace classes. Linux-only. Requires libunwind and libdw.")
 
 message("***** Processing ${PROJECT_NAME} *****")
 
-if (NOT UNIX)
-  if (NOT ZLIB_INCLUDE_DIR)
-    find_package(ZLIB)
-  endif()
-  if (NOT ZLIB_INCLUDE_DIR)
-    messsage(FATAL_ERROR "ZLib include path is not found. Please specify -DZLIB_INCLUDE_DIR manually.")
-  endif()
-else()
-  find_package(OpenSSL)
-  if (NOT OPENSSL_INCLUDE_DIR)
-    message(FATAL_ERROR "OpenSSL library include files are not found. Please install OpenSSL development library.")
-  endif()
+if (WITH_STACKTRACE AND (NOT CMAKE_SYSTEM_NAME STREQUAL "Linux"))
+    message(FATAL_ERROR "WITH_STACKTRACE=ON is supported only for Linux platform.")
 endif()
 
 if (${CMAKE_GENERATOR} MATCHES ".*Visual Studio.*")
-
-  if (NOT "${CMAKE_GENERATOR_PLATFORM}" STREQUAL "x64")
-    message(FATAL_ERROR "32-bit compilation is not supported. Please specify -DCMAKE_GENERATOR_PLATFORM=x64")
-  endif()
-
-  set(COMPILE_LANGUAGE_CXX "1:1")
+    if (NOT "${CMAKE_GENERATOR_PLATFORM}" STREQUAL "x64")
+        message(FATAL_ERROR "32-bit compilation is not supported. Please specify -DCMAKE_GENERATOR_PLATFORM=x64")
+    endif()
+    set(COMPILE_LANGUAGE_CXX "1:1")
 else()
-  set(COMPILE_LANGUAGE_CXX "COMPILE_LANGUAGE:CXX")
+    set(COMPILE_LANGUAGE_CXX "COMPILE_LANGUAGE:CXX")
 endif()
 
+if (NOT UNIX)
+    if (NOT ZLIB_INCLUDE_DIR)
+        find_package(ZLIB)
+    endif()
+    if (NOT ZLIB_INCLUDE_DIR)
+        messsage(FATAL_ERROR "ZLib include path is not found. Please specify -DZLIB_INCLUDE_DIR manually.")
+    endif()
+else()
+    find_package(OpenSSL)
+    if (NOT OPENSSL_INCLUDE_DIR)
+        message(FATAL_ERROR "OpenSSL library include files are not found. Please install OpenSSL development library.")
+    endif()
+endif()
+
+function(find_required_package package_name package_checkvar)
+    find_package(${package_name} REQUIRED)
+    if (NOT ${package_checkvar})
+        message(FATAL_ERROR
+            "\n${package_name} library, which is required for stack trace, is not found.\n"
+            "You probably need to install ${package_name}-devel or ${package_name}-dev package.\n")
+    endif()
+endfunction()
+
+if (WITH_STACKTRACE)
+    find_required_package(libunwind LIBUNWIND_FOUND)
+    find_required_package(libdw     LIBDW_FOUND)
+endif()
+
+################################################################################
 # Platform sources subdirectory
+################################################################################
 if (UNIX)
   set(PLATFORM_SOURCES unix)
 else()
@@ -95,7 +114,7 @@ add_library(pcommon STATIC
   pcomn_crypthash
   unix/pcomn_posix_exec.cpp
   unix/pcomn_shutil.cpp
-  #unix/pcomn_stacktrace.cpp
+  $<$<BOOL:WITH_STACKTRACE>:unix/pcomn_stacktrace.cpp>
   >
 )
 
@@ -153,6 +172,7 @@ target_compile_options(pcommon
 target_link_libraries(pcommon
   PUBLIC
   $<$<OR:$<PLATFORM_ID:Linux>,$<PLATFORM_ID:Cygwin>,$<PLATFORM_ID:MinGW>>:-pthread>
+  $<$<BOOL:WITH_STACKTRACE>:unwind dw>
   )
 
 if (${UNITTESTS})
