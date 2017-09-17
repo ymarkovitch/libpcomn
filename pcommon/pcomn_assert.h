@@ -152,46 +152,66 @@ PCOMN_CFUNC void __passertfail(const char *fmt, const char *msg, const char *fil
 #  define __pcomn_assert_fail__(fmt, msg, file, line) (__passertfail((fmt), (msg), (file), (line)))
 #endif
 
-#if defined(__PCOMN_DEBUG)
+#define IsDebuggerPresent() (0)
+#deifne DebugBreak() ((void)0)
 
 #if defined(PCOMN_PL_WINDOWS)
 
-/* Damn! Borland C++ Builder has broken wtypes.h */
-#ifdef PCOMN_COMPILER_BORLAND
-#include <rpc.h>
-#include <rpcndr.h>
-#endif
+#undef IsDebuggerPresent() (0)
+#undef DebugBreak() ((void)0)
 
-#include <wtypes.h>
-#ifdef __cplusplus
+#  include <wtypes.h>
+#  ifdef __cplusplus
 extern "C" {
-#endif
-DECLSPEC_IMPORT BOOL WINAPI IsDebuggerPresent() ;
-DECLSPEC_IMPORT void WINAPI DebugBreak(void) ;
-#ifdef __cplusplus
+#  endif
+   DECLSPEC_IMPORT BOOL WINAPI IsDebuggerPresent() ;
+   DECLSPEC_IMPORT void WINAPI DebugBreak(void) ;
+#  ifdef __cplusplus
 }
-#endif
+#  endif
 
-#elif defined(PCOMN_PL_LINUX) && defined(PCOMN_PL_X86)
+// end of PCOMN_PL_WINDOWS
+#elif defined(PCOMN_PL_LINUX)
+
 #include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
-#define IsDebuggerPresent() (!!getenv("PCOMN_DEBUGGING"))
-static inline void DebugBreak() { __asm__("int3") ; }
-
+#ifdef __cplusplus
+template<bool> bool IsDebuggerPresent_() noexcept ;
+#define IsDebuggerPresent() (IsDebuggerPresent_<true>())
+template<bool>
+__noinline bool IsDebuggerPresent_() noexcept
 #else
+static __noinline int IsDebuggerPresent()
+#endif
+{
+    static const char TRACERPID[] = "TracerPid:" ;
+    char buf[256] ;
+    int fd ;
 
-#  define __pcomn_debug_fail__(fmt, msg, file, line) __pcomn_assert_fail__((fmt), (msg), (file), (line))
+    memset(buf, 0, sizeof buf) ;
+    if ((fd = open("/proc/self/status", O_RDONLY)) >= 0)
+    {
+       read(fd, buf, sizeof buf - 1) ;
+       close(fd) ;
+    }
+    const char *tracepid = strstr(buf, TRACERPID) ;
 
-#endif /* End of __PCOMN_DEBUG && PCOMN_PL_WINDOWS */
+    return tracepid && atoll(tracepid + strlen(TRACERPID)) > 0 ;
+}
+
+#  ifdef PCOMN_PL_X86
+   static __inline void DebugBreak() { __asm__("int3") ; }
+#  else
+#  deifne DebugBreak() ((void)0)
+#  endif
+
+// end of PCOMN_PL_LINUX
+#endif
 
 #define __pcomn_debug_fail__(fmt, msg, file, line) \
    (IsDebuggerPresent() ? DebugBreak() : (__pcomn_assert_fail__((fmt), (msg), (file), (line))))
-
-#else
-
-#  define __pcomn_debug_fail__(fmt, msg, file, line) __pcomn_assert_fail__((fmt), (msg), (file), (line))
-
-#endif /* __PCOMN_DEBUG */
 
 #ifdef __cplusplus
 template<typename N>
