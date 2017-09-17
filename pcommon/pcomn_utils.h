@@ -478,7 +478,7 @@ struct auto_buffer final {
  The template argument defines (fixed) size of the output buffer.
  This class never makes dynamic allocations.
 *******************************************************************************/
-template<size_t sz>
+template<size_t sz = 0>
 class bufstr_ostream : private std::basic_streambuf<char>, public std::ostream {
    public:
       /// Create the stream with embedded buffer of @a sz bytes.
@@ -516,10 +516,6 @@ class bufstr_ostream<0> : private std::basic_streambuf<char>, public std::ostrea
       {
          setp(_buffer, _buffer + _bufsz) ;
       }
-
-      bufstr_ostream() noexcept :
-         std::ostream(static_cast<std::basic_streambuf<char> *>(this))
-      {}
 
       /// Get the pouinter to internal buffer memory
       const char *str() const { return _buffer ; }
