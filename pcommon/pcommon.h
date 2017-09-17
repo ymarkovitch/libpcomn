@@ -19,6 +19,9 @@
 #include <stdarg.h>
 #include <stdlib.h>
 
+/*******************************************************************************
+ C++ code starts here
+*******************************************************************************/
 #ifdef __cplusplus
 #include <stdexcept>
 #include <system_error>
