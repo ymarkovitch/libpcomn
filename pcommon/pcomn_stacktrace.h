@@ -167,6 +167,21 @@ std::ostream &operator<<(std::ostream &os, const stack_trace &) ;
 bool is_valgrind_present() noexcept ;
 bool are_symbols_available() noexcept ;
 
+/// A global variable, when set to nonzero forces skipping IsDebuggerPresent() check
+/// in several places of the signal handler code, making possible do debug (the most of
+/// the) print_state_with_debugger() itself.
+///
+/// Set it to 1 directly from GDB, like 'set pcomn::debug_debugger_backtrace=1', and most
+/// of the print_state_with_debugger() and gdb_print_state() won't be skipped under GDB;
+/// particularly this enables debugging of create_tempscript().
+///
+/// @note default is 0
+///
+extern volatile int debug_debugger_backtrace ;
+
+extern "C" int set_backtrace_on_coredump(int traceout_fd = -1) ;
+
+
 } // end of namespace pcomn
 
 #endif /* __PCOMN_STACKTRACE_H */
