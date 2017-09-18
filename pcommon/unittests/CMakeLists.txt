@@ -60,3 +60,4 @@ unittest(unittest_uuid)
 unittest(unittest_zstream)
 
 add_adhoc_executable(test_readfile)
+add_adhoc_executable(test_backtrace)

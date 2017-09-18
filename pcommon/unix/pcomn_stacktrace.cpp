@@ -79,7 +79,7 @@ private:
 /*******************************************************************************
  stack_trace
 *******************************************************************************/
-__noinline stack_trace::stack_trace(void *from, size_t maxdepth)
+__noinline stack_trace::stack_trace(const void *from, size_t maxdepth)
 {
     maxdepth = !from
         ? std::min(_stacktrace.max_size(), maxdepth)

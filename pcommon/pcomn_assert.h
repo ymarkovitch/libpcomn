@@ -153,12 +153,12 @@ PCOMN_CFUNC void __passertfail(const char *fmt, const char *msg, const char *fil
 #endif
 
 #define IsDebuggerPresent() (0)
-#deifne DebugBreak() ((void)0)
+#define DebugBreak() ((void)0)
 
 #if defined(PCOMN_PL_WINDOWS)
 
-#undef IsDebuggerPresent() (0)
-#undef DebugBreak() ((void)0)
+#undef IsDebuggerPresent
+#undef DebugBreak
 
 #  include <wtypes.h>
 #  ifdef __cplusplus
@@ -173,9 +173,15 @@ extern "C" {
 // end of PCOMN_PL_WINDOWS
 #elif defined(PCOMN_PL_LINUX)
 
+#undef IsDebuggerPresent
+#undef DebugBreak
+
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #ifdef __cplusplus
 template<bool> bool IsDebuggerPresent_() noexcept ;
@@ -183,7 +189,7 @@ template<bool> bool IsDebuggerPresent_() noexcept ;
 template<bool>
 __noinline bool IsDebuggerPresent_() noexcept
 #else
-static __noinline int IsDebuggerPresent()
+static __attribute__((used)) __noinline int IsDebuggerPresent()
 #endif
 {
     static const char TRACERPID[] = "TracerPid:" ;
@@ -204,7 +210,7 @@ static __noinline int IsDebuggerPresent()
 #  ifdef PCOMN_PL_X86
    static __inline void DebugBreak() { __asm__("int3") ; }
 #  else
-#  deifne DebugBreak() ((void)0)
+#  define DebugBreak() ((void)0)
 #  endif
 
 // end of PCOMN_PL_LINUX

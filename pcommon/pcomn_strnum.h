@@ -2,7 +2,7 @@
 #ifndef __PCOMN_STRNUM_H
 #define __PCOMN_STRNUM_H
 /*******************************************************************************
- FILE         :   pcomn_integer.h
+ FILE         :   pcomn_strnum.h
  COPYRIGHT    :   Yakov Markovitch, 2006-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 

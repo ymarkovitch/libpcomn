@@ -61,6 +61,7 @@ function(find_required_package package_name package_checkvar)
 endfunction()
 
 if (WITH_STACKTRACE)
+    find_required_package(libelf    LIBELF_FOUND)
     find_required_package(libunwind LIBUNWIND_FOUND)
     find_required_package(libdw     LIBDW_FOUND)
 endif()
@@ -172,7 +173,7 @@ target_compile_options(pcommon
 target_link_libraries(pcommon
   PUBLIC
   $<$<OR:$<PLATFORM_ID:Linux>,$<PLATFORM_ID:Cygwin>,$<PLATFORM_ID:MinGW>>:-pthread>
-  $<$<BOOL:WITH_STACKTRACE>:unwind dw>
+  $<$<BOOL:WITH_STACKTRACE>:unwind dw elf>
   )
 
 if (${UNITTESTS})

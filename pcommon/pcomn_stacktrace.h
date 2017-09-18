@@ -48,7 +48,7 @@ class stack_trace final {
 public:
     typedef void *frame ;
 
-    explicit stack_trace(void *addr, size_t depth = -1) ;
+    explicit stack_trace(const void *addr, size_t depth = -1) ;
     explicit stack_trace(size_t depth = -1) : stack_trace(nullptr, depth) {}
 
     stack_trace(const stack_trace &other) ;
