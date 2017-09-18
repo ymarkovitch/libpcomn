@@ -17,8 +17,10 @@
 #include <pcomn_assert.h>
 #include <pcomn_meta.h>
 #include <pcomn_integer.h>
+#include <pcomn_ssafe.h>
 
-#include <iostream>
+#include <ostream>
+#include <istream>
 #include <utility>
 #include <functional>
 #include <memory>
@@ -470,81 +472,6 @@ struct auto_buffer final {
       PCOMN_NONCOPYABLE(auto_buffer) ;
       PCOMN_NONASSIGNABLE(auto_buffer) ;
 } ;
-
-/***************************************************************************//**
- Output stream with "embedded" stream buffer, the memory buffer is a C array
- the member of of the class.
-
- The template argument defines (fixed) size of the output buffer.
- This class never makes dynamic allocations.
-*******************************************************************************/
-template<size_t sz = 0>
-class bufstr_ostream : private std::basic_streambuf<char>, public std::ostream {
-   public:
-      /// Create the stream with embedded buffer of @a sz bytes.
-      bufstr_ostream() noexcept ;
-
-      /// Get the pouinter to internal buffer memory
-      const char *str() const { return _buffer ; }
-      char *str() { return _buffer ; }
-
-      const char *begin() const { return this->pbase() ; }
-      const char *end() const { return this->pptr() ; }
-
-      bufstr_ostream &reset()
-      {
-         clear() ;
-         setp(_buffer + 0, _buffer + sizeof _buffer - 1) ;
-         return *this ;
-      }
-
-   private:
-      char _buffer[sz] ;
-} ;
-
-/******************************************************************************/
-/** Output stream with external fixed-size stream buffer .
-*******************************************************************************/
-template<>
-class bufstr_ostream<0> : private std::basic_streambuf<char>, public std::ostream {
-      PCOMN_NONCOPYABLE(bufstr_ostream) ;
-      PCOMN_NONASSIGNABLE(bufstr_ostream) ;
-   public:
-      bufstr_ostream(char *buf, size_t bufsize) noexcept :
-         std::ostream(static_cast<std::basic_streambuf<char> *>(this)),
-         _buffer(buf), _bufsz(bufsize)
-      {
-         setp(_buffer, _buffer + _bufsz) ;
-      }
-
-      /// Get the pouinter to internal buffer memory
-      const char *str() const { return _buffer ; }
-      char *str() { return _buffer ; }
-      const char *begin() const { return this->pbase() ; }
-      const char *end() const { return this->pptr() ; }
-
-      bufstr_ostream &reset()
-      {
-         clear() ;
-         setp(_buffer, _buffer + _bufsz) ;
-         return *this ;
-      }
-
-   private:
-      char *   _buffer = nullptr ;
-      size_t   _bufsz  = 0 ;
-} ;
-
-/*******************************************************************************
- bufstr_ostream<size_t>
-*******************************************************************************/
-template<size_t sz>
-bufstr_ostream<sz>::bufstr_ostream() noexcept :
-   std::ostream(static_cast<std::basic_streambuf<char> *>(this))
-{
-   *_buffer = _buffer[sizeof _buffer - 1] = 0 ;
-   reset() ;
-}
 
 /******************************************************************************/
 /** Input stream from a memory buffer

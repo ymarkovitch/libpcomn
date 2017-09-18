@@ -103,6 +103,7 @@ add_library(pcommon STATIC
   pcomn_path.cpp
   pcomn_rawstream.cpp
   pcomn_regex.cpp
+  pcomn_ssafe.cpp
   pcomn_strsubst.cpp
   pcomn_textio.cpp
   pcomn_uri.cpp
