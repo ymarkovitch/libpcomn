@@ -81,7 +81,7 @@ struct basic_strslice {
          _begin(other.begin()), _end(other.end())
       {}
 
-      template<typename S, enable_if_strchar_t<S, char_type, nullptr_t> = nullptr>
+      template<typename S, typename = enable_if_strchar_t<S, char_type>>
       basic_strslice(const S &s) :
          _begin(str::cstr(s)), _end(_begin + str::len(s))
       {}
@@ -533,6 +533,27 @@ inline basic_strslice<C> &to_upper_inplace(basic_strslice<C> &s)
    convert_inplace(s.begin(), ctype_traits<C>::toupper, 0, s.size()) ;
 }
 
+/***************************************************************************//**
+ Create a slice from a string like basic_strslice constructor does, allow null pointer
+ as a source string argument and return empty slice if str::cstr(s) is NULL.
+*******************************************************************************/
+/**@{*/
+template<typename C>
+auto inline ssafe_strslice(const C *s) -> std::enable_if_t<is_char<C>::value, basic_strslice<C>>
+{
+    return s ? basic_strslice<C>(s) : basic_strslice<C>() ;
+}
+
+template<typename C, typename S>
+inline enable_if_strchar_t<S, C, basic_strslice<C>> ssafe_strslice(const S &s)
+{
+    return str::cstr(s) ? basic_strslice<C>(s) : basic_strslice<C>() ;
+}
+
+template<typename C>
+constexpr inline basic_strslice<C> ssafe_strslice(std::nullptr_t) { return {} ; }
+
+/**@}*/
 /*******************************************************************************
  Name/value pair functions
 *******************************************************************************/
