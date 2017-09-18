@@ -1,28 +1,16 @@
 /*-*- tab-width:4;indent-tabs-mode:nil;c-file-style:"ellemtel";c-basic-offset:4;c-file-offsets:((innamespace . 0)(inlambda . 0)) -*-*/
 /*******************************************************************************
- * Copyright 2013 Google Inc.       All Rights Reserved.
- * Copyright 2017 Yakov Markovitch. All Rights Reserved.
+ FILE         :   pcomn_stacktrace.cpp
 
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
+ COPYRIGHT    :   2013 Google Inc.                 All Rights Reserved.
+                  2016 Leo Yuriev (leo@yuriev.ru). All Rights Reserved.
+                  2017 Yakov Markovitch.           All Rights Reserved.
+
+                  See LICENSE for information on usage/redistribution.
 *******************************************************************************/
 #define UNW_LOCAL_ONLY
 #include <pcomn_stacktrace.h>
+#include <pcomn_strslice.h>
 #include <pcommon.h>
 
 #include <malloc.h>
@@ -44,12 +32,11 @@
 #include <elfutils/libdwfl.h>
 #include <dwarf.h>
 
-namespace pcomn {
+#include <libelf.h>
 
-static inline strslice safe_strslice(const char *s)
-{
-    return s ? strslice(s) : strslice() ;
-}
+#include <valgrind/valgrind.h>
+
+namespace pcomn {
 
 /*******************************************************************************
  frame_resolver
@@ -341,7 +328,7 @@ resolved_frame &frame_resolver::resolve(resolved_frame &fframe)
     {
         int line = 0 ;
         dwarf_lineno(srcloc, &line) ;
-        fframe.source_location(safe_strslice(dwarf_linesrc(srcloc, 0, 0)), line) ;
+        fframe.source_location(ssafe_strslice(dwarf_linesrc(srcloc, 0, 0)), line) ;
     }
 
     // Traverse inlined functions depth-first
@@ -363,8 +350,8 @@ resolved_frame &frame_resolver::resolve(resolved_frame &fframe)
                 resolved_frame::source_loc &location = fframe._inliners.back() ;
 
                 Dwarf_Word line = 0 ;
-                fframe.init_member(location._function, safe_strslice(dwarf_diename(die))) ;
-                fframe.init_member(location._filename, safe_strslice(find_call_file(die))) ;
+                fframe.init_member(location._function, ssafe_strslice(dwarf_diename(die))) ;
+                fframe.init_member(location._filename, ssafe_strslice(find_call_file(die))) ;
                 dwarf_formudata(dwarf_attr(die, DW_AT_call_line, &as_mutable(Dwarf_Attribute())), &line) ;
                 location._line = line ;
                 break ;
@@ -407,7 +394,55 @@ bool frame_resolver::depth_first_search_by_pc(Dwarf_Die *parent, Dwarf_Addr pc, 
 }
 
 /*******************************************************************************
+ Global functions
+*******************************************************************************/
+
+/*******************************************************************************
  Signal handler
 *******************************************************************************/
+bool is_valgrind_present() noexcept
+{
+    return RUNNING_ON_VALGRIND ;
+}
+
+bool are_symbols_available() noexcept
+{
+    if (elf_version(EV_CURRENT) == EV_NONE)
+        return false ;
+
+    char self_path[PATH_MAX] ;
+    if (!*ssafe_progname(self_path))
+        return false ;
+
+    // Open self to obtain ELF descriptor
+    const int elf_fd = open(self_path, O_RDONLY) ;
+    if (elf_fd < 0)
+        return false ;
+
+    // Initialize elf pointer to examine file contents.
+    if (Elf * const elf = elf_begin(elf_fd, ELF_C_READ, NULL))
+    {
+        // Iterate through ELF sections until .symtab section is found
+        for (Elf_Scn *section = nullptr ; section = elf_nextscn(elf, section) ;)
+        {
+            GElf_Shdr shdr ;
+            // Retrieve the section header
+            gelf_getshdr(section, &shdr) ;
+
+            if (shdr.sh_type == SHT_SYMTAB)
+            {
+                // A header of a section that holds a symbol table found,
+                // there are symbols present.
+                elf_end(elf) ;
+                close(elf_fd) ;
+                return true ;
+            }
+        }
+        elf_end(elf) ;
+    }
+
+    close(elf_fd) ;
+    return false ;
+}
 
 } // end of namespace pcomn
