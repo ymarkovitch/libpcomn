@@ -11,7 +11,9 @@ Except where overwise noted all code was authored by:
 ==============================================================================
 CONTRIBUTORS
 
-I am very grateful for the support provided by the following people:
+I am extremely grateful for contributions and invaluable assistance provided
+by the following bright engineers:
 
-        Vadim Hohlov <vadimhohlov@gmail.com>
+        Vadim Hohlov  <vadimhohlov@gmail.com>
         Denis Suhanov <denis@perlovka.org>
+        Leo Yuriev    <leo@yuriev.ru>
