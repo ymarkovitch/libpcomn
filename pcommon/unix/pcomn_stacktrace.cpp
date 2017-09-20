@@ -668,8 +668,12 @@ static void gdb_print_state(const char *tempscript_filename)
     if (const pid_t gdb_pid = fork())
     {
         if (gdb_pid > 0)
-            wait_n_kill(gdb_pid, 42) ;
-        else ;
+        {
+            wait_n_kill(gdb_pid, 60) ;
+            fsync(STDERR_FILENO) ;
+        }
+        else
+            putstrerror("FAILURE: Unable to fork a daemon to exec GDB: ") ;
         return ;
     }
 
