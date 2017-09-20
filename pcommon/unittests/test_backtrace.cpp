@@ -25,7 +25,7 @@ static struct {
 
 int main(int argc, char *argv[])
 {
-    set_backtrace_on_coredump() ;
+    enable_backtrace_on_abend() ;
 
     if (argc != 2)
     {

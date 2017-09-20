@@ -179,7 +179,7 @@ bool are_symbols_available() noexcept ;
 ///
 extern volatile int debug_debugger_backtrace ;
 
-extern "C" int set_backtrace_on_coredump(int traceout_fd = -1) ;
+extern "C" int enable_backtrace_on_abend(int traceout_fd = -1) ;
 
 
 } // end of namespace pcomn

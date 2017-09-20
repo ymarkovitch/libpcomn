@@ -466,7 +466,7 @@ static time_t   backtrace_time = 0 ;
 
 static __noreturn void backtrace_handler(int, siginfo_t *info, void *ctx) ;
 
-extern "C" int set_backtrace_on_coredump(int traceout_fd)
+extern "C" int enable_backtrace_on_abend(int traceout_fd)
 {
     static bool loaded = false ;
 
@@ -571,7 +571,6 @@ static __noinline void putstrerror(const char *errtext)
     puterror(strcat(errbuf, "\n")) ;
 }
 
-static void print_memmaps() ;
 static void print_state_with_debugger(const void *errsp, const void *errpc) ;
 static void gdb_print_state(const char *tempscript_filename) ;
 static int create_tempscript(pid_t guilty_thread, const void *frame_sp, const void *frame_pc,
@@ -614,35 +613,10 @@ __noreturn void backtrace_handler(int, siginfo_t *info, void *ctx)
     stack_trace st (errpc) ;
     // Print!
 
-    print_memmaps() ;
     print_state_with_debugger(errsp, errpc) ;
 
     forward_signal() ;
     _exit(EXIT_FAILURE) ;
-}
-
-static void print_memmaps()
-{
-    const int memmaps_fd = open("/proc/self/smaps", O_RDONLY) ;
-    if (memmaps_fd < 0)
-        return ;
-
-    auto print_boundary = []
-    {
-        char rfcdate[RFC3339_FULL] ;
-        putmsg("Memory maps by /proc/self/smaps ") ;
-        puterror(ssafe_rfc3339_gmtime(backtrace_time, rfcdate)) ;
-        puterror("\n\n") ;
-    } ;
-
-    print_boundary() ;
-
-    char buf[1024] ;
-    for (ssize_t n ; (n = read(memmaps_fd, buf, sizeof(buf))) > 0 && write(backtrace_fd, buf, n) == n ;) ;
-    close(memmaps_fd) ;
-
-    putmsg("END") ;
-    puterror(backtrace_msgsuffix) ;
 }
 
 static void print_state_with_debugger(const void *sp, const void *pc)
@@ -758,27 +732,53 @@ static bool wait_n_kill(pid_t child, time_t timeout)
 
 static const char define_run_command[] =
 R"(
-define pretty_run
-    echo \n\n------\n
-    if $argc == 1
-        $arg0
-    end
-    if $argc == 2
-        $arg0 $arg1
-    end
-    if $argc == 3
-        $arg0 $arg1 $arg2
-    end
-    if $argc == 4
-        $arg0 $arg1 $arg2 $arg3
-    end
-    if $argc == 5
-        $arg0 $arg1 $arg2 $arg3 $arg4
-    end
-    if $argc == 6
-        $arg0 $arg1 $arg2 $arg3 $arg5
-    end
-    echo ------\n
+
+py
+import datetime, sys, os
+
+# Avoid output buffering
+sys.stdout = sys.stderr
+
+class Abend(gdb.Command):
+    def __init__(self):
+        super(Abend, self).__init__ ('abend-header', gdb.COMMAND_OBSCURE, gdb.COMPLETE_NONE)
+        Abend.now  = staticmethod(lambda m=datetime.datetime.now: m().replace(microsecond=0))
+        Abend.just = staticmethod(lambda s: s.ljust(32))
+        Abend.pretty_delimiter = '----------------'
+        Abend.pretty_width = 132
+
+    def invoke(self, argv, from_tty):
+        Abend.invocation_time = Abend.now().replace(microsecond=0)
+        Abend.invocation_name = os.readlink("/proc/%s/exe" % (gdb.selected_inferior().pid,))
+        print '\n%s\n%s %s %s' % ('#' * Abend.pretty_width, Abend.just('###### START ABEND DUMP'),
+                                  Abend.invocation_time, Abend.invocation_name)
+
+class AbendFooter(gdb.Command):
+    def __init__(self):
+        super (AbendFooter, self).__init__ ('abend-footer', gdb.COMMAND_OBSCURE, gdb.COMPLETE_NONE)
+
+    def invoke(self, argv, from_tty):
+        print '\n%s %s\n%s' % (Abend.just('###### END ABEND DUMP STARTED AT'), Abend.invocation_time, '#' * Abend.pretty_width)
+
+class PrettyRun(gdb.Command):
+    def __init__ (self):
+        super (PrettyRun, self).__init__ ('pretty-run', gdb.COMMAND_OBSCURE, gdb.COMPLETE_NONE)
+
+    def invoke(self, argv, from_tty):
+        print '\n' + ('%s START %s ' % (Abend.pretty_delimiter, argv)).ljust(Abend.pretty_width, '-') ;
+        gdb.execute(argv)
+        gdb.execute('printf ""')
+        print ('%s END %s' % (Abend.pretty_delimiter, argv)).ljust(Abend.pretty_width, '-') ;
+
+Abend()
+AbendFooter()
+PrettyRun()
+end
+
+define print_mmaps
+    py print '\n%s Memory maps from /proc/self/smaps' % Abend.pretty_delimiter
+    py gdb.execute('shell cat /proc/%s/smaps' % gdb.selected_inferior().pid)
+    py print Abend.pretty_delimiter
 end
 )" ;
 
@@ -801,42 +801,63 @@ static int create_tempscript(pid_t guilty_thread, const void *frame_sp, const vo
 
     // pcomn::bufstr_ostream _is_ signal-safe, as long as we output strings, strslices,
     // and integral types.
-    bufstr_ostream<8192> script ;
+    bufstr_ostream<16384> script ;
 
-    script
-        << define_run_command <<
-        "set filename-display basename\n"
-        //"set print frame-arguments all\n"
-        //"set print entry-values both\n"
-        "set scheduler-locking on\n"
+    (script
+     << define_run_command <<
 
-        "handle SIGPIPE pass nostop\n"
+     "set filename-display basename\n"
+     "set print frame-arguments all\n"
+     "set print entry-values both\n"
+     "set scheduler-locking on\n"
 
-        // Switch to the thread the signal came from
-        "py [t.switch() for t in gdb.selected_inferior().threads() if t.ptid[1]==" << guilty_thread << "]\n"
-        "pretty_run thread\n"
-        "pretty_run info sharedlibrary\n"
-        "pretty_run info threads\n"
-        "pretty_run thread apply all backtrace\n"
-        "pretty_run thread apply all disassemble\n"
-        "pretty_run thread apply all info all-registers\n"
-        "pretty_run thread apply all backtrace full\n"
-        "pretty_run shell uname -a\n"
-        "pretty_run shell df -lh\n"
-        "pretty_run show environment\n"
-        "pretty_run backtrace full\n" ;
+     "handle SIGPIPE pass nostop\n"
 
-    /*
+     // Print the header
+     "abend-header\n"
+
+     // Switch to the thread the signal came from
+     "py [t.switch() for t in gdb.selected_inferior().threads() if t.ptid[1]==" << guilty_thread << "]\n"
+     "pretty-run thread\n"
+     "pretty-run backtrace full\n"
+        )
+        ;
+
     if (frame_sp && frame_pc)
-    {
-        script <<
-            "frame " << frame_sp << ' ' << frame_pc << '\n' <<
-            "info locals\n"
-            "info all-registers\n"
-            "disassemble\n"
+        (script <<
+
+         "# Select the signal source frame\n"
+         "select-frame " << frame_sp << '\n' <<
+
+         "# May happen the frame is a special trampoline created for signal delivery,\n"
+         "# then the actual frame is the next directly above (older).\n"
+         "py gdb.selected_frame().type()==gdb.SIGTRAMP_FRAME and gdb.selected_frame().older().select()\n"
+
+         "pretty-run info frame\n"
+         "pretty-run info locals\n"
+         "pretty-run info all-registers\n"
+         "pretty-run disassemble\n")
             ;
-    }
-    */
+
+    (script <<
+     "pretty-run info sharedlibrary\n"
+     "pretty-run info threads\n"
+     "pretty-run thread apply all backtrace\n"
+     "pretty-run thread apply all info registers\n"
+     "pretty-run thread apply all disassemble\n"
+     "pretty-run thread apply all backtrace full\n"
+
+     // Print memory maps
+     "print_mmaps\n"
+
+     "pretty-run shell uname -a\n"
+     "pretty-run shell df -lh\n"
+     "pretty-run show environment\n"
+
+      // Print the footer
+      "abend-footer\n")
+        ;
+
 
     script <<
         "detach\n"
