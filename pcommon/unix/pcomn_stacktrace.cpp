@@ -684,7 +684,7 @@ static void gdb_print_state(const char *tempscript_filename)
     setsid() ;
     setpgid(0, 0) ;
     // Exec GDB
-    execlp("gdb", "gdb", "-batch", "-p", self_pidstr, "-s", self_progpath, "-n", "-x", tempscript_filename, NULL) ;
+    execlp("gdb", "gdb", "-batch", "-iex", "set auto-load safe-path /", "-p", self_pidstr, "-s", self_progpath, "-n", "-x", tempscript_filename, NULL) ;
 
     // Were the exec successful, we wouldn't get here: the execlp shouldn't return.
     // If we _are_ here, something went awry.
@@ -746,29 +746,30 @@ class Abend(gdb.Command):
         Abend.just = staticmethod(lambda s: s.ljust(32))
         Abend.pretty_delimiter = '----------------'
         Abend.pretty_width = 132
+        Abend.write = staticmethod(sys.stderr.write)
 
     def invoke(self, argv, from_tty):
         Abend.invocation_time = Abend.now().replace(microsecond=0)
         Abend.invocation_name = os.readlink("/proc/%s/exe" % (gdb.selected_inferior().pid,))
-        print '\n%s\n%s %s %s' % ('#' * Abend.pretty_width, Abend.just('###### START ABEND DUMP'),
-                                  Abend.invocation_time, Abend.invocation_name)
+        Abend.write('\n%s\n%s %s %s\n' % ('#' * Abend.pretty_width, Abend.just('###### START ABEND DUMP'),
+                                          Abend.invocation_time, Abend.invocation_name))
 
 class AbendFooter(gdb.Command):
     def __init__(self):
         super (AbendFooter, self).__init__ ('abend-footer', gdb.COMMAND_OBSCURE, gdb.COMPLETE_NONE)
 
     def invoke(self, argv, from_tty):
-        print '\n%s %s\n%s' % (Abend.just('###### END ABEND DUMP STARTED AT'), Abend.invocation_time, '#' * Abend.pretty_width)
+        Abend.write('\n%s %s\n%s\n' % (Abend.just('###### END ABEND DUMP STARTED AT'), Abend.invocation_time, '#' * Abend.pretty_width))
 
 class PrettyRun(gdb.Command):
     def __init__ (self):
         super (PrettyRun, self).__init__ ('pretty-run', gdb.COMMAND_OBSCURE, gdb.COMPLETE_NONE)
 
     def invoke(self, argv, from_tty):
-        print '\n' + ('%s START %s ' % (Abend.pretty_delimiter, argv)).ljust(Abend.pretty_width, '-') ;
+        Abend.write('\n%s\n' % (('%s START %s ' % (Abend.pretty_delimiter, argv)).ljust(Abend.pretty_width, '-'),)) ;
         gdb.execute(argv)
         gdb.execute('printf ""')
-        print ('%s END %s' % (Abend.pretty_delimiter, argv)).ljust(Abend.pretty_width, '-') ;
+        Abend.write('%s\n' %   (('%s END %s'    % (Abend.pretty_delimiter, argv)).ljust(Abend.pretty_width, '-'),)) ;
 
 Abend()
 AbendFooter()
@@ -776,9 +777,9 @@ PrettyRun()
 end
 
 define print_mmaps
-    py print '\n%s Memory maps from /proc/self/smaps' % Abend.pretty_delimiter
+    py import sys ; sys.stderr.write('\n%s Memory maps from /proc/self/smaps\n' % Abend.pretty_delimiter)
     py gdb.execute('shell cat /proc/%s/smaps' % gdb.selected_inferior().pid)
-    py print Abend.pretty_delimiter
+    py import sys ; sys.stderr.write('%s\n' % (Abend.pretty_delimiter,))
 end
 )" ;
 
