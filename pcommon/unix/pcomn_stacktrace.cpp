@@ -466,7 +466,7 @@ static time_t   backtrace_time = 0 ;
 
 static __noreturn void backtrace_handler(int, siginfo_t *info, void *ctx) ;
 
-extern "C" int enable_backtrace_on_abend(int traceout_fd)
+extern "C" int enable_dump_on_abend(int traceout_fd)
 {
     static bool loaded = false ;
 
