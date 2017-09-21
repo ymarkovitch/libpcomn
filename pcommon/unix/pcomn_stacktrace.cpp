@@ -69,11 +69,14 @@ private:
 /*******************************************************************************
  stack_trace
 *******************************************************************************/
-__noinline stack_trace::stack_trace(const void *from, size_t maxdepth)
+__noinline stack_trace::stack_trace(const void *from, int maxdepth)
 {
-    maxdepth = !from
-        ? std::min(_stacktrace.max_size(), maxdepth)
-        : std::min(_stacktrace.max_size() - 8, maxdepth) + 8 ;
+    if (!maxdepth)
+        return ;
+
+    maxdepth = from
+        ? std::min<size_t>(_stacktrace.max_size(), maxdepth)
+        : std::min<size_t>(_stacktrace.max_size() - 8, maxdepth) + 8 ;
 
     load_thread_info() ;
     unwind(maxdepth) ;
@@ -92,7 +95,7 @@ stack_trace::stack_trace(const stack_trace &other) :
     _thread_id(other._thread_id),
     _skip(other._skip),
     _stacktrace(other._stacktrace),
-    _begin(_stacktrace.begin() + (other._begin - other.begin()))
+    _begin(calc_begin(other))
 {}
 
 void stack_trace::load_thread_info()

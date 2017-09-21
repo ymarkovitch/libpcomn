@@ -61,3 +61,4 @@ unittest(unittest_zstream)
 
 add_adhoc_executable(test_readfile)
 add_adhoc_executable(test_backtrace)
+add_adhoc_executable(test_stacktrace)

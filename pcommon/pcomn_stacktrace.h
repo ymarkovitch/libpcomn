@@ -33,10 +33,17 @@ class stack_trace final {
 public:
     typedef void *frame ;
 
-    explicit stack_trace(const void *addr, size_t depth = -1) ;
-    explicit stack_trace(size_t depth = -1) : stack_trace(nullptr, depth) {}
+    explicit stack_trace(const void *addr, int depth = -1) ;
+    explicit stack_trace(int depth = -1) : stack_trace(nullptr, depth) {}
 
     stack_trace(const stack_trace &other) ;
+
+    stack_trace &operator=(const stack_trace &other)
+    {
+        memmove(this, &other, sizeof *this) ;
+        _begin = calc_begin(other) ;
+        return *this ;
+    }
 
     size_t size() const { return _stacktrace.end() - _begin ; }
 
@@ -59,6 +66,10 @@ private:
     void skip(size_t levels) { _skip = levels ; }
     void load_thread_info() ;
     void unwind(size_t maxdepth) ;
+    const frame *calc_begin(const stack_trace &other) const
+    {
+        return _stacktrace.begin() + (other._begin - other.begin()) ;
+    }
 } ;
 
 /*******************************************************************************
@@ -163,6 +174,7 @@ private:
  Global functions
 *******************************************************************************/
 std::ostream &operator<<(std::ostream &os, const stack_trace &) ;
+std::ostream &operator<<(std::ostream &os, const resolved_frame &) ;
 
 bool is_valgrind_present() noexcept ;
 bool are_symbols_available() noexcept ;
