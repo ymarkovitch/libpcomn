@@ -821,10 +821,22 @@ namespace pcomn {
 
 #ifdef PCOMN_COMPILER_GNU
 
+/// @note This function never returns NULL and and the returned string is always
+/// null-terminated.
 inline const char *demangle(const char *mangled, char *buf, size_t buflen)
 {
-   int status = 0 ;
-   return abi::__cxa_demangle(mangled, buf, &buflen, &status) ;
+   if (!buflen || !buf)
+      return "" ;
+   *buf = 0 ;
+   if (mangled && *mangled)
+   {
+      int status = 0 ;
+      size_t len = buflen ;
+      // On failure, return the source name
+      if (!abi::__cxa_demangle(mangled, buf, &len, &status))
+         strncpy(buf, mangled, buflen)[buflen - 1] = 0 ;
+   }
+   return buf ;
 }
 
 template<typename T>
