@@ -66,8 +66,8 @@ int main(int argc, char *argv[])
     print_stack(std::cout << "test_all ", test_all_stacktrace) << std::endl ;
     print_stack(std::cout << "main ", main_stacktrace) << std::endl ;
     {
-        resolved_frame frames[32] ;
-        resolved_frame * const end = test_rx_stacktrace.resolve(std::begin(frames), std::end(frames)) ;
+        resolved_iptr frames[32] ;
+        resolved_iptr * const end = test_rx_stacktrace.resolve(std::begin(frames), std::end(frames), IPTR_LOCATION) ;
         std::cout << pcomn::oseqdelim(std::begin(frames), end, '\n') << std::endl ;
     }
 

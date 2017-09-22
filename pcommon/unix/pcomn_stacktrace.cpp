@@ -11,6 +11,8 @@
 #include <pcomn_stacktrace.h>
 #include <pcomn_strslice.h>
 #include <pcomn_strnum.h>
+#include <pcomn_syncobj.h>
+#include <pcomn_path.h>
 #include <pcommon.h>
 
 #include <malloc.h>
@@ -20,6 +22,7 @@
 #include <string>
 #include <vector>
 #include <limits>
+#include <mutex>
 
 #include <unistd.h>
 #include <signal.h>
@@ -42,13 +45,14 @@
 namespace pcomn {
 
 /*******************************************************************************
- frame_resolver
+ iptr_resolver
+ Resolves an instruction pointer to function name/location.
 *******************************************************************************/
-class frame_resolver {
+class iptr_resolver {
 public:
-    frame_resolver() = default ;
+    iptr_resolver() = default ;
 
-    resolved_frame &resolve(resolved_frame &) ;
+    resolved_iptr &resolve(resolved_iptr &, InstructionPtrDetails) ;
 
 private:
     struct end_dwfl {void operator()(Dwfl *dwfl) { if (dwfl) dwfl_end(dwfl) ; }} ;
@@ -65,6 +69,12 @@ private:
     template<typename Callback>
     static bool depth_first_search_by_pc(Dwarf_Die *parent, Dwarf_Addr pc, Callback &&callback) ;
 } ;
+
+/*******************************************************************************
+ Global resolver
+*******************************************************************************/
+static std::recursive_mutex resolver_lock ;
+static iptr_resolver        global_resolver ;
 
 /*******************************************************************************
  stack_trace
@@ -114,23 +124,47 @@ void stack_trace::unwind(size_t maxdepth)
     unw_context_t ctx ;
     unw_cursor_t cursor ;
 
-    // Initialize cursor to current frame for local unwinding.
+    // Initialize cursor to current iptr for local unwinding.
     unw_getcontext(&ctx) ;
     unw_init_local(&cursor, &ctx) ;
 
-    // Unwind frames one by one, going up the frame stack.
+    // Unwind frames one by one, going up the iptr stack.
     for (unw_word_t pc ; maxdepth && unw_step(&cursor) > 0 && unw_get_reg(&cursor, UNW_REG_IP, &pc) == 0 && pc ; --maxdepth)
     {
-        _stacktrace.push_back((frame)pc) ;
+        _stacktrace.push_back((iptr)pc) ;
     }
 }
 
-/*******************************************************************************
- resolved_frame
-*******************************************************************************/
-resolved_frame &resolved_frame::reset(stack_trace::frame pc)
+resolved_iptr *stack_trace::resolve(resolved_iptr *begin, resolved_iptr *end,
+                                    InstructionPtrDetails details) const
 {
-    _frame = pc ;
+    NOXCHECK(begin <= end) ;
+
+    if (begin < end && size())
+    {
+        PCOMN_SCOPE_LOCK(lock, resolver_lock) ;
+        for (iptr pc: *this)
+        {
+            begin->reset(pc) ;
+            global_resolver.resolve(*begin++, details) ;
+        }
+    }
+    return begin ;
+}
+
+/*******************************************************************************
+ resolved_iptr
+*******************************************************************************/
+resolved_iptr::resolved_iptr(stack_trace::iptr pc, InstructionPtrDetails details) :
+    _iptr(pc)
+{
+    PCOMN_SCOPE_LOCK(lock, resolver_lock) ;
+    global_resolver.resolve(*this, details) ;
+}
+
+resolved_iptr &resolved_iptr::reset(stack_trace::iptr pc)
+{
+    _iptr = pc ;
     _object_function = _object_filename = {} ;
     _source = {} ;
     for (source_loc &inliner: _inliners) inliner = {} ;
@@ -138,7 +172,7 @@ resolved_frame &resolved_frame::reset(stack_trace::frame pc)
     return *this ;
 }
 
-strslice &resolved_frame::init_member(strslice &dest, const strslice &src)
+strslice &resolved_iptr::init_member(strslice &dest, const strslice &src)
 {
     if (!src ||
         xinrange(src.begin(), _memory.begin(), _memory.end()) &&
@@ -159,7 +193,7 @@ strslice &resolved_frame::init_member(strslice &dest, const strslice &src)
 }
 
 /*******************************************************************************
- frame_resolver
+ iptr_resolver
 *******************************************************************************/
 static inline const char *find_call_file(Dwarf_Die *die)
 {
@@ -246,9 +280,9 @@ static Dwarf_Die *find_function_entity_by_pc(Dwarf_Die *parent, Dwarf_Addr pc, D
 }
 
 /*******************************************************************************
- frame_resolver
+ iptr_resolver
 *******************************************************************************/
-bool frame_resolver::init()
+bool iptr_resolver::init()
 {
     if (_initialized)
         return true ;
@@ -271,16 +305,16 @@ bool frame_resolver::init()
     return r >= 0 ;
 }
 
-resolved_frame &frame_resolver::resolve(resolved_frame &fframe)
+resolved_iptr &iptr_resolver::resolve(resolved_iptr &fframe, InstructionPtrDetails details)
 {
     fframe.reset() ;
 
     if (!init() || !session())
         return fframe ;
 
-    const Dwarf_Addr pc = (Dwarf_Addr)fframe.frame() ;
+    const Dwarf_Addr pc = (Dwarf_Addr)fframe.addr() ;
 
-    // Find the module (binary object) that contains the frame's address by using
+    // Find the module (binary object) that contains the iptr's address by using
     // the address ranges of all the currently loaded binary object (no debug info
     // required).
     Dwfl_Module *mod = dwfl_addrmodule(session(), pc) ;
@@ -289,7 +323,7 @@ resolved_frame &frame_resolver::resolve(resolved_frame &fframe)
         // now that we found it, lets get the name of it, this will be the
         // full path to the running binary or one of the loaded library.
         if (const char * const module_name = dwfl_module_info(mod, 0, 0, 0, 0, 0, 0, 0))
-            fframe.object_filename(module_name) ;
+            fframe.object_filename(path::basename(module_name)) ;
 
         // We also look after the name of the symbol, equal or before this
         // address. This is found by walking the symtab. We should get the
@@ -300,6 +334,11 @@ resolved_frame &frame_resolver::resolve(resolved_frame &fframe)
         if (const char * const sym_name = dwfl_module_addrname(mod, pc))
             fframe.object_function(PCOMN_DEMANGLE(sym_name)) ;
     }
+
+    fframe.source_function(fframe.object_function()) ;
+
+    if (details < IPTR_LOCATION)
+        return fframe ;
 
     // Attempt to find the source file and line number for the address.
     // Look into .debug_aranges for the address, map it to the location of the
@@ -334,8 +373,11 @@ resolved_frame &frame_resolver::resolve(resolved_frame &fframe)
     {
         int line = 0 ;
         dwarf_lineno(srcloc, &line) ;
-        fframe.source_location(ssafe_strslice(dwarf_linesrc(srcloc, 0, 0)), line) ;
+        fframe.source_location(path::basename(ssafe_strslice(dwarf_linesrc(srcloc, 0, 0))), line) ;
     }
+
+    if (details < IPTR_FULLINFO)
+        return fframe ;
 
     // Traverse inlined functions depth-first
     depth_first_search_by_pc(cudie, pc - mod_bias, [&](Dwarf_Die *die)
@@ -353,11 +395,11 @@ resolved_frame &frame_resolver::resolve(resolved_frame &fframe)
                     break ;
 
                 fframe._inliners.push_back({}) ;
-                resolved_frame::source_loc &location = fframe._inliners.back() ;
+                resolved_iptr::source_loc &location = fframe._inliners.back() ;
 
                 Dwarf_Word line = 0 ;
                 fframe.init_member(location._function, ssafe_strslice(dwarf_diename(die))) ;
-                fframe.init_member(location._filename, ssafe_strslice(find_call_file(die))) ;
+                fframe.init_member(location._filename, path::basename(ssafe_strslice(find_call_file(die)))) ;
                 dwarf_formudata(dwarf_attr(die, DW_AT_call_line, &as_mutable(Dwarf_Attribute())), &line) ;
                 location._line = line ;
                 break ;
@@ -365,15 +407,14 @@ resolved_frame &frame_resolver::resolve(resolved_frame &fframe)
         }
     }) ;
 
-    if (!fframe.source().function())
-        // fallback.
+    if (fframe.object_function())
         fframe.source_function(fframe.object_function()) ;
 
     return fframe ;
 }
 
 template<typename Callback>
-bool frame_resolver::depth_first_search_by_pc(Dwarf_Die *parent, Dwarf_Addr pc, Callback &&callback)
+bool iptr_resolver::depth_first_search_by_pc(Dwarf_Die *parent, Dwarf_Addr pc, Callback &&callback)
 {
     Dwarf_Die buf ;
     Dwarf_Die *die = &buf ;
@@ -445,6 +486,21 @@ bool are_symbols_available() noexcept
 
     close(elf_fd) ;
     return false ;
+}
+
+std::ostream &operator<<(std::ostream &os, const stack_trace &v)
+{
+    return os ;
+}
+
+std::ostream &operator<<(std::ostream &os, const resolved_iptr::source_loc &v)
+{
+    return os << v.function() << " at " << v.filename() << ':' << v.line() ;
+}
+
+std::ostream &operator<<(std::ostream &os, const resolved_iptr &v)
+{
+    return os << v.addr() << ':' << v.source() ;
 }
 
 /*******************************************************************************
@@ -612,10 +668,6 @@ __noreturn void backtrace_handler(int, siginfo_t *info, void *ctx)
     } ;
 
     backtrace_time = time(NULL) ;
-
-    stack_trace st (errpc) ;
-    // Print!
-
     print_state_with_debugger(errsp, errpc) ;
 
     forward_signal() ;

@@ -16,13 +16,13 @@
 namespace pcomn {
 
 class stack_trace ;
-class resolved_frame ;
-class frame_resolver ;
+class resolved_iptr ;
+class iptr_resolver ;
 
-enum class StackFrameDetails {
-    FUNCTION,
-    LOCATION,
-    FULL
+enum InstructionPtrDetails {
+    IPTR_FUNCTION,
+    IPTR_LOCATION,
+    IPTR_FULLINFO
 } ;
 
 /***************************************************************************//**
@@ -31,7 +31,7 @@ enum class StackFrameDetails {
 class stack_trace final {
     constexpr static size_t _MAXDEPTH = 32 ;
 public:
-    typedef void *frame ;
+    typedef void *iptr ;
 
     explicit stack_trace(const void *addr, int depth = -1) ;
     explicit stack_trace(int depth = -1) : stack_trace(nullptr, depth) {}
@@ -47,46 +47,47 @@ public:
 
     size_t size() const { return _stacktrace.end() - _begin ; }
 
-    const frame *begin() const { return _begin ; }
-    const frame *end() const { return _stacktrace.end() ; }
+    const iptr *begin() const { return _begin ; }
+    const iptr *end() const { return _stacktrace.end() ; }
 
     unsigned thread_id() const { return _thread_id ; }
 
     constexpr static size_t maxdepth() { return _MAXDEPTH ; }
 
-    resolved_frame *resolve(resolved_frame *begin, resolved_frame *end) const ;
+    resolved_iptr *resolve(resolved_iptr *begin, resolved_iptr *end,
+                            InstructionPtrDetails = IPTR_FUNCTION) const ;
 
 private:
     size_t              _thread_id = 0 ;
     size_t              _skip = 0 ;
-    static_vector<frame, _MAXDEPTH + 8> _stacktrace ;
-    const frame *        _begin = _stacktrace.begin() ;
+    static_vector<iptr, _MAXDEPTH + 8> _stacktrace ;
+    const iptr *        _begin = _stacktrace.begin() ;
 
 private:
     void skip(size_t levels) { _skip = levels ; }
     void load_thread_info() ;
     void unwind(size_t maxdepth) ;
-    const frame *calc_begin(const stack_trace &other) const
+    const iptr *calc_begin(const stack_trace &other) const
     {
         return _stacktrace.begin() + (other._begin - other.begin()) ;
     }
 } ;
 
 /*******************************************************************************
- resolved_frame
+ resolved_iptr
 
  @note PC is the value of the Program Counter register.
 *******************************************************************************/
-class resolved_frame final {
-    PCOMN_NONCOPYABLE(resolved_frame) ;
-    PCOMN_NONASSIGNABLE(resolved_frame) ;
-    friend frame_resolver ;
+class resolved_iptr final {
+    PCOMN_NONCOPYABLE(resolved_iptr) ;
+    PCOMN_NONASSIGNABLE(resolved_iptr) ;
+    friend iptr_resolver ;
 public:
     static const size_t NAMES_MAXMEM = 4*KiB ;
 
     struct source_loc {
-        friend resolved_frame ;
-        friend frame_resolver ;
+        friend resolved_iptr ;
+        friend iptr_resolver ;
 
         constexpr source_loc() = default ;
 
@@ -103,27 +104,27 @@ public:
         unsigned _line = 0 ;
     } ;
 
-    /// Create an empty object with nullptr frame and empty source location (all names
+    /// Create an empty object with nullptr iptr and empty source location (all names
     /// are empty, line number is 0).
-    resolved_frame() = default ;
+    resolved_iptr() = default ;
 
-    /// Resolve a frame for a specified program counter value.
+    /// Resolve a iptr for a specified program counter value.
     ///
     /// If @a pc is valid (points inside the code of some function), at least
     /// object_function() will be resolved.
     ///
     /// @note It is safe to pass invalid PC, including NULL.
     ///
-    resolved_frame(stack_trace::frame pc) ;
+    resolved_iptr(stack_trace::iptr pc, InstructionPtrDetails detail_level) ;
 
-    stack_trace::frame frame() const { return _frame ; }
+    stack_trace::iptr addr() const { return _iptr ; }
     const strslice &object_filename() const { return _object_filename ; }
     const strslice &object_function() const { return _object_function ; }
     const source_loc &source() const { return _source ; }
 
     bool is_resolved() const { return !!object_function() ; }
 
-    explicit operator bool() const { return !!frame() ; }
+    explicit operator bool() const { return !!addr() ; }
 
     strslice &object_filename(const strslice &newname)
     {
@@ -146,12 +147,12 @@ public:
         return init_member(_source._function, newname) ;
     }
 
-    resolved_frame &reset(stack_trace::frame pc) ;
+    resolved_iptr &reset(stack_trace::iptr pc) ;
 
-    resolved_frame &reset() { return reset(_frame) ; }
+    resolved_iptr &reset() { return reset(_iptr) ; }
 
 private:
-    stack_trace::frame _frame = nullptr ;
+    stack_trace::iptr _iptr = nullptr ;
 
     strslice _object_filename ; /* The object file with the function PC points to. */
 
@@ -174,7 +175,8 @@ private:
  Global functions
 *******************************************************************************/
 std::ostream &operator<<(std::ostream &os, const stack_trace &) ;
-std::ostream &operator<<(std::ostream &os, const resolved_frame &) ;
+std::ostream &operator<<(std::ostream &os, const resolved_iptr::source_loc &) ;
+std::ostream &operator<<(std::ostream &os, const resolved_iptr &) ;
 
 bool is_valgrind_present() noexcept ;
 bool are_symbols_available() noexcept ;
