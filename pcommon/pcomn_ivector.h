@@ -168,20 +168,30 @@ PCOMN_DEFINE_SWAP(ivector<T>, template<typename T>) ;
 /*******************************************************************************
  Comparator functors for indirect-containers
 *******************************************************************************/
-template<typename Ptr>
-struct i_less : public std::binary_function<const Ptr, const Ptr, bool> {
-   bool operator () (const Ptr &p1, const Ptr &p2) const { return *p1 < *p2 ; }
+template<typename T>
+struct i_less {
+      typedef bool result_type ;
+      typedef valtype_t<T> arg_type ;
+
+      template<typename P1, typename P2>
+      auto operator()(const P1 &p1, const P2 &p2)      const->decltype(*p1 < *p2) { return *p1 < *p2 ; }
+      template<typename P>
+      auto operator()(const P &p1, const arg_type &p2) const->decltype(*p1 < p2) { return *p1 < p2 ; }
+      template<typename P>
+      auto operator()(const arg_type &p1, const P &p2) const->decltype(p1 < *p2) { return p1 < *p2 ; }
 } ;
 
-template<typename Ptr>
-struct i_equal : public std::binary_function<const Ptr, const Ptr, bool> {
-   bool operator () (const Ptr &p1, const Ptr &p2) const { return p1 == p2 || *p1 == *p2 ; }
-} ;
+template<typename T>
+struct i_equal {
+      typedef bool result_type ;
+      typedef valtype_t<T> arg_type ;
 
-template<typename Ptr>
-struct i_compare : public std::binary_function<const Ptr, const Ptr, int> {
-   int operator () (const Ptr &p1, const Ptr &p2) const
-      { return i_less<Ptr>() (p1, p2) ? -1 : i_less<Ptr>() (p2, p1) ; }
+      template<typename P1, typename P2>
+      auto operator()(const P1 &p1, const P2 &p2)      const->decltype(*p1 == *p2) { return *p1 == *p2 ; }
+      template<typename P>
+      auto operator()(const P &p1, const arg_type &p2) const->decltype(*p1 == p2) { return *p1 == p2 ; }
+      template<typename P>
+      auto operator()(const arg_type &p1, const P &p2) const->decltype(p1 == *p2) { return p1 == *p2 ; }
 } ;
 
 } // end of namespace pcomn
