@@ -310,19 +310,14 @@ template<typename R = std::string, typename S>
 std::enable_if_t<is_compatible_strings<R, std::remove_reference_t<S>>::value, R>
 mkdirpath(S &&path)
 {
-   static constexpr const char separator[2] = {PCOMN_PATH_NATIVE_DELIM, 0} ;
-
-   return (!*str::cstr(std::forward<S>(path))
-           || is_pathname_separator(*(str::cstr(std::forward<S>(path)) + (str::len(std::forward<S>(path)) - 1))))
-      ? R(std::forward<S>(path))
-      : R(std::forward<S>(path)) + separator ;
+   return joinpath<R>(std::forward<S>(path), "") ;
 }
 
 template<typename R = std::string>
 inline std::enable_if_t<is_strchar<R, char>::value, R>
 mkdirpath(const strslice &p)
 {
-   return mkdirpath(R(p)) ;
+   return joinpath<R>(p, "") ;
 }
 
 } // end of namespace pcomn::path
