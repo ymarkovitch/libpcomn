@@ -340,8 +340,22 @@ struct is_base_of_strict :
 template<typename T, typename U>
 using is_same_unqualified = std::is_same<std::remove_cv_t<T>, std::remove_cv_t<U> > ;
 
-/******************************************************************************/
-/** Check if the type can be trivially swapped, i.e. by simply swapping raw memory
+template<typename To, typename... From>
+struct is_all_convertible : std::true_type {} ;
+
+template<typename To, typename F1, typename... Fn>
+struct is_all_convertible<To, F1, Fn...> :
+   std::bool_constant<(std::is_convertible<F1, To>::value && is_all_convertible<To, Fn...>::value)>
+{} ;
+
+template<typename T, typename To, typename... From>
+struct if_all_convertible : std::enable_if<is_all_convertible<To, From...>::value, T> {} ;
+
+template<typename T, typename To, typename... From>
+using if_all_convertible_t = typename if_all_convertible<T, To, From...>::type ;
+
+/***************************************************************************//**
+ Check if the type can be trivially swapped, i.e. by simply swapping raw memory
  contents.
 *******************************************************************************/
 template<typename T>
