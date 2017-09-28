@@ -613,46 +613,65 @@ class omemstream : private std::basic_streambuf<char>, public std::ostream {
       }
 } ;
 
-/******************************************************************************/
-/** Returns the result of streaming arg into pcomn::omemstream
-
- The result is the same as for boost::lexical_cast<std::string>(arg),
- but way more efficient due to pcomn::omemstream instead of std::stringstream
+/***************************************************************************//**
+ Output the series of a values into std::ostream.
 *******************************************************************************/
-template<typename T>
-__noinline
-disable_if_t<std::is_convertible<T, std::string>::value, std::string>
-string_cast(const T &arg)
-{
-   pcomn::omemstream os ;
-   os << arg ;
-   return os.checkout() ;
-}
-
-template<typename T>
-inline
-std::enable_if_t<std::is_convertible<T, std::string>::value, std::string>
-string_cast(T &&arg)
-{
-   return {std::forward<T>(arg)} ;
-}
-
-inline std::ostream &print_values(std::ostream &os) { return os ; }
+/**{@*/
+__forceinline std::ostream &print_values(std::ostream &os) { return os ; }
 
 template<typename T, typename... Tn>
 inline std::ostream &print_values(std::ostream &os, const T &a1, const Tn &...an)
 {
    return print_values(os << a1, an...) ;
 }
+/**}@*/
 
-template<typename T1, typename T2, typename... Tn>
-__noinline
-std::string string_cast(const T1 &a1, const T2 &a2, const Tn &...an)
+/***************************************************************************//**
+ Returns the result of streaming arg into pcomn::omemstream
+
+ The result is the same as for boost::lexical_cast<std::string>(arg),
+ but way more efficient due to pcomn::omemstream instead of std::stringstream
+*******************************************************************************/
+/**{@*/
+template<typename T>
+__forceinline
+std::enable_if_t<std::is_convertible<T, std::string>::value, std::string>
+string_cast(T &&arg)
+{
+   return {std::forward<T>(arg)} ;
+}
+
+/// @cond
+namespace detail {
+template<typename... Tn>
+__noinline std::string string_cast_(Tn ...an)
 {
    pcomn::omemstream os ;
-   print_values(os, a1, a2, an...) ;
+   print_values(os, an...) ;
    return os.checkout() ;
 }
+}
+/// @endcond
+
+template<typename T>
+__forceinline
+disable_if_t<std::is_convertible<T, std::string>::value, std::string>
+string_cast(const T &arg)
+{
+   return detail::string_cast_<parmtype_t<const T &>>(arg) ;
+}
+
+template<typename T1, typename T2, typename... Tn>
+__forceinline
+std::string string_cast(const T1 &a1, const T2 &a2, const Tn &...an)
+{
+   return detail::string_cast_<parmtype_t<const T1 &>,
+                               parmtype_t<const T2 &>,
+                               parmtype_t<const Tn &>...>
+      (a1, a2, an...) ;
+}
+
+/**}@*/
 
 } // end of pcomn namespace
 
