@@ -378,7 +378,8 @@ template<typename T>
 using clvref_t = lvref_t<typename std::add_const<T>::type> ;
 
 template<typename T>
-using parmtype_t = std::conditional_t<(std::is_arithmetic<T>::value || std::is_pointer<T>::value), T, clvref_t<T>> ;
+using parmtype_t = std::conditional_t<std::is_scalar<std::decay_t<T>>::value,
+                                      std::decay_t<T>, clvref_t<T>> ;
 
 /******************************************************************************/
 /** Deduce the return type of a function call expression at compile time @em and,
