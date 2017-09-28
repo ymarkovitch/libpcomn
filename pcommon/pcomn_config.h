@@ -150,6 +150,11 @@
 #endif
 #define __noinline __attribute__((__noinline__))
 
+#ifdef __noinline
+#undef __noinline
+#endif
+#define __noinline __attribute__((__noinline__))
+
 #ifdef __cold
 #undef __cold
 #endif
@@ -159,6 +164,11 @@
 #undef __forceinline
 #endif
 #define __forceinline inline __attribute__((__always_inline__))
+
+#ifdef __restrict
+#undef __restrict
+#endif
+#define __restrict __restrict__
 
 #ifndef __deprecated
 #define __deprecated(...) __attribute__((deprecated __VA_ARGS__))
@@ -202,6 +212,11 @@
 #undef __may_alias
 #endif
 #define __may_alias
+
+#ifdef __restrict
+#undef __restrict
+#endif
+#define __restrict __restrict
 
 #else
 /*******************************************************************************
