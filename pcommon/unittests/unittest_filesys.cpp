@@ -90,6 +90,11 @@ void FilesystemTests::Test_Filesystem_Path()
    CPPUNIT_LOG_EQUAL(joinpath<>("", "d", "", ""), std::string("d/")) ;
    CPPUNIT_LOG_EQUAL(joinpath<>("", "b/c"), std::string("b/c")) ;
    CPPUNIT_LOG_EQUAL(joinpath<>("abc", ""), std::string("abc/")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<>("", "b/c", "d/e", "", "f", ""), std::string("b/c/d/e/f/")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<>("", "b/c", "d/e", "", "f", "g"), std::string("b/c/d/e/f/g")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<>("", "b/c", "d/e", "qqq", "f", "g"), std::string("b/c/d/e/qqq/f/g")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<>("", "b/c", "d/e", "/qqq", "f", "g"), std::string("/qqq/f/g")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<>("", "b/c", "d/e", "qqq", "f", "/g"), std::string("/g")) ;
 
    CPPUNIT_LOG(std::endl) ;
    CPPUNIT_LOG_EQUAL(mkdirpath<std::string>(""), std::string()) ;

@@ -306,6 +306,17 @@ joinpath(const strslice &p1, const strslice &p2, const strslice &p3, const strsl
    return joinpath<R>(buf1, p3, p4, p5) ;
 }
 
+template<typename R = std::string>
+std::enable_if_t<is_strchar<R, char>::value, R>
+joinpath(const strslice &p1, const strslice &p2, const strslice &p3, const strslice &p4, const strslice &p5, const strslice &p6)
+{
+   char buf1[PATH_MAX + 1] ;
+   char buf2[sizeof buf1] ;
+   joinpath(p1, p2, buf1, sizeof buf1) ;
+   joinpath(p3, p4, buf2, sizeof buf2) ;
+   return joinpath<R>(buf1, buf2, p5, p6) ;
+}
+
 template<typename R = std::string, typename S>
 std::enable_if_t<is_compatible_strings<R, std::remove_reference_t<S>>::value, R>
 mkdirpath(S &&path)
