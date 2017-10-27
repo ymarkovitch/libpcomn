@@ -62,25 +62,24 @@ inline bool is_pathname_separator(char c)
    return c == '/' ;
 }
 
-inline bool is_rooted(const char *path)
-{
-   NOXCHECK(path) ;
-   return *path == '/' ;
-}
-
-inline bool is_rooted(const strslice &path)
-{
-   return path && *path.begin() == '/' ;
-}
-
 inline bool is_absolute(const char *path)
 {
-   return is_rooted(path) ;
+   NOXCHECK(path) ;
+   return is_pathname_separator(*path) ;
 }
 
 inline bool is_absolute(const strslice &path)
 {
-   return is_rooted(path) ;
+   return path && is_pathname_separator(*path.begin()) ;
+}
+
+inline bool is_root_of(const strslice &basedir, const strslice &path)
+{
+   return basedir
+      && str::startswith(path, basedir)
+      && (basedir.size() == path.size()
+          || is_pathname_separator(path[basedir.size()])
+          || is_pathname_separator(path[basedir.size() - 1])) ;
 }
 
 /// Split a pathname into a dirname and basename.
@@ -155,9 +154,9 @@ using posix::joinpath ;
 using posix::abspath ;
 using posix::normpath ;
 using posix::realpath ;
-using posix::is_rooted ;
 using posix::is_absolute ;
 using posix::is_pathname_separator ;
+using posix::is_root_of ;
 using posix::is_basename ;
 
 #elif defined(PCOMN_PL_MS)

@@ -154,9 +154,30 @@ void FilesystemTests::Test_Filesystem_Path()
    CPPUNIT_LOG_IS_TRUE(path::posix::is_absolute(std::string("/world"))) ;
    CPPUNIT_LOG_IS_TRUE(path::posix::is_absolute("/")) ;
    CPPUNIT_LOG_IS_FALSE(path::posix::is_absolute("")) ;
-   CPPUNIT_LOG_IS_TRUE(path::posix::is_rooted(std::string("/world"))) ;
-   CPPUNIT_LOG_IS_TRUE(path::posix::is_rooted("/")) ;
-   CPPUNIT_LOG_IS_FALSE(path::posix::is_rooted("")) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_IS_FALSE(path::posix::is_root_of("", "")) ;
+   CPPUNIT_LOG_IS_FALSE(path::posix::is_root_of("", "/")) ;
+   CPPUNIT_LOG_IS_TRUE(path::posix::is_root_of("/", "/")) ;
+   CPPUNIT_LOG_IS_TRUE(path::posix::is_root_of("/", "/a")) ;
+   CPPUNIT_LOG_IS_TRUE(path::posix::is_root_of("/", "/hello/world")) ;
+   CPPUNIT_LOG_IS_TRUE(path::posix::is_root_of("/", "/hello/world/")) ;
+   CPPUNIT_LOG_IS_FALSE(path::posix::is_root_of("/", "hello/world/")) ;
+
+   CPPUNIT_LOG_IS_TRUE(path::posix::is_root_of("hello", "hello/world/")) ;
+   CPPUNIT_LOG_IS_TRUE(path::posix::is_root_of("hello/", "hello/world/")) ;
+   CPPUNIT_LOG_IS_TRUE(path::posix::is_root_of("hello/world/", "hello/world/")) ;
+   CPPUNIT_LOG_IS_TRUE(path::posix::is_root_of("hello/world", "hello/world/")) ;
+
+   CPPUNIT_LOG_IS_FALSE(path::posix::is_root_of("hello/worl", "hello/world/")) ;
+   CPPUNIT_LOG_IS_FALSE(path::posix::is_root_of("hello/worl/", "hello/world/")) ;
+   CPPUNIT_LOG_IS_FALSE(path::posix::is_root_of("hello/worlm/", "hello/world/")) ;
+   CPPUNIT_LOG_IS_FALSE(path::posix::is_root_of("hello/worlm", "hello/world/")) ;
+   CPPUNIT_LOG_IS_FALSE(path::posix::is_root_of("hell", "hello/world/")) ;
+
+   CPPUNIT_LOG_IS_TRUE(path::posix::is_root_of(" ", " ")) ;
+   CPPUNIT_LOG_IS_FALSE(path::posix::is_root_of(" ", "  ")) ;
 
    CPPUNIT_LOG(std::endl) ;
    CPPUNIT_LOG_EQUAL(path::posix::split(""), strslice_pair()) ;

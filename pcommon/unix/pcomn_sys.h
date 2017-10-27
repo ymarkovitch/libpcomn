@@ -68,6 +68,8 @@ inline fileoff_t filesize(const char *name)
    return stat(name, &st) == 0 ? filesize_from_stat(st) : (fileoff_t)-1 ;
 }
 
+inline fileoff_t filesize(const std::string &name) { return filesize(name.c_str()) ; }
+
 inline void *pagealloc()
 {
    void * const mem = mmap(nullptr, 1, PROT_READ|PROT_WRITE, MAP_ANONYMOUS|MAP_PRIVATE, -1, 0) ;

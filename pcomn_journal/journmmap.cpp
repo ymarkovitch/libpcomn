@@ -422,7 +422,7 @@ std::string MMapStorage::create_segdir_symlink(const char *segdirname)
 
    const std::string &linkpath = segment_dirname() ;
    const std::string &segdirpath = path::abspath<std::string>
-      (path::posix::is_rooted(segdirname)
+      (path::posix::is_absolute(segdirname)
        ? std::string(segdirname)
        : journal_abspath(segdirname)) ;
 

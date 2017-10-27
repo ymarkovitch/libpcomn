@@ -105,6 +105,11 @@ inline Access fileaccess(const char *name, int mode = 0)
    return ACC_ERROR ;
 }
 
+inline Access fileaccess(const std::string &name, int mode = 0)
+{
+   return fileaccess(name.c_str(), mode) ;
+}
+
 /// Get CPU cores count on the system.
 /// @return The total count of @em actual cores on all physical CPUs in the system @em
 /// not counting hyperthreads.

@@ -174,7 +174,9 @@ target_compile_options(pcommon
 target_link_libraries(pcommon
   PUBLIC
   $<$<OR:$<PLATFORM_ID:Linux>,$<PLATFORM_ID:Cygwin>,$<PLATFORM_ID:MinGW>>:-pthread>
-  $<$<BOOL:WITH_STACKTRACE>:unwind dw elf>
+  $<$<BOOL:WITH_STACKTRACE>:unwind>
+  $<$<BOOL:WITH_STACKTRACE>:dw>
+  $<$<BOOL:WITH_STACKTRACE>:elf>
   )
 
 if (${UNITTESTS})
