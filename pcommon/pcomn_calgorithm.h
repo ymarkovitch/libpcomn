@@ -336,6 +336,14 @@ inline T caccumulate(Container &&range, T init, BinaryOperation &&op)
    return init ;
 }
 
+template<typename C, typename F>
+inline C &&cfor_each(C &&container, F &&fn)
+{
+   for (auto &item: std::forward<C>(container))
+      std::forward<F>(fn)(item) ;
+   return std::forward<C>(container) ;
+}
+
 /*******************************************************************************
  Erase all the elements satisfying specific criteria from the vector
  and return the reference to the vector.
