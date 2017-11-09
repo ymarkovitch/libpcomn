@@ -314,6 +314,28 @@ inline std::vector<T> &&unique_sort(std::vector<T> &&v, BinaryPredicate &&pred)
    return std::move(unique_sort(static_cast<std::vector<T> &>(v), std::forward<BinaryPredicate>(pred))) ;
 }
 
+/***************************************************************************//**
+ Compute the sum of the given value init and the elements in the container/range.
+
+ The first version uses operator+ to sum up the elements, the second version uses
+ the given binary function op.
+*******************************************************************************/
+template<typename Container, typename T>
+inline T caccumulate(Container &&range, T init)
+{
+   for (auto &v: std::forward<Container>(range))
+      init += v ;
+   return init ;
+}
+
+template<typename Container, typename T, typename BinaryOperation>
+inline T caccumulate(Container &&range, T init, BinaryOperation &&op)
+{
+   for (auto &v: std::forward<Container>(range))
+      init = std::forward<BinaryOperation>(op)(init, v) ;
+   return init ;
+}
+
 /*******************************************************************************
  Erase all the elements satisfying specific criteria from the vector
  and return the reference to the vector.
