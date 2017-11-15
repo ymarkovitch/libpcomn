@@ -195,14 +195,17 @@ static __attribute__((used)) __noinline int IsDebuggerPresent()
     static const char TRACERPID[] = "TracerPid:" ;
     char buf[256] ;
     int fd ;
+    const char *tracepid ;
+    int dummy ;
 
     memset(buf, 0, sizeof buf) ;
     if ((fd = open("/proc/self/status", O_RDONLY)) >= 0)
     {
-       read(fd, buf, sizeof buf - 1) ;
+       dummy = read(fd, buf, sizeof buf - 1) ;
        close(fd) ;
+       (void)dummy ;
     }
-    const char *tracepid = strstr(buf, TRACERPID) ;
+    tracepid = strstr(buf, TRACERPID) ;
 
     return tracepid && atoll(tracepid + strlen(TRACERPID)) > 0 ;
 }
