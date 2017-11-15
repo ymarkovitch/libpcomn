@@ -426,9 +426,13 @@
 #        define PCOMN_RTL_MS      1
 #     endif
 #  endif
-#  if __cplusplus >= 201402L
+#  if __cplusplus >= 201402L && __cplusplus < 201500L
 #     define PCOMN_COMPILER_CXX14 1
 #     define PCOMN_STL_CXX14      1
+#  endif
+#  if __cplusplus >= 201500L
+#     define PCOMN_COMPILER_CXX17 1
+#     define PCOMN_STL_CXX17      1
 #  endif
 #endif
 
