@@ -37,9 +37,7 @@ inline char *ssafe_rfc3339_time(time_t t, bool is_utc, char *buf, size_t bufsize
 {
     typedef struct tm tmstruct ;
     return ssafe_rfc3339_time
-        (*localtime_r(&as_mutable(time(nullptr)),
-                      &as_mutable(tmstruct())),
-         is_utc, buf, bufsize) ;
+        (*localtime_r(&t, &as_mutable(tmstruct())), is_utc, buf, bufsize) ;
 }
 
 inline char *ssafe_rfc3339_localtime(time_t t, char *buf, size_t bufsize) noexcept
