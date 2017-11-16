@@ -10,7 +10,7 @@
 #------------------------------------------------------------------------------
 cmake_minimum_required(VERSION 3.5.2)
 
-unittests_project(pcommon_unittests)
+unittests_project(libpcommon_unittests)
 
 set_project_link_libraries(crypto z)
 
