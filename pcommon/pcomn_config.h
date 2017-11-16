@@ -28,7 +28,7 @@
 */
 
 #if PCOMN_COMPILER_CXX14
-#define __deprecated(...) [[deprecated __VA_ARG__]]
+#define __deprecated(...) [[deprecated(__VA_ARGS__)]]
 #endif
 
 /*******************************************************************************
@@ -171,7 +171,7 @@
 #define __restrict __restrict__
 
 #ifndef __deprecated
-#define __deprecated(...) __attribute__((deprecated __VA_ARGS__))
+#define __deprecated(...) __attribute__((deprecated(__VA_ARGS__)))
 #endif
 
 #elif defined(PCOMN_COMPILER_MS)
@@ -205,7 +205,7 @@
 #define __forceinline inline __forceinline
 
 #ifndef __deprecated
-#define __deprecated(...) __declspec(deprecated __VA_ARGS__)
+#define __deprecated(...) __declspec(deprecated(__VA_ARGS__))
 #endif
 
 #ifdef __may_alias
