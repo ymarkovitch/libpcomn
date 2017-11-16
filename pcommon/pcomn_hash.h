@@ -338,6 +338,11 @@ struct hash_combinator {
 } ;
 
 /***************************************************************************//**
+ Backward compatibility definition.
+*******************************************************************************/
+typedef hash_combinator Hash ;
+
+/***************************************************************************//**
  Function that hashes its arguments and returns combined hash value.
 *******************************************************************************/
 inline size_t tuplehash() { return 0 ; }
