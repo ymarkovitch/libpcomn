@@ -433,10 +433,7 @@ class closed_hashtable {
       }
 
    private:
-      template<bool UseStaticBuckets, novalue> union combined_buckets {
-            static_assert(UseStaticBuckets || !UseStaticBuckets,
-                          "The non-specialized version of combined_buckets must never be instantiated") ;
-      } ;
+      template<bool UseStaticBuckets, novalue> union combined_buckets ;
 
       /*************************************************************************
         Common state for both dynamic and static buckets.
@@ -540,6 +537,15 @@ class closed_hashtable {
             {
                return !_bucket_count || (float)_occupied_count/_bucket_count >= max_load_factor ;
             }
+
+            void swap(dynamic_buckets &other)
+            {
+               pcomn_swap(_bucket_count, other._bucket_count) ;
+               pcomn_swap(_valid_count, other._valid_count) ;
+               pcomn_swap(_occupied_count, other._occupied_count) ;
+               pcomn_swap(_buckets, other._buckets) ;
+            }
+
          private:
             void reset_members()
             {
@@ -601,14 +607,7 @@ class closed_hashtable {
             bool overloaded(const basic_state &st) const { return _dyn.overloaded(st._max_load_factor) ; }
 
             void clear(const basic_state &) { _dyn.clear() ; }
-
-            void swap(combined_buckets &other)
-            {
-               std::swap(_dyn._bucket_count, other._dyn._bucket_count) ;
-               std::swap(_dyn._valid_count, other._dyn._valid_count) ;
-               std::swap(_dyn._occupied_count, other._dyn._occupied_count) ;
-               std::swap(_dyn._buckets, other._dyn._buckets) ;
-            }
+            void swap(combined_buckets &other) { _dyn.swap(other._dyn) ; }
       } ;
 
       /*************************************************************************
@@ -702,11 +701,8 @@ class closed_hashtable {
 
             void swap(combined_buckets &other)
             {
-               // Interpret _bucket_container as POD data. Since _bucket_container contains at
-               // least one pointer, its aligned at least to the pointer size boundary.
-               std::swap_ranges((void **)this,
-                                (void **)this + (sizeof *this)/sizeof(void **),
-                                (void **)&other) ;
+               // Interpret _bucket_container as POD data.
+               sizeof _dyn >= sizeof _stat ? _dyn.swap(other._dyn) : pcomn_swap(_stat, other._stat) ;
             }
       } ;
 
