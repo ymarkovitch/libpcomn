@@ -16,16 +16,18 @@ project(pcommon C CXX)
 # We have some custom .cmake scripts in pcommon/config
 list(APPEND CMAKE_MODULE_PATH "${pcommon_SOURCE_DIR}/config")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} CACHE PATH "")
+set_property(GLOBAL PROPERTY ALLOW_DUPLICATE_CUSTOM_TARGETS TRUE)
 
 include(pcommon)
 
-set(UNITTESTS       ON  CACHE BOOL "Enable unittests building. Requires CPPUntit.")
-set(WITH_STACKTRACE OFF CACHE BOOL "Enable stacktrace classes. Linux-only. Requires libunwind and libdw.")
+set(ENABLE_PCOMN_UNITTESTS  ON  CACHE BOOL "Enable unittests building. Requires CPPUntit.")
+set(ENABLE_PCOMN_STACKTRACE OFF CACHE BOOL "Enable stacktrace classes. Linux-only. Requires libunwind and libdw.")
+set(ENABLE_PCOMN_AVX        NO  CACHE BOOL "Enable use of AVX instruction set. Substantially accelerates e.g. hashing and pcomn::bitarray.")
 
 message("***** Processing ${PROJECT_NAME} *****")
 
-if (WITH_STACKTRACE AND (NOT CMAKE_SYSTEM_NAME STREQUAL "Linux"))
-    message(FATAL_ERROR "WITH_STACKTRACE=ON is supported only for Linux platform.")
+if (ENABLE_PCOMN_STACKTRACE AND (NOT CMAKE_SYSTEM_NAME STREQUAL "Linux"))
+    message(FATAL_ERROR "ENABLE_PCOMN_STACKTRACE=ON is supported only for Linux platform.")
 endif()
 
 if (${CMAKE_GENERATOR} MATCHES ".*Visual Studio.*")
@@ -35,6 +37,12 @@ if (${CMAKE_GENERATOR} MATCHES ".*Visual Studio.*")
     set(COMPILE_LANGUAGE_CXX "1:1")
 else()
     set(COMPILE_LANGUAGE_CXX "COMPILE_LANGUAGE:CXX")
+endif()
+
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    set(COMPILER_GCCLIKE 1)
+else()
+    set(COMPILER_GCCLIKE 0)
 endif()
 
 if (NOT UNIX)
@@ -60,7 +68,7 @@ function(find_required_package package_name package_checkvar)
     endif()
 endfunction()
 
-if (WITH_STACKTRACE)
+if (ENABLE_PCOMN_STACKTRACE)
     find_required_package(libelf    LIBELF_FOUND)
     find_required_package(libunwind LIBUNWIND_FOUND)
     find_required_package(libdw     LIBDW_FOUND)
@@ -116,7 +124,7 @@ add_library(pcommon STATIC
   pcomn_crypthash
   unix/pcomn_posix_exec.cpp
   unix/pcomn_shutil.cpp
-  $<$<BOOL:WITH_STACKTRACE>:unix/pcomn_stacktrace.cpp>
+  $<$<BOOL:${ENABLE_PCOMN_STACKTRACE}>:unix/pcomn_stacktrace.cpp>
   >
 )
 
@@ -156,13 +164,15 @@ target_compile_options(pcommon
   PUBLIC
   $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>:-pthread>
   $<$<CXX_COMPILER_ID:GNU>:-frecord-gcc-switches>
+  $<$<AND:${COMPILER_GCCLIKE},$<STREQUAL:${CMAKE_SYSTEM_PROCESSOR},x86_64>,$<NOT:$<BOOL:${ENABLE_PCOMN_AVX}>>>:-march=westmere>
+  $<$<AND:${COMPILER_GCCLIKE},$<STREQUAL:${CMAKE_SYSTEM_PROCESSOR},x86_64>,$<BOOL:${ENABLE_PCOMN_AVX}>>:-march=corei7-avx>
 
   PRIVATE
   $<$<CXX_COMPILER_ID:GNU>:-Wall -Wno-error>
   $<$<CXX_COMPILER_ID:Clang>:-Wall -Wno-error -Wno-mismatched-tags>
-  $<$<AND:$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>,$<${COMPILE_LANGUAGE_CXX}>>:-Woverloaded-virtual>
+  $<$<AND:${COMPILER_GCCLIKE},$<${COMPILE_LANGUAGE_CXX}>>:-Woverloaded-virtual>
 
-  $<$<AND:$<OR:$<CONFIG:Debug>,$<CONFIG:DbgSanitize>,$<CONFIG:RelWithDebInfo>>,$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>>:-gdwarf-4>
+  $<$<AND:$<OR:$<CONFIG:Debug>,$<CONFIG:DbgSanitize>,$<CONFIG:RelWithDebInfo>>,${COMPILER_GCCLIKE}>:-gdwarf-4>
   $<$<PLATFORM_ID:Linux>:-fvisibility=hidden>
 
   PUBLIC
@@ -174,12 +184,12 @@ target_compile_options(pcommon
 target_link_libraries(pcommon
   PUBLIC
   $<$<OR:$<PLATFORM_ID:Linux>,$<PLATFORM_ID:Cygwin>,$<PLATFORM_ID:MinGW>>:-pthread>
-  $<$<BOOL:WITH_STACKTRACE>:unwind>
-  $<$<BOOL:WITH_STACKTRACE>:dw>
-  $<$<BOOL:WITH_STACKTRACE>:elf>
+  $<$<BOOL:${ENABLE_PCOMN_STACKTRACE}>:unwind>
+  $<$<BOOL:${ENABLE_PCOMN_STACKTRACE}>:dw>
+  $<$<BOOL:${ENABLE_PCOMN_STACKTRACE}>:elf>
   )
 
-if (${UNITTESTS})
+if (ENABLE_PCOMN_UNITTESTS)
   enable_testing()
   add_subdirectory(unittests EXCLUDE_FROM_ALL)
 endif()
