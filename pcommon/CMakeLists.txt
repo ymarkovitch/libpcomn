@@ -178,8 +178,8 @@ target_compile_options(pcommon
   $<$<AND:${COMPILER_GCCLIKE},$<STREQUAL:${CMAKE_SYSTEM_PROCESSOR},x86_64>,$<BOOL:${ENABLE_PCOMN_AVX}>>:-march=corei7-avx>
 
   PRIVATE
-  $<$<CXX_COMPILER_ID:GNU>:-Wall -Wno-error>
-  $<$<CXX_COMPILER_ID:Clang>:-Wall -Wno-error -Wno-mismatched-tags>
+  $<$<CXX_COMPILER_ID:GNU>:-Wall -Wno-error -Wno-unused-return>
+  $<$<CXX_COMPILER_ID:Clang>:-Wall -Wno-error -Wno-unused-return -Wno-mismatched-tags>
   $<$<AND:${COMPILER_GCCLIKE},$<${COMPILE_LANGUAGE_CXX}>>:-Woverloaded-virtual>
 
   $<$<AND:$<OR:$<CONFIG:Debug>,$<CONFIG:DbgSanitize>,$<CONFIG:RelWithDebInfo>>,${COMPILER_GCCLIKE}>:-gdwarf-4>
