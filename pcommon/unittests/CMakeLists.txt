@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 # FILE         :  CMakeLists.txt
-# COPYRIGHT    :  Yakov Markovitch, 2014-2016
+# COPYRIGHT    :  Yakov Markovitch, 2014-2017
 #                 See LICENSE for information on usage/redistribution.
 #
 # DESCRIPTION  :  pcommon unittests build script
@@ -10,7 +10,7 @@
 #------------------------------------------------------------------------------
 cmake_minimum_required(VERSION 3.5.2)
 
-unittests_project(pcommon)
+unittests_project(pcommon_unittests)
 
 set_project_link_libraries(crypto z)
 
