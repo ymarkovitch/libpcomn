@@ -11,10 +11,10 @@
 #------------------------------------------------------------------------------
 cmake_minimum_required(VERSION 3.5.2)
 
-project(pcommon C CXX)
+project(libpcommon C CXX)
 
 # We have some custom .cmake scripts in pcommon/config
-list(APPEND CMAKE_MODULE_PATH "${pcommon_SOURCE_DIR}/config")
+list(APPEND CMAKE_MODULE_PATH "${libpcommon_SOURCE_DIR}/config")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} CACHE PATH "")
 set_property(GLOBAL PROPERTY ALLOW_DUPLICATE_CUSTOM_TARGETS TRUE)
 
@@ -23,6 +23,7 @@ include(pcommon)
 set(ENABLE_PCOMN_UNITTESTS  ON  CACHE BOOL "Enable unittests building. Requires CPPUntit.")
 set(ENABLE_PCOMN_STACKTRACE OFF CACHE BOOL "Enable stacktrace classes. Linux-only. Requires libunwind and libdw.")
 set(ENABLE_PCOMN_AVX        NO  CACHE BOOL "Enable use of AVX instruction set. Substantially accelerates e.g. hashing and pcomn::bitarray.")
+set(FORCE_PCOMN_CXX14       NO  CACHE BOOL "Force using C++14 for building both the pcommon library and unittests.")
 
 message("***** Processing ${PROJECT_NAME} *****")
 
@@ -137,6 +138,15 @@ target_compile_features(pcommon
   cxx_decltype
   cxx_delegating_constructors
   )
+
+if (FORCE_PCOMN_CXX14)
+  target_compile_features(pcommon
+    PUBLIC
+    cxx_return_type_deduction
+    cxx_relaxed_constexpr
+    cxx_lambda_init_captures
+    )
+endif()
 
 set_target_properties(pcommon
   PROPERTIES
