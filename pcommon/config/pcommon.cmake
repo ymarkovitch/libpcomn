@@ -229,6 +229,7 @@ endfunction(unittests_directory)
 function(unittests_project NAME)
     project(${NAME}.unittests CXX C)
     unittests_directory()
+    add_custom_target(${CMAKE_PROJECT_NAME} DEPENDS unittests)
     add_custom_target(${CMAKE_PROJECT_NAME}.build DEPENDS unittests.build)
 endfunction(unittests_project)
 
