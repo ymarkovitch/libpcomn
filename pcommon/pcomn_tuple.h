@@ -90,8 +90,8 @@ template<> struct for_each_visit<0> {
 } ;
 /// @endcond
 
-/******************************************************************************/
-/** Statically apply a functor object to every item of any object compatible with
+/***************************************************************************//**
+ Statically apply a functor object to every item of any object compatible with
  std::get<n> function and std::tuple_size<T> class (this includes at least
  std::tuple, std::pair, and std::array).
 *******************************************************************************/
@@ -102,8 +102,17 @@ struct tuple_for_each : for_each_visit<std::tuple_size<valtype_t<Tuple>>::value>
       {
          applier::visit(value, std::forward<F>(visitor)) ;
       }
+
    private:
       typedef for_each_visit<std::tuple_size<std::remove_const_t<Tuple>>::value> applier ;
+
+   public:
+      template<typename F>
+      __deprecated("Please use tuple_for_each::apply")
+      static void apply_lvalue(Tuple &value, F &&visitor)
+      {
+         apply(value, std::forward<F>(visitor)) ;
+      }
 } ;
 
 /******************************************************************************/
