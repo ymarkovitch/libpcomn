@@ -141,6 +141,30 @@ has_item(KeyedContainer &&container, const Value &item)
    return !!std::forward<KeyedContainer>(container).count(item) ;
 }
 
+template<class Container, class Test>
+inline bool any_of(Container &&c, Test &&test)
+{
+   return std::any_of(std::begin(std::forward<Container>(c)),
+                      std::end(std::forward<Container>(c)),
+                      std::forward<Test>(test)) ;
+}
+
+template<class Container, class Test>
+inline bool all_of(Container &&c, Test &&test)
+{
+   return std::all_of(std::begin(std::forward<Container>(c)),
+                      std::end(std::forward<Container>(c)),
+                      std::forward<Test>(test)) ;
+}
+
+template<class Container, class Test>
+inline bool none_of(Container &&c, Test &&test)
+{
+   return std::none_of(std::begin(std::forward<Container>(c)),
+                       std::end(std::forward<Container>(c)),
+                       std::forward<Test>(test)) ;
+}
+
 /******************************************************************************/
 /** Get both iterators of a container
 *******************************************************************************/
