@@ -121,6 +121,26 @@ inline bool erase_keyed_value(Map &c, Key &&key, typename Map::mapped_type &resu
    return true ;
 }
 
+/*******************************************************************************
+
+*******************************************************************************/
+template<class Container, typename Value>
+inline disable_if_t<has_key_type<std::remove_reference_t<Container>>::value, bool>
+has_item(Container &&container, const Value &item)
+{
+   for (const auto &ci: std::forward<Container>(container))
+      if (ci == item)
+         return true ;
+   return false ;
+}
+
+template<class KeyedContainer, typename Value>
+inline std::enable_if_t<has_key_type<std::remove_reference_t<KeyedContainer> >::value, bool>
+has_item(KeyedContainer &&container, const Value &item)
+{
+   return !!std::forward<KeyedContainer>(container).count(item) ;
+}
+
 /******************************************************************************/
 /** Get both iterators of a container
 *******************************************************************************/
