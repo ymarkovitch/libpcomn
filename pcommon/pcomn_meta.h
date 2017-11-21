@@ -105,31 +105,31 @@ template<typename, typename, typename> class basic_string ;
 PCOMN_END_NAMESPACE_CXX11
 
 template<class C>
-constexpr auto size(const C &container) -> decltype(container.size()) { return container.size() ; }
+inline constexpr auto size(const C &container) -> decltype(container.size()) { return container.size() ; }
 
 template<typename T, size_t N>
-constexpr size_t size(const T (&)[N]) noexcept { return N ; }
+inline constexpr size_t size(const T (&)[N]) noexcept { return N ; }
 
 template<class C>
-constexpr auto empty(const C &container) -> decltype(container.empty()) { return container.empty() ; }
+inline constexpr auto empty(const C &container) -> decltype(container.empty()) { return container.empty() ; }
 
 template<typename T, size_t N>
-constexpr bool empty(const T (&)[N]) noexcept { return false ; }
+inline constexpr bool empty(const T (&)[N]) noexcept { return false ; }
 
 template<typename E>
-constexpr bool empty(std::initializer_list<E> v) noexcept { return v.size() == 0 ; }
+inline constexpr bool empty(std::initializer_list<E> v) noexcept { return v.size() == 0 ; }
 
 template<typename C, size_t n>
-constexpr C *data(C (&arr)[n]) { return arr ; }
+inline constexpr C *data(C (&arr)[n]) { return arr ; }
 
 template<typename C, typename R, typename A>
-constexpr C *data(std::basic_string<C, R, A> &s)
+inline constexpr C *data(std::basic_string<C, R, A> &s)
 {
    return const_cast<C *>(s.data()) ;
 }
 
 template<typename T>
-constexpr auto data(T &&container) -> decltype(std::forward<T>(container).data())
+inline constexpr auto data(T &&container) -> decltype(std::forward<T>(container).data())
 {
    return std::forward<T>(container).data() ;
 }
