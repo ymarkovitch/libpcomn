@@ -401,4 +401,19 @@ struct is_callable<T, R(Args...)> :
 
 } // end of namespace pcomn
 
+
+#ifndef PCOMN_STL_CXX17
+
+namespace std {
+
+template<class Predicate>
+inline constexpr unary_negate<Predicate> not_fn(Predicate &&pred)
+{
+   return not1(forward<Predicate>(pred)) ;
+}
+
+} // end of namespace std
+
+#endif /* PCOMN_STL_CXX17 */
+
 #endif /* __PCOMN_FUNCTION_H */
