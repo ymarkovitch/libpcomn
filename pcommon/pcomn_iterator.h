@@ -46,10 +46,21 @@ test_icategory(typename icategory<T>::iterator_category const volatile *) ;
 
 }
 
-/// type trait to check if the type is an iterator of at least specified category
+/// Type trait to check if the type is an iterator of at least specified category
 ///
 template<typename T, typename C = std::input_iterator_tag>
 struct is_iterator : decltype(detail::test_icategory<T, C>(0)) {} ;
+
+/// Type trait to check if the type is a random-access iterator of, probably
+/// ContiguousIterator category.
+///
+/// Unfortunately, there is no reliable way to _certainly_ detect the iterator is
+/// contiguous, and heuristics can get false positives.
+///
+template<typename T>
+struct is_probably_contiguous_iterator :
+         std::bool_constant<is_iterator<T, std::random_access_iterator_tag>::value &&
+                            std::is_lvalue_reference<decltype(*std::declval<T>())>::value> {} ;
 
 /*******************************************************************************
  Convenience typedefs for various iterator traits
