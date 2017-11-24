@@ -106,6 +106,16 @@ class simple_slice {
          std::swap(_finish, other._finish) ;
       }
 
+      std::vector<std::remove_cv_t<value_type>> to_vector() const
+      {
+         return std::vector<std::remove_cv_t<value_type>>(begin(), end()) ;
+      }
+
+      explicit operator std::vector<std::remove_cv_t<value_type>>() const
+      {
+         return to_vector() ;
+      }
+
    private:
       value_type *_start   = nullptr ;
       value_type *_finish  = nullptr ;
