@@ -27,7 +27,7 @@ add_library(pcomn_cmdline STATIC
   usage.cpp
   )
 
-target_include_directories(pcomn_cmdline PUBLIC ../pcommon)
+target_include_directories(pcomn_cmdline PUBLIC .. ../pcommon)
 
 add_executable(cmdtest cmdtest.cpp)
 target_link_libraries(cmdtest pcomn_cmdline)
