@@ -592,12 +592,17 @@ inline const wchar_t *select_cstring<wchar_t>(const char *, const wchar_t *s) { 
 *******************************************************************************/
 template<class S> struct emptystr { static const S value ; } ;
 template<class S> const S emptystr<S>::value ;
+#ifdef PCOMN_COMPILER_CXX14
+template<class S>
+const auto &emptystr_v = emptystr<S>::value ;
+#endif
 
 template<size_t n> struct emptystr<char[n]> { static const char value[n] ; } ;
 template<size_t n> const char emptystr<char[n]>::value[n] = "" ;
 
 template<size_t n> struct emptystr<wchar_t[n]> { static const wchar_t value[n] ; } ;
 template<size_t n> const wchar_t emptystr<wchar_t[n]>::value[n] = L"" ;
+
 
 /*******************************************************************************
  Global basic string functions (like strip, etc.)
