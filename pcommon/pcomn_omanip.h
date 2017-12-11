@@ -232,11 +232,11 @@ inline char *hrsize(unsigned long long sz, char *buf)
    if (sz < KiB)
       sprintf(buf, "%llu", sz) ;
    else if (sz < MiB)
-      sprintf(buf, "%.1fK", sz/(KiB * 1.0)) ;
+      sprintf(buf, "%.2fK", sz/(KiB * 1.0)) ;
    else if (sz < GiB)
-      sprintf(buf, "%.1fM", sz/(MiB * 1.0)) ;
+      sprintf(buf, "%.2fM", sz/(MiB * 1.0)) ;
    else
-      sprintf(buf, "%.1fG", sz/(GiB * 1.0)) ;
+      sprintf(buf, "%.2fG", sz/(GiB * 1.0)) ;
    return buf ;
 }
 
