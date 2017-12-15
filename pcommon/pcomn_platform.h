@@ -659,7 +659,7 @@ struct _byte_reverter {
       }
 } ;
 #else
-inline uint_type<2>::type reverse_bytes(uint_type<2>::type v)
+constexpr inline uint_type<2>::type reverse_bytes(uint_type<2>::type v)
 {
    return
 #ifdef PCOMN_COMPILER_GNU
@@ -670,7 +670,7 @@ inline uint_type<2>::type reverse_bytes(uint_type<2>::type v)
       ;
 }
 
-inline uint_type<4>::type reverse_bytes(uint_type<4>::type v)
+constexpr inline uint_type<4>::type reverse_bytes(uint_type<4>::type v)
 {
    return
 #ifdef PCOMN_COMPILER_GNU
@@ -681,7 +681,7 @@ inline uint_type<4>::type reverse_bytes(uint_type<4>::type v)
       ;
 }
 
-inline uint_type<8>::type reverse_bytes(uint_type<8>::type v)
+constexpr inline uint_type<8>::type reverse_bytes(uint_type<8>::type v)
 {
    return
 #ifdef PCOMN_COMPILER_GNU
@@ -693,7 +693,7 @@ inline uint_type<8>::type reverse_bytes(uint_type<8>::type v)
 }
 #endif
 
-inline uint_type<1>::type reverse_bytes(uint_type<1>::type v)
+constexpr inline uint_type<1>::type reverse_bytes(uint_type<1>::type v)
 {
    return v ;
 }
