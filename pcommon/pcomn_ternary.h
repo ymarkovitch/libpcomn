@@ -64,8 +64,19 @@ public:
     explicit constexpr tdef(uint8_t v) : _data(v) {}
     constexpr tdef(State s) : tdef((uint8_t)s) {}
 
+    /// A convertion (implicit) constructor from bool.
+    ///
+    /// @note This constructor requires its argument to be of _exactly_ the `bool` type
+    /// (though possibly cv-qualified/reference) and does not accept arguments
+    /// convertible to bool, even those implicitly convertibel, like `int`, etc.
+    ///
     template<typename B, typename=decltype(b(std::add_pointer_t<std::decay_t<B>>()))>
     explicit constexpr tdef(B v) : _data((uint8_t)v << 1) {}
+
+    /// This constructor implements binary consensus, i.e.  `(false,false)->F`,
+    /// `(true,true)->T`, `(true,false)->N`, `(false,true)->N`.
+    template<typename B, typename=decltype(b(std::add_pointer_t<std::decay_t<B>>()))>
+    explicit constexpr tdef(B x, B y) : _data((uint8_t)x + (uint8_t)y) {}
 
     tdef &operator=(const tdef &) = default ;
     tdef &operator=(tdef &&) = default ;

@@ -185,6 +185,8 @@ void TernaryLogicTests::Test_TLogic_Logic()
    CPPUNIT_LOG_EQUAL(TFALSE || TFALSE, TFALSE) ;
    CPPUNIT_LOG_EQUAL(TTRUE  && TTRUE,  TTRUE) ;
    CPPUNIT_LOG_EQUAL(TTRUE  || TTRUE,  TTRUE) ;
+   CPPUNIT_LOG_EQUAL(TNOTHING && TNOTHING, TNOTHING) ;
+   CPPUNIT_LOG_EQUAL(TNOTHING || TNOTHING, TNOTHING) ;
 
    CPPUNIT_LOG(std::endl) ;
    CPPUNIT_LOG_EQUAL(TFALSE && TTRUE,  TFALSE) ;
@@ -217,6 +219,13 @@ void TernaryLogicTests::Test_TLogic_Logic()
 
    CPPUNIT_LOG_EQUAL(true     || TNOTHING, TTRUE) ;
    CPPUNIT_LOG_EQUAL(TNOTHING || true,    TTRUE) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   // Check the "consensus" operator
+   CPPUNIT_LOG_EQUAL(tlogic_t(true, true),   TTRUE) ;
+   CPPUNIT_LOG_EQUAL(tlogic_t(false, false), TFALSE) ;
+   CPPUNIT_LOG_EQUAL(tlogic_t(true, false),  TNOTHING) ;
+   CPPUNIT_LOG_EQUAL(tlogic_t(false, true),  TNOTHING) ;
 }
 
 int main(int argc, char *argv[])
