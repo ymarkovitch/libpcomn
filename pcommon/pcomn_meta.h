@@ -381,6 +381,12 @@ template<typename T>
 using parmtype_t = std::conditional_t<std::is_scalar<std::decay_t<T>>::value,
                                       std::decay_t<T>, clvref_t<T>> ;
 
+template<typename T>
+inline std::conditional_t<std::is_scalar<std::decay_t<T>>::value,
+                          std::decay_t<const T>,
+                          std::reference_wrapper<const T>>
+inparm(const T &v) { return v ; }
+
 /******************************************************************************/
 /** Deduce the return type of a function call expression at compile time @em and,
  if the deduced type is a reference type, provides the member typedef type which
