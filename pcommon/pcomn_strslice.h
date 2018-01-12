@@ -865,6 +865,16 @@ inline strslice omemstream::str() const
    return {pbase(), pptr()} ;
 }
 
+/***************************************************************************//**
+ MD5- and SHA-hashing strings and string slices
+*******************************************************************************/
+/**@{*/
+template<typename C>
+inline md5hash_t md5hash(const basic_strslice<C> &s) { return md5hash(s.begin(), s.size() * sizeof(C)) ; }
+template<typename C>
+inline md5hash_t sha1hash(const basic_strslice<C> &s) { return sha1hash(s.begin(), s.size() * sizeof(C)) ; }
+/**@}*/
+
 /*******************************************************************************
  pcomn::str
 *******************************************************************************/
