@@ -370,17 +370,6 @@ inline size_t tuplehash(A1 &&a1, A2 &&a2, A3 &&a3, Args &&...args)
    return result ;
 }
 
-/******************************************************************************/
-/** Cryptographic non-POD hash (has constructors)
-*******************************************************************************/
-template<typename T>
-struct crypthash : T {
-      /// Creates a hash filled with zeros
-      crypthash() { T::init() ; }
-      /// Creates a hash from a hex string representation
-      explicit crypthash(const char *hashstr) { T::init(hashstr) ; }
-} ;
-
 /***************************************************************************//**
  128-bit binary big-endian POD data, aligned to 64-bit boundary.
 *******************************************************************************/
@@ -862,7 +851,6 @@ template<> struct hash<pcomn::sha1hash_t> : pcomn::hash_fn_member<pcomn::sha1has
 }
 
 #endif /* __cplusplus */
-
 #endif /* __PCOMN_HASH_H */
 
 /*******************************************************************************
@@ -875,20 +863,23 @@ template<> struct hash<pcomn::sha1hash_t> : pcomn::hash_fn_member<pcomn::sha1has
 namespace pcomn {
 
 template<typename B>
-inline typename enable_if_buffer<B, uint32_t>::type
-calc_crc32(uint32_t crc, const B &buffer)
+inline enable_if_buffer_t<B, uint32_t> calc_crc32(uint32_t crc, const B &buffer)
 {
    return calc_crc32(crc, buf::cdata(buffer), buf::size(buffer)) ;
 }
 
 template<typename B>
-inline typename enable_if_buffer<B, uint32_t>::type
-calc_crc32(uint32_t crc, size_t ignore_tail, const B &buffer)
+inline enable_if_buffer_t<B, uint32_t> calc_crc32(uint32_t crc, size_t ignore_tail, const B &buffer)
 {
    const size_t bufsize = buf::size(buffer) ;
    return
       ignore_tail >= bufsize ? crc : calc_crc32(crc, buf::cdata(buffer), bufsize - ignore_tail) ;
 }
 
+template<typename B>
+inline enable_if_buffer_t<B, md5hash_t>  md5hash(const B &b) { return md5hash(buf::cdata(b), buf::size(b)) ; }
+template<typename B>
+inline enable_if_buffer_t<B, sha1hash_t> sha1hash(const B &b) { return sha1hash(buf::cdata(b), buf::size(b)) ; }
+
 } // end of namespace pcomn
-#endif // __cplusplus && __PCOMN_BUFFER_H
+#endif /* __cplusplus && __PCOMN_BUFFER_H */
