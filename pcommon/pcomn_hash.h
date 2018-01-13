@@ -241,7 +241,6 @@ template<typename T> struct hash_fn<const T> : hash_fn<T> {} ;
 template<typename T> struct hash_fn<volatile T> : hash_fn<T> {} ;
 template<typename T> struct hash_fn<T &> : hash_fn<T> {} ;
 template<typename T> struct hash_fn<T &&> : hash_fn<T> {} ;
-template<typename T> struct hash_fn<const T *> : hash_fn<T *> {} ;
 template<typename T>
 struct hash_fn<std::reference_wrapper<T>> : hash_fn<T> {} ;
 
@@ -742,6 +741,9 @@ template<> struct hash_fn<void *> {
       }
 } ;
 
+template<typename T> struct hash_fn<const T *> : hash_fn<T *> {} ;
+template<typename T> struct hash_fn<T *> : hash_fn<void *> {} ;
+
 template<> struct hash_fn<float> : hash_fn<double> {} ;
 template<> struct hash_fn<long double> : hash_fn<double> {} ;
 
@@ -768,6 +770,8 @@ template<> struct hash_fn<char *> {
          return hash_bytes(s, s ? strlen(s) : 0) ;
       }
 } ;
+
+template<> struct hash_fn<const char *> : hash_fn<char *> {} ;
 
 template<> struct hash_fn<std::string> : hash_fn_rawdata<std::string> {} ;
 
