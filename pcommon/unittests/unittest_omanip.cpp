@@ -118,15 +118,15 @@ void OmanipTests::Test_OHRSize()
    CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsize(0)), "0") ;
    CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsize(900)), "900") ;
    CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsize(1023)), "1023") ;
-   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsize(1024)), "1.0K") ;
-   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsize(1025)), "1.0K") ;
-   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsize(1536)), "1.5K") ;
-   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsize(1023*KiB)), "1023.0K") ;
-   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsize(1024*KiB)), "1.0M") ;
-   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsize(1024*KiB + 1)), "1.0M") ;
-   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsize(1024*MiB)), "1.0G") ;
-   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsize(1024*MiB + 1)), "1.0G") ;
-   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsize(1100*MiB)), "1.1G") ;
+   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsize(1024)), "1.00K") ;
+   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsize(1025)), "1.00K") ;
+   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsize(1536)), "1.50K") ;
+   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsize(1023*KiB)), "1023.00K") ;
+   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsize(1024*KiB)), "1.00M") ;
+   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsize(1024*KiB + 1)), "1.00M") ;
+   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsize(1024*MiB)), "1.00G") ;
+   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsize(1024*MiB + 1)), "1.00G") ;
+   CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsize(1100*MiB)), "1.07G") ;
 
    CPPUNIT_LOG(std::endl) ;
    CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsizex(0)), "0") ;
