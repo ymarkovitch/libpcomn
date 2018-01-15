@@ -170,8 +170,23 @@ struct o_call {
       }
 } ;
 
+struct o_skip {
+      std::ostream &operator()(std::ostream &os, unsigned w) const
+      {
+         return !w ? os : (os << std::setw(w) << "") ;
+      }
+      std::ostream &operator()(std::ostream &os, unsigned w, char fillchar) const
+      {
+         if (!w)
+            return os ;
+         const char oldfill = os.fill(fillchar) ;
+         try { os << std::setw(w) << "" << std::setfill(oldfill) ; }
+         catch (...) { os.fill(oldfill) ; }
+         return os ;
+      }
+} ;
+
 inline std::ostream &o_nothing(std::ostream &os) { return os ; }
-inline std::ostream &o_skip(std::ostream &os, unsigned w) { return !w ? os : (os << std::setw(w) << "") ; }
 }
 
 
@@ -225,7 +240,11 @@ inline auto onothing(Args &&...)
 
 template<typename... Args>
 inline auto oskip(unsigned width)
-   PCOMN_MAKE_OMANIP(detail::o_skip, width) ;
+   PCOMN_MAKE_OMANIP(detail::o_skip(), width) ;
+
+template<typename... Args>
+auto oskip(unsigned width, char fillchar)
+   PCOMN_MAKE_OMANIP(detail::o_skip(), width, fillchar) ;
 
 inline char *hrsize(unsigned long long sz, char *buf)
 {
