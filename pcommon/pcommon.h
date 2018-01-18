@@ -80,10 +80,10 @@
 #define PCOMN_ENSURE_ARGX(arg, exception) (::pcomn::ensure_arg<exception>((arg), #arg, __FUNCTION__))
 
 #define PCOMN_ASSERT_ARG(assertion) \
-   (::pcomn::ensure_arg_assertion<std::invalid_argument>((assertion), #assertion, __FUNCTION__))
+   (::pcomn::ensure_arg_assertion<std::invalid_argument>(!!(assertion), #assertion, __FUNCTION__))
 
 #define PCOMN_ASSERT_ARGX(assertion, exception) \
-   (::pcomn::ensure_arg_assertion<exception>((assertion), #assertion, __FUNCTION__))
+   (::pcomn::ensure_arg_assertion<exception>(!!(assertion), #assertion, __FUNCTION__))
 
 /// Throw an exception with a formatted message.
 /// @hideinitializer @ingroup ExceptionMacros
