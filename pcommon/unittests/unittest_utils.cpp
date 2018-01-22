@@ -400,6 +400,12 @@ void UtilityTests::Test_String_Cast()
    CPPUNIT_LOG_EQ(string_cast(20), "20") ;
    CPPUNIT_LOG_EQ(string_cast("Hello, ", 20), "Hello, 20") ;
    CPPUNIT_LOG_EQ(string_cast("Hello, ", 1, 2, std::string("3")), "Hello, 123") ;
+
+   std::ostringstream os ;
+   CPPUNIT_LOG_ASSERT(print_values(os)) ;
+   CPPUNIT_LOG_EQ(os.str(), "") ;
+   CPPUNIT_LOG_ASSERT(print_values(os, '(', 10, ',', 0.25, ")")) ;
+   CPPUNIT_LOG_EQ(os.str(), "(10,0.25)") ;
 }
 
 void UtilityTests::Test_Underlying_Int()

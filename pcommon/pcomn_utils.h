@@ -614,17 +614,30 @@ class omemstream : private std::basic_streambuf<char>, public std::ostream {
 } ;
 
 /***************************************************************************//**
+ @cond
+*******************************************************************************/
+namespace detail {
+template<typename... Tn>
+__noinline std::string string_cast_(Tn ...an)
+{
+   pcomn::omemstream os ;
+   const bool dummy[] = {(os << an, false)...} ;
+   (void)dummy ;
+   return os.checkout() ;
+}
+}
+/// @endcond
+
+/***************************************************************************//**
  Output the series of a values into std::ostream.
 *******************************************************************************/
-/**{@*/
-__forceinline std::ostream &print_values(std::ostream &os) { return os ; }
-
-template<typename T, typename... Tn>
-inline std::ostream &print_values(std::ostream &os, const T &a1, const Tn &...an)
+template<typename... Tn>
+inline std::ostream &print_values(std::ostream &os, const Tn &...an)
 {
-   return print_values(os << a1, an...) ;
+   const bool dummy[] = {false, (os << an, false)...} ;
+   (void)dummy ;
+   return os ;
 }
-/**}@*/
 
 /***************************************************************************//**
  Returns the result of streaming arg into pcomn::omemstream
@@ -640,18 +653,6 @@ string_cast(T &&arg)
 {
    return {std::forward<T>(arg)} ;
 }
-
-/// @cond
-namespace detail {
-template<typename... Tn>
-__noinline std::string string_cast_(Tn ...an)
-{
-   pcomn::omemstream os ;
-   print_values(os, an...) ;
-   return os.checkout() ;
-}
-}
-/// @endcond
 
 template<typename T>
 __forceinline
