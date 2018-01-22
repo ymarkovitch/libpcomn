@@ -110,6 +110,12 @@ void OmanipTests::Test_OContainer()
                                      [](std::ostream &s, const char *v) { s << strlen(v) ; })) ;
       CPPUNIT_LOG_EQ(os.checkout(), "53?-1?26") ;
    }
+   {
+      const std::list<const char *> c {"Hello", "world!"} ;
+      CPPUNIT_LOG_EQ(string_cast(pcomn::ocontdelim
+                                 (c, ',', [](std::ostream &s, const char *v) { s << '(' << strlen(v) << ')' ; })),
+                     "(5),(6)") ;
+   }
 }
 
 void OmanipTests::Test_OHRSize()

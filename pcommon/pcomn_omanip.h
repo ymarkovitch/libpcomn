@@ -137,7 +137,15 @@ std::ostream &print_range(Range &&r, std::ostream &os, Delim &&delimiter, Fn &&f
  Various ostream manipulators
 *******************************************************************************/
 namespace detail {
-struct o_sequence {
+struct o_fwd {
+      template<typename T>
+      std::ostream &operator()(std::ostream &os, T &&v) const
+      {
+         return os << std::forward<T>(v) ;
+      }
+} ;
+
+struct o_seq {
       template<typename InputIterator, typename Before, typename After>
       __noinline std::ostream &operator()(std::ostream &os, InputIterator begin, InputIterator end,
                                           const Before &before, const After &after) const
@@ -151,14 +159,24 @@ struct o_sequence {
       std::ostream &operator()(std::ostream &os, InputIterator begin, InputIterator end,
                                const Delim &delimiter) const
       {
-         return print_sequence(begin, end, os, delimiter,
-                               [](std::ostream &s, decltype(*begin) &v) { s << v ; }) ;
+         print_sequence(begin, end, os, delimiter, o_fwd()) ;
+         return os ;
       }
 
-      template<typename InputIterator>
-      std::ostream &operator()(std::ostream &os, InputIterator begin, InputIterator end) const
+      static const char *comma() { return ", " ; }
+} ;
+
+struct o_range {
+      template<typename Range, typename Separator, typename Fn>
+      std::ostream &operator()(std::ostream &os, Range &&r, const Separator &s, Fn &&fn) const
       {
-         return (*this)(os, begin, end, ", ") ;
+         print_range(std::forward<Range>(r), os, s, std::forward<Fn>(fn)) ;
+         return os ;
+      }
+      template<typename Range, typename Separator>
+      std::ostream &operator()(std::ostream &os, Range &&r, const Separator &s) const
+      {
+         return (*this)(os, std::forward<Range>(r), s, o_fwd()) ;
       }
 } ;
 
@@ -189,10 +207,9 @@ struct o_skip {
 inline std::ostream &o_nothing(std::ostream &os) { return os ; }
 }
 
-
 template<typename InputIterator, typename Before, typename After>
 inline auto osequence(InputIterator begin, InputIterator end, const Before &before, const After &after)
-   PCOMN_MAKE_OMANIP(detail::o_sequence(), begin, end, std::decay_t<Before>(before), std::decay_t<After>(after)) ;
+   PCOMN_MAKE_OMANIP(detail::o_seq(), begin, end, std::decay_t<Before>(before), std::decay_t<After>(after)) ;
 
 template<typename InputIterator, typename After>
 inline auto osequence(InputIterator begin, InputIterator end, const After &after)
@@ -216,15 +233,21 @@ inline auto ocontainer(const Container &container)
 
 template<typename InputIterator, typename Delim>
 inline auto oseqdelim(InputIterator begin, InputIterator end, const Delim &delim)
-   PCOMN_MAKE_OMANIP(detail::o_sequence(), begin, end, std::decay_t<Delim>(delim)) ;
+   PCOMN_MAKE_OMANIP(detail::o_seq(), begin, end, std::decay_t<Delim>(delim)) ;
 
 template<typename InputIterator>
 inline auto oseqdelim(InputIterator begin, InputIterator end)
-   PCOMN_MAKE_OMANIP(detail::o_sequence(), begin, end) ;
+   PCOMN_MAKE_OMANIP(detail::o_seq(), begin, end, detail::o_seq::comma()) ;
+
+template<class Container, typename Delim, typename Fn>
+inline auto ocontdelim(const Container &container, const Delim &delim, Fn &&fn)
+   PCOMN_MAKE_OMANIP(detail::o_range(), std::cref(container),
+                     std::decay_t<Delim>(delim), std::forward<Fn>(fn)) ;
 
 template<class Container, typename Delim>
 inline auto ocontdelim(const Container &container, const Delim &delim)
-   PCOMN_DERIVE_OMANIP(oseqdelim(std::begin(container), std::end(container), delim)) ;
+   PCOMN_MAKE_OMANIP(detail::o_range(), std::cref(container),
+                     std::decay_t<Delim>(delim)) ;
 
 template<typename T, size_t sz, typename Delim>
 inline auto ocontdelim(T (&container)[sz], const Delim &delim)
@@ -232,7 +255,7 @@ inline auto ocontdelim(T (&container)[sz], const Delim &delim)
 
 template<class Container>
 inline auto ocontdelim(const Container &container)
-   PCOMN_DERIVE_OMANIP(oseqdelim(std::begin(container), std::end(container))) ;
+   PCOMN_DERIVE_OMANIP(ocontdelim(container, detail::o_seq::comma())) ;
 
 template<typename... Args>
 inline auto onothing(Args &&...)
