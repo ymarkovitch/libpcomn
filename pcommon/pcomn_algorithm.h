@@ -79,29 +79,19 @@ std::pair<InputIterator, OutputIterator> bound_copy_if
  Member extractors
 *******************************************************************************/
 #define PCOMN_MEMBER_EXTRACTOR(member)                                  \
-   template<typename T = void>                                          \
    struct extract_##member {                                            \
-      typedef decltype(std::declval<T>().member()) type ;               \
-      type operator() (const T &t) const { return t.member() ; }        \
-   } ;                                                                  \
-                                                                        \
-   template<> struct extract_##member<void> {                           \
       template<typename T>                                              \
       auto operator() (T &&t) const ->decltype(std::declval<T>().member()) \
       { return std::forward<T>(t).member() ; }                          \
+                                                                        \
+      template<typename T>                                              \
+      auto operator() (T *t) const ->decltype(t->member())              \
+      {                                                                 \
+         return t ? t->member() : pcomn::default_constructed<pcomn::valtype_t<decltype(t->member())>>::value ; \
+      }                                                                 \
    } ;                                                                  \
                                                                         \
-   template<typename T>                                                 \
-   inline extract_##member<T> member##_extractor(const T &) { return {} ; }  \
-                                                                        \
-   template<typename T>                                                 \
-   struct extract_##member<T *>  {                                      \
-      typedef decltype(pcomn::autoval<const T *>()->member()) type ;    \
-      type operator() (const T *t) const                                \
-      {                                                                 \
-         return t ? t->member() : pcomn::default_constructed<pcomn::valtype_t<type> >::value ; \
-      }                                                                 \
-   }
+   constexpr inline extract_##member member##_extractor() { return {} ; }
 
 PCOMN_MEMBER_EXTRACTOR(name) ;
 PCOMN_MEMBER_EXTRACTOR(key) ;
