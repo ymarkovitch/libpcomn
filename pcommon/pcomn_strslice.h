@@ -605,7 +605,7 @@ inline V valmap_find_value(const std::pair<N, V> *valmap, const basic_strslice<C
 /// return ("a","b.c"); if no separator characters found in @a s, will return (s,"")
 ///
 template<typename C>
-inline std::pair<basic_strslice<C>, basic_strslice<C> >
+inline unipair<basic_strslice<C>>
 strsplit(const basic_strslice<C> &s, const basic_strslice<C> &separators)
 {
    typedef basic_strslice<C> slice_type ;
@@ -627,7 +627,7 @@ strsplit(const basic_strslice<C> &s, const basic_strslice<C> &separators)
 /// @param separator A delimiting character.
 ///
 template<typename C>
-inline std::pair<basic_strslice<C>, basic_strslice<C> >
+inline unipair<basic_strslice<C>>
 strsplit(const basic_strslice<C> &s, C separator)
 {
    typedef basic_strslice<C> slice_type ;
@@ -642,8 +642,7 @@ strsplit(const basic_strslice<C> &s, C separator)
 
 /// @overload
 template<typename D>
-inline std::pair<basic_strslice<typename string_traits<D>::char_type>,
-                 basic_strslice<typename string_traits<D>::char_type> >
+inline unipair<basic_strslice<typename string_traits<D>::char_type>>
 strsplit(const basic_strslice<typename string_traits<D>::char_type> &s, const D &separators)
 {
    typedef typename string_traits<D>::char_type char_type ;
@@ -652,8 +651,7 @@ strsplit(const basic_strslice<typename string_traits<D>::char_type> &s, const D 
 
 /// @overload
 template<typename S, typename D>
-inline std::pair<basic_strslice<typename string_traits<S>::char_type>,
-                 basic_strslice<typename string_traits<S>::char_type> >
+inline unipair<basic_strslice<typename string_traits<S>::char_type>>
 strsplit(const S &s, const D &sep)
 {
    typedef typename string_traits<S>::char_type char_type ;
@@ -670,7 +668,7 @@ strsplit(const S &s, const D &sep)
 /// return ("a.b","c"); if no separator characters found in @a s, will return ("",s)
 ///
 template<typename C>
-inline std::pair<basic_strslice<C>, basic_strslice<C> >
+inline unipair<basic_strslice<C>>
 strrsplit(const basic_strslice<C> &s, const basic_strslice<C> &separators)
 {
    typedef basic_strslice<C> slice_type ;
@@ -692,7 +690,7 @@ strrsplit(const basic_strslice<C> &s, const basic_strslice<C> &separators)
 /// @param delim  A delimiting character.
 ///
 template<typename C>
-inline std::pair<basic_strslice<C>, basic_strslice<C> >
+inline unipair<basic_strslice<C>>
 strrsplit(const basic_strslice<C> &s, C delim)
 {
    typedef basic_strslice<C> slice_type ;
