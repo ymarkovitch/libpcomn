@@ -207,11 +207,11 @@ inline std::string resolve_test_path(const CppUnit::Test &tests, const std::stri
 {
    return TestEnvironment::resolve_test_path(tests, name, top) ;
 }
-inline int prepare_test_environment(int argc, char ** const argv, const char *diag_profile, const char *title)
+inline int prepare_test_environment(int argc, char ** const argv, const char *diag_profile = {},
+                                    const char *title = {})
 {
    return TestEnvironment::prepare_test_environment(argc, argv, diag_profile, title) ;
 }
-
 
 /*******************************************************************************
                      struct ostream_lock
