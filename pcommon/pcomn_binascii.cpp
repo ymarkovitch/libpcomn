@@ -44,13 +44,16 @@ static const char base64_a2b_table[] =
 static const char base64_b2a_table[] =
 "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-size_t a2b_base64(const char *ascii_data, size_t ascii_len, void *buf)
+size_t a2b_base64(const char *ascii_data, size_t *ascii_len_ptr, void *buf)
 {
+   size_t ascii_len = ascii_len_ptr ? *ascii_len_ptr : 0;
    if (!buf || !ascii_len)
       return a2b_bufsize_base64(ascii_len) ;
 
    unsigned char *bin_data = reinterpret_cast<unsigned char *>(buf) ;
 
+   const char * const ascii_beg = ascii_data ;
+   const char * ascii_full_parsed = ascii_data ;
    size_t bin_len = 0 ;
    int quad_pos = 0 ;
    int leftbits = 0 ;
@@ -86,10 +89,12 @@ size_t a2b_base64(const char *ascii_data, size_t ascii_len, void *buf)
          *bin_data++ = (leftchar >> leftbits) & 0xff ;
          ++bin_len ;
          leftchar &= ((1 << leftbits) - 1) ;
+         ascii_full_parsed = ascii_data ;
       }
       prev_ch = this_ch ;
    }
 
+   *ascii_len_ptr = ascii_full_parsed - ascii_beg ;
    return bin_len ;
 }
 
@@ -137,13 +142,15 @@ size_t b2a_base64(const void *source, size_t source_len,
    return source_len ;
 }
 
-size_t a2b_base64(pcomn::shared_buffer &buffer, const char *ascii_data, size_t ascii_len)
+size_t a2b_base64(pcomn::shared_buffer &buffer, const char *ascii_data, size_t *ascii_len_ptr)
 {
-   size_t buflen = a2b_bufsize_base64(ascii_len) ;
+   if (!ascii_len_ptr)
+      return 0 ;
+   size_t buflen = a2b_bufsize_base64(*ascii_len_ptr) ;
    if (buflen)
    {
       const size_t initsize = buffer.size() ;
-      buflen = a2b_base64(ascii_data, ascii_len, pcomn::padd(buffer.resize(initsize + buflen), initsize)) ;
+      buflen = a2b_base64(ascii_data, ascii_len_ptr, pcomn::padd(buffer.resize(initsize + buflen), initsize)) ;
       buffer.resize(initsize + buflen) ;
    }
    return buflen ;

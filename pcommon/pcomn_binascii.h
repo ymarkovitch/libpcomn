@@ -23,7 +23,7 @@ extern "C" {
  *    ascii_len   -  source string length
  *    buflen      -  source string length
  */
-_PCOMNEXP size_t a2b_base64(const char *ascii_data, size_t ascii_len, void *buf) ;
+_PCOMNEXP size_t a2b_base64(const char *ascii_data, size_t *ascii_len_ptr, void *buf) ;
 
 _PCOMNEXP size_t b2a_base64(const void *source, size_t srclen,
                             char *ascii_data, size_t ascii_len) ;
@@ -48,9 +48,19 @@ inline size_t a2b_bufsize_base64(size_t ascii_len)
    return ((ascii_len+3)/4)*3 ;
 }
 
+inline size_t a2b_base64(const char *ascii_data, size_t ascii_len, void *buf)
+{
+   return a2b_base64(ascii_data, &ascii_len, buf) ;
+}
+
 _PCOMNEXP size_t a2b_base64(pcomn::shared_buffer &buffer,
                             const char *ascii_data,
-                            size_t ascii_len) ;
+                            size_t *ascii_len_ptr) ;
+
+inline size_t a2b_base64(pcomn::shared_buffer &buffer, const char *ascii_data, size_t ascii_len)
+{
+   return a2b_base64(buffer, ascii_data, &ascii_len) ;
+}
 
 inline size_t a2b_base64(pcomn::shared_buffer &buffer, const char *ascii_data)
 {
