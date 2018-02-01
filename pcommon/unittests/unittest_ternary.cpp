@@ -46,8 +46,8 @@ void TernaryLogicTests::Test_TLogic_Constructor()
    tlogic_t b2 (tlogic_t::True) ;
    tlogic_t b20 ((uint8_t)tlogic_t::True) ;
 
-   tlogic_t b3(tlogic_t::Nothing) ;
-   tlogic_t b30((uint8_t)tlogic_t::Nothing) ;
+   tlogic_t b3(tlogic_t::Unknown) ;
+   tlogic_t b30((uint8_t)tlogic_t::Unknown) ;
 
    tlogic_t b4(true) ;
    tlogic_t b5(false) ;
@@ -80,16 +80,16 @@ void TernaryLogicTests::Test_TLogic_Constructor()
    CPPUNIT_LOG_EQ(std::to_string(b20), "T") ;
 
    CPPUNIT_LOG(std::endl) ;
-   CPPUNIT_LOG_EQUAL((tlogic_t::State)b3, tlogic_t::Nothing) ;
-   CPPUNIT_LOG_EQ((uint8_t)b3, tlogic_t::Nothing) ;
-   CPPUNIT_LOG_EQUAL((char)b3, 'N') ;
-   CPPUNIT_LOG_EQ(std::to_string(b3), "N") ;
+   CPPUNIT_LOG_EQUAL((tlogic_t::State)b3, tlogic_t::Unknown) ;
+   CPPUNIT_LOG_EQ((uint8_t)b3, tlogic_t::Unknown) ;
+   CPPUNIT_LOG_EQUAL((char)b3, 'U') ;
+   CPPUNIT_LOG_EQ(std::to_string(b3), "U") ;
 
    CPPUNIT_LOG(std::endl) ;
-   CPPUNIT_LOG_EQUAL((tlogic_t::State)b30, tlogic_t::Nothing) ;
-   CPPUNIT_LOG_EQ((uint8_t)b30, tlogic_t::Nothing) ;
-   CPPUNIT_LOG_EQUAL((char)b30, 'N') ;
-   CPPUNIT_LOG_EQ(std::to_string(b30), "N") ;
+   CPPUNIT_LOG_EQUAL((tlogic_t::State)b30, tlogic_t::Unknown) ;
+   CPPUNIT_LOG_EQ((uint8_t)b30, tlogic_t::Unknown) ;
+   CPPUNIT_LOG_EQUAL((char)b30, 'U') ;
+   CPPUNIT_LOG_EQ(std::to_string(b30), "U") ;
 
    CPPUNIT_LOG(std::endl) ;
    CPPUNIT_LOG_EQUAL((tlogic_t::State)b4, tlogic_t::True) ;
@@ -104,19 +104,19 @@ void TernaryLogicTests::Test_TLogic_Constructor()
    CPPUNIT_LOG_EQ(std::to_string(b5), "F") ;
 
    CPPUNIT_LOG(std::endl) ;
-   CPPUNIT_LOG_EQ((char)(b5 = tlogic_t::Nothing), 'N') ;
+   CPPUNIT_LOG_EQ((char)(b5 = tlogic_t::Unknown), 'U') ;
    CPPUNIT_LOG_EQ((char)(b5 = true), 'T') ;
    CPPUNIT_LOG_EQ((char)(b5 = false), 'F') ;
 
    CPPUNIT_LOG(std::endl) ;
    CPPUNIT_LOG_EQ(TFALSE, tlogic_t::False) ;
    CPPUNIT_LOG_EQ(TTRUE, tlogic_t::True) ;
-   CPPUNIT_LOG_EQ(TNOTHING, tlogic_t::Nothing) ;
+   CPPUNIT_LOG_EQ(TUNKNOWN, tlogic_t::Unknown) ;
 
    CPPUNIT_LOG(std::endl) ;
    CPPUNIT_LOG_EQ(string_cast(b1), "F") ;
    CPPUNIT_LOG_EQ(string_cast(b2), "T") ;
-   CPPUNIT_LOG_EQ(string_cast(b3), "N") ;
+   CPPUNIT_LOG_EQ(string_cast(b3), "U") ;
 }
 
 void TernaryLogicTests::Test_TLogic_Compare()
@@ -127,8 +127,8 @@ void TernaryLogicTests::Test_TLogic_Compare()
    constexpr tlogic_t b2  (tlogic_t::True) ;
    constexpr tlogic_t b20 (tlogic_t::True) ;
 
-   constexpr tlogic_t b3  (tlogic_t::Nothing) ;
-   constexpr tlogic_t b30 (tlogic_t::Nothing) ;
+   constexpr tlogic_t b3  (tlogic_t::Unknown) ;
+   constexpr tlogic_t b30 (tlogic_t::Unknown) ;
 
    CPPUNIT_LOG_EQUAL(b1, b1) ;
    CPPUNIT_LOG_EQUAL(b1, b10) ;
@@ -157,7 +157,7 @@ void TernaryLogicTests::Test_TLogic_Compare()
    CPPUNIT_LOG(std::endl) ;
    CPPUNIT_LOG_EQUAL(TFALSE, b1) ;
    CPPUNIT_LOG_EQUAL(TTRUE, b2) ;
-   CPPUNIT_LOG_EQUAL(TNOTHING, b3) ;
+   CPPUNIT_LOG_EQUAL(TUNKNOWN, b3) ;
 
    CPPUNIT_LOG(std::endl) ;
    CPPUNIT_LOG_EQUAL(TFALSE.as_bool(true), false) ;
@@ -166,27 +166,27 @@ void TernaryLogicTests::Test_TLogic_Compare()
    CPPUNIT_LOG_EQUAL(TTRUE.as_bool(true), true) ;
    CPPUNIT_LOG_EQUAL(TTRUE.as_bool(false), true) ;
 
-   CPPUNIT_LOG_EQUAL(TNOTHING.as_bool(true), true) ;
-   CPPUNIT_LOG_EQUAL(TNOTHING.as_bool(false), false) ;
+   CPPUNIT_LOG_EQUAL(TUNKNOWN.as_bool(true), true) ;
+   CPPUNIT_LOG_EQUAL(TUNKNOWN.as_bool(false), false) ;
 }
 
 void TernaryLogicTests::Test_TLogic_Logic()
 {
    const tlogic_t b1 (tlogic_t::False) ;
    const tlogic_t b2 (tlogic_t::True) ;
-   const tlogic_t b3 (tlogic_t::Nothing) ;
+   const tlogic_t b3 (tlogic_t::Unknown) ;
 
    CPPUNIT_LOG_EQ(!b1, tlogic_t::True) ;
    CPPUNIT_LOG_EQ(!b2, tlogic_t::False) ;
-   CPPUNIT_LOG_EQ(!b3, tlogic_t::Nothing) ;
+   CPPUNIT_LOG_EQ(!b3, tlogic_t::Unknown) ;
 
    CPPUNIT_LOG(std::endl) ;
    CPPUNIT_LOG_EQUAL(TFALSE && TFALSE, TFALSE) ;
    CPPUNIT_LOG_EQUAL(TFALSE || TFALSE, TFALSE) ;
    CPPUNIT_LOG_EQUAL(TTRUE  && TTRUE,  TTRUE) ;
    CPPUNIT_LOG_EQUAL(TTRUE  || TTRUE,  TTRUE) ;
-   CPPUNIT_LOG_EQUAL(TNOTHING && TNOTHING, TNOTHING) ;
-   CPPUNIT_LOG_EQUAL(TNOTHING || TNOTHING, TNOTHING) ;
+   CPPUNIT_LOG_EQUAL(TUNKNOWN && TUNKNOWN, TUNKNOWN) ;
+   CPPUNIT_LOG_EQUAL(TUNKNOWN || TUNKNOWN, TUNKNOWN) ;
 
    CPPUNIT_LOG(std::endl) ;
    CPPUNIT_LOG_EQUAL(TFALSE && TTRUE,  TFALSE) ;
@@ -195,37 +195,37 @@ void TernaryLogicTests::Test_TLogic_Logic()
    CPPUNIT_LOG_EQUAL(TTRUE  || TFALSE, TTRUE) ;
 
    CPPUNIT_LOG(std::endl) ;
-   CPPUNIT_LOG_EQUAL(TFALSE   && TNOTHING, TFALSE) ;
-   CPPUNIT_LOG_EQUAL(TNOTHING && TFALSE,   TFALSE) ;
+   CPPUNIT_LOG_EQUAL(TFALSE   && TUNKNOWN, TFALSE) ;
+   CPPUNIT_LOG_EQUAL(TUNKNOWN && TFALSE,   TFALSE) ;
 
-   CPPUNIT_LOG_EQUAL(TTRUE    && TNOTHING, TNOTHING) ;
-   CPPUNIT_LOG_EQUAL(TNOTHING && TTRUE,    TNOTHING) ;
+   CPPUNIT_LOG_EQUAL(TTRUE    && TUNKNOWN, TUNKNOWN) ;
+   CPPUNIT_LOG_EQUAL(TUNKNOWN && TTRUE,    TUNKNOWN) ;
 
-   CPPUNIT_LOG_EQUAL(TFALSE   || TNOTHING, TNOTHING) ;
-   CPPUNIT_LOG_EQUAL(TNOTHING || TFALSE,   TNOTHING) ;
+   CPPUNIT_LOG_EQUAL(TFALSE   || TUNKNOWN, TUNKNOWN) ;
+   CPPUNIT_LOG_EQUAL(TUNKNOWN || TFALSE,   TUNKNOWN) ;
 
-   CPPUNIT_LOG_EQUAL(TTRUE    || TNOTHING, TTRUE) ;
-   CPPUNIT_LOG_EQUAL(TNOTHING || TTRUE,    TTRUE) ;
+   CPPUNIT_LOG_EQUAL(TTRUE    || TUNKNOWN, TTRUE) ;
+   CPPUNIT_LOG_EQUAL(TUNKNOWN || TTRUE,    TTRUE) ;
 
    CPPUNIT_LOG(std::endl) ;
-   CPPUNIT_LOG_EQUAL(false    && TNOTHING, TFALSE) ;
-   CPPUNIT_LOG_EQUAL(TNOTHING && false,   TFALSE) ;
+   CPPUNIT_LOG_EQUAL(false    && TUNKNOWN, TFALSE) ;
+   CPPUNIT_LOG_EQUAL(TUNKNOWN && false,   TFALSE) ;
 
-   CPPUNIT_LOG_EQUAL(true     && TNOTHING, TNOTHING) ;
-   CPPUNIT_LOG_EQUAL(TNOTHING && true,    TNOTHING) ;
+   CPPUNIT_LOG_EQUAL(true     && TUNKNOWN, TUNKNOWN) ;
+   CPPUNIT_LOG_EQUAL(TUNKNOWN && true,    TUNKNOWN) ;
 
-   CPPUNIT_LOG_EQUAL(false    || TNOTHING, TNOTHING) ;
-   CPPUNIT_LOG_EQUAL(TNOTHING || false,   TNOTHING) ;
+   CPPUNIT_LOG_EQUAL(false    || TUNKNOWN, TUNKNOWN) ;
+   CPPUNIT_LOG_EQUAL(TUNKNOWN || false,   TUNKNOWN) ;
 
-   CPPUNIT_LOG_EQUAL(true     || TNOTHING, TTRUE) ;
-   CPPUNIT_LOG_EQUAL(TNOTHING || true,    TTRUE) ;
+   CPPUNIT_LOG_EQUAL(true     || TUNKNOWN, TTRUE) ;
+   CPPUNIT_LOG_EQUAL(TUNKNOWN || true,    TTRUE) ;
 
    CPPUNIT_LOG(std::endl) ;
    // Check the "consensus" operator
    CPPUNIT_LOG_EQUAL(tlogic_t(true, true),   TTRUE) ;
    CPPUNIT_LOG_EQUAL(tlogic_t(false, false), TFALSE) ;
-   CPPUNIT_LOG_EQUAL(tlogic_t(true, false),  TNOTHING) ;
-   CPPUNIT_LOG_EQUAL(tlogic_t(false, true),  TNOTHING) ;
+   CPPUNIT_LOG_EQUAL(tlogic_t(true, false),  TUNKNOWN) ;
+   CPPUNIT_LOG_EQUAL(tlogic_t(false, true),  TUNKNOWN) ;
 }
 
 int main(int argc, char *argv[])

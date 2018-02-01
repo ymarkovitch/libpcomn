@@ -23,13 +23,13 @@ typedef strong_typedef<uint8_t, ternary_tag> tlogic_t ;
 /****************************************************************************//**
  Ternary logic literal type.
 
- 3 states: False, Nothing, True
+ 3 states: False, Unknown, True
 
- False < Nothing < True
+ False < Unknown < True
 
  !False == True
  !True == False
- !Nothing == Nothing
+ !Unknown == Unknown
 *******************************************************************************/
 template<> class tdef<uint8_t, ternary_tag, true> {
     static tlogic_t b(const bool *) ;
@@ -40,7 +40,7 @@ public:
     enum State : uint8_t
     {
         False   = 0,
-        Nothing = 1,
+        Unknown = 1,
         True    = 2
     } ;
 
@@ -92,13 +92,13 @@ public:
     constexpr explicit operator uint8_t() const { return data() ; }
     constexpr explicit operator char() const
     {
-        return "FNT?"[data() > True ? True + 1 : data()] ;
+        return "FUT?"[data() > True ? True + 1 : data()] ;
     }
 
-    /// Convert ternary logic value to bool, interpreting Nothing state according
+    /// Convert ternary logic value to bool, interpreting Unknown state according
     /// to the arument.
-    /// @param nothing_is How to interpret the "Nothing" state: if `true`, convert
-    /// `Nothing` to `true`, otherwise to `false`.
+    /// @param nothing_is How to interpret the "Unknown" state: if `true`, convert
+    /// `Unknown` to `true`, otherwise to `false`.
     constexpr bool as_bool(bool nothing_is) const
     {
         return data() + nothing_is >= True ;
@@ -150,7 +150,7 @@ private:
 *******************************************************************************/
 /**{@*/
 constexpr const tlogic_t TFALSE     (tlogic_t::False) ;
-constexpr const tlogic_t TNOTHING   (tlogic_t::Nothing) ;
+constexpr const tlogic_t TUNKNOWN   (tlogic_t::Unknown) ;
 constexpr const tlogic_t TTRUE      (tlogic_t::True) ;
 /**}@*/
 
