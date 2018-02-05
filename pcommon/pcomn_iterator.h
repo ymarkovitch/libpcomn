@@ -780,6 +780,12 @@ inline count_iterator<Counter> count_iter(const Counter &c)
    return count_iterator<Counter>(c) ;
 }
 
+template<typename Counter>
+inline unipair<count_iterator<Counter>> count_range(const Counter &left, const Counter &right)
+{
+   return {count_iterator<Counter>(left), count_iterator<Counter>(right)} ;
+}
+
 } // end of namespace pcomn
 
 namespace std {
