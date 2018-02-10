@@ -171,10 +171,12 @@ inline void outparam_set(O *outparam_ptr, V &&value)
       *outparam_ptr = std::forward<V>(value) ;
 }
 
-template<typename T, typename P>
-constexpr inline auto nullable_get(P &&ptr, T &&default_value) -> decltype(*std::forward<P>(ptr))
+template<typename P>
+constexpr inline auto
+nullable_get(P &&ptr, const valtype_t<decltype(*std::declval<P>())> &default_value)
+   -> const decltype(default_value) &
 {
-   return std::forward<P>(ptr) ? *std::forward<P>(ptr) : std::forward<T>(default_value) ;
+   return std::forward<P>(ptr) ? *std::forward<P>(ptr) : default_value ;
 }
 
 /// Compare two values for equality through pointers to that values or pointer-like
