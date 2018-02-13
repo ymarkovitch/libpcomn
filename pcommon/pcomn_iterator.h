@@ -108,62 +108,35 @@ inline iterator_difference_t<I> estimated_distance(const I &first, const I &last
    return std::max(detail::estimate_distance(first, last, is_iterator<I, C>()), mindist) ;
 }
 
-/*******************************************************************************
-
+/***************************************************************************//**
+ An iterator over a random-access container.
+ Container requirements:
+   - an expression a[n], where a is a containter and n is of an integral type
+     should be valid and return non-void
 *******************************************************************************/
 template<class RandomAccessContainer>
-struct collection_iterator_tag :
-         public std::iterator<std::random_access_iterator_tag,
-                              typename RandomAccessContainer::value_type, int,
-                              typename RandomAccessContainer::value_type *,
-                              typename std::conditional
-                              <std::is_const<RandomAccessContainer>::value,
-                               typename RandomAccessContainer::const_reference,
-                               typename RandomAccessContainer::reference>::type> {
+struct collection_iterator {
 
-      typedef RandomAccessContainer container_type ;
-      typedef typename std::conditional
-      <std::is_const<container_type>::value,
-       typename container_type::const_reference,
-       typename container_type::reference>::type reference ;
-} ;
+      typedef RandomAccessContainer           container_type ;
+      typedef std::random_access_iterator_tag iterator_category ;
+      typedef ptrdiff_t                       difference_type ;
+      typedef valtype_t<decltype(std::declval<container_type>()[(ptrdiff_t)0])> value_type ;
+      typedef decltype(std::declval<container_type>()[(ptrdiff_t)0]) reference ;
 
-/******************************************************************************/
-/** An iterator over a random-access container.
-    Container requirements:
-      - there should be types value_type, reference, const_reference;
-      - an expression a[n], where a is a containter and n is of an integral
-        type should be valid and return reference (const_reference).
-*******************************************************************************/
-template<class RandomAccessContainer>
-struct collection_iterator : collection_iterator_tag<RandomAccessContainer> {
+      /// Have to declare dummy pointer typedef to overcome absense of SFINAE-friendly
+      /// std::iterator_traits
+      typedef void pointer ;
 
-      typedef RandomAccessContainer container_type ;
-      typedef typename collection_iterator_tag<RandomAccessContainer>::reference       reference ;
-      typedef typename collection_iterator_tag<RandomAccessContainer>::difference_type difference_type ;
-
-      collection_iterator() :
-         _container(),
-         _index()
-      {}
+      constexpr collection_iterator() = default ;
 
       explicit collection_iterator(container_type &collection, difference_type ndx = 0) :
          _container(&collection),
          _index(ndx)
       {}
 
-      reference operator*() const
-      {
-         NOXCHECK(_container) ;
-         return (*_container)[_index] ;
-      }
+      reference operator*() const { return container()[_index] ; }
       reference operator->() const { return **this ; }
-
-      reference operator[](difference_type ndx) const
-      {
-         NOXCHECK(_container) ;
-         return (*_container)[_index + ndx] ;
-      }
+      reference operator[](difference_type ndx) const { return container()[_index + ndx] ; }
 
       collection_iterator &operator++()
       {
@@ -178,7 +151,7 @@ struct collection_iterator : collection_iterator_tag<RandomAccessContainer> {
          return *this ;
       }
 
-      // Post(inc|dec)rement
+      /// Post(inc|dec)rement
       PCOMN_DEFINE_POSTCREMENT_METHODS(collection_iterator) ;
 
       collection_iterator &operator+=(difference_type diff)
@@ -187,6 +160,16 @@ struct collection_iterator : collection_iterator_tag<RandomAccessContainer> {
          _index += diff ;
          return *this ;
       }
+
+      collection_iterator &operator-=(difference_type diff)
+      {
+         return *this += -diff ;
+      }
+
+      collection_iterator operator-(difference_type diff) const { return collection_iterator(*this) -= diff ; }
+      difference_type     operator-(const collection_iterator &rhs) const { return _index - rhs._index ; }
+
+      PCOMN_DEFINE_COMMUTATIVE_OP_FUNCTIONS(friend, +, collection_iterator, difference_type) ;
 
       friend bool operator==(const collection_iterator &lhs, const collection_iterator &rhs)
       {
@@ -202,14 +185,15 @@ struct collection_iterator : collection_iterator_tag<RandomAccessContainer> {
 
       PCOMN_DEFINE_RELOP_FUNCTIONS(friend, collection_iterator) ;
 
-      collection_iterator &operator-=(difference_type diff) { return *this += -diff ; }
-      collection_iterator operator+ (difference_type diff) const { return collection_iterator(*this) += diff ; }
-      collection_iterator operator- (difference_type diff) const { return collection_iterator(*this) -= diff ; }
-      difference_type operator-(const collection_iterator &rhs) const { return _index - rhs._index ; }
-
    private:
-      container_type *_container ;
-      difference_type _index ;
+      container_type *_container = nullptr ;
+      difference_type _index = {} ;
+
+      container_type &container() const
+      {
+         NOXCHECK(_container) ;
+         return *_container ;
+      }
 } ;
 
 /******************************************************************************/
