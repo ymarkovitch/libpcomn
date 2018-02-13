@@ -759,22 +759,26 @@ inline void *hextob(void *buf, size_t bufsz, const char *hexstr)
 /// Define operators '+' and '-' for the type through corresponding augmented operations
 /// '+=' and '-='.
 #define PCOMN_DEFINE_ADDOP_FUNCTIONS(pfx, type)                         \
-   pfx inline type operator+(const type &lhs, const type &rhs) { type ret (lhs) ; return std::move(ret += rhs) ; } \
-   pfx inline type operator-(const type &lhs, const type &rhs) { type ret (lhs) ; return std::move(ret -= rhs) ; }
+   pfx inline type operator+(const type &lhs, const type &rhs) { type ret(lhs) ; ret += rhs ; return ret ; } \
+   pfx inline type operator-(const type &lhs, const type &rhs) { type ret(lhs) ; ret -= rhs ; return ret ; }
 
 #define PCOMN_DEFINE_NONASSOC_ADDOP_FUNCTIONS(pfx, type, rhstype)       \
-   pfx inline type operator+(const type &lhs, const rhstype &rhs) { type ret (lhs) ; return std::move(ret += rhs) ; } \
-   pfx inline type operator-(const type &lhs, const rhstype &rhs) { type ret (lhs) ; return std::move(ret -= rhs) ; }
+   pfx inline type operator+(const type &lhs, const rhstype &rhs) { type ret(lhs) ; ret += rhs ; return ret ; } \
+   pfx inline type operator-(const type &lhs, const rhstype &rhs) { type ret(lhs) ; ret -= rhs ; return ret ; }
+
+#define PCOMN_DEFINE_COMMUTATIVE_OP_FUNCTIONS(pfx, op, type, othertype)  \
+   pfx inline type operator+(const type &self, const othertype &other) { type ret(self) ; ret op##= other ; return ret ; } \
+   pfx inline type operator+(const othertype &other, const type &self) { return self op other ; }
 
 /// Define operators '+' and '-' for the type through corresponding augmented operations
 /// '+=' and '-='.
 #define PCOMN_DEFINE_ADDOP_METHODS(type)                                \
-   type operator+(const type &rhs) const { type ret (*this) ; return std::move(ret += rhs) ; } \
-   type operator-(const type &rhs) const { type ret (*this) ; return std::move(ret -= rhs) ; }
+   type operator+(const type &rhs) const { type ret(*this) ; ret += rhs ; return ret ; } \
+   type operator-(const type &rhs) const { type ret(*this) ; ret -= rhs ; return ret ; }
 
 #define PCOMN_DEFINE_NONASSOC_ADDOP_METHODS(type, rhstype)              \
-   type operator+(const rhstype &rhs) const { type ret (*this) ; return std::move(ret += rhs) ; } \
-   type operator-(const rhstype &rhs) const { type ret (*this) ; return std::move(ret -= rhs) ; }
+   type operator+(const rhstype &rhs) const { type ret(*this) ; ret += rhs ; return ret ; } \
+   type operator-(const rhstype &rhs) const { type ret(*this) ; ret -= rhs ; return ret ; }
 
 /// Define post(inc|dec)rement.
 #define PCOMN_DEFINE_POSTCREMENT(type, op) \
