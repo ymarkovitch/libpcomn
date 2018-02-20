@@ -195,7 +195,26 @@ inline T *postinc(T *&p, ptrdiff_t offset)
 template<typename T>
 constexpr inline T *rebase(T *ptr, const void *oldbase, const void *newbase)
 {
-    return ptr ? (T *)padd(newbase, pdiff(ptr, oldbase)) : nullptr ;
+   return ptr ? (T *)padd(newbase, pdiff(ptr, oldbase)) : nullptr ;
+}
+
+template<typename T>
+constexpr inline auto bufsize(size_t count) -> decltype(sizeof(T)*count)
+{
+   return sizeof(T) * count ;
+}
+
+template<typename T>
+constexpr inline typename std::enable_if<std::is_same<T, void>::value, size_t>::type
+bufsize(size_t count)
+{
+   return count ;
+}
+
+template<typename T>
+constexpr inline auto bufsize(const volatile T *, size_t count) -> decltype(bufsize<T>(count))
+{
+   return bufsize<T>(count) ;
 }
 
 /*******************************************************************************
