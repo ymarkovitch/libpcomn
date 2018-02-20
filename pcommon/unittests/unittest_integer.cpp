@@ -292,6 +292,11 @@ void IntegerTests::Test_Log2()
    CPPUNIT_LOG_EQUAL(bitop::log2ceil((int16_t)-1), 16) ;
    CPPUNIT_LOG_EQUAL(bitop::log2floor(0x800000001LLU), 35) ;
    CPPUNIT_LOG_EQUAL(bitop::log2ceil(0x800000001LLU), 36) ;
+
+   CPPUNIT_LOG_ASSERT(bitop::tstpow2(0x8000)) ;
+   CPPUNIT_LOG_ASSERT(bitop::tstpow2(0x1)) ;
+   CPPUNIT_LOG_IS_FALSE(bitop::tstpow2(0x6)) ;
+   CPPUNIT_LOG_IS_FALSE(bitop::tstpow2(0)) ;
 }
 
 int main(int argc, char *argv[])
