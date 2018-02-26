@@ -59,13 +59,20 @@ class safe_ref {
       typedef T element_type ;
 
       /// Construct a safe reference that dows @e not own the passed object.
-      constexpr safe_ref(type &unowned_object) : _ref(unowned_object) {}
+      constexpr safe_ref(element_type &unowned_object) : _ref(unowned_object) {}
 
       /// Construct a safe reference that @e owns the passed object.
       /// @throw std::invalid_argument if @a owned_object is nullptr.
       safe_ref(std::unique_ptr<element_type> &&owned_object) :
          _owner(std::move(PCOMN_ENSURE_ARG(owned_object))),
          _ref(*_owner)
+      {}
+
+      /// Allow runtime selection of object ownership.
+      /// Either unowned or owned must be nonnull.
+      safe_ref(element_type *unowned, std::unique_ptr<element_type> &&owned) :
+         _owner(std::move(owned)),
+         _ref(_owner ? *_owner : PCOMN_ENSURE_ARG(unowned))
       {}
 
       constexpr T &get() const { return _ref ; }
