@@ -63,7 +63,7 @@ class safe_ref {
 
       /// Construct a safe reference that @e owns the passed object.
       /// @throw std::invalid_argument if @a owned_object is nullptr.
-      safe_ref(std::unique_ptr<owned_object> &&owned_object) :
+      safe_ref(std::unique_ptr<element_type> &&owned_object) :
          _owner(std::move(PCOMN_ENSURE_ARG(owned_object))),
          _ref(*_owner)
       {}

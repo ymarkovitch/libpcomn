@@ -388,7 +388,7 @@ void BinaryStreamTests::Test_IBufStream()
 
    charbuf_istream EmptyStream1 ;
    pcomn::binary_ibufstream EmptyBufStream1 (EmptyStream1, 64) ;
-   pcomn::binary_ibufstream EmptyBufStream2 (new charbuf_istream, 64) ;
+   pcomn::binary_ibufstream EmptyBufStream2 (std::unique_ptr<charbuf_istream>(new charbuf_istream), 64) ;
    pcomn::binary_istream *AsBinaryStream ;
 
    CPPUNIT_LOG_RUN(AsBinaryStream = &EmptyBufStream2) ;
@@ -396,8 +396,8 @@ void BinaryStreamTests::Test_IBufStream()
    TestEmptyStreamGet(EmptyBufStream1) ;
    TestEmptyStreamGet(*AsBinaryStream) ;
 
-   pcomn::binary_ibufstream EmptyBufStream3 (new charbuf_istream, 64) ;
-   pcomn::binary_ibufstream EmptyBufStream4 (new charbuf_istream, 64) ;
+   pcomn::binary_ibufstream EmptyBufStream3 (std::unique_ptr<charbuf_istream>(new charbuf_istream), 64) ;
+   pcomn::binary_ibufstream EmptyBufStream4 (std::unique_ptr<charbuf_istream>(new charbuf_istream), 64) ;
    CPPUNIT_LOG_RUN(AsBinaryStream = &EmptyBufStream4) ;
    TestEmptyStreamRead(EmptyBufStream3) ;
    TestEmptyStreamRead(*AsBinaryStream) ;
