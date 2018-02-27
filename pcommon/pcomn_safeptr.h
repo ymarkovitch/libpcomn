@@ -72,7 +72,7 @@ class safe_ref {
       /// Either unowned or owned must be nonnull.
       safe_ref(element_type *unowned, std::unique_ptr<element_type> &&owned) :
          _owner(std::move(owned)),
-         _ref(_owner ? *_owner : PCOMN_ENSURE_ARG(unowned))
+         _ref(_owner ? *_owner : *PCOMN_ENSURE_ARG(unowned))
       {}
 
       constexpr T &get() const { return _ref ; }
