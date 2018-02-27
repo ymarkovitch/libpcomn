@@ -112,7 +112,7 @@ struct basic_strslice {
       basic_strslice(const char_type *begin, const char_type *end) :
          _begin(begin), _end(end)
       {
-         NOXPRECONDITION(!begin && !end || begin <= end) ;
+         NOXCHECK(!begin == !end && begin <= end) ;
       }
 
       basic_strslice &operator=(const basic_strslice &) = default ;
@@ -828,6 +828,11 @@ template<typename S>
 inline detail::quote_<typename string_traits<S>::char_type> quote(const S &s)
 {
    return detail::quote_<typename string_traits<S>::char_type>(s) ;
+}
+
+inline detail::quote_<char> quote(char c)
+{
+   return detail::quote_<char>({&c, &c + 1}, '\'') ;
 }
 
 template<typename S>
