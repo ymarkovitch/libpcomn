@@ -18,16 +18,8 @@
 #include <pcomn_platform.h>
 #include <pcomn_assert.h>
 
-#if PCOMN_STL_CXX14 && !PCOMN_WORKAROUND(_MSC_FULL_VER, <= 190022816)
-#  define PCOMN_HAS_SHARED_MUTEX 1
-#endif
-
 #include <mutex>
 #include <atomic>
-
-#if PCOMN_HAS_SHARED_MUTEX
-#include <shared_mutex>
-#endif
 
 #include <type_traits>
 
@@ -92,10 +84,6 @@ unsigned probable_current_cpu_core()
    return coreid_cache ;
 }
 
-/*******************************************************************************
- C++14 Standard Library has shared_mutex and shared_lock
-*******************************************************************************/
-#if !PCOMN_HAS_SHARED_MUTEX
 /******************************************************************************/
 /** Read-write mutex on top of a native (platform) read-write mutex for those platforms
  that have such native mutex (e.g. POSIX Threads).
@@ -217,11 +205,6 @@ class shared_lock {
          }
       }
 } ;
-
-#else
-typedef std::shared_timed_mutex shared_mutex ;
-using std::shared_lock ;
-#endif // PCOMN_HAS_SHARED_MUTEX
 
 #if PCOMN_HAS_NATIVE_PROMISE
 /******************************************************************************/

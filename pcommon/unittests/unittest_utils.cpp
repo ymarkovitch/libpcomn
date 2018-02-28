@@ -245,19 +245,8 @@ void UtilityTests::Test_TupleUtils()
 }
 
 namespace {
-#if PCOMN_STL_CXX14
-typedef std::less<void> lt ;
-typedef std::equal_to<void> eq ;
-#else
-struct lt {
-      template<typename T>
-      bool operator()(const T &x, const T &y) const { return std::less<T>()(x, y) ; }
-} ;
-struct eq {
-      template<typename T>
-      bool operator()(const T &x, const T &y) const { return std::equal_to<T>()(x, y) ; }
-} ;
-#endif
+typedef std::less<>     lt ;
+typedef std::equal_to<> eq ;
 }
 
 void UtilityTests::Test_TupleCompare()
