@@ -399,7 +399,7 @@ struct tdef<Principal, Tag, true> {
       tdef &operator=(Principal &&rhs) { _data = std::move(rhs) ; return *this ;}
 
       constexpr const Principal &data() const { return _data ; }
-      constexpr operator Principal() const { return _data ; }
+      constexpr operator const Principal &() const { return _data ; }
       operator Principal &() & { return _data ; }
       operator Principal &&() && { return std::move(_data) ; }
 
