@@ -1,8 +1,8 @@
 /*
- *  Copyright (c) 2016-2017 Positive Technologies, https://www.ptsecurity.com,
+ *  Copyright (c) 2016-2018 Positive Technologies, https://www.ptsecurity.com,
  *  Fast Positive Hash.
  *
- *  Portions Copyright (c) 2010-2017 Leonid Yuriev <leo@yuriev.ru>,
+ *  Portions Copyright (c) 2010-2018 Leonid Yuriev <leo@yuriev.ru>,
  *  The 1Hippeus project (t1h).
  *
  *  This software is provided 'as-is', without any express or implied
@@ -28,9 +28,10 @@
  *
  * Briefly, it is a 64-bit Hash Function:
  *  1. Created for 64-bit little-endian platforms, in predominantly for x86_64,
- *     but without penalties could runs on any 64-bit CPU.
+ *     but portable and without penalties it can run on any 64-bit CPU.
  *  2. In most cases up to 15% faster than City64, xxHash, mum-hash, metro-hash
- *     and all others which are not use specific hardware tricks.
+ *     and all others portable hash-functions (which do not use specific
+ *     hardware tricks).
  *  3. Not suitable for cryptography.
  *
  * The Future will Positive. Всё будет хорошо.
@@ -40,12 +41,21 @@
  * for The 1Hippeus project - zerocopy messaging in the spirit of Sparta!
  */
 
-#ifdef _MSC_VER
-#pragma warning(disable : 4464) /* relative include path contains '..' */
-#endif
-
-#include "../t1ha.h"
 #include "t1ha_bits.h"
+
+/* xor-mul-xor mixer */
+static __inline uint64_t mix64(uint64_t v, uint64_t p) {
+  v *= p;
+  return v ^ rot64(v, 41);
+}
+
+static __inline uint64_t final_weak_avalanche(uint64_t a, uint64_t b) {
+  /* LY: for performance reason on a some not high-end CPUs
+   * I replaced the second mux64() operation by mix64().
+   * Unfortunately this approach fails the "strict avalanche criteria",
+   * see test results at https://github.com/demerphq/smhasher. */
+  return mux64(rot64(a + b, 17), prime_4) + mix64(a ^ b, prime_0);
+}
 
 uint64_t t1ha1_le(const void *data, size_t len, uint64_t seed) {
   uint64_t a = seed;
@@ -55,8 +65,8 @@ uint64_t t1ha1_le(const void *data, size_t len, uint64_t seed) {
   uint64_t align[4];
 
   if (unlikely(len > 32)) {
-    uint64_t c = rot64(len, s1) + seed;
-    uint64_t d = len ^ rot64(seed, s1);
+    uint64_t c = rot64(len, 17) + seed;
+    uint64_t d = len ^ rot64(seed, 17);
     const void *detent = (const uint8_t *)data + len - 31;
     do {
       const uint64_t *v = (const uint64_t *)data;
@@ -68,17 +78,17 @@ uint64_t t1ha1_le(const void *data, size_t len, uint64_t seed) {
       uint64_t w2 = fetch64_le(v + 2);
       uint64_t w3 = fetch64_le(v + 3);
 
-      uint64_t d02 = w0 ^ rot64(w2 + d, s1);
-      uint64_t c13 = w1 ^ rot64(w3 + c, s1);
-      c += a ^ rot64(w0, s0);
-      d -= b ^ rot64(w1, s2);
-      a ^= p1 * (d02 + w3);
-      b ^= p0 * (c13 + w2);
+      uint64_t d02 = w0 ^ rot64(w2 + d, 17);
+      uint64_t c13 = w1 ^ rot64(w3 + c, 17);
+      c += a ^ rot64(w0, 41);
+      d -= b ^ rot64(w1, 31);
+      a ^= prime_1 * (d02 + w3);
+      b ^= prime_0 * (c13 + w2);
       data = (const uint64_t *)data + 4;
     } while (likely(data < detent));
 
-    a ^= p6 * (rot64(c, s1) + d);
-    b ^= p5 * (c + rot64(d, s1));
+    a ^= prime_6 * (rot64(c, 17) + d);
+    b ^= prime_5 * (c + rot64(d, 17));
     len &= 31;
   }
 
@@ -88,7 +98,8 @@ uint64_t t1ha1_le(const void *data, size_t len, uint64_t seed) {
 
   switch (len) {
   default:
-    b += mux64(fetch64_le(v++), p4);
+    b += mux64(fetch64_le(v++), prime_4);
+  /* fall through */
   case 24:
   case 23:
   case 22:
@@ -97,7 +108,8 @@ uint64_t t1ha1_le(const void *data, size_t len, uint64_t seed) {
   case 19:
   case 18:
   case 17:
-    a += mux64(fetch64_le(v++), p3);
+    a += mux64(fetch64_le(v++), prime_3);
+  /* fall through */
   case 16:
   case 15:
   case 14:
@@ -106,7 +118,8 @@ uint64_t t1ha1_le(const void *data, size_t len, uint64_t seed) {
   case 11:
   case 10:
   case 9:
-    b += mux64(fetch64_le(v++), p2);
+    b += mux64(fetch64_le(v++), prime_2);
+  /* fall through */
   case 8:
   case 7:
   case 6:
@@ -115,9 +128,10 @@ uint64_t t1ha1_le(const void *data, size_t len, uint64_t seed) {
   case 3:
   case 2:
   case 1:
-    a += mux64(tail64_le(v, len), p1);
+    a += mux64(tail64_le(v, len), prime_1);
+  /* fall through */
   case 0:
-    return mux64(rot64(a + b, s1), p4) + mix64(a ^ b, p0);
+    return final_weak_avalanche(a, b);
   }
 }
 
@@ -129,8 +143,8 @@ uint64_t t1ha1_be(const void *data, size_t len, uint64_t seed) {
   uint64_t align[4];
 
   if (unlikely(len > 32)) {
-    uint64_t c = rot64(len, s1) + seed;
-    uint64_t d = len ^ rot64(seed, s1);
+    uint64_t c = rot64(len, 17) + seed;
+    uint64_t d = len ^ rot64(seed, 17);
     const void *detent = (const uint8_t *)data + len - 31;
     do {
       const uint64_t *v = (const uint64_t *)data;
@@ -142,17 +156,17 @@ uint64_t t1ha1_be(const void *data, size_t len, uint64_t seed) {
       uint64_t w2 = fetch64_be(v + 2);
       uint64_t w3 = fetch64_be(v + 3);
 
-      uint64_t d02 = w0 ^ rot64(w2 + d, s1);
-      uint64_t c13 = w1 ^ rot64(w3 + c, s1);
-      c += a ^ rot64(w0, s0);
-      d -= b ^ rot64(w1, s2);
-      a ^= p1 * (d02 + w3);
-      b ^= p0 * (c13 + w2);
+      uint64_t d02 = w0 ^ rot64(w2 + d, 17);
+      uint64_t c13 = w1 ^ rot64(w3 + c, 17);
+      c += a ^ rot64(w0, 41);
+      d -= b ^ rot64(w1, 31);
+      a ^= prime_1 * (d02 + w3);
+      b ^= prime_0 * (c13 + w2);
       data = (const uint64_t *)data + 4;
     } while (likely(data < detent));
 
-    a ^= p6 * (rot64(c, s1) + d);
-    b ^= p5 * (c + rot64(d, s1));
+    a ^= prime_6 * (rot64(c, 17) + d);
+    b ^= prime_5 * (c + rot64(d, 17));
     len &= 31;
   }
 
@@ -162,7 +176,8 @@ uint64_t t1ha1_be(const void *data, size_t len, uint64_t seed) {
 
   switch (len) {
   default:
-    b += mux64(fetch64_be(v++), p4);
+    b += mux64(fetch64_be(v++), prime_4);
+  /* fall through */
   case 24:
   case 23:
   case 22:
@@ -171,7 +186,8 @@ uint64_t t1ha1_be(const void *data, size_t len, uint64_t seed) {
   case 19:
   case 18:
   case 17:
-    a += mux64(fetch64_be(v++), p3);
+    a += mux64(fetch64_be(v++), prime_3);
+  /* fall through */
   case 16:
   case 15:
   case 14:
@@ -180,7 +196,8 @@ uint64_t t1ha1_be(const void *data, size_t len, uint64_t seed) {
   case 11:
   case 10:
   case 9:
-    b += mux64(fetch64_be(v++), p2);
+    b += mux64(fetch64_be(v++), prime_2);
+  /* fall through */
   case 8:
   case 7:
   case 6:
@@ -189,8 +206,9 @@ uint64_t t1ha1_be(const void *data, size_t len, uint64_t seed) {
   case 3:
   case 2:
   case 1:
-    a += mux64(tail64_be(v, len), p1);
+    a += mux64(tail64_be(v, len), prime_1);
+  /* fall through */
   case 0:
-    return mux64(rot64(a + b, s1), p4) + mix64(a ^ b, p0);
+    return final_weak_avalanche(a, b);
   }
 }

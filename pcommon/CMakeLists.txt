@@ -93,7 +93,9 @@ add_library(pcommon STATIC
 
   ${T1HA_SOURCES}/t1ha0.c
   ${T1HA_SOURCES}/t1ha1.c
+  ${T1HA_SOURCES}/t1ha2.c
   ${T1HA_SOURCES}/t1ha0_ia32aes_avx.c
+  ${T1HA_SOURCES}/t1ha0_ia32aes_avx2.c
   ${T1HA_SOURCES}/t1ha0_ia32aes_noavx.c
 
   pcomn_trace.cpp
