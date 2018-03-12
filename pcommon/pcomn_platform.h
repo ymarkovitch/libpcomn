@@ -619,12 +619,12 @@ enum Instantiate { Instance } ;
  Endianness conversions
 *******************************************************************************/
 #ifdef PCOMN_CPU_LITTLE_ENDIAN
-const bool cpu_little_endian = true ;
+constexpr bool cpu_little_endian = true ;
 #else
-const bool cpu_little_endian = false ;
+constexpr bool cpu_little_endian = false ;
 #endif
 
-const bool cpu_big_endian = !cpu_little_endian ;
+constexpr bool cpu_big_endian = !cpu_little_endian ;
 
 template<size_t type_size> struct uint_type {} ;
 template<> struct uint_type<1> { typedef uint8_t  type ; } ;
