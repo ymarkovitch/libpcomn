@@ -486,12 +486,12 @@ class mapped_iterator :
 template<typename Iterator, typename Converter>
 class xform_iterator :
          public std::iterator<typename std::iterator_traits<Iterator>::iterator_category,
-                              std::result_of_t<Converter(decltype(*std::declval<Iterator>()))>,
+                              decltype((std::declval<Converter>())(*std::declval<Iterator>())),
                               typename std::iterator_traits<Iterator>::difference_type,
                               void, void> {
 
       typedef std::iterator<typename std::iterator_traits<Iterator>::iterator_category,
-                            std::result_of_t<Converter(decltype(*std::declval<Iterator>()))>,
+                            decltype((std::declval<Converter>())(*std::declval<Iterator>())),
                             typename std::iterator_traits<Iterator>::difference_type,
                             void, void> ancestor ;
    public:
