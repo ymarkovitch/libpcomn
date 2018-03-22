@@ -319,7 +319,7 @@ struct bitarray_base {
 
       template<typename InputIterator>
       bitarray_base(InputIterator &start, InputIterator &finish, std::false_type) :
-         bitarray_base(std::vector<bool>(start, finish), Instance)
+         bitarray_base(std::vector<bool>(start, finish), Instantiate())
       {}
 
       template<typename RandomAccessIterator>

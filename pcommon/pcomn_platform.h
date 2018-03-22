@@ -613,7 +613,7 @@ const size_t GiB = 1024*MiB ;
 /** A single-value enum for use as a tag for instantiation of static template
  data and code.
 *******************************************************************************/
-enum Instantiate { Instance } ;
+enum class Instantiate {} ;
 
 /*******************************************************************************
  Endianness conversions

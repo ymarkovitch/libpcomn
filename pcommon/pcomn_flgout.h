@@ -119,7 +119,7 @@ std::basic_ostream<C> &oflags::out(std::basic_ostream<C> &os) const
 /**************************************************************************//**
  Names of enum values.
 *******************************************************************************/
-template<typename Enum, Instantiate = {}> struct enum_names ;
+template<typename Enum, Instantiate = Instantiate()> struct enum_names ;
 
 template<typename Enum>
 const char *enum_name(Enum value)
