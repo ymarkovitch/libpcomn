@@ -383,7 +383,7 @@ constexpr inline bool xinrange(const T &value, const std::pair<R, R> &range)
 }
 
 template<typename T>
-constexpr inline ptrdiff_t range_length(const std::pair<T, T> &range)
+constexpr inline auto range_length(const std::pair<T, T> &range) -> decltype(range.second-range.first)
 {
    return range.second - range.first ;
 }
