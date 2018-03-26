@@ -12,6 +12,7 @@
  CREATION DATE:   10 Jun 2003
 *******************************************************************************/
 #include <pcomn_platform.h>
+GCC_DIAGNOSTIC_PUSH_IGNORE(unused-result)
 #include <pcomn_macros.h>
 #include <pcomn_trace.h>
 #include <pcomn_tuple.h>
@@ -1121,4 +1122,5 @@ inline void pause()
 } // end of namespace pcomn::unit
 } // end of namespace pcomn
 
+GCC_DIAGNOSTIC_POP()
 #endif /* __PCOMN_UNITTEST_H */

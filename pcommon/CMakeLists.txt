@@ -159,6 +159,7 @@ target_include_directories(pcommon
 target_compile_definitions(pcommon
   PUBLIC
   $<$<OR:$<CONFIG:Debug>,$<CONFIG:DbgSanitize>>:${PCOMN_CHECK} ${PCOMN_TRACE}>
+  $<$<AND:$<OR:$<CONFIG:Debug>,$<CONFIG:DbgSanitize>>,${COMPILER_GCCLIKE}>:_GLIBCXX_ASSERTIONS _FORTIFY_SOURCE=2>
   $<$<PLATFORM_ID:Windows>:_WIN32_WINNT=0x0600>
 
   PRIVATE
@@ -173,8 +174,8 @@ target_compile_options(pcommon
   $<$<AND:${COMPILER_GCCLIKE},$<STREQUAL:${CMAKE_SYSTEM_PROCESSOR},x86_64>,$<BOOL:${ENABLE_PCOMN_AVX}>>:-march=corei7-avx>
 
   PRIVATE
-  $<$<CXX_COMPILER_ID:GNU>:-Wall -Wno-error -Wno-unused-return>
-  $<$<CXX_COMPILER_ID:Clang>:-Wall -Wno-error -Wno-unused-return -Wno-mismatched-tags>
+  $<$<CXX_COMPILER_ID:GNU>:-Wall -Wno-error -Wno-unused-result>
+  $<$<CXX_COMPILER_ID:Clang>:-Wall -Wno-error -Wno-unused-result -Wno-mismatched-tags>
   $<$<AND:${COMPILER_GCCLIKE},$<${COMPILE_LANGUAGE_CXX}>>:-Woverloaded-virtual>
 
   $<$<AND:$<OR:$<CONFIG:Debug>,$<CONFIG:DbgSanitize>,$<CONFIG:RelWithDebInfo>>,${COMPILER_GCCLIKE}>:-gdwarf-4>
