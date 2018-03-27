@@ -163,7 +163,10 @@ do                                                                      \
       CPPUNIT_LOG((__CPPUNIT_CONCAT_SRC_LINE("RUNNING: '") #expression "', EXPECTING: '" #expected) << '(' << #expected_code << ")'... ") ; \
       long *___pc___ = nullptr, ___ac___ = 0 ;                          \
       try { expression ; }                                              \
-      catch(const expected &__x__) { *(___pc___ = &___ac___) = __x__.code() ; } \
+      catch(const expected &__x__) {                                    \
+         *(___pc___ = &___ac___) = __x__.code() ;                       \
+         CppUnit::Log::logExceptionWhat("", &__x__) ;                   \
+      }                                                                 \
       if (!___pc___ || ___ac___ != ___xc___)                            \
          CppUnit::ExpectedExceptionCodeTraits<expected>::expectedException(___xc___, ___pc___); \
       CPPUNIT_LOG_MESSAGE("OK\n") ;                                     \
