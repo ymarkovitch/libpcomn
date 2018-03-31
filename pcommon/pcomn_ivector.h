@@ -64,17 +64,20 @@ class ivector : private std::vector<T *> {
          _owns(owns)
       {}
 
-      ivector(const ivector<T>& x, bool owns = false) :
+      ivector(const ivector &x, bool owns = false) :
          ancestor (x),
          _owns(owns)
       {}
+
+      ivector(ivector &&) = default ;
 
       ~ivector()
       {
          detach (begin(), end()) ;
       }
 
-      ivector<T>& operator = (const ivector<T>& x) ;
+      ivector &operator=(const ivector &) ;
+      ivector &operator=(ivector &&) = default ;
 
       bool owns_elements() const { return _owns ; }
       bool owns_elements(bool owns) { return xchange(_owns, owns) ; }
