@@ -173,6 +173,12 @@ constexpr inline T *padd(T *p, ptrdiff_t offset)
    return (T *)((char *)p + offset) ;
 }
 
+template<typename T, typename U>
+constexpr inline T *pradd(U *p, ptrdiff_t offset)
+{
+   return (T *)((char *)p + offset) ;
+}
+
 inline ptrdiff_t pdiff(const void *p1, const void *p2)
 {
    return (const char *)p1 - (const char *)p2 ;
