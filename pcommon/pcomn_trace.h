@@ -541,13 +541,16 @@ DECLARE_DIAG_GROUP(Def, _PCOMNEXP) ;
    (diag_isenabled_output(GRP, DBGL_ALWAYS) && ::diag::PDiagBase::Lock() && \
     LOGMSGPX(GRP, TRACE, MSG) && OUTMSGPX(GRP, trace))
 
-/// Output debug message both into the diagnostics trace and system log, if *both*
-/// tracing and **supergroup** of the specified @a GRP are enabled
+/// Output DEBUG message 
+///   - into the system log if diagnostics output is overall enabled
+///     (@see DiagMode::DisableDebugOutpu, @see diag_isenabled_diag()), and
+///   - into the diagnostics trace if tracing and **supergroup** of the specified @a GRP
+///     are enabled
 ///
 #define LOGPXDBG(GRP, MSG)                                              \
-   (::diag_isenabled_diag() && ::diag::grp::GRP::IsSuperGroupEnabled() && \
-    ::diag::PDiagBase::Lock() &&                                        \
-    LOGMSGPX(GRP, DEBUG, MSG) && OUTMSGPX(GRP, trace))
+   (::diag_isenabled_diag() && ::diag::PDiagBase::Lock() &&             \
+    LOGMSGPX(GRP, DEBUG, MSG) &&                                        \
+    DIAG_ISENABLED_SUPERGROUP(GRP) && OUTMSGPX(GRP, trace)))
 
 /// Output INFO message into the system log and, if *both* tracing and **supergroup**
 /// of the specified @a GRP are enabled, also into diagnostics trace.
