@@ -8,11 +8,15 @@
 # PROGRAMMED BY:  Yakov Markovitch
 # CREATION DATE:  11 Sep 2014
 #------------------------------------------------------------------------------
-cmake_minimum_required(VERSION 3.5.2)
+cmake_minimum_required(VERSION 3.7)
 
 unittests_project(libpcommon_unittests)
 
-set_project_link_libraries(crypto z)
+if (COMPILER_GCCLIKE)
+    set_project_link_libraries(crypto z stdc++fs)
+else()
+    set_project_link_libraries(crypto z)
+endif(COMPILER_GCCLIKE)
 
 # Test cfgparser first, to ensure diagnostics log configuration is functioning properly
 unittest(unittest_cfgparser)
@@ -63,3 +67,5 @@ unittest(unittest_zstream)
 add_adhoc_executable(test_readfile)
 add_adhoc_executable(test_backtrace)
 add_adhoc_executable(test_stacktrace)
+
+add_adhoc_executable(benchmark_mmap)

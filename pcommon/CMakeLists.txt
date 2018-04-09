@@ -159,7 +159,6 @@ target_include_directories(pcommon
 target_compile_definitions(pcommon
   PUBLIC
   $<$<OR:$<CONFIG:Debug>,$<CONFIG:DbgSanitize>>:${PCOMN_CHECK} ${PCOMN_TRACE}>
-  #$<$<AND:$<OR:$<CONFIG:Debug>,$<CONFIG:DbgSanitize>>,${COMPILER_GCCLIKE}>:_GLIBCXX_ASSERTIONS>
   $<$<PLATFORM_ID:Windows>:_WIN32_WINNT=0x0600>
 
   PRIVATE
