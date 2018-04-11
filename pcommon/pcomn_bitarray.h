@@ -796,7 +796,7 @@ PCOMN_DEFINE_SWAP(bitarray) ;
 *******************************************************************************/
 inline bitarray operator "" _bit(const char *r)
 {
-   static constexpr auto chartobit = [](char c)
+   static const auto chartobit = [](char c)
    {
       ensure<std::invalid_argument>
       (c == '0' || c == '1', "Invalid bitarray literal: only 0s and 1s are allowed") ;
