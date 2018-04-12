@@ -458,6 +458,12 @@ class TestFixture : public CppUnit::TestFixture {
       /// @overload
       const std::string &data_dir() const { return dataDir() ; }
 
+      const std::string &data_dir_abs() const
+      {
+         ensure_datadir() ;
+         return _datadir_abs ;
+      }
+
       /// Get per-test-function writeable output file name ($TESTNAME.out)
       const std::string &data_file() const { return _datafile ; }
 
@@ -500,7 +506,7 @@ class TestFixture : public CppUnit::TestFixture {
          _datadir_ready = false ;
       }
 
-      void setUp()
+      void setUp() override
       {
          char buf[2048] ;
          _data_basedir = CPPUNIT_PROGDIR + (PCOMN_PATH_DELIMS "data") ;
@@ -508,6 +514,7 @@ class TestFixture : public CppUnit::TestFixture {
          snprintf(buf, sizeof buf, "%s%c%s.%s",
                   pcomn::str::cstr(_data_basedir), PCOMN_PATH_NATIVE_DELIM, private_dirname, testname()) ;
          _datadir = buf ;
+         _datadir_abs = path::abspath<std::string>(buf) ;
 
          snprintf(buf, sizeof buf, "%s%c%s.out",
                   pcomn::str::cstr(_data_basedir), PCOMN_PATH_NATIVE_DELIM, testname()) ;
@@ -516,13 +523,14 @@ class TestFixture : public CppUnit::TestFixture {
          cleanupDirs() ;
       }
 
-      void tearDown()
+      void tearDown() override
       {
          _out.reset() ;
       }
    private:
       std::string    _data_basedir ;
       std::string    _datadir ;
+      std::string    _datadir_abs ;
       std::string    _datafile ;
       mutable bool   _datadir_ready ; /* true is datadir is created */
       mutable std::unique_ptr<std::ofstream> _out ;
