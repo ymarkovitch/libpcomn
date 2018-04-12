@@ -89,13 +89,16 @@ typedef void(*syslog_writer)(void *data, LogLevel level, const char *fmt, ...) ;
 /// Callback type for writing trace messages into debugger log.
 typedef void(*dbglog_writer)(void *data, const char *msg) ;
 
+class PDiagBase ;
+class PTraceConfig ;
+class PTraceSuperGroup ;
+
 /******************************************************************************/
 /** The base for PDiagGroup classes.
     Handles basic message output.
 *******************************************************************************/
 class _PCOMNEXP PDiagBase {
    public:
-
       // This structure is intended to be inserted into array of diag group properties
       struct Properties {
 
@@ -186,23 +189,21 @@ class _PCOMNEXP PDiagBase {
 
       static void syslog_message(LogLevel level, const Properties *group, const char *msg,
                                  const char *fname, unsigned line) ;
-} ;
 
-class PTraceConfig ;
+      static const PTraceSuperGroup &null_supergroup ;
+} ;
 
 /******************************************************************************/
 /** Diagnostics supergroup.
 *******************************************************************************/
 class _PCOMNEXP PTraceSuperGroup {
-
       friend class PTraceConfig ;
-
    public:
       /// Constructor.
       /// @param full_name is a @em full group name, for instance, FOO_Bar.
       /// @param ena       specifies, whether to enable this supergroup immediately.
       explicit PTraceSuperGroup(const char *full_name, bool ena = true) ;
-      PTraceSuperGroup() {}
+      constexpr PTraceSuperGroup() = default ;
 
       /// Get the supergroup name.
       const char *name() const { return _name ; }
@@ -211,12 +212,18 @@ class _PCOMNEXP PTraceSuperGroup {
 
       bool enabled() const { return _enabled ; }
 
+      bool forceenable() const { return _force_enable ; }
+      unsigned char forcelevel() const { return _force_level ; }
+
       /// Get the supergroup name for a given group name.
       static const char *parseName(const char *fullName) ;
 
    protected:
-      bool _enabled ;
-      char _name[diag::MaxSuperGroupLen+1] ;
+      bool          _force_enable = false ;
+      unsigned char _force_level  = 0 ;
+
+      bool _enabled = true ;
+      char _name[diag::MaxSuperGroupLen+1] = {0} ;
 } ;
 
 
@@ -226,9 +233,8 @@ class _PCOMNEXP PTraceSuperGroup {
 *******************************************************************************/
 class _PCOMNEXP PTraceConfig {
       friend class PTraceSuperGroup ;
-
    public:
-      typedef PTraceSuperGroup *         iterator ;
+      typedef PTraceSuperGroup *iterator ;
 
       static iterator begin() ;
       static iterator end() ;
@@ -247,7 +253,6 @@ class _PCOMNEXP PTraceConfig {
       static iterator get(const char *name) ;
       static iterator insert(const PTraceSuperGroup &) ;
 } ;
-
 
 /*******************************************************************************
  PDiagBase::Properties
@@ -295,23 +300,25 @@ class __VA_ARGS__ GRP : private PDiagBase                               \
    static void warn(const char *fname, unsigned line) ;                 \
    static void slog(LogLevel lvl, const char *fname, unsigned line)     \
    {                                                                    \
-      PDiagBase::syslog_message                                         \
-         (lvl, properties(), outstr(), fname, line) ;                   \
+      PDiagBase::syslog_message (lvl, properties(), outstr(), fname, line) ; \
    }                                                                    \
                                                                         \
-   static bool IsSuperGroupEnabled()                                    \
-   {                                                                    \
-      return !supergroup() || supergroup()->enabled() ;                 \
-   }                                                                    \
+   static bool IsSuperGroupEnabled() { return supergroup()->enabled() ; } \
                                                                         \
    static void Enable(bool enabled) { properties()->ena(enabled) ; }    \
    static bool IsEnabled()                                              \
    {                                                                    \
-      return IsSuperGroupEnabled() && properties()->enabled() ;         \
+      const PTraceSuperGroup * const s = supergroup() ;                 \
+      return                                                            \
+         s->enabled() && (s->forceenable() || properties()->enabled()) ; \
    }                                                                    \
    static bool IsEnabled(unsigned level)                                \
    {                                                                    \
-      return IsEnabled() && level <= GetLevel() ;                       \
+      const PTraceSuperGroup * const s = supergroup() ;                 \
+      const Properties *p ;                                             \
+      return s->enabled() &&                                            \
+         ((p = properties())->enabled() || s->forceenable()) &&         \
+         (p->level() >= level           || s->forcelevel() >= level) ;  \
    }                                                                    \
    static void SetLevel(unsigned level) { properties()->level(level) ; } \
    static unsigned GetLevel() { return properties()->level() ; }        \
@@ -333,7 +340,7 @@ class __VA_ARGS__ GRP : private PDiagBase                               \
    }                                                                    \
    const ::diag::PTraceSuperGroup *::diag::grp::GRP::supergroup()       \
    {                                                                    \
-      return GRP##_supergroup ;                                         \
+      return GRP##_supergroup ? GRP##_supergroup : &null_supergroup ;   \
    }                                                                    \
    ::diag::PDiagBase::Properties *::diag::grp::GRP::properties()        \
    {                                                                    \
@@ -541,7 +548,7 @@ DECLARE_DIAG_GROUP(Def, _PCOMNEXP) ;
    (diag_isenabled_output(GRP, DBGL_ALWAYS) && ::diag::PDiagBase::Lock() && \
     LOGMSGPX(GRP, TRACE, MSG) && OUTMSGPX(GRP, trace))
 
-/// Output DEBUG message 
+/// Output DEBUG message
 ///   - into the system log if diagnostics output is overall enabled
 ///     (@see DiagMode::DisableDebugOutpu, @see diag_isenabled_diag()), and
 ///   - into the diagnostics trace if tracing and **supergroup** of the specified @a GRP

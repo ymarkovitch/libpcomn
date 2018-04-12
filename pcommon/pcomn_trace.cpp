@@ -125,6 +125,9 @@ static struct {
 
 static unsigned global_mode ;
 
+static constexpr PTraceSuperGroup dummy_supergroup ;
+const PTraceSuperGroup &PDiagBase::null_supergroup = dummy_supergroup ;
+
 PDiagBase::PDiagBase(Properties *grp)
 {
    if (grp && numOfGroups() < diag::MaxGroupsNum)
