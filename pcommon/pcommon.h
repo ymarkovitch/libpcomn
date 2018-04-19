@@ -849,10 +849,18 @@ inline void *hextob(void *buf, size_t bufsz, const char *hexstr)
       typedef std::underlying_type_t<enum_type> int_type ;              \
       return (enum_type)((int_type)x | (int_type)y) ;                   \
    }                                                                    \
+   constexpr inline enum_type operator^(enum_type x, enum_type y)       \
+   {                                                                    \
+      typedef std::underlying_type_t<enum_type> int_type ;              \
+      return (enum_type)((int_type)x ^ (int_type)y) ;                   \
+   }                                                                    \
    constexpr inline enum_type operator~(enum_type x)                    \
    {                                                                    \
       return (enum_type)(~(std::underlying_type_t<enum_type>)x) ;       \
-   }
+   }                                                                    \
+   inline enum_type &operator|=(enum_type &x, enum_type y) { return x = x | y ; } \
+   inline enum_type &operator&=(enum_type &x, enum_type y) { return x = x & y ; } \
+   inline enum_type &operator^=(enum_type &x, enum_type y) { return x = x ^ y ; }
 
 
 /*******************************************************************************
