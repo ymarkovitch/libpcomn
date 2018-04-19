@@ -25,10 +25,7 @@
  encoding/decoding routines is, of course, endianness-neutral)
 *******************************************************************************/
 
-const unsigned char BASE64_PAD = (unsigned char)-2 ;
-const char BASE64_PAD_CHAR = '=' ;
-
-static const char base64_a2b_table[] =
+const char base64_a2b_table[] =
 {
     -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
     -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
@@ -44,7 +41,7 @@ static const char base64_a2b_table[] =
 static const char base64_b2a_table[] =
 "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-size_t a2b_base64(const char *ascii_data, size_t *ascii_len_ptr, void *buf)
+size_t a2b_base64(const char *ascii_data, size_t *ascii_len_ptr, void *buf, size_t buf_len)
 {
    size_t ascii_len = ascii_len_ptr ? *ascii_len_ptr : 0;
    if (!buf || !ascii_len)
@@ -69,7 +66,7 @@ size_t a2b_base64(const char *ascii_data, size_t *ascii_len_ptr, void *buf)
 
       // Check for pad sequences and ignore the invalid ones.
       if (this_ch == BASE64_PAD)
-         if (quad_pos < 2 ||  quad_pos == 2 && prev_ch != BASE64_PAD)
+         if (quad_pos < 2 || quad_pos == 2 && prev_ch != BASE64_PAD)
             continue ;
          else
             // A pad sequence means no more input.
@@ -89,7 +86,9 @@ size_t a2b_base64(const char *ascii_data, size_t *ascii_len_ptr, void *buf)
          *bin_data++ = (leftchar >> leftbits) & 0xff ;
          ++bin_len ;
          leftchar &= ((1 << leftbits) - 1) ;
-         ascii_full_parsed = ascii_data ;
+         ascii_full_parsed = ascii_data + 1 ;
+         if (bin_len == buf_len)
+            break ;
       }
       prev_ch = this_ch ;
    }
@@ -150,7 +149,7 @@ size_t a2b_base64(pcomn::shared_buffer &buffer, const char *ascii_data, size_t *
    if (buflen)
    {
       const size_t initsize = buffer.size() ;
-      buflen = a2b_base64(ascii_data, ascii_len_ptr, pcomn::padd(buffer.resize(initsize + buflen), initsize)) ;
+      buflen = a2b_base64(ascii_data, ascii_len_ptr, pcomn::padd(buffer.resize(initsize + buflen), initsize), buflen) ;
       buffer.resize(initsize + buflen) ;
    }
    return buflen ;
