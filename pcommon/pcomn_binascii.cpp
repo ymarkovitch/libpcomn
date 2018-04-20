@@ -61,17 +61,24 @@ size_t a2b_base64(const char *ascii_data, size_t *ascii_len_ptr, void *buf, size
       unsigned char this_ch = *(const unsigned char *)ascii_data ;
 
       // Ignore illegal characters
-      if (this_ch > 0x7f || (this_ch = base64_a2b_table[this_ch]) == (unsigned char)-1)
+      if (this_ch > 0x7f || (this_ch = base64_a2b_table[this_ch]) == (unsigned char)-1) {
+         if (!quad_pos)
+            ascii_full_parsed = ascii_data + 1;
          continue ;
+      }
 
       // Check for pad sequences and ignore the invalid ones.
       if (this_ch == BASE64_PAD)
-         if (quad_pos < 2 || quad_pos == 2 && prev_ch != BASE64_PAD)
+         if (quad_pos < 2 || quad_pos == 2 && prev_ch != BASE64_PAD) {
+            prev_ch = BASE64_PAD ;
             continue ;
-         else
+         }
+         else {
             // A pad sequence means no more input.
             // We've already interpreted the data from the quad at this point.
-            break ;
+            *ascii_len_ptr = ascii_data + 1 - ascii_beg ;
+            return bin_len ;
+         }
 
       // Shift it in on the low end
       ++quad_pos &= 0x03 ;
@@ -86,7 +93,9 @@ size_t a2b_base64(const char *ascii_data, size_t *ascii_len_ptr, void *buf, size
          *bin_data++ = (leftchar >> leftbits) & 0xff ;
          ++bin_len ;
          leftchar &= ((1 << leftbits) - 1) ;
-         ascii_full_parsed = ascii_data + 1 ;
+         // only fully decoded
+         if (quad_pos == 0)
+            ascii_full_parsed = ascii_data + 1;
          if (bin_len == buf_len)
             break ;
       }

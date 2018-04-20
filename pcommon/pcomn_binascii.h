@@ -24,6 +24,17 @@ const char BASE64_PAD_CHAR = '=' ;
 // For PAD return BASE64_PAD
 extern const char base64_a2b_table[256] ;
 
+static inline
+const char* skip_invalid_base64(const char *ascii, size_t len)
+{
+   for(const char *end = ascii + len ; ascii != end ; ++ascii) {
+      unsigned char ch = *(unsigned char*)ascii ;
+      if (ch <= 0x7f && base64_a2b_table[ch] != (char)-1)
+         break;
+   }
+   return ascii ;
+}
+
 /* a2b_base64  -  convert a base64-encoded string into a binary buffer
  * Parameters:
  *    ascii_data    -  a base64-encoded source string
