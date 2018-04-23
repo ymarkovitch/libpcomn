@@ -300,7 +300,7 @@ function(unittest name)
   apply_project_requirements(${name} LIBS ${PCOMN_UNITTEST_LIBS})
 
   target_compile_options    (${name} PRIVATE ${PCOMN_UNITTEST_OPTS})
-  target_compile_definitions(${name} PRIVATE ${PCOMN_UNITTEST_DEFS} -DCPPUNIT_USE_TYPEINFO_NAME)
+  target_compile_definitions(${name} PRIVATE ${PCOMN_UNITTEST_DEFS} -DCPPUNIT_USE_TYPEINFO_NAME -DPCOMN_TESTDIR=${CMAKE_CURRENT_SOURCE_DIR})
 
   set_target_properties(${name} PROPERTIES EXCLUDE_FROM_ALL true)
 

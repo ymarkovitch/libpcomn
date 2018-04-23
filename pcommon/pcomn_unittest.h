@@ -115,7 +115,7 @@ std::string test_environment<n>::at_srcdir(const strslice &path)
       ensure_nonzero<std::logic_error>
          (dir, "PCOMN_TESTDIR environment variable value is not specified, cannot use CPPUNIT_TESTDIR") ;
       #else
-      dir = P_STRINGIFY_I(PCOMN_TESTDIR) ;
+      dir = dir ? dir : P_STRINGIFY_I(PCOMN_TESTDIR) ;
       #endif
 
       _testdir = dir ;
