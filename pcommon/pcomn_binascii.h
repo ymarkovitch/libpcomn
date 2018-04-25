@@ -17,13 +17,33 @@
 extern "C" {
 #endif
 
+const unsigned char BASE64_PAD = (unsigned char)-2 ;
+const char BASE64_PAD_CHAR = '=' ;
+
+// Unsupported values filled with (uchar)-1
+// For PAD return BASE64_PAD
+extern const char base64_a2b_table[256] ;
+
+static inline
+const char* skip_invalid_base64(const char *ascii, size_t len)
+{
+   for(const char *end = ascii + len ; ascii != end ; ++ascii) {
+      unsigned char ch = *(unsigned char*)ascii ;
+      if (ch <= 0x7f && base64_a2b_table[ch] != (char)-1)
+         break;
+   }
+   return ascii ;
+}
+
 /* a2b_base64  -  convert a base64-encoded string into a binary buffer
  * Parameters:
- *    ascii_data  -  a base64-encoded source string
- *    ascii_len   -  source string length
- *    buflen      -  source string length
+ *    ascii_data    -  a base64-encoded source string
+ *    ascii_len_ptr -  source string length pointer, returning really processed
+ *    buf           -  resulting binary buffer
+ *    buf_len       -  resulting buffer len
  */
-_PCOMNEXP size_t a2b_base64(const char *ascii_data, size_t ascii_len, void *buf) ;
+_PCOMNEXP size_t a2b_base64(const char *ascii_data, size_t *ascii_len_ptr,
+                            void *buf, size_t buf_len) ;
 
 _PCOMNEXP size_t b2a_base64(const void *source, size_t srclen,
                             char *ascii_data, size_t ascii_len) ;
@@ -48,9 +68,20 @@ inline size_t a2b_bufsize_base64(size_t ascii_len)
    return ((ascii_len+3)/4)*3 ;
 }
 
+/// suppose that @buf size >= a2b_bufsize_base64(ascii_len)
+inline size_t a2b_base64(const char *ascii_data, size_t ascii_len, void *buf)
+{
+   return a2b_base64(ascii_data, &ascii_len, buf, a2b_bufsize_base64(ascii_len)) ;
+}
+
 _PCOMNEXP size_t a2b_base64(pcomn::shared_buffer &buffer,
                             const char *ascii_data,
-                            size_t ascii_len) ;
+                            size_t *ascii_len_ptr) ;
+
+inline size_t a2b_base64(pcomn::shared_buffer &buffer, const char *ascii_data, size_t ascii_len)
+{
+   return a2b_base64(buffer, ascii_data, &ascii_len) ;
+}
 
 inline size_t a2b_base64(pcomn::shared_buffer &buffer, const char *ascii_data)
 {
