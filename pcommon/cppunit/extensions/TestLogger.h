@@ -3,7 +3,7 @@
 #define __TESTLOGGER_H
 /*******************************************************************************
  FILE         :   TestLogger.h
- COPYRIGHT    :   Yakov Markovitch, 2003-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2003-2017. All rights reserved.
 
  DESCRIPTION  :   Logging extensions for CPPUnit
                   See LICENSE for information on usage/redistribution.
@@ -145,13 +145,23 @@ do {                                                                 \
    CppUnit::Asserter::fail(__cpput_msg__, CPPUNIT_SOURCELINE()) ;       \
 } while(false)
 
+#define CPPUNIT_LOG_FAILURE(expression)                                 \
+   do {                                                                 \
+   CPPUNIT_LOG_MESSAGE((__CPPUNIT_CONCAT_SRC_LINE("RUNNING: '") #expression "', EXPECTING: exception... ")) ; \
+   try {                                                                \
+      CppUnit::Message __cpput_msg__("expected exception not thrown") ; \
+      expression ;                                                      \
+      CppUnit::Asserter::fail(__cpput_msg__, CPPUNIT_SOURCELINE()) ;    \
+   } catch (const std::exception &x) { CppUnit::Log::logExceptionWhat("OK", &x) ; \
+   } catch (...) { CPPUNIT_LOG_MESSAGE("OK\n") ; }                      \
+} while(false)
+
 #define CPPUNIT_LOG_EXCEPTION_CODE(expression, expected, expected_code) \
 do                                                                      \
    {                                                                    \
       long ___xc___ = (expected_code) ;                                 \
       CPPUNIT_LOG((__CPPUNIT_CONCAT_SRC_LINE("RUNNING: '") #expression "', EXPECTING: '" #expected) << '(' << #expected_code << ")'... ") ; \
-      long *___pc___ = 0 ;                                              \
-      long ___ac___ ;                                                   \
+      long *___pc___ = nullptr, ___ac___ = 0 ;                          \
       try { expression ; }                                              \
       catch(const expected &__x__) { *(___pc___ = &___ac___) = __x__.code() ; } \
       if (!___pc___ || ___ac___ != ___xc___)                            \
@@ -194,6 +204,9 @@ do                                                                      \
 
 namespace CppUnit {
 namespace X {
+
+enum class nval : bool { _ } ;
+
 template<typename S, typename T>
 using enable_if_string__t = typename std::enable_if<std::is_convertible<S, std::string>::value, T>::type ;
 
@@ -239,24 +252,26 @@ void assertEquals(const T &expected, const T &actual, const SourceLine &sourceLi
 /// removed by specializing the CppUnit::assertion_traits.
 ///
 template<typename Actual, typename Expected, typename S>
-inline enable_if_string__t<S, void> assertEq(const Expected &expected, const Actual &actual,
+inline enable_if_string__t<S, void> assertEq(Expected &&expected, Actual &&actual,
                                              const SourceLine &line, S &&msg)
 {
-   X::assertEquals<Actual>(expected, actual, line, std::forward<S>(msg)) ;
+   X::assertEquals<typename std::remove_reference<Actual>::type>
+      (std::forward<Expected>(expected), std::forward<Actual>(actual), line, std::forward<S>(msg)) ;
 }
 
 template<typename Actual, typename Expected>
-void assertEq(const Expected &expected, const Actual &actual, const SourceLine &line)
+void assertEq(Expected &&expected, Actual &&actual, const SourceLine &line)
 {
    static const char * const es = "" ;
-   X::assertEq(expected, actual, line, es) ;
+   X::assertEq(std::forward<Expected>(expected), std::forward<Actual>(actual), line, es) ;
 }
 
 template<typename T, typename S>
 enable_if_string__t<S, void> assertNotEquals(const T &left, const T &right,
                                              S &&expr, const SourceLine &line)
 {
-   if (left != right)
+
+   if (!assertion_traits<T>::equal(left, right))
       return ;
    const std::string leftrepr(CppUnit::assertion_traits<T>::toString(left)) ;
    const std::string rightrepr(CppUnit::assertion_traits<T>::toString(right)) ;
@@ -294,6 +309,7 @@ namespace CppUnit {
 namespace Log {
 
 #ifdef __GNUC__
+__attribute__((__noinline__))
 inline const char *demangle(const char *mangled)
 {
    static __thread char buf[2048] ;
@@ -303,7 +319,7 @@ inline const char *demangle(const char *mangled)
 }
 #endif
 
-template<std::nullptr_t = nullptr>
+template<X::nval = {}>
 struct Logger {
       /// Set global stream for CPPUnit test logging.
       /// The CPPUnit does not own the passed pointer, i.e. does not ever delete
@@ -315,28 +331,50 @@ struct Logger {
       static std::ostream &logStream() ;
       static SourceLine sourceLine(const char *file, int line) ;
    private:
-      static std::ostream *log ;
+      static std::ostream *         log ;
+      static std::ostream::fmtflags log_fmtflags ;
+      static unsigned               log_precision ;
+      static unsigned               log_width ;
 } ;
 
-template<std::nullptr_t n>
+template<X::nval n>
 std::ostream *Logger<n>::log = &std::cerr ;
 
-template<std::nullptr_t n>
+template<X::nval n>
+std::ostream::fmtflags Logger<n>::log_fmtflags = log->flags() ;
+template<X::nval n>
+unsigned Logger<n>::log_precision = log->precision() ;
+template<X::nval n>
+unsigned Logger<n>::log_width = log->width() ;
+
+template<X::nval n>
 std::ostream *Logger<n>::setLogStream(std::ostream *newlog)
 {
    std::ostream *result = log ;
    log = newlog ;
+   if (log)
+   {
+      log_fmtflags = log->flags() ;
+      log_precision = log->precision() ;
+      log_width = log->width() ;
+   }
    return result ;
 }
 
-template<std::nullptr_t n>
+template<X::nval n>
 std::ostream &Logger<n>::logStream()
 {
    static std::ofstream nul ("/dev/nul") ;
+   if (log)
+   {
+      log->flags(log_fmtflags) ;
+      log->precision(log_precision) ;
+      log->width(log_width) ;
+   }
    return *(log ? log : static_cast<std::ostream *>(&nul)) ;
 }
 
-template<std::nullptr_t n>
+template<X::nval n>
 SourceLine Logger<n>::sourceLine(const char *file, int line)
 {
    return SourceLine(file, line) ;
@@ -360,7 +398,7 @@ void logExceptionWhat(S &&msg, ...)
    CPPUNIT_LOG(std::forward<S>(msg) << '\n') ;
 }
 
-template<std::nullptr_t n = nullptr>
+template<X::nval n = {}>
 void logFailure(const Exception &x)
 {
    Logger<n>::logStream() << "\nFAILURE" ;

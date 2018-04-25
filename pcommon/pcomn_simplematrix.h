@@ -3,7 +3,7 @@
 #define __PCOMN_SIMPLEMATRIX_H
 /*******************************************************************************
  FILE         :   pcomn_simplematrix.h
- COPYRIGHT    :   Yakov Markovitch, 2000-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2000-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Simple (of constant, constructor-given size) vector and matrix
@@ -34,22 +34,20 @@ namespace pcomn {
 *******************************************************************************/
 template<typename T>
 class simple_slice {
-      typedef std::remove_const_t<T> mutable_value_type ;
-      typedef std::conditional_t<std::is_const<T>::value, T, void> const_value_type ;
+      template<typename P, typename U=P>
+      using enable_if_src_pointer =
+         std::enable_if_t<(std::is_same<P, T *>::value || std::is_same<P, std::remove_cv_t<T> *>::value) &&
+                          (std::is_same<U, T *>::value || std::is_same<U, std::remove_cv_t<T> *>::value)> ;
    public:
       typedef T value_type ;
-      typedef T * iterator ;
-      typedef iterator const_iterator ;
-      typedef T & reference ;
-      typedef reference const_reference ;
+
+      typedef value_type * iterator ;
+      typedef iterator     const_iterator ;
+      typedef value_type & reference ;
+      typedef reference    const_reference ;
 
       constexpr simple_slice() = default ;
-      constexpr simple_slice(const simple_slice &src) : _start(src._start), _finish(src._finish) {}
-
-      template<typename U, typename = instance_if_t<std::is_same<T, std::add_const_t<U> >::value> >
-      simple_slice(const simple_slice<U> &src) :
-         _start(const_cast<T *>(src.begin())), _finish(const_cast<T *>(src.end()))
-      {}
+      constexpr simple_slice(const simple_slice &) = default ;
 
       constexpr simple_slice(value_type *start, value_type *finish) :
          _start(start), _finish(finish) {}
@@ -61,13 +59,14 @@ class simple_slice {
       constexpr simple_slice(value_type (&data)[n]) :
          _start(data), _finish(data + n) {}
 
-      simple_slice(const std::vector<mutable_value_type> &src) :
-         _start(const_cast<T *>(&*src.begin())), _finish(const_cast<T *>(&*src.end()))
+      template<typename V, typename = enable_if_src_pointer<decltype(std::declval<V>().data()),
+                                                            decltype(&*std::declval<V>().begin())>>
+      constexpr simple_slice(V &&src) :
+         _start(&*std::forward<V>(src).begin()), _finish(&*std::forward<V>(src).end())
       {}
 
-      template<typename U, typename = instance_if_t<std::is_same<const_value_type, U>::value>>
-      simple_slice(const std::vector<U> &src) :
-         _start(&*src.begin()), _finish(&*src.end())
+      constexpr simple_slice(std::initializer_list<std::remove_cv_t<value_type>> init) :
+         _start(init.begin()), _finish(init.end())
       {}
 
       /// Get the count of slice elements
@@ -75,6 +74,17 @@ class simple_slice {
 
       /// Indicate that the slice is empty
       constexpr bool empty() const { return !size() ; }
+      constexpr explicit operator bool() const { return !empty() ; }
+
+      constexpr value_type *data() const { return _start ; }
+
+      constexpr iterator begin() const { return _start ; }
+      constexpr iterator end() const { return _finish ; }
+
+      value_type &front() const { return *_start ; }
+      value_type &back() const { return *(_finish-1) ; }
+
+      value_type &operator[] (ptrdiff_t ndx) const { return _start[ndx] ; }
 
       simple_slice operator()(ptrdiff_t from, ptrdiff_t to = INT_MAX) const
       {
@@ -90,18 +100,20 @@ class simple_slice {
             : simple_slice(_start + from, _start + to) ;
       }
 
-      iterator begin() const { return _start ; }
-      iterator end() const { return _finish ; }
-
-      value_type &front() const { return *_start ; }
-      value_type &back() const { return *(_finish-1) ; }
-
-      value_type &operator[] (ptrdiff_t ndx) const { return _start[ndx] ; }
-
       void swap(simple_slice &other)
       {
          std::swap(_start, other._start) ;
          std::swap(_finish, other._finish) ;
+      }
+
+      std::vector<std::remove_cv_t<value_type>> to_vector() const
+      {
+         return std::vector<std::remove_cv_t<value_type>>(begin(), end()) ;
+      }
+
+      explicit operator std::vector<std::remove_cv_t<value_type>>() const
+      {
+         return to_vector() ;
       }
 
    private:
@@ -158,6 +170,8 @@ class simple_vector {
       simple_vector(const simple_vector<U> &src) : simple_vector(src.begin(), src.end()) {}
       template<size_t n, typename U>
       simple_vector(U (&data)[n]) : simple_vector(data + 0, data + n) {}
+
+      simple_vector(std::initializer_list<value_type> init) : simple_vector(init.begin(), init.end()) {}
 
       ~simple_vector() { clear() ; }
 
@@ -433,6 +447,12 @@ class static_vector {
       }
 
       void clear() { _size = 0 ; }
+
+      void resize(size_t newsize)
+      {
+         NOXPRECONDITION(newsize <= size()) ;
+         _size = std::min(newsize, _size) ;
+      }
 
       void swap(static_vector &vec)
       {
@@ -956,15 +976,13 @@ class simple_matrix : matrix_internal_storage<T, resizable>, public matrix_slice
 
 PCOMN_DEFINE_SWAP(simple_matrix<P_PASS(T, r)>, template<typename T, bool r>) ;
 
-/******************************************************************************/
-/** Movable, non-copyable sorted set of trivially copyable items
-
+/***************************************************************************//**
+ Movable, non-copyable sorted set of trivially copyable items.
  Avoids dynamic allocation in the single-item case.
 *******************************************************************************/
 template<typename T>
 class trivial_set {
       static_assert(std::is_trivially_copyable<T>::value, "trivial_set<> item type must be trivially copyable, but is not") ;
-
       typedef pcomn::simple_slice<T> value_set ;
    public:
       typedef T value_type ;
@@ -1051,6 +1069,7 @@ class trivial_set {
       value_type _item_single ;
       value_set  _item_set ;
 
+   private:
       template<typename ForwardIterator>
       void construct(ForwardIterator b, ForwardIterator e, std::true_type)
       {
@@ -1187,33 +1206,32 @@ catch(...)
  simple_slice
 *******************************************************************************/
 template<typename T>
-inline const simple_slice<T> make_simple_slice(T *b, T *e)
+inline simple_slice<T> make_simple_slice(T *b, T *e)
 {
    return simple_slice<T>(b, e) ;
 }
 
-template <typename T>
-inline simple_slice<const T> make_simple_slice(const std::vector<T> &v)
+template<typename V>
+inline auto make_simple_slice(V &&v) -> simple_slice<std::remove_reference_t<decltype(*v.data())>>
 {
-   return simple_slice<const T>(v) ;
+   return {std::forward<V>(v)} ;
 }
 
-template <typename T, size_t maxsize>
-inline simple_slice<const T> make_simple_slice(const static_vector<T, maxsize> &v)
+template<typename V>
+inline auto make_simple_cslice(V &&v) -> simple_cslice<std::remove_reference_t<decltype(*v.data())>>
 {
-   return v(0) ;
+   return {std::forward<V>(v)} ;
 }
 
 template<typename T>
-inline constexpr simple_slice<const T> make_simple_slice(std::initializer_list<T> v)
-{
-   return {v.begin(), v.end()} ;
-}
+inline constexpr simple_cslice<T> make_simple_slice(std::initializer_list<T> v) { return {v.begin(), v.end()} ; }
+template<typename T>
+inline constexpr simple_cslice<T> make_simple_cslice(std::initializer_list<T> v) { return make_simple_slice(v) ; }
 
-template <typename T>
-inline simple_slice<T> make_simple_slice(const simple_slice<T> &v)
+template<typename T, typename U>
+inline simple_slice<T> cat_slices(T *dest, const simple_slice<U> &src)
 {
-   return v ;
+   return {dest, std::copy(src.begin(), src.end(), dest)} ;
 }
 
 template<typename T, typename U, typename V>
@@ -1236,7 +1254,7 @@ PCOMN_DEFINE_SWAP(simple_ivector<T *>, template<typename T>) ;
 /** simple_slice hash functor
 *******************************************************************************/
 template<typename T>
-struct hash_fn<simple_slice<T> > : hash_fn_seq<T> {} ;
+struct hash_fn<simple_slice<T>> : hash_fn_sequence<simple_slice<T>> {} ;
 
 /*******************************************************************************
  Slice equality comparison

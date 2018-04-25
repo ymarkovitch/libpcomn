@@ -1,7 +1,7 @@
 /*-*- tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   pcomn_mmap.cc
- COPYRIGHT    :   Yakov Markovitch, 2007-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2007-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Memory-mapped file platform-dependent code for UNIX.
@@ -42,7 +42,9 @@ intptr_t PMemMappedFile::_mmfile_t::get_handle(intptr_t file)
 *******************************************************************************/
 filesize_t PMemMapping::full_file_size() const
 {
-   return ensure_ge<system_error>(sys::filesize(handle()), (fileoff_t)0) ;
+   struct stat st ;
+   PCOMN_ENSURE_POSIX(fstat(handle(), &st), "fstat") ;
+   return st.st_size ;
 }
 
 void *PMemMapping::map_file(filesize_t aligned_from, unsigned normalized_mode)

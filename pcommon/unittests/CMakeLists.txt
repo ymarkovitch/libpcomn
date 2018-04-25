@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 # FILE         :  CMakeLists.txt
-# COPYRIGHT    :  Yakov Markovitch, 2014-2016
+# COPYRIGHT    :  Yakov Markovitch, 2014-2017
 #                 See LICENSE for information on usage/redistribution.
 #
 # DESCRIPTION  :  pcommon unittests build script
@@ -10,7 +10,7 @@
 #------------------------------------------------------------------------------
 cmake_minimum_required(VERSION 3.5.2)
 
-project(pcommon.unittests C CXX)
+unittests_project(libpcommon_unittests)
 
 set_project_link_libraries(crypto z)
 
@@ -24,22 +24,27 @@ unittest(unittest_utils)
 # Test the library
 #
 unittest(unittest_immutablestr)
-unittest(unittest_smartptr)
+#unittest(unittest_smartptr)
 unittest(unittest_strshims)
 unittest(unittest_strslice)
 
+unittest(unittest_algorithms)
 unittest(unittest_cacher)
-unittest(unittest_cdsqueue)
+#unittest(unittest_cdsqueue)
 unittest(unittest_cdscrq)
 unittest(unittest_crypthash)
+unittest(unittest_enum)
 unittest(unittest_exec)
 unittest(unittest_file_lock)
+unittest(unittest_filesys)
+unittest(unittest_hash)
 unittest(unittest_hashclosed)
 unittest(unittest_inclist)
 unittest(unittest_integer)
 unittest(unittest_iostream)
 unittest(unittest_iterator)
 unittest(unittest_mmap)
+unittest(unittest_omanip)
 unittest(unittest_rawstream)
 unittest(unittest_regex)
 unittest(unittest_simplematrix)
@@ -53,3 +58,7 @@ unittest(unittest_timespec)
 unittest(unittest_uri)
 unittest(unittest_uuid)
 unittest(unittest_zstream)
+
+add_adhoc_executable(test_readfile)
+add_adhoc_executable(test_backtrace)
+add_adhoc_executable(test_stacktrace)

@@ -1,7 +1,7 @@
 /*-*- tab-width: 3; indent-tabs-mode: nil; c-file-style: "ellemtel"; c-file-offsets:((innamespace . 0)) -*-*/
 /*******************************************************************************
  FILE         :   pcomn_cfgparser.cpp
- COPYRIGHT    :   Yakov Markovitch, 1998-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1998-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Portable configuration file functions a la Windows

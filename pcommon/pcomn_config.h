@@ -3,7 +3,7 @@
 #define __PCOMN_CONFIG_H
 /*******************************************************************************
  FILE         :   pcomn_config.h
- COPYRIGHT    :   Yakov Markovitch, 1997-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1997-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Configuration header (for PCOMMON to configure for different compilers,
@@ -26,6 +26,10 @@
    Defined if the compiler library uses UNIX I/O function with underscores (such as _open, etc.)
    instead of standard names
 */
+
+#if PCOMN_COMPILER_CXX14
+#define __deprecated(...) [[deprecated(__VA_ARGS__)]]
+#endif
 
 /*******************************************************************************
  Microsoft C++ compilers
@@ -136,20 +140,39 @@
 #endif
 #define __noreturn   __attribute__((__noreturn__))
 
-#ifdef __deprecated
-#undef __deprecated
+#ifdef __may_alias
+#undef __may_alias
 #endif
-#define __deprecated __attribute__((__deprecated__))
+#define __may_alias  __attribute__((__may_alias__))
 
 #ifdef __noinline
 #undef __noinline
 #endif
 #define __noinline __attribute__((__noinline__))
 
+#ifdef __noinline
+#undef __noinline
+#endif
+#define __noinline __attribute__((__noinline__))
+
+#ifdef __cold
+#undef __cold
+#endif
+#define __cold __attribute__((__noinline__, __cold__))
+
 #ifdef __forceinline
 #undef __forceinline
 #endif
 #define __forceinline inline __attribute__((__always_inline__))
+
+#ifdef __restrict
+#undef __restrict
+#endif
+#define __restrict __restrict__
+
+#ifndef __deprecated
+#define __deprecated(...) __attribute__((deprecated(__VA_ARGS__)))
+#endif
 
 #elif defined(PCOMN_COMPILER_MS)
 /*******************************************************************************
@@ -171,15 +194,29 @@
 #endif
 #define __noinline __declspec(noinline)
 
+#ifdef __cold
+#undef __cold
+#endif
+#define __cold __noinline
+
 #ifdef __forceinline
 #undef __forceinline
 #endif
 #define __forceinline inline __forceinline
 
-#ifdef __deprecated
-#undef __deprecated
+#ifndef __deprecated
+#define __deprecated(...) __declspec(deprecated(__VA_ARGS__))
 #endif
-#define __deprecated __declspec(deprecated)
+
+#ifdef __may_alias
+#undef __may_alias
+#endif
+#define __may_alias
+
+#ifdef __restrict
+#undef __restrict
+#endif
+#define __restrict __restrict
 
 #else
 /*******************************************************************************
@@ -193,10 +230,13 @@
 #define __noreturn
 #endif
 #ifndef __deprecated
-#define __deprecated
+#define __deprecated(...)
 #endif
 #ifndef __noinline
 #define __noinline
+#endif
+#ifndef __cold
+#define __cold
 #endif
 
 #endif

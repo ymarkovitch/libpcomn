@@ -38,9 +38,9 @@ struct crqslot_tag {
       /// For future use
       static constexpr const uintptr_t reserved_bit = uintptr_t(1) << reserved_bit_pos ;
 
-      constexpr crqslot_tag() : crqslot_tag(0) {}
-      constexpr explicit crqslot_tag(uintptr_t tag) : _tag(tag) {}
-      constexpr crqslot_tag(bool safe, uintptr_t index) :
+      constexpr crqslot_tag() noexcept : crqslot_tag(0) {}
+      constexpr explicit crqslot_tag(uintptr_t tag) noexcept : _tag(tag) {}
+      constexpr crqslot_tag(bool safe, uintptr_t index) noexcept :
          crqslot_tag(index & ndx_bits | ((uintptr_t)!safe << unsafe_bit_pos))
       {}
 
@@ -291,6 +291,7 @@ std::pair<T, bool> crq<T>::dequeue()
          // ============================================
 
          if (xhead > slot_data.ndx())
+         {
             // We are ahead of enqueuers for k full rounds (k >= 1).
             // Mark node unsafe to prevent future enqueue.
             if (cas2(slot, &slot_data, crqslot_data({false, slot_data.ndx()}, slot_data._data)))
@@ -298,6 +299,7 @@ std::pair<T, bool> crq<T>::dequeue()
                break ;
             else
                continue ;
+         }
 
          // ============================================
          // === If we are here, this is our slot. ======

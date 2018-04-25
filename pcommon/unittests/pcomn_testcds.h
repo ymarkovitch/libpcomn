@@ -185,7 +185,7 @@ std::vector<size_t> CheckQueueResultConsistency(size_t producers_count, size_t i
    }
    CPPUNIT_LOG_LINE("Checked OK") ;
 
-   return std::move(produced) ;
+   return produced ;
 }
 
 template<typename T>

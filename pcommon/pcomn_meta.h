@@ -3,7 +3,7 @@
 #define __PCOMN_META_H
 /*******************************************************************************
  FILE         :   pcomn_meta.h
- COPYRIGHT    :   Yakov Markovitch, 2006-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2006-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Basic template metaprogramming support.
@@ -65,7 +65,7 @@ using add_rvalue_reference_t = typename add_rvalue_reference<T>::type ;
 template<typename T>
 using add_pointer_t = typename add_pointer<T>::type ;
 
-template<bool B, typename T>
+template<bool B, typename T = void>
 using enable_if_t = typename enable_if<B, T>::type ;
 template<bool B, typename T, typename F>
 using conditional_t = typename conditional<B, T, F>::type ;
@@ -87,7 +87,10 @@ using make_unsigned_t = typename make_unsigned<T>::type ;
 template<typename T>
 using make_signed_t = typename make_signed<T>::type ;
 
-}
+template<typename T>
+using decay_t = typename decay<T>::type ;
+
+} // end of namespace std
 
 #endif /* PCOMN_STL_CXX14 */
 
@@ -95,20 +98,41 @@ using make_signed_t = typename make_signed<T>::type ;
 
 namespace std {
 
+// Forward declaration of std::basic_string: we don't require <string> header for
+// pcomn_meta
+PCOMN_BEGIN_NAMESPACE_CXX11
+template<typename, typename, typename> class basic_string ;
+PCOMN_END_NAMESPACE_CXX11
+
 template<class C>
-constexpr auto size(const C &container) -> decltype(container.size()) { return container.size() ; }
+inline constexpr auto size(const C &container) -> decltype(container.size()) { return container.size() ; }
 
 template<typename T, size_t N>
-constexpr size_t size(const T (&)[N]) noexcept { return N ; }
+inline constexpr size_t size(const T (&)[N]) noexcept { return N ; }
 
 template<class C>
-constexpr auto empty(const C &container) -> decltype(container.empty()) { return container.empty() ; }
+inline constexpr auto empty(const C &container) -> decltype(container.empty()) { return container.empty() ; }
 
 template<typename T, size_t N>
-constexpr bool empty(const T (&)[N]) noexcept { return false ; }
+inline constexpr bool empty(const T (&)[N]) noexcept { return false ; }
 
 template<typename E>
-constexpr bool empty(std::initializer_list<E> v) noexcept { return v.size() == 0 ; }
+inline constexpr bool empty(std::initializer_list<E> v) noexcept { return v.size() == 0 ; }
+
+template<typename C, size_t n>
+inline constexpr C *data(C (&arr)[n]) { return arr ; }
+
+template<typename C, typename R, typename A>
+inline constexpr C *data(std::basic_string<C, R, A> &s)
+{
+   return const_cast<C *>(s.data()) ;
+}
+
+template<typename T>
+inline constexpr auto data(T &&container) -> decltype(std::forward<T>(container).data())
+{
+   return std::forward<T>(container).data() ;
+}
 
 template<bool v>
 using bool_constant = std::integral_constant<bool, v> ;
@@ -118,6 +142,8 @@ using bool_constant = std::integral_constant<bool, v> ;
 #endif /* PCOMN_STL_CXX17 */
 
 namespace pcomn {
+
+inline namespace traits {
 
 using std::bool_constant ;
 
@@ -139,6 +165,56 @@ using longlong_constant = std::integral_constant<long long, v> ;
 template<unsigned long long v>
 using ulonglong_constant = std::integral_constant<unsigned long long, v> ;
 
+template<size_t v>
+using size_constant = std::integral_constant<size_t, v> ;
+
+/***************************************************************************//**
+ @name TypeTraits
+ Type properties checks that are evaluated to std::bool_constant<>.
+
+ While many (most?) implementations of STL implement type traits classes by deriving
+ from std::integral_constant<bool, ...>, it is not mandated by the Standard.
+ So, if protable code needs to get bool_constant<> as a result of type trait check,
+ it has to use `typename is_xxx<T>::type`.
+ So we provide corresponding template typedefs to reduce such verbosity.
+*******************************************************************************/
+/**@{*/
+template<typename T> using is_abstract_t     = typename std::is_abstract<T>::type ;
+template<typename T> using is_arithmetic_t   = typename std::is_arithmetic<T>::type ;
+template<typename T> using is_array_t        = typename std::is_array<T>::type ;
+template<typename T> using is_class_t        = typename std::is_class<T>::type ;
+template<typename T> using is_compound_t     = typename std::is_compound<T>::type ;
+template<typename T> using is_const_t        = typename std::is_const<T>::type ;
+template<typename T> using is_empty_t        = typename std::is_empty<T>::type ;
+template<typename T> using is_enum_t         = typename std::is_enum<T>::type ;
+template<typename T> using is_floating_point_t = typename std::is_floating_point<T>::type ;
+template<typename T> using is_function_t     = typename std::is_function<T>::type ;
+template<typename T> using is_fundamental_t  = typename std::is_fundamental<T>::type ;
+template<typename T> using is_integral_t     = typename std::is_integral<T>::type ;
+template<typename T> using is_literal_type_t = typename std::is_literal_type<T>::type ;
+template<typename T> using is_lvalue_reference_t = typename std::is_lvalue_reference<T>::type ;
+template<typename T> using is_member_function_pointer_t = typename std::is_member_function_pointer<T>::type ;
+template<typename T> using is_member_object_pointer_t = typename std::is_member_object_pointer<T>::type ;
+template<typename T> using is_member_pointer_t = typename std::is_member_pointer<T>::type ;
+template<typename T> using is_object_t       = typename std::is_object<T>::type ;
+template<typename T> using is_pod_t          = typename std::is_pod<T>::type ;
+template<typename T> using is_pointer_t      = typename std::is_pointer<T>::type ;
+template<typename T> using is_polymorphic_t  = typename std::is_polymorphic<T>::type ;
+template<typename T> using is_reference_t    = typename std::is_reference<T>::type ;
+template<typename T> using is_rvalue_reference_t = typename std::is_rvalue_reference<T>::type ;
+template<typename T> using is_scalar_t       = typename std::is_scalar<T>::type ;
+template<typename T> using is_signed_t       = typename std::is_signed<T>::type ;
+template<typename T> using is_standard_layout_t = typename std::is_standard_layout<T>::type ;
+template<typename T> using is_trivial_t      = typename std::is_trivial<T>::type ;
+template<typename T> using is_trivially_copyable_t = typename std::is_trivially_copyable<T>::type ;
+template<typename T> using is_union_t        = typename std::is_union<T>::type ;
+template<typename T> using is_unsigned_t     = typename std::is_unsigned<T>::type ;
+template<typename T> using is_void_t         = typename std::is_void<T>::type ;
+template<typename T> using is_volatile_t     = typename std::is_volatile<T>::type ;
+/**@}*/
+
+} // end of inline namespace pcomn::traits
+
 /******************************************************************************/
 /** Function for getting T value in unevaluated context for e.g. passsing
  to functions in SFINAE context without the need to go through constructors
@@ -151,10 +227,10 @@ T autoval() ;
 /******************************************************************************/
 /** disable_if is a complement to std::enable_if
 *******************************************************************************/
-template<bool disabled, typename T>
+template<bool disabled, typename T = void>
 using disable_if = std::enable_if<!disabled, T> ;
 
-template<bool disabled, typename T>
+template<bool disabled, typename T = void>
 using disable_if_t = typename disable_if<disabled, T>::type ;
 
 template<bool enabled>
@@ -197,6 +273,27 @@ template<typename T, T x> struct ct_max<T, x> :
 template<typename T, T x, T...y> struct ct_max<T, x, y...> :
          std::integral_constant<T, (ct_max<T, y...>::value < x  ? x : ct_max<T, y...>::value)> {} ;
 
+/*******************************************************************************
+ Folding, until C++17 is the baseline standard
+*******************************************************************************/
+template<typename F, typename T>
+constexpr inline T fold_left(F &&, T a1) { return a1 ; }
+
+template<typename F, typename T, typename... TN>
+constexpr inline T fold_left(F &&monoid, T a1, T a2,  TN ...aN)
+{
+   return fold_left<F, T>(std::forward<F>(monoid), std::forward<F>(monoid)(a1, a2), aN...) ;
+}
+
+template<typename T>
+constexpr inline T fold_bitor(T a1) { return a1 ; }
+
+template<typename T, typename... TN>
+constexpr inline T fold_bitor(T a1, T a2, TN ...aN)
+{
+   return fold_bitor<T>(a1 | a2, aN...) ;
+}
+
 /******************************************************************************/
 /** Creates unique type from another type.
 
@@ -205,8 +302,8 @@ template<typename T, T x, T...y> struct ct_max<T, x, y...> :
 *******************************************************************************/
 template<typename T> struct identity_type { typedef T type ; } ;
 
-/******************************************************************************/
-/** Provides globally placed default-constructed value of its parameter type.
+/***************************************************************************//**
+ Provides globally placed default-constructed value of its parameter type.
 *******************************************************************************/
 template<typename T>
 struct default_constructed {
@@ -216,6 +313,20 @@ struct default_constructed {
 
 template<typename T>
 const T default_constructed<T>::value = {} ;
+
+/******************************************************************************/
+/** Callable object to construct an object of its template parameter type.
+*******************************************************************************/
+template<typename T>
+struct make {
+      typedef T type ;
+
+      template<typename... Args>
+      type operator() (Args && ...args) const
+      {
+         return type(std::forward<Args>(args)...) ;
+      }
+} ;
 
 /*******************************************************************************
  Type testers
@@ -229,8 +340,22 @@ struct is_base_of_strict :
 template<typename T, typename U>
 using is_same_unqualified = std::is_same<std::remove_cv_t<T>, std::remove_cv_t<U> > ;
 
-/******************************************************************************/
-/** Check if the type can be trivially swapped, i.e. by simply swapping raw memory
+template<typename To, typename... From>
+struct is_all_convertible : std::true_type {} ;
+
+template<typename To, typename F1, typename... Fn>
+struct is_all_convertible<To, F1, Fn...> :
+   std::bool_constant<(std::is_convertible<F1, To>::value && is_all_convertible<To, Fn...>::value)>
+{} ;
+
+template<typename T, typename To, typename... From>
+struct if_all_convertible : std::enable_if<is_all_convertible<To, From...>::value, T> {} ;
+
+template<typename T, typename To, typename... From>
+using if_all_convertible_t = typename if_all_convertible<T, To, From...>::type ;
+
+/***************************************************************************//**
+ Check if the type can be trivially swapped, i.e. by simply swapping raw memory
  contents.
 *******************************************************************************/
 template<typename T>
@@ -253,7 +378,8 @@ template<typename T>
 using clvref_t = lvref_t<typename std::add_const<T>::type> ;
 
 template<typename T>
-using parmtype_t = std::conditional_t<(std::is_arithmetic<T>::value || std::is_pointer<T>::value), T, clvref_t<T>> ;
+using parmtype_t = std::conditional_t<std::is_scalar<std::decay_t<T>>::value,
+                                      std::decay_t<T>, clvref_t<T>> ;
 
 /******************************************************************************/
 /** Deduce the return type of a function call expression at compile time @em and,
@@ -383,6 +509,36 @@ struct count_types_if<F> : std::integral_constant<int, 0> {} ;
 template<template<typename> class F, typename H, typename... T>
 struct count_types_if<F, H, T...> :
          std::integral_constant<int, ((int)!!F<H>::value + count_types_if<F, T...>::value)> {} ;
+
+/*******************************************************************************/
+/** Convert an enum value into the value of underlying integral type, or pass
+ through the paramter if it is already of interal type.
+*******************************************************************************/
+template<typename T, int mode = (int)std::is_enum<T>::value - (int)std::is_integral<T>::value>
+struct underlying_integral ;
+
+template<typename E>
+struct underlying_integral<E, 1> : std::underlying_type<E> {} ;
+
+template<typename I>
+struct underlying_integral<I, -1> { typedef I type ; } ;
+
+template<typename T>
+using underlying_integral_t = typename underlying_integral<T>::type ;
+
+template<typename E>
+constexpr inline std::enable_if_t<std::is_enum<E>::value, underlying_integral_t<E>>
+underlying_int(E value)
+{
+   return static_cast<std::underlying_type_t<E>>(value) ;
+}
+
+template<typename I>
+constexpr inline std::enable_if_t<std::is_integral<I>::value, I>
+underlying_int(I value)
+{
+   return value ;
+}
 
 } // end of namespace pcomn
 /// @endcond

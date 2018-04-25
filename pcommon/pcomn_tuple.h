@@ -3,13 +3,16 @@
 #define __PCOMN_TUPLE_H
 /*******************************************************************************
  FILE         :   pcomn_tuple.h
- COPYRIGHT    :   Yakov Markovitch, 2006-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2006-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   std::tuple manipulation routines.
 
  PROGRAMMED BY:   Yakov Markovitch
  CREATION DATE:   8 Dec 2006
+*******************************************************************************/
+/** @file
+  Tuple and typelist manipulation routines.
 *******************************************************************************/
 #include <pcomn_meta.h>
 #include <pcomn_macros.h>
@@ -32,15 +35,35 @@ using tuple_element_t = typename tuple_element<I, Tuple>::type ;
 
 namespace pcomn {
 
-/// Convenience typdef, like unipair
-template<typename A, typename B, typename C>
-using triple = std::tuple<A, B, C> ;
+/***************************************************************************//**
+ Template typedefs for 0-,1-,3-,4-item tuples.
+*******************************************************************************/
+/**@{*/
+using nulltuple = std::tuple<> ;
 
 template<typename T>
-using unitriple = triple<T, T, T> ;
+using single = std::tuple<T> ;
 
-template<typename A, typename B, typename C, typename D>
+template<typename A, typename B = A, typename C = B>
+using triple = std::tuple<A, B, C> ;
+
+template<typename A, typename B = A, typename C = B, typename D = C>
 using quad = std::tuple<A, B, C, D> ;
+/**@}*/
+
+/***************************************************************************//**
+ Typelists: type sequence tags.
+*******************************************************************************/
+template<typename... Types>
+using tlist = std::tuple<Types...>* ;
+
+using tnull = tlist<> ;
+
+template<typename T>
+using tsingle = tlist<T> ;
+
+template<typename T1, typename T2 = T1>
+using tpair = tlist<T1, T2> ;
 
 /******************************************************************************/
 /** Visit every item of any object compatible with std::get<n> function (this
@@ -49,16 +72,10 @@ using quad = std::tuple<A, B, C, D> ;
 template<unsigned tuplesz>
 struct for_each_visit {
       template<typename T, typename F>
-      static void visit_lvalue(T &value, F &visitor)
+      static void visit(T &value, F &&visitor)
       {
-         for_each_visit<tuplesz-1>::visit_lvalue(value, visitor) ;
-         visitor(std::get<tuplesz-1>(value)) ;
-      }
-
-      template<typename T, typename F>
-      static void visit(T &value, const F &visitor)
-      {
-         visit_lvalue(value, visitor) ;
+         for_each_visit<tuplesz-1>::visit(value, std::forward<F>(visitor)) ;
+         std::forward<F>(visitor)(std::get<tuplesz-1>(value)) ;
       }
 } ;
 
@@ -69,31 +86,33 @@ struct for_each_visit {
 *******************************************************************************/
 template<> struct for_each_visit<0> {
       template<typename T, typename F>
-      static void visit_lvalue(T &, F &) {}
-      template<typename T, typename F>
-      static void visit(T &, const F &) {}
+      static void visit(T &, F &&) {}
 } ;
 /// @endcond
 
-/******************************************************************************/
-/** Statically apply a functor object to every item of any object compatible with
+/***************************************************************************//**
+ Statically apply a functor object to every item of any object compatible with
  std::get<n> function and std::tuple_size<T> class (this includes at least
  std::tuple, std::pair, and std::array).
 *******************************************************************************/
-template<class Tuple>
-struct tuple_for_each : for_each_visit<std::tuple_size<std::remove_const_t<Tuple> >::value> {
+template<typename Tuple>
+struct tuple_for_each : for_each_visit<std::tuple_size<valtype_t<Tuple>>::value> {
       template<typename F>
-      static void apply(Tuple &value, const F &visitor)
+      static void apply(Tuple &value, F &&visitor)
       {
-         applier::visit_lvalue(value, visitor) ;
+         applier::visit(value, std::forward<F>(visitor)) ;
       }
-      template<typename F>
-      static void apply_lvalue(Tuple &value, F &visitor)
-      {
-         applier::visit_lvalue(value, visitor) ;
-      }
+
    private:
-      typedef for_each_visit<std::tuple_size<std::remove_const_t<Tuple> >::value> applier ;
+      typedef for_each_visit<std::tuple_size<std::remove_const_t<Tuple>>::value> applier ;
+
+   public:
+      template<typename F>
+      __deprecated("Please use tuple_for_each::apply")
+      static void apply_lvalue(Tuple &value, F &&visitor)
+      {
+         apply(value, std::forward<F>(visitor)) ;
+      }
 } ;
 
 /******************************************************************************/
@@ -166,6 +185,7 @@ using decay_argtype_t = typename decay_argtype<T>::type ;
 
 /*******************************************************************************
  const_tie
+ Now mostly supeseeded with std::forward_as_tuple
 *******************************************************************************/
 inline std::tuple<> const_tie() { return std::tuple<>() ; }
 
@@ -176,6 +196,98 @@ const_tie(A&& ...args)
    return std::tie(pcomn::decay(args)...) ;
 }
 
+/***************************************************************************//**
+ Checks whether this tuple precedes other in lexicographical order where tuple item
+ comparison is specified by the ordering predicate.
+
+ @note For empty tuples always returns `false'.
+*******************************************************************************/
+/**@{*/
+template<typename Predicate, typename Tuple = void>
+struct tuple_before {
+      bool operator()(const Tuple &x, Tuple &y) const
+      {
+         return tuple_before<Predicate>()(x, y) ;
+      }
+} ;
+
+template<typename Predicate>
+struct tuple_before<Predicate, void> {
+
+      template<typename T1, typename T2>
+      bool operator()(const std::pair<T1,T2> &x, const std::pair<T1,T2> &y) const
+      {
+         constexpr const Predicate before ;
+         return lt(x.first, y.first) || !lt(y.first, x.first) && lt(x.second, y.second) ;
+      }
+
+      template<typename...T>
+      bool operator()(const std::tuple<T...> &x, const std::tuple<T...> &y) const
+      {
+         return tail_before(x, y, pcomn::size_constant<0>()) ;
+      }
+
+   private:
+      template<typename...T>
+      static constexpr bool tail_before(const std::tuple<T...> &,
+                                        const std::tuple<T...> &,
+                                        pcomn::size_constant<sizeof...(T)>)
+      {
+         return false ;
+      }
+
+      template<size_t i, typename...T>
+      static bool tail_before(const std::tuple<T...> &x, const std::tuple<T...> &y,
+                              pcomn::size_constant<i>)
+      {
+         constexpr const Predicate lt ;
+         return
+             lt(std::get<i>(x), std::get<i>(y)) ||
+            !lt(std::get<i>(y), std::get<i>(x)) && tail_before(x, y, pcomn::size_constant<i+1>()) ;
+      }
+} ;
+/**@}*/
+
+/***************************************************************************//**
+ Checks whether this tuple is equal to other in lexicographical order
+ where tuple item comparison is specified by the ordering predicate.
+
+ @note For empty tuples always returns `true'.
+*******************************************************************************/
+/**@{*/
+template<typename Predicate, typename Tuple = void>
+struct tuple_equal {
+      bool operator()(const Tuple &x, Tuple &y) const
+      {
+         return tuple_equal<Predicate>()(x, y) ;
+      }
+} ;
+
+template<typename Predicate>
+struct tuple_equal<Predicate, void> {
+
+      template<typename T1, typename T2>
+      bool operator()(const std::pair<T1,T2> &x, const std::pair<T1,T2> &y) const
+      {
+         constexpr const Predicate eq ;
+         return eq(x.first, y.first) && eq(x.second, y.second) ;
+      }
+
+   private:
+      template<typename...T>
+      static constexpr bool tail_equal(const std::tuple<T...> &, const std::tuple<T...> &,
+                                       pcomn::size_constant<sizeof...(T)>)
+      {
+         return true ;
+      }
+
+      template<size_t i, typename...T>
+      static bool tail_equal(const std::tuple<T...> &x, const std::tuple<T...> &y, pcomn::size_constant<i>)
+      {
+         return Predicate()(std::get<i>(x), std::get<i>(y)) && tail_equal(x, y, pcomn::size_constant<i+1>()) ;
+      }
+} ;
+/**@}*/
 /*******************************************************************************
 
 *******************************************************************************/
@@ -189,6 +301,11 @@ inline constexpr ssize_t tuplesize_(std::array<T, n> *) { return std::tuple_size
 inline constexpr ssize_t tuplesize_(void *) { return -1  ; }
 }
 
+/***************************************************************************//**
+ tuplesize<T>() constexpr is like std::tuple_size<T>::value except for
+ it is applicable to _any_ T and returns -1 for those T that std::tuple_size<T>
+ is not applicable to.
+*******************************************************************************/
 template<typename T>
 inline constexpr ssize_t tuplesize()
 {
@@ -198,36 +315,53 @@ inline constexpr ssize_t tuplesize()
 template<typename T>
 inline constexpr ssize_t tuplesize(T &&) { return tuplesize<T>() ; }
 
-} // end of namespace pcomn
+template<typename Pred, typename...T>
+inline bool less_tuple(const std::tuple<T...> &x, const std::tuple<T...> &y, const Pred & = {})
+{
+   return std::less<std::tuple<T...>>()(x, y) ;
+}
 
-// We need std namespace to ensure proper Koenig lookup
-namespace std {
+template<typename Pred, typename T1, typename T2>
+inline bool less_tuple(const std::pair<T1,T2> &x, const std::pair<T1,T2> &y, const Pred & = {})
+{
+   return std::less<std::pair<T1,T2>>()(x, y) ;
+}
 
+template<typename Pred, typename...T>
+inline bool equal_tuple(const std::tuple<T...> &x, const std::tuple<T...> &y, const Pred & = {})
+{
+   return std::equal_to<std::tuple<T...>>()(x, y) ;
+}
+
+template<typename Pred, typename T1, typename T2>
+inline bool equal_tuple(const std::pair<T1,T2> &x, const std::pair<T1,T2> &y, const Pred & = {})
+{
+   return std::equal_to<std::pair<T1,T2>>()(x, y) ;
+}
+
+/*******************************************************************************
+
+*******************************************************************************/
 namespace detail {
 struct out_element {
       template<typename T>
-      void operator()(const T &v)
-      {
-         if (next)
-            os << ',' ;
-         else
-            next = true ;
-         os << v ;
-      }
-
+      void operator()(const T &v) { if (next) os << ',' ; else next = true ; os << v ; }
       std::ostream &os ;
       bool next ;
 } ;
 }
 
-template<typename... T>
-std::ostream &operator<<(std::ostream &os, const std::tuple<T...> &v)
-{
-   detail::out_element out_element = { os << '{', false } ;
-   pcomn::tuple_for_each<const std::tuple<T...> >::apply_lvalue(v, out_element) ;
+} // end of namespace pcomn
 
+namespace std {
+
+template<typename... T>
+__noinline std::ostream &operator<<(std::ostream &os, const std::tuple<T...> &v)
+{
+   pcomn::tuple_for_each<const std::tuple<T...> >::apply(v, (pcomn::detail::out_element{ os << '{', false })) ;
    return os << '}' ;
 }
+
 } // end of namespace std
 
 #endif /* __PCOMN_TUPLE_H */

@@ -3,7 +3,7 @@
 #define __PCOMN_UNISTD_H
 /*******************************************************************************
  FILE         :   pcomn_unistd.h
- COPYRIGHT    :   Yakov Markovitch, 1998-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1998-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Platform and compiler-independent UNIX I/O functions header.

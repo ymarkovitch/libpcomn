@@ -3,7 +3,7 @@
 #define __PCOMN_SYS_H
 /*******************************************************************************
  FILE         :   pcomn_sys.h
- COPYRIGHT    :   Yakov Markovitch, 2008-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2008-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   System (platform) functions
@@ -103,6 +103,11 @@ inline Access fileaccess(const char *name, int mode = 0)
       case EACCES:   return ACC_DENIED ;
    }
    return ACC_ERROR ;
+}
+
+inline Access fileaccess(const std::string &name, int mode = 0)
+{
+   return fileaccess(name.c_str(), mode) ;
 }
 
 /// Get CPU cores count on the system.

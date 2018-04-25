@@ -3,7 +3,7 @@
 #define __PCOMN_STOPWATCH_H
 /*******************************************************************************
  FILE         :   pcomn_stopwatch.h
- COPYRIGHT    :   Yakov Markovitch, 1998-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1998-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Stopwatches - classes for both CPU and real time counting for different
@@ -24,9 +24,9 @@
 
 namespace pcomn {
 
-/*******************************************************************************
-                     class PStopwatch
-*******************************************************************************/
+GCC_DIAGNOSTIC_PUSH_IGNORE(non-virtual-dtor)
+
+/******************************************************************************/
 /** The base (abstract) class for both CPU and physical time stopwatches.
 *******************************************************************************/
 class PStopwatch {
@@ -207,6 +207,8 @@ inline double PCpuStopwatch::current() const
 }
 
 #endif
+
+GCC_DIAGNOSTIC_POP()
 
 /*******************************************************************************
  Backward compatibility support

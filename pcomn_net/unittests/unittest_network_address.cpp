@@ -1,7 +1,7 @@
 /*-*- tab-width:4;c-file-style:"stroustrup";c-file-offsets:((innamespace . 0) (inline-open . 0) (case-label . +)) -*-*/
 /*******************************************************************************
  FILE         :   unittest_network_address.cpp
- COPYRIGHT    :   Yakov Markovitch, 2008-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2008-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Internet address classes unit tests.
@@ -72,8 +72,14 @@ void InetAddressTests::Test_IP_Address()
     CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address("-0.1.2.3", net::inet_address::ONLY_DOTDEC), net::invalid_str_repr, "decimal") ;
     CPPUNIT_LOG(std::endl) ;
 
-    CPPUNIT_LOG_EQUAL(net::inet_address(65, 66, 67, 68).str(), std::string("65.66.67.68")) ;
     CPPUNIT_LOG_EQUAL(net::inet_address(65, 66, 67, 68).ipaddr(), (uint32_t)0x41424344) ;
+    CPPUNIT_LOG_EQUAL((uint32_t)net::inet_address(65, 66, 67, 68).ipaddr(), (uint32_t)0x41424344) ;
+    CPPUNIT_LOG_EQUAL(net::inet_address((uint32_t)net::inet_address(65, 66, 67, 68)), net::inet_address(65, 66, 67, 68)) ;
+    CPPUNIT_LOG_EQ(net::inet_address(65, 66, 67, 68).octet(0), 65) ;
+    CPPUNIT_LOG_EQ(net::inet_address(65, 66, 67, 68).octet(1), 66) ;
+    CPPUNIT_LOG_EQ(net::inet_address(65, 66, 67, 68).octet(2), 67) ;
+    CPPUNIT_LOG_EQ(net::inet_address(65, 66, 67, 68).octet(3), 68) ;
+    CPPUNIT_LOG_EQUAL(net::inet_address(65, 66, 67, 68).str(), std::string("65.66.67.68")) ;
     CPPUNIT_LOG_EQUAL(net::inet_address("65.66.67.68").ipaddr(), (uint32_t)0x41424344) ;
     CPPUNIT_LOG_EQ(((in_addr)net::inet_address(65, 66, 67, 68)).s_addr, (uint32_t)(endianness.is_little() ? 0x44434241 : 0x41424344)) ;
     CPPUNIT_LOG_EQUAL(net::inet_address(0x41424344).ipaddr(), (uint32_t)0x41424344) ;

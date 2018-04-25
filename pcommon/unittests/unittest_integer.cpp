@@ -1,7 +1,7 @@
 /*-*- tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   unittest_integer.cpp
- COPYRIGHT    :   Yakov Markovitch, 2006-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2006-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Unittest for pcomn_integer classes/functions
@@ -214,7 +214,13 @@ void IntegerTests::Test_OneOf()
    CPPUNIT_LOG_IS_TRUE((pcomn::one_of<1, 4>::is(4))) ;
    CPPUNIT_LOG_IS_FALSE((pcomn::one_of<1, 4>::is(5))) ;
    CPPUNIT_LOG_IS_FALSE((pcomn::one_of<1, 4>::is(1000))) ;
-   CPPUNIT_LOG_IS_TRUE((pcomn::one_of<1, 0>::is(0))) ;
+
+   CPPUNIT_LOG_ASSERT((pcomn::one_of<63, 0, 32, 8>::is(0))) ;
+   CPPUNIT_LOG_ASSERT((pcomn::one_of<63, 0, 32, 8>::is(32))) ;
+   CPPUNIT_LOG_ASSERT((pcomn::one_of<63, 0, 32, 8>::is(63))) ;
+   CPPUNIT_LOG_IS_FALSE((pcomn::one_of<63, 0, 32, 8>::is(64))) ;
+
+   CPPUNIT_LOG_ASSERT((pcomn::one_of<1, 0>::is(0))) ;
    CPPUNIT_LOG_IS_FALSE((pcomn::one_of<1>::is(0))) ;
 }
 

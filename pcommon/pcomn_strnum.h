@@ -2,8 +2,8 @@
 #ifndef __PCOMN_STRNUM_H
 #define __PCOMN_STRNUM_H
 /*******************************************************************************
- FILE         :   pcomn_integer.h
- COPYRIGHT    :   Yakov Markovitch, 2006-2016. All rights reserved.
+ FILE         :   pcomn_strnum.h
+ COPYRIGHT    :   Yakov Markovitch, 2006-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Numeric <-> string conversions.
@@ -19,6 +19,7 @@
 #include <pcomn_macros.h>
 #include <pcomn_except.h>
 #include <pcomn_shortstr.h>
+#include <pcomn_range.h>
 
 #include <functional>
 #include <iterator>

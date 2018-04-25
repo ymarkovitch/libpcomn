@@ -1,7 +1,7 @@
 /*-*- tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   unittest_iostream.cpp
- COPYRIGHT    :   Yakov Markovitch, 2008-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2008-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Unittests for binary iostreams.
@@ -13,6 +13,8 @@
 #include <pcomn_unittest.h>
 #include <pcomn_binstream.h>
 #include <pcomn_fstream.h>
+#include <pcomn_fileutils.h>
+#include <pcomn_sys.h>
 
 #include "pcomn_testhelpers.h"
 
@@ -206,6 +208,7 @@ class BinaryStreamTests : public StreamFixture {
       void Test_OBufStream() ;
       void Test_IBufStream() ;
       void Test_FileStream() ;
+      void Test_Readfile() ;
 
       CPPUNIT_TEST_SUITE(BinaryStreamTests) ;
 
@@ -216,6 +219,7 @@ class BinaryStreamTests : public StreamFixture {
       CPPUNIT_TEST(Test_OBufStream) ;
       CPPUNIT_TEST(Test_IBufStream) ;
       CPPUNIT_TEST(Test_FileStream) ;
+      CPPUNIT_TEST(Test_Readfile) ;
 
       CPPUNIT_TEST_SUITE_END() ;
 } ;
@@ -503,13 +507,28 @@ void BinaryStreamTests::Test_FileStream()
    ::unlink(TmpName.get()) ;
 }
 
+void BinaryStreamTests::Test_Readfile()
+{
+   using namespace pcomn ;
+
+   CPPUNIT_LOG_EQUAL(sys::fileaccess("fooo-baaar-quuuuuux.txt"), sys::ACC_NOEXIST) ;
+   CPPUNIT_LOG_EXCEPTION_CODE(readfile("fooo-baaar-quuuuuux.txt"), pcomn::system_error, ENOENT) ;
+   CPPUNIT_LOG_EXCEPTION_CODE(readfile("fooo-baaar-quuuuuux.txt"), pcomn::system_error, ENOENT) ;
+
+   CPPUNIT_LOG_EQ(readfile(CPPUNIT_AT_TESTDIR("unittest.empty.lst")), "") ;
+   CPPUNIT_LOG_EQ(readfile(CPPUNIT_AT_TESTDIR("unittest.1byte.lst")), "A") ;
+   CPPUNIT_LOG_EQ(readfile(CPPUNIT_AT_TESTDIR("RawStreamTests.2.lst")), "42") ;
+   const std::string r1 = readfile(CPPUNIT_AT_TESTDIR("RawStreamTests.Test_Ftream.lst")) ;
+
+   CPPUNIT_LOG_EQ(r1.size(), 60000) ;
+   unit::check_sequence(r1.data(), 0, 10000) ;
+}
 
 int main(int argc, char *argv[])
 {
-   pcomn::unit::TestRunner runner ;
-   runner.addTest(BinaryStreamTests::suite()) ;
-
-   return
-      pcomn::unit::run_tests(runner, argc, argv, "unittest.trace.ini",
-                             "Testing binary streams.") ;
+   return pcomn::unit::run_tests
+      <
+         BinaryStreamTests
+      >
+      (argc, argv) ;
 }

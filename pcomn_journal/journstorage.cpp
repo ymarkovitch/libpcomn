@@ -1,7 +1,7 @@
 /*-*- tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   journstorage.cpp
- COPYRIGHT    :   Yakov Markovitch, 2008-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2008-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Abstract storage for journalling engine.
@@ -108,7 +108,7 @@ void Storage::close_checkpoint(bool commit)
 {
    write_guard guard (_lock) ;
 
-   LOGPXDBG(PCOMN_Journal, DBGL_HIGHLEV, (commit ? "Commit" : "Rollback") << " checkpoint for " << *this) ;
+   LOGPXTRACE(PCOMN_Journal, DBGL_HIGHLEV, (commit ? "Commit" : "Rollback") << " checkpoint for " << *this) ;
 
    do_close_checkpoint(commit) ;
 }

@@ -1,7 +1,7 @@
 /*-*- tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   unittest_utils.cpp
- COPYRIGHT    :   Yakov Markovitch, 2011-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2011-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Unittests of various stuff from pcomn_utils.h
@@ -26,8 +26,11 @@ class UtilityTests : public CppUnit::TestFixture {
       void Test_TaggedPtrUnion() ;
       void Test_TypeTraits() ;
       void Test_TupleUtils() ;
+      void Test_TupleCompare() ;
       void Test_StreamUtils() ;
       void Test_String_Cast() ;
+      void Test_Underlying_Int() ;
+      void Test_Folding() ;
 
       CPPUNIT_TEST_SUITE(UtilityTests) ;
 
@@ -37,6 +40,8 @@ class UtilityTests : public CppUnit::TestFixture {
       CPPUNIT_TEST(Test_TupleUtils) ;
       CPPUNIT_TEST(Test_StreamUtils) ;
       CPPUNIT_TEST(Test_String_Cast) ;
+      CPPUNIT_TEST(Test_Underlying_Int) ;
+      CPPUNIT_TEST(Test_Folding) ;
 
       CPPUNIT_TEST_SUITE_END() ;
 } ;
@@ -239,6 +244,77 @@ void UtilityTests::Test_TupleUtils()
    CPPUNIT_LOG_EQ(s, "") ;
 }
 
+namespace {
+#if PCOMN_STL_CXX14
+typedef std::less<void> lt ;
+typedef std::equal_to<void> eq ;
+#else
+struct lt {
+      template<typename T>
+      bool operator()(const T &x, const T &y) const { return std::less<T>()(x, y) ; }
+} ;
+struct eq {
+      template<typename T>
+      bool operator()(const T &x, const T &y) const { return std::equal_to<T>()(x, y) ; }
+} ;
+#endif
+}
+
+void UtilityTests::Test_TupleCompare()
+{
+   using namespace pcomn ;
+
+   CPPUNIT_LOG_IS_FALSE(std::less<std::tuple<>>()(std::tuple<>(), std::tuple<>())) ;
+
+   CPPUNIT_LOG_IS_FALSE(less_tuple<lt>(unipair<int>(5, 10), unipair<int>(5, 10))) ;
+   CPPUNIT_LOG_ASSERT(less_tuple<lt>(unipair<int>(5, 9), unipair<int>(5, 10))) ;
+   CPPUNIT_LOG_ASSERT(less_tuple<lt>(unipair<int>(4, 15), unipair<int>(5, 10))) ;
+   CPPUNIT_LOG_IS_FALSE(less_tuple<lt>(unipair<int>(5, 11), unipair<int>(5, 10))) ;
+
+   CPPUNIT_LOG_IS_FALSE(less_tuple<lt>(std::tuple<int,int>(5, 10), std::tuple<int,int>(5, 10))) ;
+   CPPUNIT_LOG_ASSERT(less_tuple<lt>(std::tuple<int,int>(5, 9), std::tuple<int,int>(5, 10))) ;
+   CPPUNIT_LOG_ASSERT(less_tuple<lt>(std::tuple<int,int>(4, 15), std::tuple<int,int>(5, 10))) ;
+   CPPUNIT_LOG_IS_FALSE(less_tuple<lt>(std::tuple<int,int>(5, 11), std::tuple<int,int>(5, 10))) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_IS_FALSE(less_tuple<lt>(single<std::string>("BBB"), single<std::string>("BBB"))) ;
+   CPPUNIT_LOG_IS_FALSE(less_tuple<lt>(single<std::string>("BBB"), single<std::string>("BAA"))) ;
+   CPPUNIT_LOG_ASSERT(less_tuple<lt>(single<std::string>("ABB"), single<std::string>("BAA"))) ;
+
+   CPPUNIT_LOG_ASSERT(less_tuple<lt>(triple<int>(5, 10, 15), triple<int>(5, 10, 16))) ;
+   CPPUNIT_LOG_IS_FALSE(less_tuple<lt>(triple<int>(5, 10, 15), triple<int>(5, 10, 15))) ;
+   CPPUNIT_LOG_IS_FALSE(less_tuple<lt>(triple<int>(5, 10, 16), triple<int>(5, 10, 15))) ;
+   CPPUNIT_LOG_ASSERT(less_tuple<lt>(triple<int>(5, 9, 16), triple<int>(5, 10, 15))) ;
+
+   CPPUNIT_LOG_ASSERT(std::equal_to<std::tuple<>>()(std::tuple<>(), std::tuple<>())) ;
+   CPPUNIT_LOG_ASSERT(equal_tuple<eq>(unipair<int>(5, 10), unipair<int>(5, 10))) ;
+
+   CPPUNIT_LOG_IS_FALSE(equal_tuple<eq>(unipair<int>(5, 9), unipair<int>(5, 10))) ;
+   CPPUNIT_LOG_IS_FALSE(equal_tuple<eq>(unipair<int>(4, 15), unipair<int>(5, 10))) ;
+   CPPUNIT_LOG_IS_FALSE(equal_tuple<eq>(unipair<int>(5, 11), unipair<int>(5, 10))) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_ASSERT(equal_tuple<eq>(single<std::string>("BBB"), single<std::string>("BBB"))) ;
+   CPPUNIT_LOG_IS_FALSE(equal_tuple<eq>(single<std::string>("BBB"), single<std::string>("BAA"))) ;
+   CPPUNIT_LOG_IS_FALSE(equal_tuple<eq>(single<std::string>("ABB"), single<std::string>("BAA"))) ;
+
+   CPPUNIT_LOG_ASSERT(equal_tuple<eq>(triple<std::string>("ABB", "ABB", "ABB"),
+                                      triple<std::string>("ABB", "ABB", "ABB"))) ;
+   CPPUNIT_LOG_IS_FALSE(equal_tuple<eq>(triple<std::string>("BAB", "ABB", "ABB"),
+                                        triple<std::string>("ABB", "ABB", "ABB"))) ;
+   CPPUNIT_LOG_IS_FALSE(equal_tuple<eq>(triple<std::string>("ABB", "BAB", "ABB"),
+                                        triple<std::string>("ABB", "ABB", "ABB"))) ;
+   CPPUNIT_LOG_IS_FALSE(equal_tuple<eq>(triple<std::string>("ABB", "ABB", "BAB"),
+                                        triple<std::string>("ABB", "ABB", "ABB"))) ;
+
+   CPPUNIT_LOG_ASSERT(equal_tuple<eq>(std::tuple<std::string, std::string>("ABB", "ABB"),
+                                      std::tuple<std::string, std::string>("ABB", "ABB"))) ;
+   CPPUNIT_LOG_IS_FALSE(equal_tuple<eq>(std::tuple<std::string, std::string>("BAB", "ABB"),
+                                        std::tuple<std::string, std::string>("ABB", "ABB"))) ;
+   CPPUNIT_LOG_IS_FALSE(equal_tuple<eq>(std::tuple<std::string, std::string>("ABB", "BAB"),
+                                        std::tuple<std::string, std::string>("ABB", "ABB"))) ;
+}
+
 void UtilityTests::Test_StreamUtils()
 {
    typedef imemstream::traits_type traits_type ;
@@ -326,6 +402,73 @@ void UtilityTests::Test_String_Cast()
    CPPUNIT_LOG_EQ(string_cast("Hello, ", 1, 2, std::string("3")), "Hello, 123") ;
 }
 
+void UtilityTests::Test_Underlying_Int()
+{
+   enum A : char { N = 'A', M = 'B' } ;
+   enum B : unsigned long long { NU = 500, MU = 100 } ;
+   enum class C : int8_t { NC = -127, MC = 127 } ;
+
+   CPPUNIT_LOG_EQUAL(underlying_int(N), 'A') ;
+   CPPUNIT_LOG_EQUAL(underlying_int(M), 'B') ;
+   CPPUNIT_LOG_EQUAL(underlying_int('Z'), 'Z') ;
+
+   CPPUNIT_LOG_EQUAL(underlying_int(NU), 500ULL) ;
+   CPPUNIT_LOG_EQUAL(underlying_int(MU), 100ULL) ;
+   CPPUNIT_LOG_EQUAL(underlying_int(1024ULL), 1024ULL) ;
+
+   CPPUNIT_LOG_EQUAL(underlying_int(C::NC), (int8_t)-127) ;
+   CPPUNIT_LOG_EQUAL(underlying_int(C::MC), (int8_t)127) ;
+   CPPUNIT_LOG_EQUAL(underlying_int((int8_t)-1), (int8_t)-1) ;
+
+   CPPUNIT_LOG_EQUAL(underlying_int(true), true) ;
+}
+
+struct test_add {
+      template<typename T>
+      constexpr T operator()(T x, T y) const { return x + y ; }
+} ;
+
+void UtilityTests::Test_Folding()
+{
+   CPPUNIT_LOG_EQUAL((std::integral_constant<unsigned, fold_bitor(10U)>::value), 10U) ;
+   CPPUNIT_LOG_EQUAL((std::integral_constant<int, fold_bitor(16, 64)>::value), 80) ;
+   CPPUNIT_LOG_EQUAL((std::integral_constant<int, fold_bitor(16, 64, 17)>::value), 81) ;
+
+   CPPUNIT_LOG_EQUAL((std::integral_constant<short, fold_left(test_add(), (short)5)>::value), (short)5) ;
+   CPPUNIT_LOG_EQUAL((std::integral_constant<unsigned, fold_left(test_add(), 10, 20)>::value), 30U) ;
+   CPPUNIT_LOG_EQUAL(fold_left(test_add(), 10U, 20U), 30U) ;
+
+   CPPUNIT_LOG_ASSERT(one_of<15>::is(15)) ;
+   CPPUNIT_LOG_IS_FALSE(one_of<0>::is(15)) ;
+   CPPUNIT_LOG_ASSERT(one_of<0>::is(0)) ;
+   CPPUNIT_LOG_ASSERT((one_of<7, 3, 12>::is(3))) ;
+   CPPUNIT_LOG_IS_FALSE((one_of<7, 3, 12>::is(1))) ;
+
+   enum class C : uint8_t { N1, N2, N3 = 40, N4, N5 } ;
+
+   CPPUNIT_LOG_IS_FALSE(is_in<int>(3)) ;
+   CPPUNIT_LOG_IS_FALSE(is_in<int>(0)) ;
+
+   CPPUNIT_LOG_ASSERT((is_in<int, 7, 3, 12>(3))) ;
+   CPPUNIT_LOG_ASSERT((bool_constant<is_in<int, 7, 3, 12>(3)>::value)) ;
+   CPPUNIT_LOG_IS_FALSE((bool_constant<is_in<int, 7, 3, 12>(4)>::value)) ;
+
+   CPPUNIT_LOG_ASSERT((is_in<C, C::N2, C::N5>(C::N2))) ;
+   CPPUNIT_LOG_IS_FALSE((is_in<C>(C::N2))) ;
+   CPPUNIT_LOG_ASSERT((is_in<C, C::N2>(C::N2))) ;
+   CPPUNIT_LOG_IS_FALSE((is_in<C, C::N5, C::N3, C::N1>(C::N2))) ;
+   CPPUNIT_LOG_ASSERT((is_in<C, C::N5, C::N3, C::N1>(C::N3))) ;
+
+   CPPUNIT_LOG_ASSERT((is_in(C::N3, C::N5, C::N3))) ;
+   CPPUNIT_LOG_IS_FALSE((is_in(C::N3, C::N5, C::N1))) ;
+
+   C cc = C::N1 ;
+   CPPUNIT_LOG_ASSERT((is_in(cc, C::N5, C::N1))) ;
+
+   cc = C::N4 ;
+   CPPUNIT_LOG_IS_FALSE((is_in(cc, C::N5, C::N1))) ;
+}
+
 /*******************************************************************************
  UnittestTests
 *******************************************************************************/
@@ -373,11 +516,10 @@ void UnittestTests::Test_Unittest_Diff_Mismatch_Fail()
 
 int main(int argc, char *argv[])
 {
-   pcomn::unit::TestRunner runner ;
-   runner.addTest(UtilityTests::suite()) ;
-   runner.addTest(UnittestTests::suite()) ;
-
-   return
-      pcomn::unit::run_tests(runner, argc, argv,
-                             "unittest.diag.ini", "Tests of various stuff from pcomn_utils.h") ;
+   return pcomn::unit::run_tests
+      <
+         UtilityTests,
+         UnittestTests
+      >
+      (argc, argv, "unittest.diag.ini", "Tests of various stuff from pcomn_utils.h") ;
 }

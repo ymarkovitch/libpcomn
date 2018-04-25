@@ -3,7 +3,7 @@
 #define __PCOMN_PLATFORM_H
 /*******************************************************************************
  FILE         :   pcomn_platform.h
- COPYRIGHT    :   Yakov Markovitch, 1996-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1996-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Platform identification macros
@@ -272,6 +272,9 @@
 #define GCC_SETERR_WARNING(warn) GCC_MAKE_PRAGMA(GCC diagnostic error "-W"#warn)
 
 #define GCC_DIAGNOSTIC_PUSH() GCC_MAKE_PRAGMA(GCC diagnostic push)
+#define GCC_DIAGNOSTIC_PUSH_IGNORE(warn) GCC_DIAGNOSTIC_PUSH() GCC_IGNORE_WARNING(warn)
+#define GCC_DIAGNOSTIC_PUSH_ENABLE(warn) GCC_DIAGNOSTIC_PUSH() GCC_ENABLE_WARNING(warn)
+#define GCC_DIAGNOSTIC_PUSH_SETERR(warn) GCC_DIAGNOSTIC_PUSH() GCC_SETERR_WARNING(warn)
 #define GCC_DIAGNOSTIC_POP() GCC_MAKE_PRAGMA(GCC diagnostic pop)
 
 // MS warning control
@@ -423,9 +426,13 @@
 #        define PCOMN_RTL_MS      1
 #     endif
 #  endif
-#  if __cplusplus >= 201402L
+#  if __cplusplus >= 201402L && __cplusplus < 201500L
 #     define PCOMN_COMPILER_CXX14 1
 #     define PCOMN_STL_CXX14      1
+#  endif
+#  if __cplusplus >= 201500L
+#     define PCOMN_COMPILER_CXX17 1
+#     define PCOMN_STL_CXX17      1
 #  endif
 #endif
 
@@ -457,6 +464,19 @@
 
 #if defined(PCOMN_PL_WINDOWS) && !defined(PCOMN_PL_POSIX)
 #  define PCOMN_PL_MS 1 /* Pure Windows */
+#endif
+
+// Ensure __GLIBCXX__ defined if we are being compiled with libstdc++
+#if defined(__cplusplus) && defined(PCOMN_COMPILER_GNU)
+#  include <cstddef>
+#endif
+
+#if defined(__GLIBCXX__)
+#  define PCOMN_BEGIN_NAMESPACE_CXX11 _GLIBCXX_BEGIN_NAMESPACE_CXX11
+#  define PCOMN_END_NAMESPACE_CXX11   _GLIBCXX_END_NAMESPACE_CXX11
+#else
+#  define PCOMN_BEGIN_NAMESPACE_CXX11
+#  define PCOMN_END_NAMESPACE_CXX11
 #endif
 
 /*******************************************************************************
@@ -639,7 +659,7 @@ struct _byte_reverter {
       }
 } ;
 #else
-inline uint_type<2>::type reverse_bytes(uint_type<2>::type v)
+constexpr inline uint_type<2>::type reverse_bytes(uint_type<2>::type v)
 {
    return
 #ifdef PCOMN_COMPILER_GNU
@@ -650,7 +670,7 @@ inline uint_type<2>::type reverse_bytes(uint_type<2>::type v)
       ;
 }
 
-inline uint_type<4>::type reverse_bytes(uint_type<4>::type v)
+constexpr inline uint_type<4>::type reverse_bytes(uint_type<4>::type v)
 {
    return
 #ifdef PCOMN_COMPILER_GNU
@@ -661,7 +681,7 @@ inline uint_type<4>::type reverse_bytes(uint_type<4>::type v)
       ;
 }
 
-inline uint_type<8>::type reverse_bytes(uint_type<8>::type v)
+constexpr inline uint_type<8>::type reverse_bytes(uint_type<8>::type v)
 {
    return
 #ifdef PCOMN_COMPILER_GNU
@@ -673,7 +693,7 @@ inline uint_type<8>::type reverse_bytes(uint_type<8>::type v)
 }
 #endif
 
-inline uint_type<1>::type reverse_bytes(uint_type<1>::type v)
+constexpr inline uint_type<1>::type reverse_bytes(uint_type<1>::type v)
 {
    return v ;
 }

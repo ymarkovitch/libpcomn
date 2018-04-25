@@ -2,7 +2,7 @@
 /*******************************************************************************
  FILE         :   pcomn_crypthash.cpp
  COPYRIGHT    :   Yakov Markovitch, Maxim Dementiev, 2010-2011. All rights reserved.
-                  Yakov Markovitch, 2012-2016. All rights reserved.
+                  Yakov Markovitch, 2012-2017. All rights reserved.
                   All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
@@ -20,6 +20,7 @@
 #include <openssl/md5.h>
 #include <openssl/sha.h>
 #include <stdexcept>
+#include <iostream>
 
 namespace pcomn {
 /*******************************************************************************
@@ -145,9 +146,14 @@ static inline V &calc_hash_file(F calc, int fd, size_t *size, RaiseError raise_e
 /*******************************************************************************
  binary128_t
 *******************************************************************************/
-std::string binary128_t::to_string() const { return b2a_hex(data(), sizeof _idata) ; }
+std::string binary128_t::to_string() const { return b2a_hex(data(), size()) ; }
 
-char *binary128_t::to_strbuf(char *buf) const { return b2a_hex(data(), sizeof _idata, buf) ; }
+char *binary128_t::to_strbuf(char *buf) const
+{
+   b2a_hex(data(), size(), buf) ;
+   buf[slen()] = 0 ;
+   return buf ;
+}
 
 /*******************************************************************************
  md5hash_t
@@ -173,7 +179,7 @@ md5hash_t md5hash_file(int fd, size_t *size, RaiseError raise_error)
 /*******************************************************************************
  sha1hash_t
 *******************************************************************************/
-std::string sha1hash_pod_t::to_string() const { return b2a_hex(data(), sizeof _idata) ; }
+std::string sha1hash_t::to_string() const { return b2a_hex(data(), sizeof _idata) ; }
 
 sha1hash_t sha1hash(const void *buf, size_t size)
 {
@@ -239,6 +245,20 @@ SHA1Hash &SHA1Hash::append_file(FILE *file)
 SHA1Hash &SHA1Hash::append_file(const char *filename)
 {
    return hash_append_file(*this, filename) ;
+}
+
+/*******************************************************************************
+ ostream
+*******************************************************************************/
+std::ostream &operator<<(std::ostream &os, const sha1hash_t &v)
+{
+   return os << v.to_string() ;
+}
+
+std::ostream &operator<<(std::ostream &os, const binary128_t &v)
+{
+   char buf[binary128_t::slen() + 1] ;
+   return os.write(v.to_strbuf(buf), binary128_t::slen()) ;
 }
 
 } // namespace pcomn

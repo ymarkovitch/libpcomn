@@ -1,14 +1,15 @@
 #------------------------------------------------------------------------------
 # FILE         :  CMakeLists.txt
-# COPYRIGHT    :  Yakov Markovitch, 2014-2016
+# COPYRIGHT    :  Yakov Markovitch, 2017
 #                 See LICENSE for information on usage/redistribution.
 #
-# DESCRIPTION  :  cmdline library build script
-#
+# DESCRIPTION  :  pcomn_cmdline library build script
 # PROGRAMMED BY:  Yakov Markovitch
-# CREATION DATE:  8 Sep 2014
+# CREATION DATE:  29 Nov 2017
 #------------------------------------------------------------------------------
-cmake_minimum_required(VERSION 3.5.0)
+cmake_minimum_required(VERSION 3.5.2)
+
+project(libpcomn_cmdline)
 
 add_library(pcomn_cmdline STATIC
   argiter.cpp
@@ -26,14 +27,13 @@ add_library(pcomn_cmdline STATIC
   usage.cpp
   )
 
-target_link_libraries(pcomn_cmdline PUBLIC pcommon)
-target_include_directories(pcomn_cmdline PUBLIC ..)
+target_include_directories(pcomn_cmdline PUBLIC .. ../pcommon)
 
 add_executable(cmdtest cmdtest.cpp)
-target_link_libraries(cmdtest PRIVATE pcomn_cmdline)
+target_link_libraries(cmdtest pcomn_cmdline)
 
 add_executable(cmdtestext cmdtestext.cpp)
-target_link_libraries(cmdtestext PRIVATE pcomn_cmdline)
+target_link_libraries(cmdtestext pcomn_cmdline)
 
 add_executable(cmdtestglob cmdtestglob.cpp)
-target_link_libraries(cmdtestglob PRIVATE pcomn_cmdline)
+target_link_libraries(cmdtestglob pcomn_cmdline)

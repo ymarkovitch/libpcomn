@@ -1,7 +1,7 @@
 /*-*- tab-width: 3; indent-tabs-mode: nil; c-file-style: "ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   pcomn_uuid.cpp
- COPYRIGHT    :   Yakov Markovitch, 2014-2016
+ COPYRIGHT    :   Yakov Markovitch, 2014-2017
 
  DESCRIPTION  :   UUID and network MAC data types implementation
 
@@ -88,15 +88,17 @@ MAC::MAC(const strslice &str, RaiseError raise_error)
       _idata = 0 ;
    }
    else
-   {
-      _idata = result << 16LL ;
-      to_big_endian(_idata) ;
-   }
+      _idata = value_to_little_endian(result) ;
 }
 
 char *MAC::to_strbuf(char *buf) const
 {
-   char *p = b2a_hex(_data, size(), buf) ;
+   union {
+         const uint64_t vbuf ;
+         const char cbuf[8] ;
+   } data = { value_to_big_endian(_idata) } ;
+
+   char *p = b2a_hex(data.cbuf + (sizeof data.cbuf - size()), size(), buf) ;
    char *end = p + 5 ;
    *end = 0 ;
    *--end = toupper(*--p) ;

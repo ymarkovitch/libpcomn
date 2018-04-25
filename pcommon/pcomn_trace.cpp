@@ -1,7 +1,7 @@
 /*-*- tab-width:3;indent-tabs-mode:nil;c-file-style:"ellemtel";c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   pcomn_trace.cpp
- COPYRIGHT    :   Yakov Markovitch, 1995-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1995-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Tracing engine
@@ -24,6 +24,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <time.h>
+#include <sys/stat.h>
 
 #if defined(PCOMN_PL_WINDOWS)
 #  include <windows.h>
@@ -107,7 +109,7 @@ namespace diag {
 /*******************************************************************************
  PDiagBase: groups
 *******************************************************************************/
-// A vecrtor of diagnostic groups' properties
+// A vector of diagnostic groups' properties
 static struct {
 
       PDiagBase::Properties * groups[MaxGroupsNum] ;
@@ -185,9 +187,13 @@ unsigned PDiagBase::mode() { return global_mode ; }
 /*******************************************************************************
  PDiagBase: trace context initialization and locking
 *******************************************************************************/
-static const unsigned DIAG_LOGMAXPATH  = 2048 ;
-static const unsigned DIAG_MAXMESSAGE  = 4096 ; /* Buffer size for diagnostic messages */
-static const unsigned DIAG_MAXPREFIX   = 256 ;
+static constexpr const unsigned DIAG_LOGMAXPATH  = 2048 ;
+static constexpr const unsigned DIAG_MAXMESSAGE  = 4096 ; /* Buffer size for diagnostic messages */
+static constexpr const unsigned DIAG_MAXPREFIX   = 256 ;
+
+// How often (in seconds) diag_isenabled_diag() should check if the tracing
+// configuration changed.
+constexpr unsigned long long DIAG_CFGCHECK_INTERVAL = 2 ;
 
 /*******************************************************************************
  Temporary diagnostics streamm, never allocates its buffer dynamically.
@@ -203,20 +209,23 @@ static void output_fdlog_msg(void *fd, LogLevel level, const char *fmt, ...) ;
 
 /*******************************************************************************
  Trace context, holds tracing stream.
- On platforms that support thread-local variables, this context is thread-local and is
- initiated once per thread first time it is used in that thread.
- On platforms that does NOT support thread-local variables, it is global, is initiated
- once per process and must be locked on usage.
+ This context is thread-local and is initiated once per thread first time it is used in
+ that thread.
 *******************************************************************************/
 struct trace_context {
 
-      // In case of a global context, must be called from under the lock
       trace_stream &os()
       {
          if (!os_ptr)
          {
             os_ptr = new (static_cast<void *>(os_buf + 0)) trace_stream ;
             *os_ptr << std::boolalpha ;
+
+            // Store initial foramtting settings, restored every time
+            // PDiagBase::stream(true) is called.
+            os_fmtflags = os_ptr->flags() ;
+            os_precision = os_ptr->precision() ;
+            os_width = os_ptr->width() ;
          }
          return *os_ptr ;
       }
@@ -229,6 +238,9 @@ struct trace_context {
       char           os_buf[sizeof(trace_stream)] ; /* The buffer in which the _os stream is allocated by
                                                      * the "placement new" operator.
                                                      * Properly aligned (follows the os_ptr pointer). */
+      std::ios_base::fmtflags os_fmtflags ;
+      size_t                  os_precision ;
+      size_t                  os_width ;
 
       /*************************************************************************
        Global trace context
@@ -242,6 +254,10 @@ struct trace_context {
 
       static syslog_writer syslog_write ;
       static void *        syslog_data ;
+      static const char *  syslog_ident ;
+
+      static time_t        last_cfgcheck ; /* The time of last configuration check */
+      static struct stat   last_cfgstat ;
 
       #ifdef PCOMN_PL_WINDOWS
       static CRITICAL_SECTION &context_mutex()
@@ -262,17 +278,70 @@ struct trace_context {
 
       static void LOCK() { ENTER_CRITICAL_SECTION(context_mutex()) ; }
       static void UNLOCK() { LEAVE_CRITICAL_SECTION(context_mutex()) ; }
+
+      static bool needs_configuration_check()
+      {
+         return (unsigned long long)(time(NULL) - last_cfgcheck) >= DIAG_CFGCHECK_INTERVAL ;
+      }
+
+      static bool is_configuration_changed()
+      {
+         const char *cfgpathname = PTraceConfig::profileFileName() ;
+         typedef struct stat stat_t ;
+         stat_t st ;
+         auto mtimep =
+         #ifdef PCOMN_PL_LINUX
+            &stat_t::st_mtim
+         #else
+            &stat_t::st_mtime
+         #endif
+            ;
+         return
+            cfgpathname
+            && stat(cfgpathname, &st) == 0
+            && !(st.st_size == last_cfgstat.st_size && st.st_dev == last_cfgstat.st_dev
+                 && memcmp(&(st.*mtimep), &(last_cfgstat.*mtimep), sizeof (st.*mtimep)) == 0) ;
+      }
+
+      // Call only when the context is locked
+      static void configuration_checked()
+      {
+         typedef struct stat stat_t ;
+         const char *cfgpathname = PTraceConfig::profileFileName() ;
+         stat_t buf ;
+
+         last_cfgstat = cfgpathname && stat(cfgpathname, &buf) == 0 ? buf : stat_t() ;
+         last_cfgcheck = time(NULL) ;
+      }
+
+      static void check_configuration_changes()
+      {
+         if (!needs_configuration_check())
+            return ;
+
+         LOCK() ;
+         if (needs_configuration_check())
+            if (is_configuration_changed())
+               diag_readprofile() ;
+            else
+               last_cfgcheck = time(NULL) ;
+         UNLOCK() ;
+      }
 } ;
 
 int trace_context::log_fd  = -1 ;
 bool trace_context::log_owned = false ;
 char trace_context::log_name[DIAG_LOGMAXPATH] ;
 
+time_t        trace_context::last_cfgcheck ;
+struct stat   trace_context::last_cfgstat ;
+
 dbglog_writer trace_context::dbglog_write = output_debug_msg ;
 void *        trace_context::dbglog_data ;
 
 syslog_writer trace_context::syslog_write = output_syslog_msg ;
 void *        trace_context::syslog_data ;
+const char *  trace_context::syslog_ident = nullptr ;
 
 typedef trace_context ctx ;
 
@@ -292,9 +361,16 @@ PDiagBase::Lock::operator bool() const { return context.tracing == 1 ; }
  Global functions to unconditionally lock and unlock the trace context, for use in the
  trace configurator.
 *******************************************************************************/
-void LOCK_CONTEXT() { ctx::LOCK() ; }
+void LOCK_CONTEXT()
+{
+   ctx::LOCK() ;
+}
 
-void UNLOCK_CONTEXT() { ctx::UNLOCK() ; }
+void UNLOCK_CONTEXT()
+{
+   ctx::configuration_checked() ;
+   ctx::UNLOCK() ;
+}
 
 /*******************************************************************************
  Debugging log and syslog writers registration
@@ -350,6 +426,11 @@ void register_syslog(int fd, LogLevel level)
       struct local { static void nolog(void *, LogLevel, const char *, ...) {} } ;
       register_syslog_writer(local::nolog) ;
    }
+}
+
+const char *syslog_ident()
+{
+   return ctx::syslog_ident ;
 }
 
 /*******************************************************************************
@@ -412,12 +493,14 @@ static int syslog_priority(LogLevel level)
    switch (level)
    {
       case LOGL_ALERT:  return LOG_ALERT ;
+      case LOGL_CRIT:   return LOG_CRIT ;
       case LOGL_ERROR:  return LOG_ERR ;
       case LOGL_WARNING:return LOG_WARNING ;
       case LOGL_NOTE:   return LOG_NOTICE ;
       case LOGL_INFO:   return LOG_INFO ;
 
       case LOGL_DEBUG:
+      case LOGL_TRACE:
       default: return LOG_DEBUG ;
    }
 }
@@ -429,12 +512,18 @@ static const std::thread::id main_thread_id = std::this_thread::get_id() ;
 static char *threadidtostr(char *buf)
 {
    const std::thread::id id = std::this_thread::get_id() ;
-   if (std::this_thread::get_id() == main_thread_id)
+   if (id == main_thread_id)
       return strcpy(buf, "<mainthrd>") ;
 
+   #if PCOMN_PL_LINUX
+   sprintf(buf, "%010lx", (unsigned long)pthread_self()) ;
+   memmove(buf, buf + (strlen(buf) - 10), 10) ;
+   #else
    pcomn::bufstr_ostream<0> out (buf, 16) ;
    out << std::right << std::setw(10) << id ;
+   #endif
    buf[10] = 0 ;
+
    return buf ;
 }
 
@@ -579,7 +668,7 @@ void PDiagBase::setlog(const char *logname)
 // Note that the formatted message is limited to DIAG_MAXMESSAGE characters.
 //
 void PDiagBase::trace_message(const char *type,
-                              const char *group, const char *msg,
+                              const Properties *group, const char *msg,
                               const char *fname, unsigned line)
 {
    if (!(mode() & EnableFullPath))
@@ -601,19 +690,24 @@ void PDiagBase::trace_message(const char *type,
 
    out << type << ' ' ;
 
-   if (mode() & UseProcessId)
+   if (mode() & ShowProcessId)
    {
       char buf[32] ;
       sprintf(buf, "%4.4u:", (unsigned)getpid()) ;
       out << buf ;
    }
-   if (mode() & UseThreadId)
+   if (mode() & ShowThreadId)
    {
       char buf[32] ;
       out << threadidtostr(buf) << ": " ;
    }
+   char grouplevel[8] ;
+   if (mode() & ShowLogLevel)
+      sprintf(grouplevel, "=%u", group->level()) ;
+   else
+      *grouplevel = 0 ;
 
-   out << fname << ':' << line << ": [" << group << "]: " << msg << '\n' << std::ends ;
+   out << fname << ':' << line << ": [" << group->name() << grouplevel << "]: " << msg << '\n' << std::ends ;
 
    ctx::LOCK() ;
 
@@ -642,26 +736,27 @@ void PDiagBase::trace_message(const char *type,
 // On Unix, use syslog; on Windows, use event log (?) or OutputDebugString
 //
 void PDiagBase::syslog_message(LogLevel level,
-                               const char * /*group*/, const char *msg,
+                               const Properties *group, const char *msg,
                                const char * /*fname*/, unsigned /*line*/)
 {
    if (mode() & DisableSyslog)
       return ;
 
-   char threadid_buf[32] ;
-   const bool use_threadid = (mode() & UseThreadId) && level == LOGL_DEBUG ;
+   pcomn::vsaver<const char *> current_ident (ctx::syslog_ident, group->subName()) ;
 
-   if (use_threadid)
-      ctx::syslog_write(ctx::syslog_data, level, "%s: %s", threadidtostr(threadid_buf), msg) ;
-   else
-      ctx::syslog_write(ctx::syslog_data, level, "%s", msg) ;
+   ctx::syslog_write(ctx::syslog_data, level, "%s", msg) ;
 }
 
 std::ostream &PDiagBase::stream(bool reset)
 {
    trace_stream &os = context.os() ;
    if (reset)
+   {
       os.reset() ;
+      os.flags(context.os_fmtflags) ;
+      os.precision(context.os_precision) ;
+      os.width(context.os_width) ;
+   }
    return os ;
 }
 
@@ -687,8 +782,33 @@ void tee_syslog(LogLevel level, int fd, const char *s)
    if (fd >= 0 && ctx::syslog_write != output_fdlog_msg && (intptr_t)ctx::syslog_data != fd)
       output_fdlog_msg((void *)(intptr_t)fd, level, "%s", s) ;
 }
-
 } // end of namespace diag
+
+/*******************************************************************************
+ diag_isenabled_diag()
+ Among other things, periodically checks if the trace configuration has been changed
+ since last read.
+*******************************************************************************/
+static int force_enabled = 0 ;
+
+bool diag_isenabled_diag()
+{
+   if (force_enabled < 0)
+      return false ;
+
+   diag::ctx::check_configuration_changes() ;
+   return force_enabled > 0 || !(diag_getmode() & diag::DisableDebugOutput) ;
+}
+
+void diag_force_diag(bool ena)
+{
+   force_enabled = 1 | (-(int)!ena) ;
+}
+
+void diag_unforce_diag()
+{
+   force_enabled = 0 ;
+}
 
 // Definition of the default diagnostic group "Def" (expands to PDiagGroupDef)
 DEFINE_DIAG_GROUP(Def, 1, 0, _PCOMNEXP) ;

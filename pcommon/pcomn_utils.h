@@ -3,7 +3,7 @@
 #define __PCOMN_UTILS_H
 /*******************************************************************************
  FILE         :   pcomn_utils.h
- COPYRIGHT    :   Yakov Markovitch, 1994-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1994-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Various supplemental functions & templates
@@ -17,8 +17,10 @@
 #include <pcomn_assert.h>
 #include <pcomn_meta.h>
 #include <pcomn_integer.h>
+#include <pcomn_ssafe.h>
 
-#include <iostream>
+#include <ostream>
+#include <istream>
 #include <utility>
 #include <functional>
 #include <memory>
@@ -162,17 +164,36 @@ inline T *&clear_deletev(T *&vec)
    return vec ;
 }
 
-template<class T>
-inline const T &assign_by_ptr(T *ptr, const T &value)
+template<typename O, typename V>
+inline void outparam_set(O *outparam_ptr, V &&value)
 {
-   if (ptr)
-      *ptr = value ;
-   return value ;
+   if (outparam_ptr)
+      *outparam_ptr = std::forward<V>(value) ;
 }
 
-/*******************************************************************************
+template<typename T, typename P>
+constexpr inline auto nullable_get(P &&ptr, T &&default_value) -> decltype(*std::forward<P>(ptr))
+{
+   return std::forward<P>(ptr) ? *std::forward<P>(ptr) : std::forward<T>(default_value) ;
+}
+
+/// Compare two values for equality through pointers to that values or pointer-like
+/// objects, taking into account NULL pointers.
+///
+/// @a x and @a y must be pointers or pointer-like objects (i.e. implementing
+/// operator*). @a x and @a y are considered equal if both are NULL, or both are nonnull
+/// _and_ referenced values are equal.
+///
+template<typename P1, typename P2>
+constexpr inline auto nullable_eq(const P1 &x, const P2 &y) -> decltype(*x == *y)
+{
+   return !x == !y && (!x || *x == *y) ;
+}
+
+/***************************************************************************//**
  Tagged pointer
 *******************************************************************************/
+/**{@*/
 /// Check if T* is assignable to U*, providing that valtypes of T and U are the same
 /// (i.e. assigning to base class or void pointer is _not_ allowed)
 template<typename T, typename U>
@@ -211,8 +232,8 @@ template<bool dir, typename U>
 struct find_exact_copyable<dir, U> : int_constant<-1> {} ;
 } ;
 
-/******************************************************************************/
-/** Tagged union of two pointers with sizof(tagged_ptr_union)==sizeof(void *).
+/***************************************************************************//**
+ Tagged union of two pointers with sizof(tagged_ptr_union)==sizeof(void *).
 
  The alignment of the memory pointed to by any of union members MUST be at least 2
 *******************************************************************************/
@@ -334,6 +355,96 @@ struct tagged_ptr_union {
 template<typename T1, typename T2, typename... T>
 using tagged_cptr_union = tagged_ptr_union<const T1, const T2, const T ...> ;
 
+/**}@*/
+
+/***************************************************************************//**
+ Strong typedef is a type wrapper that guarentees that two types are distinguished
+ even when they share the same underlying implementation.
+
+ Unlike typedef, strong typedef _does_ create a new type.
+*******************************************************************************/
+/**{@*/
+template<typename Principal, typename Tag, bool=std::is_literal_type<Principal>::value> struct tdef ;
+
+template<typename Principal, typename Tag>
+using strong_typedef = tdef<Principal, Tag> ;
+
+/// If T is a strong typedef type, provides a member typedef type that names the
+/// underlying type of T.
+template<typename T>
+struct principal_type ;
+
+template<typename P, typename G>
+struct principal_type<strong_typedef<P, G>> : identity_type<P> {} ;
+
+template<typename T>
+using principal_type_t = typename principal_type<T>:: type ;
+
+/***************************************************************************//**
+ Strong typedef implementation.
+*******************************************************************************/
+template<typename Principal, typename Tag>
+struct tdef<Principal, Tag, true> {
+
+      constexpr tdef() = default ;
+      explicit constexpr tdef(const Principal &v) : _data(v) {}
+      constexpr tdef(const tdef &) = default ;
+      constexpr tdef(tdef &&) = default ;
+
+      tdef &operator=(const tdef &) = default ;
+      tdef &operator=(tdef &&) = default ;
+      tdef &operator=(const Principal &rhs) { _data = rhs ; return *this ;}
+      tdef &operator=(Principal &&rhs) { _data = std::move(rhs) ; return *this ;}
+
+      constexpr const Principal &data() const { return _data ; }
+      constexpr operator Principal() const { return _data ; }
+      operator Principal &() & { return _data ; }
+      operator Principal &&() && { return std::move(_data) ; }
+
+   private:
+      Principal _data {} ;
+} ;
+
+template<typename Principal, typename Tag>
+struct tdef<Principal, Tag, false> {
+      tdef() = default ;
+      explicit tdef(const Principal &v) : _data(v) {}
+      tdef(const tdef &) = default ;
+      tdef(tdef &&) = default ;
+
+      tdef &operator=(const tdef &) = default ;
+      tdef &operator=(tdef &&) = default ;
+      tdef &operator=(const Principal &rhs) { _data = rhs ; return *this ;}
+      tdef &operator=(Principal &&rhs) { _data = std::move(rhs) ; return *this ;}
+
+      const Principal &data() const { return _data ; }
+      operator const Principal &() const { return _data ; }
+      operator Principal &() & { return _data ; }
+      operator Principal &&() && { return std::move(_data) ; }
+
+   private:
+      Principal _data {} ;
+} ;
+
+template<typename P, typename G>
+constexpr inline auto operator==(const tdef<P,G> &x, const tdef<P,G> &y)->decltype(x.data()==y.data())
+{
+   return x.data() == y.data() ;
+}
+
+template<typename P, typename G>
+constexpr inline auto operator<(const tdef<P,G> &x, const tdef<P,G> &y)->decltype(x.data()<y.data())
+{
+   return x.data() < y.data() ;
+}
+
+PCOMN_DEFINE_RELOP_FUNCTIONS(P_PASS(template<typename P, typename G> constexpr), P_PASS(tdef<P,G>)) ;
+
+template<typename P, typename G>
+inline std::ostream &operator<<(std::ostream &os, const tdef<P,G> &v) { return os << v.data() ; }
+
+/**}@*/
+
 /******************************************************************************/
 /**
 *******************************************************************************/
@@ -361,80 +472,6 @@ struct auto_buffer final {
       PCOMN_NONCOPYABLE(auto_buffer) ;
       PCOMN_NONASSIGNABLE(auto_buffer) ;
 } ;
-
-/******************************************************************************/
-/** Output stream with "embedded" stream buffer (i.e. the memory buffer is a C array -
- the member of of the class).
-
-The template argument defines (fixed) size of the output buffer. This class doesn't make
-dynamic allocations.
-*******************************************************************************/
-template<size_t sz>
-class bufstr_ostream : private std::basic_streambuf<char>, public std::ostream {
-   public:
-      /// Create the stream with embedded buffer of @a sz bytes.
-      bufstr_ostream() noexcept ;
-
-      /// Get the pouinter to internal buffer memory
-      const char *str() const { return _buffer ; }
-      char *str() { return _buffer ; }
-
-      bufstr_ostream &reset()
-      {
-         clear() ;
-         setp(_buffer + 0, _buffer + sizeof _buffer - 1) ;
-         return *this ;
-      }
-
-   private:
-      char _buffer[sz] ;
-} ;
-
-/******************************************************************************/
-/** Output stream with external fixed-size stream buffer .
-*******************************************************************************/
-template<>
-class bufstr_ostream<0> : private std::basic_streambuf<char>, public std::ostream {
-      PCOMN_NONCOPYABLE(bufstr_ostream) ;
-      PCOMN_NONASSIGNABLE(bufstr_ostream) ;
-   public:
-      bufstr_ostream(char *buf, size_t bufsize) noexcept :
-         std::ostream(static_cast<std::basic_streambuf<char> *>(this)),
-         _buffer(buf), _bufsz(bufsize)
-      {
-         setp(_buffer, _buffer + _bufsz) ;
-      }
-
-      bufstr_ostream() noexcept :
-         std::ostream(static_cast<std::basic_streambuf<char> *>(this))
-      {}
-
-      /// Get the pouinter to internal buffer memory
-      const char *str() const { return _buffer ; }
-      char *str() { return _buffer ; }
-
-      bufstr_ostream &reset()
-      {
-         clear() ;
-         setp(_buffer, _buffer + _bufsz) ;
-         return *this ;
-      }
-
-   private:
-      char *   _buffer = nullptr ;
-      size_t   _bufsz  = 0 ;
-} ;
-
-/*******************************************************************************
- bufstr_ostream<size_t>
-*******************************************************************************/
-template<size_t sz>
-bufstr_ostream<sz>::bufstr_ostream() noexcept :
-   std::ostream(static_cast<std::basic_streambuf<char> *>(this))
-{
-   *_buffer = _buffer[sizeof _buffer - 1] = 0 ;
-   reset() ;
-}
 
 /******************************************************************************/
 /** Input stream from a memory buffer
@@ -576,47 +613,74 @@ class omemstream : private std::basic_streambuf<char>, public std::ostream {
       }
 } ;
 
-/******************************************************************************/
-/** Returns the result of streaming arg into pcomn::omemstream
+/***************************************************************************//**
+ Output the series of a values into std::ostream.
+*******************************************************************************/
+/**{@*/
+__forceinline std::ostream &print_values(std::ostream &os) { return os ; }
+
+template<typename T, typename... Tn>
+inline std::ostream &print_values(std::ostream &os, const T &a1, const Tn &...an)
+{
+   return print_values(os << a1, an...) ;
+}
+/**}@*/
+
+/***************************************************************************//**
+ Returns the result of streaming arg into pcomn::omemstream
 
  The result is the same as for boost::lexical_cast<std::string>(arg),
  but way more efficient due to pcomn::omemstream instead of std::stringstream
 *******************************************************************************/
+/**{@*/
 template<typename T>
-__noinline
-disable_if_t<std::is_convertible<T, std::string>::value, std::string>
-string_cast(T &&arg)
-{
-   pcomn::omemstream os ;
-   os << std::forward<T>(arg) ;
-   return os.checkout() ;
-}
-
-template<typename T>
-inline
+__forceinline
 std::enable_if_t<std::is_convertible<T, std::string>::value, std::string>
 string_cast(T &&arg)
 {
    return {std::forward<T>(arg)} ;
 }
 
-inline std::ostream &print_values(std::ostream &os) { return os ; }
-
-template<typename T, typename... Tn>
-inline std::ostream &print_values(std::ostream &os, T &&a1, Tn &&...an)
+/// @cond
+namespace detail {
+template<typename... Tn>
+__noinline std::string string_cast_(Tn ...an)
 {
-   return print_values(os << std::forward<T>(a1), std::forward<Tn>(an)...) ;
+   pcomn::omemstream os ;
+   print_values(os, an...) ;
+   return os.checkout() ;
+}
+}
+/// @endcond
+
+template<typename T>
+__forceinline
+disable_if_t<std::is_convertible<T, std::string>::value, std::string>
+string_cast(const T &arg)
+{
+   return detail::string_cast_<parmtype_t<const T &>>(arg) ;
 }
 
 template<typename T1, typename T2, typename... Tn>
-__noinline
-std::string string_cast(T1 &&a1, T2 &&a2, Tn &&...an)
+__forceinline
+std::string string_cast(const T1 &a1, const T2 &a2, const Tn &...an)
 {
-   pcomn::omemstream os ;
-   print_values(os, std::forward<T1>(a1), std::forward<T2>(a2), std::forward<Tn>(an)...) ;
-   return os.checkout() ;
+   return detail::string_cast_<parmtype_t<const T1 &>,
+                               parmtype_t<const T2 &>,
+                               parmtype_t<const Tn &>...>
+      (a1, a2, an...) ;
 }
 
+/**}@*/
+
 } // end of pcomn namespace
+
+namespace std {
+/***************************************************************************//**
+ The hash for a strong typedef is by default the hash of the wrapped type.
+*******************************************************************************/
+template<typename P, typename G>
+struct hash<pcomn::tdef<P,G>> : hash<P> {} ;
+} // end of std namespace
 
 #endif /* __PCOMN_UTILS_H */

@@ -3,7 +3,7 @@
 #define __PCOMN_EXCEPT_H
 /*******************************************************************************
  FILE         :   pcomn_except.h
- COPYRIGHT    :   Yakov Markovitch, 2000-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2000-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Base PCOMMON exception classes
@@ -236,6 +236,8 @@ class _PCOMNEXP system_error : public virtual environment_error {
       int posix_code() const { return _errcode.posix_code() ; }
 
       int platform_code() const { return _errcode.platform_code() ; }
+
+      int code() const { return posix_code() ; }
 
       static int lasterr() { return errcode::lasterr() ; }
 

@@ -3,7 +3,7 @@
 #define __PCOMN_BINSTREAM_H
 /*******************************************************************************
  FILE         :   pcomn_binstream.h
- COPYRIGHT    :   Yakov Markovitch, 2007-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2007-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Simple binary I/O streams.
@@ -724,6 +724,7 @@ inline char *readline(binary_ibufstream &is, char (&buf)[n], EOLMode eolmode = e
    }
    char *end = readline(is, n - 1, buf + 0, eolmode) ;
    if (end[-1] != '\n')
+   {
       if (end == buf + (n - 1))
       {
          end[-1] = '\n' ;
@@ -732,6 +733,7 @@ inline char *readline(binary_ibufstream &is, char (&buf)[n], EOLMode eolmode = e
       }
       else
          *end++ = '\n' ;
+   }
    *end = 0 ;
    return buf ;
 }

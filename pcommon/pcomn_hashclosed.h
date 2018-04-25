@@ -3,7 +3,7 @@
 #define __PCOMN_HASHCLOSED_H
 /*******************************************************************************
  FILE         :   pcomn_hashclosed.h
- COPYRIGHT    :   Yakov Markovitch, 2008-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2008-2017. All rights reserved.
 
  DESCRIPTION  :   Exteremely simple closed hashing hashtable implementation, optimized
                   for small data items, especially POD data.
@@ -433,10 +433,7 @@ class closed_hashtable {
       }
 
    private:
-      template<bool UseStaticBuckets, nullptr_t> union combined_buckets {
-            static_assert(UseStaticBuckets || !UseStaticBuckets,
-                          "The non-specialized version of combined_buckets must never be instantiated") ;
-      } ;
+      template<bool UseStaticBuckets, novalue> union combined_buckets ;
 
       /*************************************************************************
         Common state for both dynamic and static buckets.
@@ -540,6 +537,15 @@ class closed_hashtable {
             {
                return !_bucket_count || (float)_occupied_count/_bucket_count >= max_load_factor ;
             }
+
+            void swap(dynamic_buckets &other)
+            {
+               pcomn_swap(_bucket_count, other._bucket_count) ;
+               pcomn_swap(_valid_count, other._valid_count) ;
+               pcomn_swap(_occupied_count, other._occupied_count) ;
+               pcomn_swap(_buckets, other._buckets) ;
+            }
+
          private:
             void reset_members()
             {
@@ -570,7 +576,7 @@ class closed_hashtable {
       /*************************************************************************
         Specialization of combined_buckets for purely dynamically-allocated backets
       *************************************************************************/
-      template<nullptr_t dummy> union combined_buckets<false, dummy> {
+      template<novalue dummy> union combined_buckets<false, dummy> {
             dynamic_buckets _dyn ;
 
             combined_buckets(size_type buckcount) { _dyn.reset(buckcount) ; }
@@ -601,21 +607,14 @@ class closed_hashtable {
             bool overloaded(const basic_state &st) const { return _dyn.overloaded(st._max_load_factor) ; }
 
             void clear(const basic_state &) { _dyn.clear() ; }
-
-            void swap(combined_buckets &other)
-            {
-               std::swap(_dyn._bucket_count, other._dyn._bucket_count) ;
-               std::swap(_dyn._valid_count, other._dyn._valid_count) ;
-               std::swap(_dyn._occupied_count, other._dyn._occupied_count) ;
-               std::swap(_dyn._buckets, other._dyn._buckets) ;
-            }
+            void swap(combined_buckets &other) { _dyn.swap(other._dyn) ; }
       } ;
 
       /*************************************************************************
         Specialization of combined_buckets for actual combination of static
         and dynamic buckets
       *************************************************************************/
-      template<nullptr_t dummy> union combined_buckets<true, dummy> {
+      template<novalue dummy> union combined_buckets<true, dummy> {
             dynamic_buckets _dyn ;
             static_buckets  _stat ;
 
@@ -702,17 +701,14 @@ class closed_hashtable {
 
             void swap(combined_buckets &other)
             {
-               // Interpret _bucket_container as POD data. Since _bucket_container contains at
-               // least one pointer, its aligned at least to the pointer size boundary.
-               std::swap_ranges((void **)this,
-                                (void **)this + (sizeof *this)/sizeof(void **),
-                                (void **)&other) ;
+               // Interpret _bucket_container as POD data.
+               sizeof _dyn >= sizeof _stat ? _dyn.swap(other._dyn) : pcomn_swap(_stat, other._stat) ;
             }
       } ;
 
       // Use static buckets optimization only if there is a place for at least 4 buckets
       typedef
-      combined_buckets<(sizeof(dynamic_buckets)/sizeof(bucket_type) >= 4), nullptr> buckets_container ;
+      combined_buckets<(sizeof(dynamic_buckets)/sizeof(bucket_type) >= 4), NaV> buckets_container ;
 
    private:
       basic_state       _basic_state ;
@@ -919,32 +915,27 @@ void closed_hashtable<V, X, H, P, S>::expand(size_type reserve_count)
 /*******************************************************************************
 
 *******************************************************************************/
-template<typename V, typename E, typename H, typename P, typename S>
-inline bool find_keyed_value(const closed_hashtable<V, E, H, P, S> &dict,
-                             const typename closed_hashtable<V, E, H, P, S>::key_type &key,
-                             V &value)
+template<typename V, typename E, typename H, typename P, typename S, typename K>
+inline bool find_keyed_value(const closed_hashtable<V, E, H, P, S> &dict, K &&key, V &value)
 {
-   const typename closed_hashtable<V, E, H, P, S>::const_iterator found (dict.find(key)) ;
+   const auto found (dict.find(std::forward<K>(key))) ;
    if (found == dict.end())
       return false ;
    value = *found ;
    return true ;
 }
 
-template<typename V, typename E, typename H, typename P, typename S>
-inline V get_keyed_value(const closed_hashtable<V, E, H, P, S> &dict,
-                         const typename closed_hashtable<V, E, H, P, S>::key_type &key,
-                         const V &default_value)
+template<typename V, typename E, typename H, typename P, typename S, typename K>
+inline V get_keyed_value(const closed_hashtable<V, E, H, P, S> &dict, K &&key, const V &default_value)
 {
-   const typename closed_hashtable<V, E, H, P, S>::const_iterator found (dict.find(key)) ;
+   const auto found (dict.find(std::forward<K>(key))) ;
    return found == dict.end() ? default_value : *found ;
 }
 
-template<typename V, typename E, typename H, typename P, typename S>
-inline V get_keyed_value(const closed_hashtable<V, E, H, P, S> &dict,
-                         const typename closed_hashtable<V, E, H, P, S>::key_type &key)
+template<typename V, typename E, typename H, typename P, typename S, typename K>
+inline V get_keyed_value(const closed_hashtable<V, E, H, P, S> &dict, K &&key)
 {
-   return get_keyed_value(dict, key, V()) ;
+   return get_keyed_value(dict, std::forward<K>(key), V()) ;
 }
 
 } // end of namespace pcomn

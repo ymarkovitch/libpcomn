@@ -3,7 +3,7 @@
 #define __PCOMN_MACROS_H
 /*******************************************************************************
  FILE         :   pcomn_macros.h
- COPYRIGHT    :   Yakov Markovitch, 1996-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1996-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Helper macros for C preprocessor tricks and for writing other
@@ -113,6 +113,12 @@
 #define P_VAL_ARGLIST(count, ...)  P_FOR(count, P_VALARG_, __VA_ARGS__)
 
 #define P_PARMLIST(count, ...)     P_FOR(count, P_PARAM_, __VA_ARGS__)
+
+/*******************************************************************************
+ Count arguments
+*******************************************************************************/
+#define P_VA_ARGC_(P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, Pn, ...) Pn
+#define P_VA_ARGC(...) P_VA_ARGC_(-1, ##__VA_ARGS__, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
 
 /*******************************************************************************
  Private macros

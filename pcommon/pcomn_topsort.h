@@ -3,7 +3,7 @@
 #define __PCOMN_TOPSORT_H
 /*******************************************************************************
  FILE         :   pcomn_topsort.h
- COPYRIGHT    :   Yakov Markovitch, 2002-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2002-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Topological sorting algorithm

@@ -3,7 +3,7 @@
 #define __PCOMN_FUNCTION_H
 /*******************************************************************************
  FILE         :   pcomn_function.h
- COPYRIGHT    :   Yakov Markovitch, 2000-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2000-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   STL-like additional functors
@@ -20,12 +20,21 @@
 
 namespace pcomn {
 
-/******************************************************************************/
-/** Functor to pass through its argument; effectively calls std::forward<T>.
+/***************************************************************************//**
+ Functor to pass through its argument; effectively calls std::forward<T>.
 *******************************************************************************/
 struct identity {
       template<typename T>
       T &&operator() (T &&t) const { return std::forward<T>(t) ; }
+} ;
+
+/***************************************************************************//**
+ Converter functor
+*******************************************************************************/
+template<typename T>
+struct cast_to {
+      template<typename S>
+      T operator() (S &&source) const { return static_cast<T>(std::forward<S>(source)) ; }
 } ;
 
 template<size_t n>
@@ -35,6 +44,11 @@ struct select {
       {
          return std::get<n>(std::forward<T>(x)) ;
       }
+      template<typename T>
+      auto operator()(T *x) const -> decltype(std::get<n>(*x))
+      {
+         return std::get<n>(*x) ;
+      }
 } ;
 
 typedef select<0> select1st ;
@@ -43,20 +57,18 @@ typedef select<1> select2nd ;
 /*******************************************************************************
  Predicate functors.
 *******************************************************************************/
+template<typename A1>
+using unary_predicate = std::unary_function<A1, bool> ;
+template<typename A1, typename A2 = A1>
+using binary_predicate = std::binary_function<A1, A2, bool> ;
+
 /// Predicate adaptor, the opposite to std::unary_negate.
 /// Reevaluates the result of Predicate (which must not necessary return bool value)
 /// as a boolean value.
-template<class Predicate>
-struct unary_affirm : std::unary_function<typename Predicate::argument_type, bool>
-{
-      explicit unary_affirm(const Predicate& x) :
-         pred(x)
-      {}
-
-      bool operator() (const typename Predicate::argument_type& x) const
-      {
-         return !!pred(x) ;
-      }
+template<typename Predicate>
+struct unary_affirm : unary_predicate<typename Predicate::argument> {
+      explicit unary_affirm(const Predicate& x) : pred(x) {}
+      bool operator() (const typename Predicate::argument_type& x) const { return !!pred(x) ; }
 
    protected:
       Predicate pred ;
@@ -65,14 +77,11 @@ struct unary_affirm : std::unary_function<typename Predicate::argument_type, boo
 /// Predicate adaptor, the opposite to std::binary_negate.
 /// Reevaluates the result of Predicate (which must not necessary return bool value)
 /// as a boolean value.
-template<class Predicate>
-struct binary_affirm : std::binary_function<typename Predicate::first_argument_type,
-                                            typename Predicate::second_argument_type,
-                                            bool>
+template<typename Predicate>
+struct binary_affirm : binary_predicate<typename Predicate::first_argument_type,
+                                        typename Predicate::second_argument_type>
 {
-      explicit binary_affirm(const Predicate& x) :
-         pred(x)
-      {}
+      explicit binary_affirm(const Predicate& x) : pred(x) {}
 
       bool operator() (const typename Predicate::first_argument_type& a1,
                        const typename Predicate::second_argument_type& a2) const
@@ -107,15 +116,6 @@ struct destroy_object : std::unary_function<T &, T *>
          (&object)->~T() ;
          return &object ;
       }
-} ;
-
-/*******************************************************************************
- Converter functors
-*******************************************************************************/
-template<typename S, typename T>
-struct convert_object : std::unary_function<S, T>
-{
-      T operator() (S &source) const { return T(source) ; }
 } ;
 
 /*******************************************************************************
@@ -359,10 +359,36 @@ P_BIND_THISPTR_(8) ;
 #undef P_PLACELIST_
 #undef P_BIND_THISPTR_
 
+template<typename> struct function_type ;
+
+template<typename Ret, typename Class, typename... Args>
+struct function_type<Ret(Class::*)(Args...) const>
+{
+    typedef std::function<Ret(Args...)> type ;
+} ;
+
+template<typename Ret, typename Class, typename... Args>
+struct function_type<Ret(Class::*)(Args...)>
+{
+    typedef std::function<Ret(Args...)> type ;
+} ;
+
+template<typename Callable>
+using function_type_t = typename function_type<decltype(&Callable::operator())>::type ;
+
+/// Make std::function from a function pointer.
 template<typename R, typename... Args>
 std::function<R(Args...)> make_function(R (*fn)(Args...))
 {
    return {fn} ;
+}
+
+/// Make std::function from lambda or any object with `operator()`.
+/// @note Does not work with objects with several overloaded `operator()`.
+template<typename Callable>
+function_type_t<Callable> make_function(Callable &&fn)
+{
+   return {std::forward<Callable>(fn)} ;
 }
 
 template<typename, typename>
@@ -374,5 +400,20 @@ struct is_callable<T, R(Args...)> :
                         std::is_constructible<std::function<R(Args...)>, T>::value)> {} ;
 
 } // end of namespace pcomn
+
+
+#ifndef PCOMN_STL_CXX17
+
+namespace std {
+
+template<class Predicate>
+inline constexpr unary_negate<Predicate> not_fn(Predicate &&pred)
+{
+   return not1(forward<Predicate>(pred)) ;
+}
+
+} // end of namespace std
+
+#endif /* PCOMN_STL_CXX17 */
 
 #endif /* __PCOMN_FUNCTION_H */

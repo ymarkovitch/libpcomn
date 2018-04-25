@@ -1,7 +1,7 @@
 /*-*- tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   unittest_sys.cpp
- COPYRIGHT    :   Yakov Markovitch, 2009-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2009-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Unittests for routines from pcomn::sys namespace
@@ -42,7 +42,7 @@ void SysDirTests::Test_Opendir()
    using namespace pcomn ;
    std::vector<std::string> content ;
 
-   CPPUNIT_LOG_ASSERT(sys::opendir(str::cstr(dataDir()), sys::ODIR_CLOSE_DIR, appender(content), RAISE_ERROR) >= 0) ;
+   CPPUNIT_LOG_ASSERT((intptr_t)sys::opendir(str::cstr(dataDir()), sys::ODIR_CLOSE_DIR, appender(content), RAISE_ERROR) < 0) ;
    CPPUNIT_LOG_EQUAL(CPPUNIT_SORTED(content), CPPUNIT_STRVECTOR((".")(".."))) ;
    swap_clear(content) ;
 

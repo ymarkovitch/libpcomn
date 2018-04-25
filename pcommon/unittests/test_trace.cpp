@@ -1,7 +1,7 @@
 /*-*- tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   test_trace.cpp
- COPYRIGHT    :   Yakov Markovitch, 1998-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1998-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   TRACEPX/WARNPX tests
@@ -254,6 +254,9 @@ int main(int argc, char *argv[])
 
    std::cout << "Press ENTER to end program..." << std::flush ;
    getchar() ;
+
+   TEST_TRACE(TTST_FirstGroup, DBGL_ALWAYS) ;
+   TEST_TRACE(TTST_SecondGroup, DBGL_ALWAYS) ;
 
    TEST_TRACE(TST0_Group2, DBGL_MIDLEV) ;
    TEST_WARN(TST0_Group2, false, DBGL_MIDLEV) ;

@@ -3,17 +3,22 @@
 #define __PTRACE_H
 /*******************************************************************************
  FILE         :   pcomn_trace.h
- COPYRIGHT    :   Yakov Markovitch, 1996-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1996-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Tracing paraphernalia (diagnostic groups, tracing macros, etc.)
 
  CREATION DATE:   17 Jun 1996
 *******************************************************************************/
+/** @file
+  Logging and debugging trace framework.
+*******************************************************************************/
 #include <pcommon.h>
 #include <pcomn_omanip.h>
 
 #include <iostream>
+#include <memory>
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -21,6 +26,11 @@
 #if defined(__PCOMN_TRACE) && !defined(__PCOMN_WARN)
 #define __PCOMN_WARN
 #endif
+
+/******************************************************************************/
+/** @addtogroup pcomn_trace Tracing and logging framework
+ * @{
+*******************************************************************************/
 
 /// Diagnostics levels
 const unsigned DBGL_ALWAYS  = 0 ;
@@ -37,12 +47,12 @@ const unsigned DBGL_MAXLEVEL = DBGL_VERBOSE ;
 
 namespace diag {
 
-const unsigned MaxGroupsNum      = 256 ; /**< Maximum overall number of groups */
+const unsigned MaxGroupsNum      = 512 ; /**< Maximum overall number of groups */
 const unsigned MaxSuperGroupsNum = 256 ; /**< Maximum overall number of supergroups */
 const char     GroupDelim        = '_' ; /**< A subgroup/supergroup name delimiter */
-const unsigned MaxSuperGroupLen  = 8 ;   /**< Maximum supergroup name length */
+const unsigned MaxSuperGroupLen  = 15 ;  /**< Maximum supergroup name length */
 
-/// Tracing mode flags
+/// Tracing mode flags.
 enum DiagMode {
    DisableDebugOutput = 0x0001, /**< Turn off tracing completely */
    DisableDebuggerLog = 0x0002, /**< Don't output trace into debugger log (like Win32 OutpudDebugString) */
@@ -50,18 +60,24 @@ enum DiagMode {
    AppendTrace        = 0x0008, /**< Don't truncate the trace file on open */
    EnableFullPath     = 0x0010, /**< Output full source file paths into the trace log */
    DisableLineNum     = 0x0020, /**< Don't output source line numbers into the trace log */
-   UseThreadId        = 0x0040, /**< Output thread IDs into the trace log */
-   UseProcessId       = 0x0080  /**< Output process IDs into the trace log */
+   ShowThreadId       = 0x0040, /**< Output thread IDs into the trace log */
+   ShowProcessId      = 0x0080, /**< Output process IDs into the trace log */
+   ShowLogLevel       = 0x0100  /**< Show log level of the message in the trace log */
 } ;
+
+constexpr const DiagMode UseThreadId   = ShowThreadId ;  /**< Backward compatibility */
+constexpr const DiagMode UseProcessId  = ShowProcessId ; /**< Backward compatibility */
 
 /// Log levels
 enum LogLevel : unsigned {
    LOGL_ALERT,
+   LOGL_CRIT,
    LOGL_ERROR,
    LOGL_WARNING,
    LOGL_NOTE,
    LOGL_INFO,
-   LOGL_DEBUG
+   LOGL_DEBUG,
+   LOGL_TRACE
 } ;
 
 /// Callback type for writing syslog messages.
@@ -165,10 +181,10 @@ class _PCOMNEXP PDiagBase {
    protected:
       PDiagBase(Properties *grp) ;
 
-      static void trace_message(const char *type, const char *group, const char *msg,
+      static void trace_message(const char *type, const Properties *group, const char *msg,
                                 const char *fname, unsigned line) ;
 
-      static void syslog_message(LogLevel level, const char *group, const char *msg,
+      static void syslog_message(LogLevel level, const Properties *group, const char *msg,
                                  const char *fname, unsigned line) ;
 } ;
 
@@ -261,6 +277,8 @@ _PCOMNEXP void register_syslog_writer(syslog_writer writer, void *data= NULL) ;
 
 _PCOMNEXP void register_syslog(int fd, LogLevel level = LOGL_WARNING) ;
 
+_PCOMNEXP const char *syslog_ident() ;
+
 }   // end of diag namespace
 
 /******************************************************************************/
@@ -278,7 +296,7 @@ class __VA_ARGS__ GRP : private PDiagBase                               \
    static void slog(LogLevel lvl, const char *fname, unsigned line)     \
    {                                                                    \
       PDiagBase::syslog_message                                         \
-         (lvl, properties()->name(), outstr(), fname, line) ;           \
+         (lvl, properties(), outstr(), fname, line) ;                   \
    }                                                                    \
                                                                         \
    static bool IsSuperGroupEnabled()                                    \
@@ -325,16 +343,16 @@ class __VA_ARGS__ GRP : private PDiagBase                               \
    void ::diag::grp::GRP::trace(const char *fname, unsigned line)       \
    {                                                                    \
       PDiagBase::trace_message                                          \
-         (" ", properties()->name(), outstr(), fname, line) ;           \
+         (" ", properties(), outstr(), fname, line) ;                   \
    }                                                                    \
    void ::diag::grp::GRP::warn(const char *fname, unsigned line)        \
    {                                                                    \
       PDiagBase::trace_message                                          \
-         ("!", properties()->name(), outstr(), fname, line) ;           \
+         ("!", properties(), outstr(), fname, line) ;                   \
    }
 
-#define DIAG_DECLARE_GROUP(GRP)            DECLARE_DIAG_GROUP(GRP, P_EMPTY_ARG)
-#define DIAG_DEFINE_GROUP(GRP, ENA, LVL)   DEFINE_DIAG_GROUP(GRP, ENA, LVL, P_EMPTY_ARG);
+#define DIAG_DECLARE_GROUP(GRP)            DECLARE_DIAG_GROUP(GRP)
+#define DIAG_DEFINE_GROUP(GRP, ENA, LVL)   DEFINE_DIAG_GROUP(GRP, ENA, LVL);
 
 /*******************************************************************************
  Global trace-controlling function.
@@ -354,7 +372,16 @@ class __VA_ARGS__ GRP : private PDiagBase                               \
 #define diag_getlevel(group)          (::diag::grp::group::GetLevel())
 
 #define diag_isenabled_output(group, level) \
-   (!(diag_getmode() & ::diag::DisableDebugOutput) && ::diag::grp::group::IsEnabled(level))
+   (diag_isenabled_diag() && ::diag::grp::group::IsEnabled(level))
+
+_PCOMNEXP bool diag_isenabled_diag() ;
+
+/// Force diagnostics trace to enabled or disabled state regardless or mode flags.
+/// Does _not_ change the mode flags. To reset enabled/disabled state to specified by
+/// mode flags (e.g. by configuration file), call diag_unforce_diag().
+_PCOMNEXP void diag_force_diag(bool ena) ;
+
+_PCOMNEXP void diag_unforce_diag() ;
 
 inline
 void diag_enable_supergroup(const char *name, bool enabled)
@@ -377,19 +404,16 @@ inline
 unsigned diag_getmode() { return ::diag::PDiagBase::mode() ; }
 
 inline
-bool diag_isenabled_diag() { return !(diag_getmode() & ::diag::DisableDebugOutput) ; }
-
-inline
 void diag_setlog(int fd) { ::diag::PDiagBase::setlog(fd) ; }
 
 inline
 void diag_setlog(int fd, bool own) { ::diag::PDiagBase::setlog(fd, own) ; }
 
 inline
-void diag_readprofile() { ::diag::PTraceConfig::readProfile() ; }
+bool diag_readprofile() { return ::diag::PTraceConfig::readProfile() ; }
 
 inline
-void diag_writeprofile() { ::diag::PTraceConfig::writeProfile() ; }
+bool diag_writeprofile() { return ::diag::PTraceConfig::writeProfile() ; }
 
 inline
 void diag_syncprofile() { ::diag::PTraceConfig::syncProfile() ; }
@@ -449,8 +473,8 @@ DECLARE_DIAG_GROUP(Def, _PCOMNEXP) ;
 #define DIAG_SETMODE(mode, onoff)      ((void)0)
 #define DIAG_GETMODE()                 ((unsigned)::diag::DisableDebugOutput)
 #define DIAG_SETLOG(fd)                ((void)0)
-#define DIAG_READPROFILE()             ((void)0)
-#define DIAG_WRITEPROFILE()            ((void)0)
+#define DIAG_READPROFILE()             (false)
+#define DIAG_WRITEPROFILE()            (false)
 #define DIAG_SYNCPROFILE()             ((void)0)
 #define DIAG_SETPROFILE(filename)      ((void)0)
 #define DIAG_INITTRACE(filename)       ((void)0)
@@ -503,41 +527,52 @@ DECLARE_DIAG_GROUP(Def, _PCOMNEXP) ;
 #endif
 
 /*******************************************************************************
- The family of logging macros: LOGPXERR/LOGPXWARN/LOGPXINFO/LOGPXDBG
+ The family of logging macros: LOGPXERR/LOGPXWARN/LOGPXINFO/LOGPXNOTE/LOGPXDBG/LOGPXTRACE
 *******************************************************************************/
 /// Output debug message both into the diagnostics trace and system log, if tracing and
-/// specified diagnostics group are enabled and group's diagnostics level is greater or
-/// equal to @a LVL.
+/// specified diagnostics group are enabled.
 ///
 /// This macro closely resembles TRACEPX, but in contrast to the latter its code doesn't
 /// disappear from compiled code in release mode. While in release mode it never writes
-/// into the diagnostics trace log, it can write into syslog, subject to GRP and LVL.
-/// On Unix, writes into syslog with LOG_DEBUG priority
+/// into the diagnostics trace log, it can write into syslog, subject to @a GRP.
+/// On Unix, writes into syslog with LOG_TRACE priority
 ///
-#define LOGPXDBG(GRP, LVL, MSG)                                         \
-   (diag_isenabled_output(GRP, LVL) && ::diag::PDiagBase::Lock() &&     \
+#define LOGPXTRACE(GRP, MSG)                                            \
+   (diag_isenabled_output(GRP, DBGL_ALWAYS) && ::diag::PDiagBase::Lock() && \
+    LOGMSGPX(GRP, TRACE, MSG) && OUTMSGPX(GRP, trace))
+
+/// Output debug message both into the diagnostics trace and system log, if *both*
+/// tracing and **supergroup** of the specified @a GRP are enabled
+///
+#define LOGPXDBG(GRP, MSG)                                              \
+   (::diag_isenabled_diag() && ::diag::grp::GRP::IsSuperGroupEnabled() && \
+    ::diag::PDiagBase::Lock() &&                                        \
     LOGMSGPX(GRP, DEBUG, MSG) && OUTMSGPX(GRP, trace))
 
-/// Output INFO message into the system log and, if tracing and specified
-/// diagnostics group are enabled, also into diagnostics trace.
-/// @note Doesn't take group diagnostics level into account (i.e. it is enough that the
-/// group is enabled).
+/// Output INFO message into the system log and, if *both* tracing and **supergroup**
+/// of the specified @a GRP are enabled, also into diagnostics trace.
+///
+/// @note Doesn't take subgroup and diagnostics level into account (i.e. it is enough
+/// that the **supergroup** is enabled).
 ///
 #define LOGPXINFO(GRP, MSG)                                             \
    (::diag::PDiagBase::Lock() &&                                        \
     LOGMSGPX(GRP, INFO, MSG) &&                                         \
-    DIAG_ISENABLED_OUTPUT(GRP, DBGL_ALWAYS) && OUTMSGPX(GRP, trace))
+    DIAG_ISENABLED_DIAG() && DIAG_ISENABLED_SUPERGROUP(GRP) && OUTMSGPX(GRP, trace))
 
-/// Output NOTICE message into the system log and, if tracing and specified
-/// diagnostics @em supergroup are enabled, also into diagnostics trace.
+/// Output NOTICE message into the system log and, if *both* tracing and **supergroup**
+/// of the specified @a GRP are enabled, also into diagnostics trace.
+///
+/// @note Doesn't take subgroup and diagnostics level into account (i.e. it is enough
+/// that the **supergroup** is enabled).
 ///
 #define LOGPXNOTE(GRP, MSG)                                             \
    (::diag::PDiagBase::Lock() &&                                        \
     LOGMSGPX(GRP, NOTE, MSG) &&                                         \
     DIAG_ISENABLED_DIAG() && DIAG_ISENABLED_SUPERGROUP(GRP) && OUTMSGPX(GRP, trace))
 
-/// Always output WARNING message into the system log and, if tracing and specified
-/// diagnostics @em supergroup are enabled, also into diagnostics trace.
+/// Output WARNING message into the system log and, if *both* tracing and **supergroup**
+/// of the specified @a GRP are enabled, also into diagnostics trace.
 /// @note On Unix, writes into syslog with LOG_WARNING priority.
 ///
 #define LOGPXWARN(GRP, MSG)                                             \
@@ -545,13 +580,23 @@ DECLARE_DIAG_GROUP(Def, _PCOMNEXP) ;
     LOGMSGPX(GRP, WARNING, MSG) &&                                      \
     DIAG_ISENABLED_DIAG() && DIAG_ISENABLED_SUPERGROUP(GRP) && OUTMSGPX(GRP, warn))
 
-/// Always output ERROR message into the system log and, if tracing enabled, also into
+/// Output  ERROR message into the system log and, if tracing enabled, also into
 /// diagnostics trace.
 /// @note On Unix, writes into syslog with LOG_ERR priority.
 ///
 #define LOGPXERR(GRP, MSG)                                              \
    (::diag::PDiagBase::Lock() &&                                        \
     LOGMSGPX(GRP, ERROR, MSG) &&                                        \
+    DIAG_ISENABLED_DIAG() && OUTMSGPX(GRP, warn))
+
+/// Always output CRITICAL message into the system log and, if tracing is enabled, also
+/// into diagnostics trace.
+/// @note When writes to the diagnostics trace, takes neither group enabled state nore
+/// diagnostics level into account (i.e. it is enough that the @em tracing is enabled).
+///
+#define LOGPXCRIT(GRP, MSG)                                             \
+   (::diag::PDiagBase::Lock() &&                                        \
+    LOGMSGPX(GRP, CRIT, MSG) &&                                         \
     DIAG_ISENABLED_DIAG() && OUTMSGPX(GRP, warn))
 
 /// Always output ALERT message into the system log and, if tracing is enabled, also into
@@ -684,6 +729,12 @@ inline std::ostream &print_file(std::ostream &os, FILE *file)
 template<typename T>
 inline auto otptr(const T *ptr) PCOMN_MAKE_OMANIP(tptr_printer<T>::print, ptr) ;
 
+template<typename T>
+inline auto otptr(const std::unique_ptr<T> &ptr) PCOMN_DERIVE_OMANIP(otptr(ptr.get())) ;
+
+template<typename T>
+inline auto otptr(const std::shared_ptr<T> &ptr) PCOMN_DERIVE_OMANIP(otptr(ptr.get())) ;
+
 template<typename P>
 inline auto oderef(const P &ptr) PCOMN_MAKE_OMANIP(print_dereferenced<P>, std::cref(ptr)) ;
 
@@ -787,5 +838,8 @@ using diag::EndArgs ;
 
 #define SCOPEMEMFNOUT(ARGS)   MEMFNOUT(__FUNCTION__, ARGS)
 
+/******************************************************************************/
+/** @} */ // End of pcomn::trace
+/******************************************************************************/
 
 #endif /* __PTRACE_H */

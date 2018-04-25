@@ -1,7 +1,7 @@
 /*-*- tab-width:4;indent-tabs-mode:nil;c-file-style:"stroustrup";c-file-offsets:((innamespace . 0)(inline-open . 0)(case-label . +)) -*-*/
 /*******************************************************************************
  FILE         :   sockets.cpp
- COPYRIGHT    :   Yakov Markovitch, 2008-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2008-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Socket classes.
@@ -112,8 +112,10 @@ void data_socket::connect(const sock_address &peer_addr, int timeout)
         }
     }
     if (temporary_nonblock)
+    {
         // Restore socket flags
         fcntl(sockd, F_SETFL, sockflags) ;
+    }
 
 	if (status)
 	{

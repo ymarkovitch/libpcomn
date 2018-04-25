@@ -3,7 +3,7 @@
 #define __PCOMN_POOL_H
 /*******************************************************************************
  FILE         :   pcomn_pool.h
- COPYRIGHT    :   Yakov Markovitch, 2010-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2010-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Generic pools.
@@ -44,9 +44,7 @@ class keyed_pool {
       /// @param szlimit
       /// @param hf
       /// @param keq
-      explicit keyed_pool(size_t szlimit,
-                          const hasher &hf = hasher(),
-                          const key_equal &keq = key_equal()) :
+      explicit keyed_pool(size_t szlimit, const hasher &hf = {}, const key_equal &keq = {}) :
          _size(0),
          _size_limit(szlimit),
          _emptykey_count(0),

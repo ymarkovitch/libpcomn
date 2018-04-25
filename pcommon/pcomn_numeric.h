@@ -3,7 +3,7 @@
 #define __PCOMN_NUMERIC_H
 /*******************************************************************************
  FILE         :   pcomn_numeric.h
- COPYRIGHT    :   Yakov Markovitch, 2000-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2000-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Add-on generalized numeric algorithms

@@ -3,7 +3,7 @@
 #define __PCOMN_UNITTEST_H
 /*******************************************************************************
  FILE         :   pcomn_unittest.h
- COPYRIGHT    :   Yakov Markovitch, 2003-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2003-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Helpers for unit testing with CPPUnit
@@ -43,6 +43,7 @@
 #include <set>
 #include <stdexcept>
 #include <mutex>
+#include <chrono>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -60,7 +61,7 @@ namespace unit {
 /*******************************************************************************
  Test environment
 *******************************************************************************/
-template<nullptr_t = nullptr>
+template<novalue = {}>
 struct test_environment {
 
       friend std::string resolve_test_path(const CppUnit::Test &, const std::string &, bool) ;
@@ -88,12 +89,12 @@ struct test_environment {
 /*******************************************************************************
  test_environment
 *******************************************************************************/
-template<nullptr_t n>
+template<novalue n>
 std::string test_environment<n>::_progdir (".") ;
-template<nullptr_t n>
+template<novalue n>
 std::string test_environment<n>::_testdir ;
 
-template<nullptr_t n>
+template<novalue n>
 std::string test_environment<n>::join_path(const std::string &dir, const strslice &path)
 {
    if (!path || path.size() == 1 && path.front() == '.')
@@ -103,7 +104,7 @@ std::string test_environment<n>::join_path(const std::string &dir, const strslic
    return (dir + PCOMN_PATH_NATIVE_DELIM).append(path.begin(), path.end()) ;
 }
 
-template<nullptr_t n>
+template<novalue n>
 std::string test_environment<n>::at_srcdir(const strslice &path)
 {
    if (_testdir.empty())
@@ -121,7 +122,7 @@ std::string test_environment<n>::at_srcdir(const strslice &path)
    return join_path(testdir(), path) ;
 }
 
-template<nullptr_t n>
+template<novalue n>
 std::string test_environment<n>::resolve_test_path(const CppUnit::Test &tests, const std::string &name, bool top)
 {
    using namespace CppUnit ;
@@ -151,7 +152,7 @@ std::string test_environment<n>::resolve_test_path(const CppUnit::Test &tests, c
    return pathstr ;
 }
 
-template<nullptr_t n>
+template<novalue n>
 int test_environment<n>::prepare_test_environment(int argc, char ** const argv, const char *diag_profile, const char *title)
 {
    #if PCOMN_PL_MS
@@ -165,6 +166,11 @@ int test_environment<n>::prepare_test_environment(int argc, char ** const argv, 
       _CrtSetReportFile(_CRT_ERROR, _CRTDBG_FILE_STDERR);
       SetErrorMode(SEM_FAILCRITICALERRORS|SEM_NOGPFAULTERRORBOX) ;
    }
+   #endif
+
+   #ifdef __GLIBC__
+   // Suppress printing the program name and a colon by GLIBC's error_at_line()
+   error_print_progname = []{} ;
    #endif
 
    if (diag_profile && *diag_profile)
@@ -328,7 +334,7 @@ unique_locked_ostream<Tag>::~unique_locked_ostream() = default ;
 /*******************************************************************************
                      class TestProgressListener
 *******************************************************************************/
-template<nullptr_t = nullptr>
+template<novalue = {}>
 class TestListener : public CppUnit::TextTestProgressListener {
    public:
       void startTest(CppUnit::Test *test)
@@ -354,12 +360,12 @@ class TestListener : public CppUnit::TextTestProgressListener {
       static void resetCurrentName() { *_current_fullname = 0 ; }
 } ;
 
-template<nullptr_t n>
+template<novalue n>
 char TestListener<n>::_current_fullname[2048] ;
-template<nullptr_t n>
+template<novalue n>
 const char *TestListener<n>::_current_shortname = _current_fullname ;
 
-template<nullptr_t n>
+template<novalue n>
 void TestListener<n>::setCurrentName(CppUnit::Test *test)
 {
    const std::string &name = test->getName() ;
@@ -637,6 +643,29 @@ inline int run_tests(TestRunner &runner, int argc, char ** const argv,
       !runner.run(test_path) ;
 }
 
+template<typename S1, typename S2, typename... SN>
+inline void add_test_suites(TestRunner &runner)
+{
+   runner.addTest(S1::suite()) ;
+   add_test_suites<S2, SN...>(runner) ;
+}
+
+template<typename S>
+inline void add_test_suites(TestRunner &runner)
+{
+   runner.addTest(S::suite()) ;
+}
+
+template<typename TestSuite1, typename... TestSuiteN>
+inline int run_tests(int argc, char ** const argv,
+                     const char *diag_profile = nullptr, const char *title = nullptr)
+{
+   pcomn::unit::TestRunner runner ;
+   add_test_suites<TestSuite1, TestSuiteN...>(runner) ;
+   return
+      run_tests(runner, argc, argv, diag_profile, title) ;
+}
+
 /******************************************************************************/
 /** Convert an object to a string as specified by CppUnit::assertion_traits
 
@@ -662,6 +691,9 @@ struct assertion_traits<T &> : assertion_traits<T> {} ;
 
 template<typename T>
 struct assertion_traits<const T> : assertion_traits<T> {} ;
+
+template<typename T>
+struct assertion_traits<std::reference_wrapper<T>> : assertion_traits<T> {} ;
 
 struct stringify_item {
       stringify_item(std::string &result, char delimiter) :
@@ -787,7 +819,19 @@ struct assertion_traits<pcomn::simple_matrix<T, r> > :
 template<>
 inline std::string assertion_traits<std::type_info>::toString(const std::type_info &x)
 {
-   return std::string(x.name()) ;
+   return PCOMN_DEMANGLE(x.name()) ;
+}
+
+template<>
+std::string assertion_traits<unsigned char>::toString(const unsigned char &value)
+{
+   return std::to_string((unsigned)value) ;
+}
+
+template<>
+std::string assertion_traits<signed char>::toString(const signed char &value)
+{
+   return std::to_string((int)value) ;
 }
 
 template<typename T1, typename T2>
@@ -826,6 +870,20 @@ struct assertion_traits<std::tuple<A...> > {
          return result.append(1, ')') ;
       }
 } ;
+
+template<typename Rep, intmax_t nom, intmax_t denom>
+struct assertion_traits<std::chrono::duration<Rep, std::ratio<nom, denom>>> {
+      typedef std::chrono::duration<Rep, std::ratio<nom, denom>> type ;
+
+      static bool equal(const type &lhs, const type &rhs) { return lhs == rhs ; }
+      static std::string toString(const type &value) ;
+} ;
+
+template<typename Rep, intmax_t nom, intmax_t denom>
+std::string assertion_traits<std::chrono::duration<Rep, std::ratio<nom, denom>>>::toString(const type &value)
+{
+   return pcomn::string_cast(nom * value.count(), '/', denom) ;
+}
 
 template<typename S>
 struct assertion_traits_str {

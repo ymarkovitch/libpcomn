@@ -1,7 +1,6 @@
 PCOMMON C++ Utility Library
-Copyright (c) 1994-2014, Yakov Markovitch
+Copyright (c) 1994-2017, Yakov Markovitch
 
-$Id: CREDITS.txt 1646 2007-07-20 14:30:20Z Markovitch $
 ==============================================================================
 AUTHOR
 
@@ -12,8 +11,9 @@ Except where overwise noted all code was authored by:
 ==============================================================================
 CONTRIBUTORS
 
-I am very grateful for the support provided by the following people:
+I am extremely grateful for contributions and invaluable assistance provided
+by the following bright engineers:
 
+        Vadim Hohlov  <vadimhohlov@gmail.com>
         Denis Suhanov <denis@perlovka.org>
-
-        Vadim Hohlov <vadimhohlov@gmail.com>
+        Leo Yuriev    <leo@yuriev.ru>

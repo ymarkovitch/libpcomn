@@ -3,7 +3,7 @@
 #define __PCOMN_ALGORITHM_H
 /*******************************************************************************
  FILE         :   pcomn_algorithm.h
- COPYRIGHT    :   Yakov Markovitch, 1998-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1998-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Some necessary and useful algorithms that absent in STL.
@@ -79,10 +79,16 @@ std::pair<InputIterator, OutputIterator> bound_copy_if
  Member extractors
 *******************************************************************************/
 #define PCOMN_MEMBER_EXTRACTOR(member)                                  \
-   template<typename T>                                                 \
+   template<typename T = void>                                          \
    struct extract_##member {                                            \
       typedef decltype(std::declval<T>().member()) type ;               \
       type operator() (const T &t) const { return t.member() ; }        \
+   } ;                                                                  \
+                                                                        \
+   template<> struct extract_##member<void> {                           \
+      template<typename T>                                              \
+      auto operator() (T &&t) const ->decltype(std::declval<T>().member()) \
+      { return std::forward<T>(t).member() ; }                          \
    } ;                                                                  \
                                                                         \
    template<typename T>                                                 \
@@ -194,10 +200,10 @@ make_before_by_ndx(RandomAccessIter &&iter, Compare &&comp)
 /// @a begin and @a end iterators, returns 'true', otherwise 'false'.
 /// @note For equality test uses operator==
 template<class InputIterator, class T>
-inline bool exists(InputIterator begin, InputIterator end, const T &value)
+inline bool exists(InputIterator begin, InputIterator end, T &&value)
 {
    for (; begin != end ; ++begin)
-      if (*begin == value)
+      if (*begin == std::forward<T>(value))
          return true ;
    return false ;
 }

@@ -3,7 +3,7 @@
 #define __PCOMN_FLGOUT_H
 /*******************************************************************************
  FILE         :   pcomn_flgout.h
- COPYRIGHT    :   Yakov Markovitch, 1999-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1999-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Manipulators and traits for human-readable stream output of enum values
@@ -14,15 +14,15 @@
 /** @file
  Manipulators and traits for human-readable stream output of enum values and bit flags
 *******************************************************************************/
-#include <pcomn_omanip.h>
 #include <pcomn_meta.h>
 #include <pcomn_macros.h>
 #include <pcommon.h>
 
-#include <iostream>
 #include <iomanip>
+#include <iostream>
 #include <string>
 #include <utility>
+#include <algorithm>
 
 #define PCOMN_FLGOUT_DESC(flag) {(flag), #flag}
 #define PCOMN_FLGOUT_DESCF(flag, mask) {(flag), (mask), #flag}
@@ -32,17 +32,26 @@
 
 namespace pcomn {
 
-struct flag_name {
-      constexpr flag_name(uintptr_t f, uintptr_t m, const char *txt) : flag(f), mask(m), text(txt) {}
-      constexpr flag_name(uintptr_t f, const char *txt) : flag(f), mask(0), text(txt) {}
-      constexpr flag_name() : flag(), mask(), text() {}
+struct flag_desc ;
+struct oflags ;
 
-      uintptr_t   flag ;
-      uintptr_t   mask ;
-      const char *text ;
+/// Backward compatibility typedef.
+typedef flag_desc flg2txt_s ;
+/// Backward compatibility name
+typedef oflags flgout ;
+
+/******************************************************************************/
+/** Description of a bit flag constant: value, mask, name.
+*******************************************************************************/
+struct flag_desc {
+      constexpr flag_desc(uintptr_t f, uintptr_t m, const char *name) : flag(f), mask(m), text(name) {}
+      constexpr flag_desc(uintptr_t f, const char *name) : flag(f), mask(0), text(name) {}
+      constexpr flag_desc() : flag(), mask(), text() {}
+
+      const uintptr_t    flag ;
+      const uintptr_t    mask ;
+      const char * const text ;
 } ;
-
-typedef flag_name flg2txt_s ;
 
 /******************************************************************************/
 /** std::ostream manipulator for debugging bit flags output.
@@ -55,7 +64,7 @@ struct oflags {
       /// space is used
       /// @param  width field width for every printed flag; 0 means the width is variable
       /// to fit the flag's name
-      oflags(uintptr_t flags, const flag_name *desc, const char *delim, int width = 0) :
+      oflags(uintptr_t flags, const flag_desc *desc, const char *delim, int width = 0) :
          _desc(desc),
          _delim(delim ? delim : " "),
          _flags(flags),
@@ -63,7 +72,7 @@ struct oflags {
       {}
 
       /// @overload
-      oflags(uintptr_t flags, const flag_name *desc, int width = 0) :
+      oflags(uintptr_t flags, const flag_desc *desc, int width = 0) :
          _desc(desc),
          _delim(" "),
          _flags(flags),
@@ -80,7 +89,7 @@ struct oflags {
       std::basic_ostream<C> &out(std::basic_ostream<C> &os) const ;
 
    private:
-      const flag_name * _desc ;
+      const flag_desc * _desc ;
       const char *      _delim ;
       uintptr_t         _flags ;
       int               _width ;
@@ -93,7 +102,7 @@ std::basic_ostream<C> &oflags::out(std::basic_ostream<C> &os) const
       return os ;
 
    const char *delim = "" ;
-   for (const flag_name *desc = _desc ; desc->text ; ++desc)
+   for (const flag_desc *desc = _desc ; desc->text ; ++desc)
       if (is_flags_equal(_flags, desc->flag,
                          desc->mask ? desc->mask : (desc->flag ? desc->flag : ~desc->flag)))
       {
@@ -107,13 +116,10 @@ std::basic_ostream<C> &oflags::out(std::basic_ostream<C> &os) const
    return os ;
 }
 
-/// Backward compatibility name
-typedef oflags flgout ;
-
 /******************************************************************************/
 /** Names of enum values.
 *******************************************************************************/
-template<typename Enum, nullptr_t = nullptr> struct enum_names ;
+template<typename Enum, std::nullptr_t = nullptr> struct enum_names ;
 
 template<typename Enum>
 const char *enum_name(Enum value)
@@ -164,10 +170,10 @@ std::string enum_string(Enum value)
 *******************************************************************************/
 #define PCOMN_STARTDEF_ENUM_ELEMENTS(Enum)                              \
    namespace pcomn {                                                    \
-   template<nullptr_t dummy>                                            \
+   template<std::nullptr_t dummy>                                       \
    struct enum_names< Enum, dummy>                                      \
    { static const std::pair<const char *, Enum> values[] ; } ;          \
-   template<nullptr_t dummy>                                            \
+   template<std::nullptr_t dummy>                                            \
    const std::pair<const char *, Enum> enum_names< Enum, dummy>::values[] = {
 
 #define PCOMN_ENUM_ELEMENT(ns, value) {#value, ns::value}
@@ -177,6 +183,13 @@ std::string enum_string(Enum value)
 #define PCOMN_DEFINE_ENUM_ELEMENTS(ns, Enum, count, ...)  \
    PCOMN_STARTDEF_ENUM_ELEMENTS(ns::Enum)                 \
    P_APPL1(PCOMN_ENUM_ELEMENT, ns, count, __VA_ARGS__),   \
+   {} } ; }
+
+#define PCOMN_DESCRIBE_ENUM(Enum, ...) PCOMN_DESCRIBE_ENUM_(Enum, P_VA_ARGC(__VA_ARGS__), __VA_ARGS__)
+
+#define PCOMN_DESCRIBE_ENUM_(Enum, va_argc, ...)             \
+   PCOMN_STARTDEF_ENUM_ELEMENTS(Enum)                        \
+   P_APPL1(PCOMN_ENUM_ELEMENT, Enum, va_argc, __VA_ARGS__),  \
    {} } ; }
 
 /******************************************************************************/

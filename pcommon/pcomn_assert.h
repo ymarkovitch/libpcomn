@@ -3,7 +3,7 @@
 #define __PCOMN_ASSERT_H
 /*******************************************************************************
  FILE         :   pcomn_assert.h
- COPYRIGHT    :   Yakov Markovitch, 1999-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1999-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Inline-debugging macros for C and C++
@@ -152,46 +152,75 @@ PCOMN_CFUNC void __passertfail(const char *fmt, const char *msg, const char *fil
 #  define __pcomn_assert_fail__(fmt, msg, file, line) (__passertfail((fmt), (msg), (file), (line)))
 #endif
 
-#if defined(__PCOMN_DEBUG)
+#define IsDebuggerPresent() (0)
+#define DebugBreak() ((void)0)
 
 #if defined(PCOMN_PL_WINDOWS)
 
-/* Damn! Borland C++ Builder has broken wtypes.h */
-#ifdef PCOMN_COMPILER_BORLAND
-#include <rpc.h>
-#include <rpcndr.h>
-#endif
+#undef IsDebuggerPresent
+#undef DebugBreak
 
-#include <wtypes.h>
-#ifdef __cplusplus
+#  include <wtypes.h>
+#  ifdef __cplusplus
 extern "C" {
-#endif
-DECLSPEC_IMPORT BOOL WINAPI IsDebuggerPresent() ;
-DECLSPEC_IMPORT void WINAPI DebugBreak(void) ;
-#ifdef __cplusplus
+#  endif
+   DECLSPEC_IMPORT BOOL WINAPI IsDebuggerPresent() ;
+   DECLSPEC_IMPORT void WINAPI DebugBreak(void) ;
+#  ifdef __cplusplus
 }
-#endif
+#  endif
 
-#elif defined(PCOMN_PL_LINUX) && defined(PCOMN_PL_X86)
+// end of PCOMN_PL_WINDOWS
+#elif defined(PCOMN_PL_LINUX)
+
+#undef IsDebuggerPresent
+#undef DebugBreak
+
 #include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
-#define IsDebuggerPresent() (!!getenv("PCOMN_DEBUGGING"))
-static inline void DebugBreak() { __asm__("int3") ; }
-
+#ifdef __cplusplus
+template<bool> bool IsDebuggerPresent_() noexcept ;
+#define IsDebuggerPresent() (IsDebuggerPresent_<true>())
+template<bool>
+__noinline bool IsDebuggerPresent_() noexcept
 #else
+static __attribute__((used)) __noinline int IsDebuggerPresent()
+#endif
+{
+    static const char TRACERPID[] = "TracerPid:" ;
+    char buf[256] ;
+    int fd ;
+    const char *tracepid ;
+    int dummy ;
 
-#  define __pcomn_debug_fail__(fmt, msg, file, line) __pcomn_assert_fail__((fmt), (msg), (file), (line))
+    memset(buf, 0, sizeof buf) ;
+    if ((fd = open("/proc/self/status", O_RDONLY)) >= 0)
+    {
+       dummy = read(fd, buf, sizeof buf - 1) ;
+       close(fd) ;
+       (void)dummy ;
+    }
+    tracepid = strstr(buf, TRACERPID) ;
 
-#endif /* End of __PCOMN_DEBUG && PCOMN_PL_WINDOWS */
+    return tracepid && atoll(tracepid + strlen(TRACERPID)) > 0 ;
+}
+
+#  ifdef PCOMN_PL_X86
+   static __inline void DebugBreak() { __asm__("int3") ; }
+#  else
+#  define DebugBreak() ((void)0)
+#  endif
+
+// end of PCOMN_PL_LINUX
+#endif
 
 #define __pcomn_debug_fail__(fmt, msg, file, line) \
    (IsDebuggerPresent() ? DebugBreak() : (__pcomn_assert_fail__((fmt), (msg), (file), (line))))
-
-#else
-
-#  define __pcomn_debug_fail__(fmt, msg, file, line) __pcomn_assert_fail__((fmt), (msg), (file), (line))
-
-#endif /* __PCOMN_DEBUG */
 
 #ifdef __cplusplus
 template<typename N>

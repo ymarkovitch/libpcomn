@@ -3,7 +3,7 @@
 #define __PCOMN_INTEGER_H
 /*******************************************************************************
  FILE         :   pcomn_integer.h
- COPYRIGHT    :   Yakov Markovitch, 2006-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2006-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Integral types traits.
@@ -15,6 +15,7 @@
 #include <pcomn_meta.h>
 #include <pcomn_bitops.h>
 #include <pcomn_assert.h>
+#include <pcommon.h>
 
 #include <functional>
 #include <iterator>
@@ -66,10 +67,13 @@ template<typename T>
 constexpr const T int_traits<T>::signbit ;
 
 /******************************************************************************/
-/** Type trait checks whether T is an integral type and not bool.
+/** Type trait checks whether T is an integral type and @em not bool.
 *******************************************************************************/
 template<typename T>
 struct is_integer : std::bool_constant<std::is_integral<T>::value && !std::is_same<T, bool>::value> {} ;
+
+template<typename T>
+struct is_numeric : std::bool_constant<std::is_arithmetic<T>::value && !std::is_same<T, bool>::value> {} ;
 
 /******************************************************************************/
 /** Overload enabler, a la enable_if<>.
@@ -87,6 +91,12 @@ if_signed_int : std::enable_if<(is_integer<T>::value && std::numeric_limits<T>::
 template<typename T, typename R = T> struct
 if_unsigned_int : std::enable_if<(is_integer<T>::value && !std::numeric_limits<T>::is_signed), R> {} ;
 
+template<typename T, typename R = T> struct
+if_numeric : std::enable_if<is_numeric<T>::value, R> {} ;
+
+template<typename T, typename R = T> struct
+if_arithmetic : std::enable_if<std::is_arithmetic<T>::value, R> {} ;
+
 template<typename T, typename R = T>
 using if_integer_t = typename if_integer<T, R>::type ;
 template<typename T, typename R = T>
@@ -95,6 +105,10 @@ template<typename T, typename R = T>
 using if_signed_int_t = typename if_signed_int<T, R>::type ;
 template<typename T, typename R = T>
 using if_unsigned_int_t = typename if_unsigned_int<T, R>::type ;
+template<typename T, typename R = T>
+using if_numeric_t = typename if_numeric<T, R>::type ;
+template<typename T, typename R = T>
+using if_arithmetic_t = typename if_arithmetic<T, R>::type ;
 
 template<typename T>
 inline constexpr if_signed_int_t<T> sign_bit(T value)
@@ -499,24 +513,30 @@ using ct_log2floor = ct_lnzbpos<i> ;
 template<unsigned v, unsigned s>
 struct ct_shl : public detail::_ct_shl<v, s, (s < bitsizeof(unsigned)) > {} ;
 
-MS_PUSH_IGNORE_WARNING(4307)
-
-template<unsigned v1,
-         unsigned v2 = (unsigned)-1, unsigned v3 = (unsigned)-1, unsigned v4 = (unsigned)-1,
-         unsigned v5 = (unsigned)-1, unsigned v6 = (unsigned)-1, unsigned v7 = (unsigned)-1,
-         unsigned v8 = (unsigned)-1>
+template<unsigned long long v1, unsigned long long...vN>
 struct one_of {
-      static const unsigned msz = bitsizeof(unsigned) ;
-      static const unsigned mask =
-         ct_shl<1U, v1>::value | ct_shl<1U, v2>::value | ct_shl<1U, v3>::value |
-         ct_shl<1U, v4>::value | ct_shl<1U, v5>::value | ct_shl<1U, v6>::value |
-         ct_shl<1U, v7>::value | ct_shl<1U, v8>::value ;
-      PCOMN_STATIC_CHECK(v1 < msz && v2+1 <= msz && v3+1 <= msz && v4+1 <= msz &&
-                         v5+1 <= msz && v6+1 <= msz && v7+1 <= msz && v8+1 <= msz) ;
-      static constexpr bool is(unsigned value) { return !!(mask & (1U<<value)) ; }
+      static_assert(fold_bitor(v1, vN...) < 64, "Some values to test against exceed allowed maximum (63)") ;
+      static constexpr bool is(unsigned long long value)
+      {
+         return !!(fold_bitor((1ULL << v1), (1ULL << vN)...) & flags_if((1ULL << value), !(value & (-1ULL << 6)))) ;
+      }
 } ;
 
-MS_DIAGNOSTIC_POP()
+template<typename T>
+constexpr inline bool is_in(T) { return false ; }
+
+template<typename T, T v1, T...vN>
+constexpr inline bool is_in(T v)
+{
+   return one_of<underlying_int(v1), underlying_int(vN)...>::is(underlying_int(v)) ;
+}
+
+template<typename T, typename M1, typename... Ms>
+constexpr inline bool is_in(T v, M1 m1, Ms...ms)
+{
+   return fold_bitor<unsigned long long>
+      ((1ULL << underlying_int(m1)), (1ULL << underlying_int(ms))...) & (1ULL << underlying_int(v)) ;
+}
 
 } // end of namespace pcomn
 

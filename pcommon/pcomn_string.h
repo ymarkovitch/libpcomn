@@ -3,7 +3,7 @@
 #define __PCOMN_STRING_H
 /*******************************************************************************
  FILE         :   pcomn_string.h
- COPYRIGHT    :   Yakov Markovitch, 2006-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2006-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   String traits and string shim functions.
@@ -25,7 +25,6 @@
 #include <pcomn_algorithm.h>
 
 #include <array>
-
 #include <string>
 #include <vector>
 #include <algorithm>
@@ -145,7 +144,6 @@ struct cstring_traits {
 
       static size_type len(const char_type *s) { return std::char_traits<char_type>::length(s) ; }
       static constexpr const char_type *cstr(const char_type *s) { return s ; }
-      static hash_type hash(const char_type *s) { return hashFNV(s, str::len(s)) ; }
 } ;
 
 /*******************************************************************************
@@ -164,7 +162,6 @@ struct stdstring_traits {
 
       static size_type len(const type &s) { return s.size() ; }
       static const char_type *cstr(const type &s) { return s.c_str() ; }
-      static hash_type hash(const type &s) { return hashFNV(str::cstr(s), str::len(s) * sizeof(char_type)) ; }
 } ;
 
 
@@ -187,7 +184,6 @@ struct anystring_traits {
 
       static size_type len(const type &s) { return std::char_traits<char_type>::length(str::cstr(s)) ; }
       static constexpr const char_type *cstr(const type &s) { return s.c_str() ; }
-      static hash_type hash(const type &s) { return hashFNV(str::cstr(s), len(s)) ; }
 } ;
 
 /******************************************************************************/
@@ -205,7 +201,6 @@ struct pstring_traits {
 
       static size_type len(const type &s) { return std::char_traits<char_type>::length(str::cstr(s)) ; }
       static constexpr const char_type *cstr(const type &s) { return s.get() ; }
-      static hash_type hash(const type &s) { return hashFNV(str::cstr(s), str::len(s)) ; }
 } ;
 
 /*******************************************************************************
@@ -300,26 +295,43 @@ disable_if_strchar : std::enable_if<!is_strchar<S, Char>::value, Type> {} ;
 template<typename S, typename Other, typename Type> struct
 enable_if_other_string : std::enable_if<is_string<Other>::value && !std::is_base_of<S, Other>::value, Type> {} ;
 
-template<typename S1, typename S2, typename Type> struct
+template<typename S1, typename S2, typename Type = std::nullptr_t> struct
 enable_if_compatible_strings : std::enable_if<is_compatible_strings<S1, S2>::value, Type> {} ;
 
-template<typename S, typename T>
+template<typename S, typename T = std::nullptr_t>
 using enable_if_string_t = typename enable_if_string<S, T>::type ;
 
-template<typename S, typename T>
+template<typename S, typename T = std::nullptr_t>
 using disable_if_string_t = typename disable_if_string<S, T>::type ;
 
-template<typename S, typename C, typename T>
+template<typename S, typename C, typename T = std::nullptr_t>
 using enable_if_strchar_t = typename enable_if_strchar<S, C, T>::type ;
 
-template<typename S, typename C, typename T>
+template<typename S, typename C, typename T = std::nullptr_t>
 using disable_if_strchar_t = typename disable_if_strchar<S, C, T>::type ;
 
-template<typename S, typename O, typename T>
+template<typename S, typename O, typename T = std::nullptr_t>
 using enable_if_other_string_t = typename enable_if_other_string<S, O, T>::type ;
 
-template<typename S1, typename S2, typename T>
+template<typename S1, typename S2, typename T = std::nullptr_t>
 using enable_if_compatible_strings_t = typename enable_if_compatible_strings<S1, S2, T>::type ;
+
+template<typename S>
+using string_char_type_t = typename string_traits<S>::char_type ;
+
+/*******************************************************************************
+ Specialization of trivially_swappable for std::string, std::vector, std::array
+*******************************************************************************/
+template<typename T>
+struct is_trivially_swappable<std::vector<T>> : std::true_type {} ;
+
+template<typename T, size_t n>
+struct is_trivially_swappable<std::array<T, n>> : is_trivially_swappable<T> {} ;
+
+#ifdef PCOMN_COMPILER_GNU
+template<typename C>
+struct is_trivially_swappable<std::basic_string<C>> : std::true_type {} ;
+#endif
 
 /*******************************************************************************
  pcomn::str
@@ -362,12 +374,6 @@ strnew(const S &str)
    memcpy(result, src, sz * sizeof(char_type)) ;
    result[sz] = 0 ;
    return result ;
-}
-
-template<typename S>
-inline typename ::pcomn::string_traits<S>::hash_type hash(const S &str)
-{
-   return ::pcomn::string_traits<S>::hash(str) ;
 }
 
 template<typename S>
@@ -586,12 +592,17 @@ inline const wchar_t *select_cstring<wchar_t>(const char *, const wchar_t *s) { 
 *******************************************************************************/
 template<class S> struct emptystr { static const S value ; } ;
 template<class S> const S emptystr<S>::value ;
+#ifdef PCOMN_COMPILER_CXX14
+template<class S>
+const auto &emptystr_v = emptystr<S>::value ;
+#endif
 
 template<size_t n> struct emptystr<char[n]> { static const char value[n] ; } ;
 template<size_t n> const char emptystr<char[n]>::value[n] = "" ;
 
 template<size_t n> struct emptystr<wchar_t[n]> { static const wchar_t value[n] ; } ;
 template<size_t n> const wchar_t emptystr<wchar_t[n]>::value[n] = L"" ;
+
 
 /*******************************************************************************
  Global basic string functions (like strip, etc.)
@@ -628,6 +639,18 @@ inline typename disable_if
    return cptr ? int(cptr - begin) : -1 ;
 }
 
+inline size_t strbuflen(const char *s, size_t n)
+{
+   const char * const end = static_cast<const char *>(memchr(s, 0, n)) ;
+   return end ? end - s : n ;
+}
+
+template<size_t n>
+inline size_t strbuflen(const char (&s)[n]) { return strbuflen(s, n) ; }
+
+template<size_t n>
+inline size_t strbuflen(char (&s)[n]) { return strbuflen(s, n) ; }
+
 /*******************************************************************************
  strchr/strrchr, overloaded for both char and wchar_t
 *******************************************************************************/
@@ -637,14 +660,16 @@ inline char *cstrrchr(const char *s, int c) { return const_cast<char *>(strrchr(
 inline wchar_t *cstrrchr(const wchar_t *s, int c) { return const_cast<wchar_t *>(wcsrchr(s, c)) ; }
 
 /******************************************************************************/
-/** pcomn::hasher(str) is used as a default implementation of the hash function
+/** pcomn::hash_fn_string is used as a default implementation of the hash function
  in pcomn::hash_fn functor (and thus in pcomn::hashtable, too).
 *******************************************************************************/
 template<typename S>
-inline typename ::pcomn::string_traits<S>::hash_type hasher(const S &str)
-{
-   return ::pcomn::str::hash(str) ;
-}
+struct hash_fn_string {
+      typename ::pcomn::string_traits<S>::hash_type operator()(const S &str) const
+      {
+         return hash_bytes(::pcomn::str::cstr(str), ::pcomn::str::len(str)) ;
+      }
+} ;
 
 /*******************************************************************************
  Unsafe format functions for std::string
@@ -723,6 +748,21 @@ inline std::string &strappendf(std::string &s, const char *format, ...)
 *******************************************************************************/
 char *bufprintf(char *buf, size_t n, const char *format, ...) PCOMN_ATTR_PRINTF(3, 4) ;
 
+template<size_t n>
+char *bufprintf(char (&buf)[n], const char *format, ...) PCOMN_ATTR_PRINTF(2, 3) ;
+
+inline char *vbufprintf(char *buf, size_t n, const char *format, va_list args)
+{
+   vsnprintf(buf, n, format, args) ;
+   return buf ;
+}
+
+template<size_t n>
+inline char *vbufprintf(char (&buf)[n], const char *format, va_list args)
+{
+   return vbufprintf(buf, n, format, args) ;
+}
+
 inline char *bufprintf(char *buf, size_t n, const char *format, ...)
 {
    va_list parm ;
@@ -732,9 +772,6 @@ inline char *bufprintf(char *buf, size_t n, const char *format, ...)
 
    return buf ;
 }
-
-template<size_t n>
-char *bufprintf(char (&buf)[n], const char *format, ...) PCOMN_ATTR_PRINTF(2, 3) ;
 
 template<size_t n>
 inline char *bufprintf(char (&buf)[n], const char *format, ...)
@@ -851,11 +888,6 @@ narrow_output(std::basic_ostream<char, StreamTraits> &os,
 
 namespace std {
 
-inline ::pcomn::string_traits<string>::hash_type hasher(const string &str)
-{
-   return ::pcomn::str::hash(str) ;
-}
-
 template<class StreamTraits, class Traits, class Allocator>
 inline std::basic_ostream<char, StreamTraits> &
 operator<<(std::basic_ostream<char, StreamTraits> &os,
@@ -866,7 +898,5 @@ operator<<(std::basic_ostream<char, StreamTraits> &os,
 }
 
 } // end of namespace std
-
-namespace pcomn { using std::hasher ; } // end of namespace pcomn
 
 #endif /* __PCOMN_STRING_H */

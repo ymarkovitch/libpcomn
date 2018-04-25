@@ -3,7 +3,7 @@
 #define __PCOMMON_H
 /*******************************************************************************
  FILE         :   pcommon.h
- COPYRIGHT    :   Yakov Markovitch, 1996-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1996-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Common definitions for PCOMMON library
@@ -19,6 +19,9 @@
 #include <stdarg.h>
 #include <stdlib.h>
 
+/*******************************************************************************
+ C++ code starts here
+*******************************************************************************/
 #ifdef __cplusplus
 #include <stdexcept>
 #include <system_error>
@@ -137,8 +140,8 @@ struct bool_value {
 *******************************************************************************/
 struct RaiseError : bool_value { using bool_value::bool_value ; } ;
 
-static const RaiseError DONT_RAISE_ERROR (false) ;
-static const RaiseError RAISE_ERROR      (true) ;
+static constexpr const RaiseError DONT_RAISE_ERROR (false) ;
+static constexpr const RaiseError RAISE_ERROR      (true) ;
 
 /******************************************************************************/
 /** Not-a-pointer: something, which is both not NULL and is not a valid pointer
@@ -153,6 +156,13 @@ struct not_a_pointer
 } ;
 
 constexpr const not_a_pointer<> NaP = not_a_pointer<>{} ;
+
+/******************************************************************************/
+/** Single-value enum
+*******************************************************************************/
+enum class novalue : bool { _ } ;
+
+constexpr const novalue NaV = novalue::_ ;
 
 /*******************************************************************************
  void * pointer arithmetics
@@ -215,10 +225,10 @@ inline T &set_flags_masked(T &target, T flagset, T mask)
    return (target &= ~mask) |= flagset & mask ;
 }
 
-template<typename T>
-inline T &set_flags(T &target, bool value, T mask)
+template<typename T, typename U>
+inline T &set_flags(T &target, bool value, U mask)
 {
-   return set_flags_masked(target, (T() - (T)value), mask) ;
+   return set_flags_masked<T>(target, (T() - (T)value), mask) ;
 }
 
 template<typename T>
@@ -245,10 +255,17 @@ constexpr inline T is_inverted(T flag, T mask, long test)
    return !(flag & mask) ^ !test ;
 }
 
+/// Select flags value or 0 depending on a boolean condition.
+/// Facilitates e.g. setting OR-combination of flags where presence of each flags
+/// depends on some individual bool value.
+/// @code
+/// enum FOOBAR { FL_FOO = 0x01, FL_BAR = 0x02 } ;
+/// unsigned foobar = flags_if(FL_FOO, is_foo()) | flags_if(FL_BAR, is_bar()) ;
+/// @endcode
 template<typename T>
-constexpr inline T flag_if(T flag, bool cond)
+constexpr inline T flags_if(T flags, bool cond)
 {
-   return (T)(static_cast<T>(-(long)!!cond) & flag) ;
+   return (T)(static_cast<T>(-(long long)!!cond) & flags) ;
 }
 
 template<typename T>
@@ -390,7 +407,7 @@ inline void ordered_swap(T &op1, T &op2, Compare comp)
 }
 
 template<typename T>
-inline std::pair<T, T> ordered_pair(T &&op1, T &&op2)
+constexpr inline std::pair<T, T> ordered_pair(T &&op1, T &&op2)
 {
    return (op1 < op2)
       ? std::pair<T, T>(std::forward<T>(op1), std::forward<T>(op2))
@@ -398,7 +415,7 @@ inline std::pair<T, T> ordered_pair(T &&op1, T &&op2)
 }
 
 template<typename T, typename Compare>
-inline std::pair<T, T> ordered_pair(T &&op1, T &&op2, Compare &&comp)
+constexpr inline std::pair<T, T> ordered_pair(T &&op1, T &&op2, Compare &&comp)
 {
    return std::forward<Compare>(comp)(op1, op2)
       ? std::pair<T, T>(std::forward<T>(op1), std::forward<T>(op2))
@@ -409,18 +426,18 @@ inline std::pair<T, T> ordered_pair(T &&op1, T &&op2, Compare &&comp)
  Out-of-line exception throw
 *******************************************************************************/
 template<class X, typename... XArgs>
-__noreturn __noinline
+__noreturn __cold
 void throw_exception(XArgs&& ...args) { throw X(std::forward<XArgs>(args)...) ; }
 
 template<typename Msg>
-__noreturn __noinline
+__noreturn __cold
 void throw_system_error(std::errc errcode, const Msg &msg)
 {
    throw_exception<std::system_error>(std::make_error_code(errcode), msg) ;
 }
 
 template<typename Msg>
-__noreturn __noinline
+__noreturn __cold
 void throw_system_error(int errno_code, const Msg &msg)
 {
    throw_exception<std::system_error>(errno_code, std::system_category(), msg) ;
@@ -429,11 +446,11 @@ void throw_system_error(int errno_code, const Msg &msg)
 /// Throw exception with formatted message
 ///
 template<class X, size_t bufsize = PCOMN_MSGBUFSIZE>
-__noreturn __noinline
+__noreturn __cold
 void throwf(const char *, ...) PCOMN_ATTR_PRINTF(1, 2) ;
 
 template<class X, size_t bufsize>
-__noreturn __noinline
+__noreturn __cold
 void throwf(const char *format, ...)
 {
    char buf[bufsize] ;
@@ -469,7 +486,7 @@ inline V &&ensure_nonzero(V &&value, XArgs && ...args)
 
 namespace detail {
 template<typename X>
-__noinline __noreturn
+__noreturn __cold
 void throw_arg_null(const char *arg_name, const char *function_name)
 {
    char message[512] ;
@@ -482,7 +499,7 @@ void throw_arg_null(const char *arg_name, const char *function_name)
 }
 
 template<typename X>
-__noinline __noreturn
+__noreturn __cold
 void throw_arg_assert(const char *assertion_text, const char *function_name)
 {
    char message[512] ;
@@ -629,6 +646,23 @@ inline void destroy_ref(T &r)
    r.~T() ;
 }
 
+template<typename T>
+constexpr inline T *as_ptr_mutable(const T *p) { return const_cast<T *>(p) ; }
+
+template<typename T>
+constexpr inline T &as_mutable(const T &v) { return const_cast<T &>(v) ; }
+
+template<size_t alignment>
+constexpr inline bool is_aligned_to(const void *p)
+{
+   static_assert(!((alignment - 1) & alignment),
+                 "Invalid alignment specifiesd, the alignment must be a power of 2") ;
+   return !((uintptr_t)p & (alignment - 1)) ;
+}
+
+template<typename T>
+constexpr inline bool is_aligned_as(const void *p) { return is_aligned_to<alignof(T)>(p) ; }
+
 } // end of namespace pcomn
 
 /******************************************************************************/
@@ -699,28 +733,28 @@ inline void *hextob(void *buf, size_t bufsz, const char *hexstr)
 /// Given that there is '<' operator for the type, define all remaining ordering operators
 /// as global functions.
 #define PCOMN_DEFINE_ORDER_FUNCTIONS(pfx, type)                         \
-   pfx inline bool operator>(const type &lhs, const type &rhs) { return rhs < lhs ; } \
-   pfx inline bool operator<=(const type &lhs, const type &rhs) { return !(rhs < lhs) ; } \
-   pfx inline bool operator>=(const type &lhs, const type &rhs) { return !(lhs < rhs) ; }
+   pfx inline auto operator> (const type &x, const type &y)->decltype(!(x<y)) { return !!(y < x) ; } \
+   pfx inline auto operator<=(const type &x, const type &y)->decltype(!(x<y)) { return !(y < x) ; }  \
+   pfx inline auto operator>=(const type &x, const type &y)->decltype(!(x<y)) { return !(x < y) ; }
 
 /// Given that there are operators '==' and '<' for the type, define through them all
 /// remaining relational operators as global functions.
 #define PCOMN_DEFINE_RELOP_FUNCTIONS(pfx, type)                         \
-   pfx inline bool operator!=(const type &lhs, const type &rhs) { return !(lhs == rhs) ; } \
+   pfx inline auto operator!=(const type &x, const type &y)->decltype(!(x==y)) { return !(x == y) ; } \
    PCOMN_DEFINE_ORDER_FUNCTIONS(P_PASS(pfx), P_PASS(type))
 
 /// Given that there is '<' operator for the type, define all remaining ordering operators
 /// as type methods.
-#define PCOMN_DEFINE_ORDER_METHODS(type)                          \
-   bool operator>(const type &rhs) { return rhs < *this ; }       \
-   bool operator<=(const type &rhs) { return !(rhs < *this) ; }   \
-   bool operator>=(const type &rhs) { return !(*this < rhs) ; }
+#define PCOMN_DEFINE_ORDER_METHODS(type, ...)                           \
+   __VA_ARGS__ bool operator>(const type &rhs) const { return rhs < *this ; }       \
+   __VA_ARGS__ bool operator<=(const type &rhs) const { return !(rhs < *this) ; }   \
+   __VA_ARGS__ bool operator>=(const type &rhs) const { return !(*this < rhs) ; }
 
 /// Given that there are operators '==' and '<' for the type, define through them all
 /// remaining relational operators as type methods.
-#define PCOMN_DEFINE_RELOP_METHODS(type)                          \
-   bool operator!=(const type &rhs) { return !(*this == rhs) ; }  \
-   PCOMN_DEFINE_ORDER_METHODS(P_PASS(type))
+#define PCOMN_DEFINE_RELOP_METHODS(type, ...)                           \
+   __VA_ARGS__ bool operator!=(const type &rhs) const { return !(*this == rhs) ; } \
+   PCOMN_DEFINE_ORDER_METHODS(P_PASS(type), ##__VA_ARGS__)
 
 /// Define operators '+' and '-' for the type through corresponding augmented operations
 /// '+=' and '-='.
@@ -787,10 +821,22 @@ namespace pcomn {
 
 #ifdef PCOMN_COMPILER_GNU
 
+/// @note This function never returns NULL and and the returned string is always
+/// null-terminated.
 inline const char *demangle(const char *mangled, char *buf, size_t buflen)
 {
-   int status = 0 ;
-   return abi::__cxa_demangle(mangled, buf, &buflen, &status) ;
+   if (!buflen || !buf)
+      return "" ;
+   *buf = 0 ;
+   if (mangled && *mangled)
+   {
+      int status = 0 ;
+      size_t len = buflen ;
+      // On failure, return the source name
+      if (!abi::__cxa_demangle(mangled, buf, &len, &status))
+         strncpy(buf, mangled, buflen)[buflen - 1] = 0 ;
+   }
+   return buf ;
 }
 
 template<typename T>

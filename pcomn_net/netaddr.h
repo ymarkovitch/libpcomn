@@ -3,7 +3,7 @@
 #define __NET_NETADDR_H
 /*******************************************************************************
  FILE         :   netaddr.h
- COPYRIGHT    :   Yakov Markovitch, 2008-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2008-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Internet address class(es)/functions.
@@ -46,6 +46,15 @@ namespace net {
  conversions.
 *******************************************************************************/
 class inet_address {
+    union netaddr_init {
+        constexpr explicit netaddr_init(uint32_t horder_addr = 0) : _addr{horder_addr} {}
+        constexpr netaddr_init(uint8_t a, uint8_t b, uint8_t c, uint8_t d) :
+            _addr{((uint32_t)a << 24) | ((uint32_t)b << 16) | ((uint32_t)c << 8) | d}
+        {}
+        uint32_t _addr ;
+        uint8_t  _octets[4] ;
+    } ;
+
 public:
     /// inet_address construction mode flags
     enum ConstructFlags {
@@ -73,18 +82,9 @@ public:
 
     inet_address(const in_addr &addr) : _addr(ntohl(addr.s_addr)) {}
 
-    inet_address(uint8_t a, uint8_t b, uint8_t c, uint8_t d)
-    {
-        union {
-            in_addr_t   addr ;
-            uint8_t     octets[4] ;
-        } netaddr ;
-        netaddr.octets[0] = a ;
-        netaddr.octets[1] = b ;
-        netaddr.octets[2] = c ;
-        netaddr.octets[3] = d ;
-        _addr = ntohl(netaddr.addr) ;
-    }
+    constexpr inet_address(uint8_t a, uint8_t b, uint8_t c, uint8_t d) :
+        _addr(netaddr_init{a, b, c, d}._addr)
+    {}
 
     /// Create an IP address from its human-readable text representation.
     /// @param address_string Dot-delimited IP address or interface name, like "eth0", or
@@ -99,14 +99,9 @@ public:
     explicit constexpr operator bool() const { return !!_addr ; }
 
     /// Get one octet of an IP address by octet index (0-3).
-    uint8_t octet(unsigned ndx) const
+    constexpr uint8_t octet(unsigned ndx) const
     {
-        NOXCHECK(ndx < 4) ;
-        union {
-            in_addr_t   addr ;
-            uint8_t     octets[4] ;
-        } netaddr = { htonl(_addr) } ;
-        return netaddr.octets[ndx] ;
+        return (_addr >> 8*(3 - ndx)) ;
     }
 
     /// Get all four octets of an IP address.
@@ -129,6 +124,8 @@ public:
         return result ;
     }
     operator struct in_addr() const { return inaddr() ; }
+    /// Get an IP address as a 32-bit unsigned number in the host byte order.
+    explicit constexpr operator uint32_t() const { return ipaddr() ; }
 
     constexpr inet_address next() const { return inet_address(ipaddr() + 1) ; }
     constexpr inet_address prev() const { return inet_address(ipaddr() - 1) ; }
@@ -137,6 +134,10 @@ public:
     /// Get a hostname for the address.
     /// @throw nothing
     std::string hostname() const;
+
+    /// Get the maximum length of dotted-decimal string representation of IPv4 address
+    /// (non including terminating zero).
+    static constexpr size_t slen() { return 15 ; }
 
     /// Get dotted-decimal representation of IP address.
     std::string dotted_decimal() const ;
@@ -404,21 +405,6 @@ inline bool operator<(const subnet_address &x, const subnet_address &y)
 PCOMN_DEFINE_RELOP_FUNCTIONS(, subnet_address) ;
 
 /*******************************************************************************
- Network address hashing
-*******************************************************************************/
-inline size_t hasher(const inet_address &addr)
-{
-    using pcomn::hasher ;
-    return hasher(addr.ipaddr()) ;
-}
-
-inline size_t hasher(const sock_address &addr)
-{
-    using pcomn::hasher ;
-    return hasher(std::make_pair(addr.addr().ipaddr(), addr.port())) ;
-}
-
-/*******************************************************************************
  Ostream output operators
 *******************************************************************************/
 inline std::ostream& operator<<(std::ostream &os, const sock_address &addr)
@@ -430,27 +416,23 @@ inline std::ostream& operator<<(std::ostream &os, const sock_address &addr)
 } // end of namespace pcomn
 
 namespace std {
-
-template<> struct hash<pcomn::net::inet_address> :
-        public std::unary_function<pcomn::net::inet_address, std::size_t> {
-
-    std::size_t operator()(const pcomn::net::inet_address &addr) const
+/***************************************************************************//**
+ Network address hashing
+*******************************************************************************/
+/**@{*/
+template<> struct hash<pcomn::net::inet_address> {
+    size_t operator()(const pcomn::net::inet_address &addr) const
     {
-        using pcomn::hasher ;
-        return hasher(addr) ;
+        return pcomn::valhash(addr.ipaddr()) ;
     }
 } ;
-
-template<> struct hash<pcomn::net::sock_address> :
-        public std::unary_function<pcomn::net::sock_address, std::size_t> {
-
-    std::size_t operator()(const pcomn::net::sock_address &addr) const
+template<> struct hash<pcomn::net::sock_address> {
+    size_t operator()(const pcomn::net::sock_address &addr) const
     {
-        using pcomn::hasher ;
-        return hasher(addr) ;
+        return pcomn::tuplehash(addr.addr().ipaddr(), addr.port()) ;
     }
 } ;
-
+/**@}*/
 } // end of namespace std
 
 #endif /* __NET_NETADDR_H */

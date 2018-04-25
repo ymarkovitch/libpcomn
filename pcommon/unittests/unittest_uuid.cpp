@@ -1,7 +1,7 @@
 /*-*- tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   unittest_uuid.cpp
- COPYRIGHT    :   Yakov Markovitch, 2014-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2014-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Unittests for uuid and network MAC classes/functions
@@ -29,11 +29,13 @@ class UUIDFixture : public unit::TestFixture<UUID_FIXTURE> {
 
       void Test_Empty_UUID() ;
       void Test_UUID() ;
+      void Test_Cast128() ;
 
       CPPUNIT_TEST_SUITE(UUIDFixture) ;
 
       CPPUNIT_TEST(Test_Empty_UUID) ;
       CPPUNIT_TEST(Test_UUID) ;
+      CPPUNIT_TEST(Test_Cast128) ;
 
       CPPUNIT_TEST_SUITE_END() ;
 } ;
@@ -82,6 +84,8 @@ void UUIDFixture::Test_UUID()
    const uuid small_uuid  ("E47AC10B-58cC-4372-a567-0e02b2c3d478") ;
    const uuid other_uuid_2 (0xf47a, 0xc10b, 0x58cc, 0x4372, 0xa567, 0x0e02, 0xb2c3, 0xd478) ;
 
+   const uuid other_uuid_3 (0x123456780a0b0c0dULL, 0x1a1b1c1d2a2b2c2dULL) ;
+
    CPPUNIT_LOG_ASSERT(random_uuid) ;
    CPPUNIT_LOG_EQ(random_uuid.to_string(), "f47ac10b-58cc-4372-a567-0e02b2c3d479") ;
    CPPUNIT_LOG_ASSERT(small_uuid) ;
@@ -90,6 +94,8 @@ void UUIDFixture::Test_UUID()
    CPPUNIT_LOG_EQ(other_uuid.to_string(),  "f47ac10b-58cc-4372-a567-0e02b2c3d478") ;
 
    CPPUNIT_LOG_EQUAL(other_uuid, other_uuid_2) ;
+
+   CPPUNIT_LOG_EQ(other_uuid_3.to_string(), "12345678-0a0b-0c0d-1a1b-1c1d2a2b2c2d") ;
 
    CPPUNIT_LOG_NOT_EQUAL(random_uuid, uuid()) ;
    CPPUNIT_LOG_NOT_EQUAL(random_uuid, small_uuid) ;
@@ -126,6 +132,42 @@ void UUIDFixture::Test_UUID()
    CPPUNIT_LOG_IS_FALSE(random_uuid < small_uuid) ;
    CPPUNIT_LOG_ASSERT(small_uuid < random_uuid) ;
    CPPUNIT_LOG_ASSERT(uuid() < small_uuid) ;
+}
+
+void UUIDFixture::Test_Cast128()
+{
+   uuid mutable_uuid ("f47ac10b-58cc-4372-a567-0e02b2c3d479") ;
+   binary128_t mutable_bin ((binary128_t)mutable_uuid) ;
+
+   const uuid const_uuid  ("007ac10b-58cc-4372-a567-0e02b2c3d478") ;
+   const binary128_t &const_bin {const_uuid} ;
+   char buf[64] ;
+   std::fill_n(buf, sizeof buf, 'A') ;
+
+   CPPUNIT_LOG_EQ(mutable_uuid.to_string(), "f47ac10b-58cc-4372-a567-0e02b2c3d479") ;
+   CPPUNIT_LOG_EQ(mutable_bin.to_string(),  "f47ac10b58cc4372a5670e02b2c3d479") ;
+
+   std::fill_n(buf + 0, sizeof buf, 'A') ;
+   CPPUNIT_LOG_EQ(strslice(mutable_uuid.to_strbuf(buf)), "f47ac10b-58cc-4372-a567-0e02b2c3d479") ;
+   std::fill_n(buf + 0, sizeof buf, 'A') ;
+   CPPUNIT_LOG_EQ(strslice(mutable_bin.to_strbuf(buf)), "f47ac10b58cc4372a5670e02b2c3d479") ;
+
+   CPPUNIT_LOG_EQ(string_cast(mutable_uuid),"f47ac10b-58cc-4372-a567-0e02b2c3d479") ;
+   CPPUNIT_LOG_EQ(string_cast(mutable_bin), "f47ac10b58cc4372a5670e02b2c3d479") ;
+
+   CPPUNIT_LOG_EQ(const_uuid.to_string(), "007ac10b-58cc-4372-a567-0e02b2c3d478") ;
+   CPPUNIT_LOG_EQ(const_bin.to_string(),  "007ac10b58cc4372a5670e02b2c3d478") ;
+   CPPUNIT_LOG_EQ(string_cast(const_uuid),"007ac10b-58cc-4372-a567-0e02b2c3d478") ;
+   CPPUNIT_LOG_EQ(string_cast(const_bin), "007ac10b58cc4372a5670e02b2c3d478") ;
+
+   CPPUNIT_LOG_EQUAL(cast128<uuid>(const_bin), const_uuid) ;
+   CPPUNIT_LOG_EQUAL(cast128<uuid>(mutable_bin), mutable_uuid) ;
+
+   CPPUNIT_LOG_ASSERT(std::is_reference<decltype(cast128<uuid>(const_bin))>()) ;
+   CPPUNIT_LOG_ASSERT(std::is_const<std::remove_reference_t<decltype(cast128<uuid>(const_bin))>>()) ;
+
+   CPPUNIT_LOG_ASSERT(std::is_reference<decltype(cast128<uuid>(mutable_bin))>()) ;
+   CPPUNIT_LOG_IS_FALSE(std::is_const<std::remove_reference_t<decltype(cast128<uuid>(mutable_bin))>>()) ;
 }
 
 /*******************************************************************************
@@ -179,6 +221,7 @@ void MACFixture::Test_MAC()
    const MAC other_mac  ("e0:CB:4E:8C:4f:5C") ;
    const MAC small_mac  ("E0:CB:4E:8C:4f:50") ;
    const MAC other_mac_2 (0xE0, 0xCB, 0x4E, 0x8C, 0x4f, 0x5C) ;
+   const MAC other_mac_3 (0xE0CB4E8C4f5CULL) ;
 
    CPPUNIT_LOG_ASSERT(random_mac) ;
    CPPUNIT_LOG_EQ(random_mac.to_string(), "E0:CB:4E:8C:FF:5C") ;

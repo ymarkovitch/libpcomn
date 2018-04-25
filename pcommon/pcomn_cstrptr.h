@@ -3,7 +3,7 @@
 #define __PCOMN_CSTRPTR_H
 /*******************************************************************************
  FILE         :   pcomn_cstrptr.h
- COPYRIGHT    :   Yakov Markovitch, 2010-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2010-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   C string (const char *) proxy object.
@@ -42,7 +42,7 @@ struct basic_cstrptr_base {
          return _str[pos] ;
       }
 
-      template<class S>
+      template<typename S>
       S string() const { return S(_str ? _str : "") ; }
 
       size_t size() const { return _str ? str::len(_str) : 0 ; }
@@ -176,13 +176,8 @@ namespace std {
 /*******************************************************************************
  std::hash specialization for basic_cstrptr
 *******************************************************************************/
-template<typename C, typename D>
-struct hash<pcomn::basic_cstrptr<C, D> > : public unary_function<pcomn::basic_cstrptr<C, D>, size_t> {
-      size_t operator()(const pcomn::basic_cstrptr_base<C> &s) const
-      {
-         return pcomn::string_traits<pcomn::basic_cstrptr_base<C> >::hash(s) ;
-      }
-} ;
+template<typename D>
+struct hash<pcomn::basic_cstrptr<char, D>> : pcomn::hash_fn<char *> {} ;
 }
 
 #endif /* __PCOMN_CSTRPTR_H */

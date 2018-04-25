@@ -3,7 +3,7 @@
 #define __PCOMN_IMMUTABLESTR_H
 /*******************************************************************************
  FILE         :   pcomn_immutablestr.h
- COPYRIGHT    :   Yakov Markovitch, 2006-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2006-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   The immutable string template.
@@ -57,7 +57,7 @@ struct refcounted_strdata {
       size_t   _size ;
       Char     _begin[1] ;
 
-      static constexpr const refcounted_strdata<Char, Atomic> zero { {}, 0, {0} } ;
+      static const refcounted_strdata<Char, Atomic> zero ;
 
       union alignment {
             intptr_t _1 ;
@@ -73,8 +73,8 @@ struct refcounted_strdata {
 } ;
 
 template<typename Char, bool Atomic>
-constexpr const refcounted_strdata<Char, Atomic>
-refcounted_strdata<Char, Atomic>::zero ;
+const refcounted_strdata<Char, Atomic>
+refcounted_strdata<Char, Atomic>::zero = {} ;
 
 /*******************************************************************************
                      template <typename Char, bool Atomic, class Allocator>
@@ -559,6 +559,7 @@ class shared_string : protected Storage {
          ensure_le<std::out_of_range>(pos, srcsize, "String position is out of range") ;
          const size_type newsize = std::min(n, srcsize - pos) ;
          if (newsize)
+         {
             if (newsize == srcsize)
                *static_cast<storage_type *>(this) = static_cast<const storage_type &>(str) ;
             else
@@ -567,6 +568,7 @@ class shared_string : protected Storage {
                                  *static_cast<const typename storage_type::allocator_type *>(this)) ;
                storage_type::swap(tmp) ;
             }
+         }
       }
 
       shared_string(const value_type *source, size_type len) :
@@ -799,6 +801,7 @@ class mutable_strbuf : public shared_string<Char, CharTraits, Storage> {
          if (increment > 0)
             append((size_type)increment, c) ;
          else if (increment)
+         {
             if (!n)
                clear() ;
             else
@@ -807,6 +810,7 @@ class mutable_strbuf : public shared_string<Char, CharTraits, Storage> {
                data._size = n ;
                *data.end() = value_type() ;
             }
+         }
          return *this ;
       }
 

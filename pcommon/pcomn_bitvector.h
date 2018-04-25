@@ -3,7 +3,7 @@
 #define __PCOMN_BITVECTOR_H
 /*******************************************************************************
  FILE         :   pcomn_bitvector.h
- COPYRIGHT    :   Yakov Markovitch, 2000-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2000-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Interpret an array of integral types as a bit vector.
@@ -17,10 +17,25 @@
 #include <pcomn_meta.h>
 #include <pcomn_integer.h>
 #include <pcomn_atomic.h>
+#include <pcomn_alloca.h>
 #include <pcommon.h>
 
 #include <iostream>
 #include <algorithm>
+
+#include <string.h>
+
+/// Define basic_bitvector variable with its data memory allocated on the stack.
+///
+/// @param varname   The name of the declared variable of type basic_bitvector<element_type>.
+/// @param elem_type Bitvector element type (must be scalar integral type)
+/// @param nelements The number of elem_type size elements in the vector.
+/// @note Uses alloca() to allocate memory on the stack.
+///
+#define PCOMN_STACK_BITVECTOR(varname, elem_type, nelements)            \
+   const size_t _nelements_##__LINE__##varname = (nelements) ;          \
+   elem_type * const _mem_##__LINE__##varname = P_ALLOCA(elem_type, _nelements_##__LINE__##varname) ; \
+   pcomn::basic_bitvector<elem_type> varname (_mem_##__LINE__##varname, _nelements_##__LINE__##varname)
 
 namespace pcomn {
 
@@ -54,7 +69,7 @@ struct basic_bitvector<const E> {
       constexpr size_t size() const { return nelements()*bits_per_element() ; }
 
       constexpr element_type *data() const { return _elements ; }
-      constexpr element_type *cdata() { return _elements ; }
+      constexpr element_type *cdata() const { return _elements ; }
 
       /// Get the count of 1 or 0 bit in vector
       size_t count(bool bitval = true) const
@@ -74,6 +89,9 @@ struct basic_bitvector<const E> {
       {
          return !!(elem(pos, order) & bitmask(pos)) ;
       }
+
+      /// Get the value of a bit at specified position.
+      bool operator[](size_t pos) const { return test(pos) ; }
 
       /// Get the position of first nonzero bit between 'start' and 'finish'
       ///
@@ -138,7 +156,8 @@ struct basic_bitvector<const E> {
       /** A constant iterator over a bit set, which traverses bit @em positions
        instead of bit @em values.
 
-       The iterator successively returns positions of 1-bits in a vector.
+       The iterator successively returns positions of 1-bits or 0-bits in a vector,
+       depending on @a bitval template argument (1-bits fore true, 0-bits for false)
       *************************************************************************/
       template<bool bitval>
       struct positional_iterator : std::iterator<std::forward_iterator_tag, ptrdiff_t, ptrdiff_t> {
@@ -233,6 +252,13 @@ struct basic_bitvector : basic_bitvector<const E> {
       constexpr element_type *data() const
       {
          return const_cast<element_type *>(ancestor::data()) ;
+      }
+
+      /// Set all the bits in this vector to specified @a value.
+      basic_bitvector &fill(bool value)
+      {
+         memset(data(), element_type() - (element_type)value, nelements() * sizeof(element_type)) ;
+         return *this ;
       }
 
       /// Set bit value at the given position.

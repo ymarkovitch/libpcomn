@@ -168,7 +168,7 @@ class alignas(PCOMN_CACHELINE_SIZE) hazard_registry {
          return _hazard[slot] ;
       }
 
-      static constexpr const hazard_registry zero = {} ;
+      static const hazard_registry zero ;
 
    private:
       uint64_t             _occupied = 0 ;
@@ -185,7 +185,7 @@ class alignas(PCOMN_CACHELINE_SIZE) hazard_registry {
 } ;
 
 template<unsigned L>
-constexpr const hazard_registry<L> hazard_registry<L>::zero ;
+const hazard_registry<L> hazard_registry<L>::zero ;
 
 /******************************************************************************/
 /** Hazard pointer marks a non-null pointer to a node of some lock-free dynamic
@@ -646,7 +646,7 @@ class hazard_manager {
       /// Set minimum pending cleanups per hazard registry for hasards managed by
       /// hazard_ptr<*,tag_type>.
       ///
-      static void min_pending(size_t count)
+      void min_pending(size_t count)
       {
          storage()._minpending = count ;
       }

@@ -3,7 +3,7 @@
 #define __PCOMN_STRSLICE_H
 /*******************************************************************************
  FILE         :   pcomn_strslice.h
- COPYRIGHT    :   Yakov Markovitch, 1997-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1997-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Substring class.
@@ -81,14 +81,22 @@ struct basic_strslice {
          _begin(other.begin()), _end(other.end())
       {}
 
-      template<typename S, enable_if_strchar_t<S, char_type, nullptr_t> = nullptr>
+      template<typename S, typename = enable_if_strchar_t<S, char_type>>
       basic_strslice(const S &s) :
          _begin(str::cstr(s)), _end(_begin + str::len(s))
       {}
 
+      /// Explicitly specify a constructor for const char* argument, despite the generic
+      /// one-parameter constructor handles this case, to prevent taking reference to the
+      /// argument, thus allowing to pass declared and initialized but not defined static
+      /// const class members of type const char*.
+      ///
+      basic_strslice(const char_type *s) :
+         _begin(s), _end(_begin + str::len(s))
+      {}
+
       template<typename S>
-      basic_strslice(const S &s, size_t from,
-                     enable_if_strchar_t<S, char_type, size_t> to = (size_t)-1) :
+      basic_strslice(const S &s, size_t from, enable_if_strchar_t<S, char_type, size_t> to) :
          _begin(str::cstr(s)), _end(_begin)
       {
          const size_t len = str::len(s) ;
@@ -118,14 +126,16 @@ struct basic_strslice {
          return *this ;
       }
 
-      const char_type *begin() const { return _begin ; }
-      const char_type *end() const { return _end ; }
+      constexpr const char_type *begin() const { return _begin ; }
+      constexpr const char_type *end() const { return _end ; }
 
       char_type front() const { return *begin() ; }
       char_type back() const { NOXPRECONDITION(!empty()) ; return *(end() - 1) ; }
 
       const_reverse_iterator rbegin() const { return const_reverse_iterator(end()) ; }
       const_reverse_iterator rend() const { return const_reverse_iterator(begin()) ; }
+
+      constexpr const char_type *data() const { return begin() ; }
 
       char operator[](ptrdiff_t pos) const
       {
@@ -140,10 +150,10 @@ struct basic_strslice {
 
       explicit operator std::basic_string<C>() const { return {begin(), end()} ; }
 
-      size_t size() const { return end() - begin() ; }
+      constexpr size_t size() const { return end() - begin() ; }
 
       /// Indicate if the slice is empty
-      bool empty() const { return begin() == end() ; }
+      constexpr bool empty() const { return begin() == end() ; }
 
       /// Indicate if the slice has has both begin() and end() equal to NULL
       ///
@@ -155,7 +165,36 @@ struct basic_strslice {
       bool is_null() const { return !((uintptr_t)begin() | (uintptr_t)end()) ; }
 
       /// Indicate that the slice is nonempty.
-      explicit operator bool() const { return begin() != end() ; }
+      constexpr explicit operator bool() const { return begin() != end() ; }
+
+      /// Check if all characters in the slice satisfy the property.
+      ///
+      /// As @a isproperty is usually used a classifying function from the standard
+      /// <cctype> header, e.g. std::isdigit, etc. So, the call is like
+      /// s.all<std::isdigit>()
+      ///
+      /// @return true if all the characters in the slice satisfy @a isproperty @em or
+      /// the slice is empty.
+      ///
+      template<int(isproperty)(int)>
+      bool all() const { return std::all_of(begin(), end(), isproperty) ; }
+
+      /// Check if none of the characters in the slice satisfy the property.
+      ///
+      /// @return true if none the characters in the slice satisfy @a isproperty @em or
+      /// the slice is empty.
+      ///
+      template<int(isproperty)(int)>
+      bool none() const { return std::none_of(begin(), end(), isproperty) ; }
+
+      /// Check if there is at least one characters in the slice satisfying
+      /// the property.
+      ///
+      /// @return true if at least one characters in the slice satisfy @a isproperty
+      /// and false if not @em or the slice is empty.
+      ///
+      template<int(isproperty)(int)>
+      bool any() const { return std::any_of(begin(), end(), isproperty) ; }
 
       /// Compare slices lexicografically, like strcmp.
       /// @return 0 for equal, -1 for less, 1 for greater.
@@ -230,8 +269,6 @@ struct basic_strslice {
       }
 
       basic_strslice &strip_inplace() { return lstrip_inplace().rstrip_inplace() ; }
-
-      operator mongo::StringData() const ;
 
    private:
       const char_type *_begin ;
@@ -477,6 +514,13 @@ inline C *strslicecpy(C (&dest)[n], const basic_strslice<C> &slice)
 }
 
 template<typename C>
+inline C *memslicemove(C *dest, const basic_strslice<C> &slice)
+{
+   memmove(dest, slice.begin(), slice.size()) ;
+   return dest ;
+}
+
+template<typename C>
 inline basic_strslice<C> &to_lower_inplace(basic_strslice<C> &s)
 {
    convert_inplace(s.begin(), ctype_traits<C>::tolower, 0, s.size()) ;
@@ -489,6 +533,27 @@ inline basic_strslice<C> &to_upper_inplace(basic_strslice<C> &s)
    convert_inplace(s.begin(), ctype_traits<C>::toupper, 0, s.size()) ;
 }
 
+/***************************************************************************//**
+ Create a slice from a string like basic_strslice constructor does, allow null pointer
+ as a source string argument and return empty slice if str::cstr(s) is NULL.
+*******************************************************************************/
+/**@{*/
+template<typename C>
+auto inline ssafe_strslice(const C *s) -> std::enable_if_t<is_char<C>::value, basic_strslice<C>>
+{
+    return s ? basic_strslice<C>(s) : basic_strslice<C>() ;
+}
+
+template<typename C, typename S>
+inline enable_if_strchar_t<S, C, basic_strslice<C>> ssafe_strslice(const S &s)
+{
+    return str::cstr(s) ? basic_strslice<C>(s) : basic_strslice<C>() ;
+}
+
+template<typename C>
+constexpr inline basic_strslice<C> ssafe_strslice(std::nullptr_t) { return {} ; }
+
+/**@}*/
 /*******************************************************************************
  Name/value pair functions
 *******************************************************************************/
@@ -678,16 +743,6 @@ inline bool is_identifier(const basic_strslice<C> &s)
    return true ;
 }
 
-/******************************************************************************/
-/** pcomn::hasher(str) is used as a default implementation of the hash function
- in pcomn::hash_fn functor (and thus in pcomn::hashtable, too).
-*******************************************************************************/
-template<typename C>
-inline size_t hasher(const basic_strslice<C> &slice)
-{
-   return hashFNV(slice.begin(), slice.size()) ;
-}
-
 /*******************************************************************************
  Typedefs for narrow and wide chars
 *******************************************************************************/
@@ -778,10 +833,22 @@ inline detail::quote_<typename string_traits<S>::char_type> quote(const S &s)
 }
 
 template<typename S>
-inline detail::quote_<typename string_traits<S>::char_type>
-quote(const S &s, typename string_traits<S>::char_type q)
+inline detail::quote_<string_char_type_t<S>>
+quote(const S &s, string_char_type_t<S> q)
 {
    return detail::quote_<decltype(q)>(s, q) ;
+}
+
+template<typename S>
+inline auto squote(const S &s) -> decltype(quote(s, string_char_type_t<S>()))
+{
+   return quote(s, string_char_type_t<S>('\'')) ;
+}
+
+template<typename S>
+inline auto dquote(const S &s) -> decltype(quote(s, string_char_type_t<S>()))
+{
+   return quote(s, string_char_type_t<S>('"')) ;
 }
 
 /*******************************************************************************
@@ -911,12 +978,11 @@ inline bool endswith(const pcomn::wstrslice &lhs, const pcomn::wstrslice &rhs)
 namespace std {
 template<typename T> struct hash ;
 
-/// std::hash specialization for basic_strslice
+/***************************************************************************//**
+ std::hash specialization for basic_strslice.
+*******************************************************************************/
 template<typename C>
-struct hash<pcomn::basic_strslice<C> > : public std::unary_function<pcomn::basic_strslice<C>, size_t> {
-
-      size_t operator()(const pcomn::basic_strslice<C> &slice) const { return pcomn::hasher(slice) ; }
-} ;
+struct hash<pcomn::basic_strslice<C>> : pcomn::hash_fn_rawdata<pcomn::basic_strslice<C>> {} ;
 
 } // end of namespace std
 

@@ -1,7 +1,7 @@
 /*-*- tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   unittest_filesys.cpp
- COPYRIGHT    :   Yakov Markovitch, 2009-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2009-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Unittests for filesystem routines
@@ -41,6 +41,7 @@ using pcomn::path::abspath ;
 using pcomn::path::normpath ;
 using pcomn::path::joinpath ;
 using pcomn::path::realpath ;
+using pcomn::path::mkdirpath ;
 using pcomn::path::posix::path_dots ;
 using pcomn::strslice_pair ;
 
@@ -74,19 +75,38 @@ void FilesystemTests::Test_Filesystem_Path()
    CPPUNIT_LOG(std::endl) ;
 
    CPPUNIT_LOG_EQUAL(joinpath<std::string>("", ""), std::string()) ;
-   CPPUNIT_LOG_EQUAL(joinpath<std::string>(".", ""), std::string(".")) ;
-   CPPUNIT_LOG_EQUAL(joinpath<std::string>("/", "a/b"), std::string("/a/b")) ;
-   CPPUNIT_LOG_EQUAL(joinpath<std::string>("a", "b/c"), std::string("a/b/c")) ;
-   CPPUNIT_LOG_EQUAL(joinpath<std::string>("/a", "b/c"), std::string("/a/b/c")) ;
-   CPPUNIT_LOG_EQUAL(joinpath<std::string>("/a/", "b/c"), std::string("/a/b/c")) ;
-   CPPUNIT_LOG_EQUAL(joinpath<std::string>("/a", "/b/c"), std::string("/b/c")) ;
-   CPPUNIT_LOG_EQUAL(joinpath<std::string>("/a/", "/b/c"), std::string("/b/c")) ;
-   CPPUNIT_LOG_EQUAL(joinpath<std::string>("", "b/c"), std::string("b/c")) ;
-   CPPUNIT_LOG_EQUAL(joinpath<std::string>("abc", ""), std::string("abc")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<std::string>(".", ""), std::string("./")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<std::string>("", "."), std::string(".")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<>("/", "a/b"), std::string("/a/b")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<>("a", "b/c"), std::string("a/b/c")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<>("/a", "b/c"), std::string("/a/b/c")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<>("/a/", "b/c"), std::string("/a/b/c")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<>("/a", "/b/c"), std::string("/b/c")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<>("/a/", "/b/c"), std::string("/b/c")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<>("/a/", "/b/c", "d/"), std::string("/b/c/d/")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<>("/a", "/", "b", ""), std::string("/b/")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<>("", "", "d"), std::string("d")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<>("", "", "d", ""), std::string("d/")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<>("", "d", "", ""), std::string("d/")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<>("", "b/c"), std::string("b/c")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<>("abc", ""), std::string("abc/")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<>("", "b/c", "d/e", "", "f", ""), std::string("b/c/d/e/f/")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<>("", "b/c", "d/e", "", "f", "g"), std::string("b/c/d/e/f/g")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<>("", "b/c", "d/e", "qqq", "f", "g"), std::string("b/c/d/e/qqq/f/g")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<>("", "b/c", "d/e", "/qqq", "f", "g"), std::string("/qqq/f/g")) ;
+   CPPUNIT_LOG_EQUAL(joinpath<>("", "b/c", "d/e", "qqq", "f", "/g"), std::string("/g")) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_EQUAL(mkdirpath<std::string>(""), std::string()) ;
+   CPPUNIT_LOG_EQUAL(mkdirpath<std::string>("/"), std::string("/")) ;
+   CPPUNIT_LOG_EQUAL(mkdirpath<>("."), std::string("./")) ;
+   CPPUNIT_LOG_EQUAL(mkdirpath<>(std::string("abc/de/")), std::string("abc/de/")) ;
+   CPPUNIT_LOG_EQUAL(mkdirpath<>(std::string("abc/de")), std::string("abc/de/")) ;
+   CPPUNIT_LOG_EQUAL(mkdirpath<>(strslice("abc/de")), std::string("abc/de/")) ;
 
    CPPUNIT_LOG(std::endl) ;
 
-   CPPUNIT_LOG_EQUAL(normpath<std::string>(""), std::string()) ;
+   CPPUNIT_LOG_EQUAL(normpath<>(""), std::string()) ;
    CPPUNIT_LOG_EQUAL(normpath("", buf, sizeof buf), (size_t)0) ;
    CPPUNIT_LOG_EQUAL(normpath<std::string>("."), std::string(".")) ;
    CPPUNIT_LOG_EQUAL(normpath(".", buf, sizeof buf), (size_t)1) ;
@@ -120,7 +140,7 @@ void FilesystemTests::Test_Filesystem_Path()
 
    CPPUNIT_LOG_EQUAL(abspath<std::string>(""), std::string()) ;
    CPPUNIT_LOG_EQUAL(abspath("", buf, sizeof buf), (size_t)0) ;
-   CPPUNIT_LOG_EQUAL(abspath<std::string>("."), std::string(cwd)) ;
+   CPPUNIT_LOG_EQUAL(abspath<>("."), std::string(cwd)) ;
    CPPUNIT_LOG_EQUAL(abspath<std::string>(strslice(".")), std::string(cwd)) ;
    CPPUNIT_LOG(abspath<std::string>(".") << std::endl) ;
    CPPUNIT_LOG_EQUAL(abspath(".", buf, sizeof buf), strlen(cwd)) ;
@@ -134,9 +154,30 @@ void FilesystemTests::Test_Filesystem_Path()
    CPPUNIT_LOG_IS_TRUE(path::posix::is_absolute(std::string("/world"))) ;
    CPPUNIT_LOG_IS_TRUE(path::posix::is_absolute("/")) ;
    CPPUNIT_LOG_IS_FALSE(path::posix::is_absolute("")) ;
-   CPPUNIT_LOG_IS_TRUE(path::posix::is_rooted(std::string("/world"))) ;
-   CPPUNIT_LOG_IS_TRUE(path::posix::is_rooted("/")) ;
-   CPPUNIT_LOG_IS_FALSE(path::posix::is_rooted("")) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_IS_FALSE(path::posix::is_root_of("", "")) ;
+   CPPUNIT_LOG_IS_FALSE(path::posix::is_root_of("", "/")) ;
+   CPPUNIT_LOG_IS_TRUE(path::posix::is_root_of("/", "/")) ;
+   CPPUNIT_LOG_IS_TRUE(path::posix::is_root_of("/", "/a")) ;
+   CPPUNIT_LOG_IS_TRUE(path::posix::is_root_of("/", "/hello/world")) ;
+   CPPUNIT_LOG_IS_TRUE(path::posix::is_root_of("/", "/hello/world/")) ;
+   CPPUNIT_LOG_IS_FALSE(path::posix::is_root_of("/", "hello/world/")) ;
+
+   CPPUNIT_LOG_IS_TRUE(path::posix::is_root_of("hello", "hello/world/")) ;
+   CPPUNIT_LOG_IS_TRUE(path::posix::is_root_of("hello/", "hello/world/")) ;
+   CPPUNIT_LOG_IS_TRUE(path::posix::is_root_of("hello/world/", "hello/world/")) ;
+   CPPUNIT_LOG_IS_TRUE(path::posix::is_root_of("hello/world", "hello/world/")) ;
+
+   CPPUNIT_LOG_IS_FALSE(path::posix::is_root_of("hello/worl", "hello/world/")) ;
+   CPPUNIT_LOG_IS_FALSE(path::posix::is_root_of("hello/worl/", "hello/world/")) ;
+   CPPUNIT_LOG_IS_FALSE(path::posix::is_root_of("hello/worlm/", "hello/world/")) ;
+   CPPUNIT_LOG_IS_FALSE(path::posix::is_root_of("hello/worlm", "hello/world/")) ;
+   CPPUNIT_LOG_IS_FALSE(path::posix::is_root_of("hell", "hello/world/")) ;
+
+   CPPUNIT_LOG_IS_TRUE(path::posix::is_root_of(" ", " ")) ;
+   CPPUNIT_LOG_IS_FALSE(path::posix::is_root_of(" ", "  ")) ;
 
    CPPUNIT_LOG(std::endl) ;
    CPPUNIT_LOG_EQUAL(path::posix::split(""), strslice_pair()) ;

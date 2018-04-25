@@ -1,7 +1,7 @@
 /*-*- tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   journmmap.cpp
- COPYRIGHT    :   Yakov Markovitch, 2008-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2008-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Journalling engine storage implemented on memory-mappable filesystem.
@@ -33,7 +33,7 @@
 #define LOGERR(output)  LOGPXERR(PCOMN_Journmmap, output)
 #define LOGWARN(output) LOGPXWARN(PCOMN_Journmmap, output)
 #define LOGINFO(output) LOGPXINFO(PCOMN_Journmmap, output)
-#define LOGDBG(output)  LOGPXDBG(PCOMN_Journmmap, DBGL_ALWAYS, output)
+#define LOGDBG(output)  LOGPXDBG(PCOMN_Journmmap, output)
 
 namespace pcomn {
 namespace jrn {
@@ -422,7 +422,7 @@ std::string MMapStorage::create_segdir_symlink(const char *segdirname)
 
    const std::string &linkpath = segment_dirname() ;
    const std::string &segdirpath = path::abspath<std::string>
-      (path::posix::is_rooted(segdirname)
+      (path::posix::is_absolute(segdirname)
        ? std::string(segdirname)
        : journal_abspath(segdirname)) ;
 

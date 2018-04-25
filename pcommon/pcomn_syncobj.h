@@ -3,7 +3,7 @@
 #define __PCOMN_SYNCOBJ_H
 /*******************************************************************************
  FILE         :   pcomn_syncobj.h
- COPYRIGHT    :   Yakov Markovitch, 1997-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1997-2017. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Synchronisation primitives
@@ -48,7 +48,7 @@
  @param lock_expr       The expression that should return PTScopeGuard<T> value.
 *******************************************************************************/
 #define PCOMN_SCOPE_LOCK(guard_varname, lock_expr, ...)                 \
-   std::lock_guard<typename std::remove_reference<decltype((lock_expr))>::type> guard_varname ((lock_expr), ##__VA_ARGS__)
+   const std::lock_guard<typename std::remove_reference<decltype((lock_expr))>::type> guard_varname ((lock_expr), ##__VA_ARGS__)
 
 #define PCOMN_SCOPE_XLOCK(guard_varname, lock_expr, ...)                 \
    std::unique_lock<typename std::remove_reference<decltype((lock_expr))>::type> guard_varname ((lock_expr), ##__VA_ARGS__)
@@ -336,6 +336,46 @@ class ident_dispenser {
       std::pair<type, type>   _range ;
       RangeProvider           _provider ;
 } ;
+
+/******************************************************************************/
+/** Generator of integral identifiers which are unique insdide a process run.
+
+ Atomically allocates a range of integral numbers for a thread and then allocates
+ successive numbers from that range upon request from this thread until the range
+ depletion, when allocates new range.
+ Range allocation is atomic (interlocked), but the ident allocation is needn't
+ be atomic since it is thread-local, thus performing only one interlocked
+ operation per range (by default, per 65536 identifiers allocated).
+*******************************************************************************/
+template<typename Tag, typename Int = uint64_t, Int blocksize = 0x10000U>
+class local_ident_dispenser {
+      PCOMN_STATIC_CHECK(is_atomic<Int>::value) ;
+      PCOMN_STATIC_CHECK(blocksize > 0) ;
+   public:
+      typedef Int type ;
+
+      /// Atomically allocate new ID.
+      static type allocate_id()
+      {
+         if (_next_id == _range_end)
+         {
+            _next_id = _next_start.fetch_add(blocksize) ;
+            _range_end = _next_id + blocksize ;
+         }
+         return _next_id++ ;
+      }
+   private:
+      thread_local static type _next_id ;
+      thread_local static type _range_end ;
+      static std::atomic<type> _next_start ;
+} ;
+
+template<typename Tag, typename Int, Int bsz>
+thread_local Int local_ident_dispenser<Tag, Int, bsz>::_next_id {0} ;
+template<typename Tag, typename Int, Int bsz>
+thread_local Int local_ident_dispenser<Tag, Int, bsz>::_range_end {0} ;
+template<typename Tag, typename Int, Int bsz>
+std::atomic<Int> local_ident_dispenser<Tag, Int, bsz>::_next_start {bsz} ;
 
 } // end of namespace pcomn
 

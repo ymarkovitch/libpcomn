@@ -8,6 +8,7 @@ build
 Testing/
 scratch/
 maketags
+*/unittests/*demo.cpp
 
 TAGS
 *~
