@@ -380,8 +380,7 @@ class substitution_map {
                                          const char *prefix, const char *suffix = "") const ;
 
    private:
-      typedef closed_hashtable<replacement_function *,
-                               extract_name<const replacement_function *> > replacement_map ;
+      typedef closed_hashtable<replacement_function *, extract_name> replacement_map ;
 
       replacement_map _replacement_map ;
       std::unique_ptr<replacement_default> _replacement_def ;

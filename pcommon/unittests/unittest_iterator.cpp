@@ -38,12 +38,15 @@ class IteratorTests : public CppUnit::TestFixture {
       void Test_XForm_Iterator() ;
       void Test_Iterator_Type_Traits() ;
       void Test_Estimated_Distance() ;
+      void Test_Collection_Iterator() ;
 
       CPPUNIT_TEST_SUITE(IteratorTests) ;
 
       CPPUNIT_TEST(Test_Mapped_Iterator) ;
       CPPUNIT_TEST(Test_XForm_Iterator) ;
+      CPPUNIT_TEST(Test_Iterator_Type_Traits) ;
       CPPUNIT_TEST(Test_Estimated_Distance) ;
+      CPPUNIT_TEST(Test_Collection_Iterator) ;
 
       CPPUNIT_TEST_SUITE_END() ;
 } ;
@@ -202,6 +205,22 @@ void IteratorTests::Test_Estimated_Distance()
    CPPUNIT_LOG_EQ(estimated_distance(slist01.begin(), slist01.end()), 0) ;
    CPPUNIT_LOG_EQ(estimated_distance<std::bidirectional_iterator_tag>(slist01.begin(), slist01.end()), 0) ;
    CPPUNIT_LOG_EQ(estimated_distance<std::forward_iterator_tag>(slist01.begin(), slist01.end()), 5) ;
+}
+
+void IteratorTests::Test_Collection_Iterator()
+{
+   std::vector<int> vec01 {1, 2, 3, 4} ;
+   const strslice hello ("Hello, world!") ;
+
+   typedef collection_iterator<const strslice> slice_iterator ;
+   typedef collection_iterator<std::vector<int>> vector_iterator ;
+
+   CPPUNIT_LOG_RUN(std::reverse(vector_iterator(vec01), vector_iterator(vec01, 3))) ;
+   CPPUNIT_LOG_EQUAL(vec01, (std::vector<int>{3, 2, 1, 4})) ;
+   CPPUNIT_LOG_EQUAL(*(slice_iterator(hello) + 5), ',') ;
+   CPPUNIT_LOG_ASSERT(slice_iterator(hello) + 5 - 3 == slice_iterator(hello, 2)) ;
+   CPPUNIT_LOG_ASSERT(5 + slice_iterator(hello) == slice_iterator(hello) + 5) ;
+   CPPUNIT_LOG_IS_FALSE(4 + slice_iterator(hello) == slice_iterator(hello) + 5) ;
 }
 
 int main(int argc, char *argv[])

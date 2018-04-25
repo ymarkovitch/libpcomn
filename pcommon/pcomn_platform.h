@@ -437,7 +437,7 @@
 #endif
 
 #ifndef PCOMN_COMPILER
-#error Unknown or unsupported C/C++ compiler. At least GCC 4.8.3, or MSVC++ 19.00, or Intel 15.0 required.
+#error Unknown or unsupported C/C++ compiler. GCC 5.1, or MSVC++ 19.00, or Intel 15.0 required.
 #endif
 
 /*******************************************************************************
@@ -445,14 +445,14 @@
  Note MSVC++ does not define a correct __cplusplus macro value, so we explicitly
  test for MSVC version (1900 is Visual Studio 2015 compiler)
 *******************************************************************************/
-#if PCOMN_COMPILER_GNU && __GNUC_VER__ < 480 && __CLANG_VER__ < 370
-#  error GNU C/C++ or Clang version is too old. Versions of GNU C/C++ earlier 4.8 or Clang earlier 3.7 are not supported.
+#if PCOMN_COMPILER_GNU && __GNUC_VER__ < 500 && __CLANG_VER__ < 370
+#  error GNU C/C++ or Clang version is too old. Versions of GNU C/C++ earlier 5.1 or Clang earlier 3.7 are not supported.
 #elif PCOMN_COMPILER_MS && (__cplusplus  && _MSC_VER < 1900 && !defined(__INTEL_CXX11_MODE__))
 #  error Microsoft C/C++ _MSC_VER detected. Versions of MSVC below 19.00 (Visual Studio 2015) are not supported.
 #endif
 
-#if defined(__cplusplus) && !defined(PCOMN_COMPILER_CXX11)
-#  error A compiler supporting C++11 standard is required to compile
+#if defined(__cplusplus) && !defined(PCOMN_STL_CXX14)
+#  error A compiler supporting C++14 standard is required to compile
 #endif
 
 /*******************************************************************************
@@ -613,18 +613,18 @@ const size_t GiB = 1024*MiB ;
 /** A single-value enum for use as a tag for instantiation of static template
  data and code.
 *******************************************************************************/
-enum Instantiate { Instance } ;
+enum class Instantiate {} ;
 
 /*******************************************************************************
  Endianness conversions
 *******************************************************************************/
 #ifdef PCOMN_CPU_LITTLE_ENDIAN
-const bool cpu_little_endian = true ;
+constexpr bool cpu_little_endian = true ;
 #else
-const bool cpu_little_endian = false ;
+constexpr bool cpu_little_endian = false ;
 #endif
 
-const bool cpu_big_endian = !cpu_little_endian ;
+constexpr bool cpu_big_endian = !cpu_little_endian ;
 
 template<size_t type_size> struct uint_type {} ;
 template<> struct uint_type<1> { typedef uint8_t  type ; } ;

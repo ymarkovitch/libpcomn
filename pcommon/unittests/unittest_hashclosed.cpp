@@ -53,6 +53,7 @@ class ClosedHashTests : public CppUnit::TestFixture {
       void Test_Closed_Hash_Move() ;
       void Test_Closed_Hash_Extract_Key() ;
       void Test_Closed_Hash_CString() ;
+      void Test_Closed_Hash_PtrVal() ;
 
       CPPUNIT_TEST_SUITE(ClosedHashTests) ;
 
@@ -69,6 +70,7 @@ class ClosedHashTests : public CppUnit::TestFixture {
       CPPUNIT_TEST(Test_Closed_Hash_Move) ;
       CPPUNIT_TEST(Test_Closed_Hash_Extract_Key) ;
       CPPUNIT_TEST(Test_Closed_Hash_CString) ;
+      CPPUNIT_TEST(Test_Closed_Hash_PtrVal) ;
 
       CPPUNIT_TEST_SUITE_END() ;
 } ;
@@ -638,6 +640,32 @@ void ClosedHashTests::Test_Closed_Hash_CString()
    CPPUNIT_LOG_ASSERT(TestHash.count("Hello")) ;
    CPPUNIT_LOG_ASSERT(TestHash.count(hello)) ;
    CPPUNIT_LOG_IS_FALSE(TestHash.count("")) ;
+}
+
+void ClosedHashTests::Test_Closed_Hash_PtrVal()
+{
+   using namespace pcomn ;
+   typedef closed_hashtable<const std::string *> testtable_type ;
+   CPPUNIT_LOG_EQUAL(typeid(testtable_type::key_type), typeid(const std::string *)) ;
+
+   testtable_type TestHash ;
+   const std::string hello1 ("Hello") ;
+   const std::string hello2 ("Hello") ;
+   const std::string hello3 ("Hello") ;
+   std::string hello4 ("Hello") ;
+
+   CPPUNIT_LOG_ASSERT(TestHash.insert(&hello1).second) ;
+   CPPUNIT_LOG_ASSERT(TestHash.insert(&hello2).second) ;
+   CPPUNIT_LOG_IS_FALSE(TestHash.insert(&hello1).second) ;
+   CPPUNIT_LOG_EQ(TestHash.size(), 2) ;
+
+   CPPUNIT_LOG_ASSERT(TestHash.count(&hello1)) ;
+   CPPUNIT_LOG_ASSERT(TestHash.count(&hello2)) ;
+   CPPUNIT_LOG_IS_FALSE(TestHash.count(&hello3)) ;
+
+   CPPUNIT_LOG_ASSERT(TestHash.insert(&hello4).second) ;
+   CPPUNIT_LOG_ASSERT(TestHash.count(&hello4)) ;
+   CPPUNIT_LOG_EQ(TestHash.size(), 3) ;
 }
 
 int main(int argc, char *argv[])

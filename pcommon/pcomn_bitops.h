@@ -79,7 +79,7 @@ template<> struct bit_traits<64> {
    typedef int64_t  stype ;
    typedef uint64_t utype ;
 
-   static unsigned bitcount(utype value)
+   static constexpr unsigned bitcount(utype value)
    {
       utype r = value ;
       r = (0x5555555555555555ULL & r) + (0x5555555555555555ULL & (r >> 1U)) ;
@@ -91,7 +91,7 @@ template<> struct bit_traits<64> {
          ((unsigned)(r >> 48U) + (unsigned)(r >> 32U) + (unsigned)(r >> 16U) + (unsigned)r) & 0x7fU ;
    }
 
-   static int log2floor(utype value)
+   static constexpr int log2floor(utype value)
    {
       utype x = value ;
       x |= (x >> 1) ;
@@ -103,7 +103,7 @@ template<> struct bit_traits<64> {
       return (int)bitcount(x) - 1 ;
    }
 
-   static int log2ceil(utype value)
+   static constexpr int log2ceil(utype value)
    {
       const utype correction = value ;
       return log2floor(value) + !!(correction & (correction - 1)) ;
@@ -119,7 +119,7 @@ template<> struct bit_traits<32> {
    typedef int       stype ;
    typedef unsigned  utype ;
 
-   static unsigned bitcount(utype value)
+   static constexpr unsigned bitcount(utype value)
    {
       unsigned r = value ;
       r = (0x55555555U & r) + (0x55555555U & (r >> 1U)) ;
@@ -128,7 +128,7 @@ template<> struct bit_traits<32> {
       return (r + (r >> 8U) + (r >> 16U) + (r >> 24U)) & 0x3fU ;
    }
 
-   static int log2floor(utype value)
+   static constexpr int log2floor(utype value)
    {
       unsigned x = value ;
       x |= (x >> 1) ;
@@ -139,7 +139,7 @@ template<> struct bit_traits<32> {
       return (int)bitcount((utype)x) - 1 ;
    }
 
-   static int log2ceil(utype value)
+   static constexpr int log2ceil(utype value)
    {
       const unsigned correction = value ;
       return log2floor(value) + !!(correction & (correction - 1)) ;
@@ -154,7 +154,7 @@ template<> struct bit_traits<16> {
    typedef int16_t  stype ;
    typedef uint16_t utype ;
 
-   static unsigned bitcount(utype value)
+   static constexpr unsigned bitcount(utype value)
    {
       unsigned r = value ;
       r = (0x5555U & r) + (0x5555U & (r >> 1U)) ;
@@ -163,7 +163,7 @@ template<> struct bit_traits<16> {
       return (r + (r >> 8U)) & 0x1fU ;
    }
 
-   static int log2floor(utype value)
+   static constexpr int log2floor(utype value)
    {
       unsigned x = static_cast<utype>(value) ;
       x |= (x >> 1) ;
@@ -173,7 +173,7 @@ template<> struct bit_traits<16> {
       return (int)bitcount((utype)x) - 1 ;
    }
 
-   static int log2ceil(utype value)
+   static constexpr int log2ceil(utype value)
    {
       const unsigned correction = value ;
       return log2floor(value) + !!(correction & (correction - 1)) ;
@@ -188,7 +188,7 @@ template<> struct bit_traits<8> {
    typedef int8_t  stype ;
    typedef uint8_t utype ;
 
-   static unsigned bitcount(utype value)
+   static constexpr unsigned bitcount(utype value)
    {
       unsigned r = value ;
       r = (0x55U & r) + (0x55U & (r >> 1U)) ;
@@ -196,7 +196,7 @@ template<> struct bit_traits<8> {
       return (r + (r >> 4U)) & 0xfU ;
    }
 
-   static int log2floor(utype value)
+   static constexpr int log2floor(utype value)
    {
       // At the end, x will have the same most significant 1 as value and all '1's below
       unsigned x = value ;
@@ -206,7 +206,7 @@ template<> struct bit_traits<8> {
       return (int)bitcount((utype)x) - 1 ;
    }
 
-   static int log2ceil(utype value)
+   static constexpr int log2ceil(utype value)
    {
       const unsigned correction = value ;
       return log2floor(value) + !!(correction & (correction - 1)) ;

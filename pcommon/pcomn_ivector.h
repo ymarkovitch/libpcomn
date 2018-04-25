@@ -64,17 +64,20 @@ class ivector : private std::vector<T *> {
          _owns(owns)
       {}
 
-      ivector(const ivector<T>& x, bool owns = false) :
+      ivector(const ivector &x, bool owns = false) :
          ancestor (x),
          _owns(owns)
       {}
+
+      ivector(ivector &&) = default ;
 
       ~ivector()
       {
          detach (begin(), end()) ;
       }
 
-      ivector<T>& operator = (const ivector<T>& x) ;
+      ivector &operator=(const ivector &) ;
+      ivector &operator=(ivector &&) = default ;
 
       bool owns_elements() const { return _owns ; }
       bool owns_elements(bool owns) { return xchange(_owns, owns) ; }
@@ -168,17 +171,37 @@ PCOMN_DEFINE_SWAP(ivector<T>, template<typename T>) ;
 /*******************************************************************************
  Comparator functors for indirect-containers
 *******************************************************************************/
+template<typename = void> struct i_less ;
+template<typename = void> struct i_equal ;
+
 template<typename T>
 struct i_less {
       typedef bool result_type ;
       typedef valtype_t<T> arg_type ;
 
       template<typename P1, typename P2>
-      auto operator()(const P1 &p1, const P2 &p2)      const->decltype(*p1 < *p2) { return *p1 < *p2 ; }
+      auto operator()(const P1 &p1, const P2 &p2) const->decltype(*p1 < *p2)
+      {
+         PCOMN_STATIC_CHECK(std::is_convertible<decltype(*p1), arg_type>() ||
+                            std::is_convertible<decltype(*p2), arg_type>()) ;
+         return *p1 < *p2 ;
+      }
       template<typename P>
       auto operator()(const P &p1, const arg_type &p2) const->decltype(*p1 < p2) { return *p1 < p2 ; }
       template<typename P>
       auto operator()(const arg_type &p1, const P &p2) const->decltype(p1 < *p2) { return p1 < *p2 ; }
+} ;
+
+template<> struct i_less<void> {
+      typedef bool result_type ;
+      typedef bool is_transparent ;
+
+      template<typename P1, typename P2>
+      auto operator()(const P1 &p1, const P2 &p2) const->decltype(*p1 < *p2) { return *p1 < *p2 ; }
+      template<typename V, typename P>
+      auto operator()(const V &v, const P &p)     const->decltype(v < *p) { return v < *p ; }
+      template<typename P, typename V>
+      auto operator()(const P &p, const V &v)     const->decltype(*p < v) { return *p < v ; }
 } ;
 
 template<typename T>
@@ -187,11 +210,28 @@ struct i_equal {
       typedef valtype_t<T> arg_type ;
 
       template<typename P1, typename P2>
-      auto operator()(const P1 &p1, const P2 &p2)      const->decltype(*p1 == *p2) { return *p1 == *p2 ; }
+      auto operator()(const P1 &p1, const P2 &p2) const->decltype(*p1 == *p2)
+      {
+         PCOMN_STATIC_CHECK(std::is_convertible<decltype(*p1), arg_type>() ||
+                            std::is_convertible<decltype(*p2), arg_type>()) ;
+         return *p1 == *p2 ;
+      }
       template<typename P>
       auto operator()(const P &p1, const arg_type &p2) const->decltype(*p1 == p2) { return *p1 == p2 ; }
       template<typename P>
       auto operator()(const arg_type &p1, const P &p2) const->decltype(p1 == *p2) { return p1 == *p2 ; }
+} ;
+
+template<> struct i_equal<void> {
+      typedef bool result_type ;
+      typedef bool is_transparent ;
+
+      template<typename P1, typename P2>
+      auto operator()(const P1 &p1, const P2 &p2) const->decltype(*p1 == *p2) { return *p1 == *p2 ; }
+      template<typename V, typename P>
+      auto operator()(const V &v, const P &p)     const->decltype(v == *p) { return v == *p ; }
+      template<typename P, typename V>
+      auto operator()(const P &p, const V &v)     const->decltype(*p == v) { return *p == v ; }
 } ;
 
 } // end of namespace pcomn

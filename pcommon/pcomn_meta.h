@@ -31,69 +31,6 @@
 #include <stdlib.h>
 #include <stddef.h>
 
-/*******************************************************************************
- C++14 definitions for C++11 compiler
-*******************************************************************************/
-#ifndef PCOMN_STL_CXX14
-
-namespace std {
-
-template<typename T>
-using remove_cv_t       = typename remove_cv<T>::type ;
-template<typename T>
-using remove_const_t    = typename remove_const<T>::type ;
-template<typename T>
-using remove_volatile_t = typename remove_volatile<T>::type ;
-
-template<typename T>
-using remove_pointer_t = typename remove_pointer<T>::type ;
-template<typename T>
-using remove_reference_t = typename remove_reference<T>::type ;
-
-template<typename T>
-using add_cv_t       = typename add_cv<T>::type ;
-template<typename T>
-using add_const_t    = typename add_const<T>::type ;
-template<typename T>
-using add_volatile_t = typename add_volatile<T>::type ;
-
-template<typename T>
-using add_lvalue_reference_t = typename add_lvalue_reference<T>::type ;
-template<typename T>
-using add_rvalue_reference_t = typename add_rvalue_reference<T>::type ;
-
-template<typename T>
-using add_pointer_t = typename add_pointer<T>::type ;
-
-template<bool B, typename T = void>
-using enable_if_t = typename enable_if<B, T>::type ;
-template<bool B, typename T, typename F>
-using conditional_t = typename conditional<B, T, F>::type ;
-
-template<typename T>
-using result_of_t = typename result_of<T>::type ;
-
-template<typename T>
-using underlying_type_t = typename underlying_type<T>::type ;
-
-template<size_t sz, size_t align = alignof(max_align_t)>
-using aligned_storage_t = typename aligned_storage<sz, align>::type ;
-
-template<size_t count, typename... Types>
-using aligned_union_t = typename std::aligned_union<count, Types...>::type ;
-
-template<typename T>
-using make_unsigned_t = typename make_unsigned<T>::type ;
-template<typename T>
-using make_signed_t = typename make_signed<T>::type ;
-
-template<typename T>
-using decay_t = typename decay<T>::type ;
-
-} // end of namespace std
-
-#endif /* PCOMN_STL_CXX14 */
-
 #ifndef PCOMN_STL_CXX17
 
 namespace std {
@@ -381,6 +318,12 @@ template<typename T>
 using parmtype_t = std::conditional_t<std::is_scalar<std::decay_t<T>>::value,
                                       std::decay_t<T>, clvref_t<T>> ;
 
+template<typename T>
+inline std::conditional_t<std::is_scalar<std::decay_t<T>>::value,
+                          std::decay_t<const T>,
+                          std::reference_wrapper<const T>>
+inparm(const T &v) { return v ; }
+
 /******************************************************************************/
 /** Deduce the return type of a function call expression at compile time @em and,
  if the deduced type is a reference type, provides the member typedef type which
@@ -552,20 +495,10 @@ underlying_int(I value)
 *******************************************************************************/
 #if !defined(__clang__) && PCOMN_WORKAROUND(__GNUC_VER__, < 700)
 namespace std {
-#if PCOMN_WORKAROUND(__GNUC_VER__, < 500)
-template<typename T, typename U>
-struct has_trivial_copy_assign<pair<T, U> > :
-         pcomn::ct_and<has_trivial_copy_assign<T>, has_trivial_copy_assign<U> > {} ;
-
-template<typename T>
-struct is_trivially_copyable :
-         pcomn::ct_and<has_trivial_copy_constructor<T>, has_trivial_copy_assign<T> > {} ;
-#else
 template<typename T, typename U>
 struct is_trivially_copyable<pair<T, U> > :
          pcomn::ct_and<is_trivially_copyable<T>, is_trivially_copyable<U> > {} ;
-#endif
 }
-#endif // PCOMN_WORKAROUND(__GNUC_VER__, < 500)
+#endif // PCOMN_WORKAROUND(__GNUC_VER__, < 700)
 
 #endif /* __PCOMN_META_H */

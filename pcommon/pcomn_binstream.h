@@ -212,7 +212,7 @@ class _PCOMNEXP binary_ibufstream : public virtual binary_istream {
 
       /// Create owning buffered input stream over abstract binary istream; the resulting
       /// buffered input stream @b does own the underlying istream.
-      explicit binary_ibufstream(binary_istream *stream_ptr, size_t capacity) ;
+      explicit binary_ibufstream(std::unique_ptr<binary_istream> &&stream_ptr, size_t capacity) ;
 
       ~binary_ibufstream() ;
 
@@ -334,7 +334,7 @@ class _PCOMNEXP binary_obufstream : public virtual binary_ostream {
 
       /// Create @b owning buffered output stream over abstract binary ostream; the
       /// resulting buffered output stream @b does own the underlying ostream.
-      explicit binary_obufstream(binary_ostream *stream_ptr, size_t capacity) ;
+      explicit binary_obufstream(std::unique_ptr<binary_ostream> &&stream_ptr, size_t capacity) ;
 
       /// Destructor attempts to flush data and intercepts all exceptions, since flush can
       /// throw an exception (or rather, its underlying unbufferd stream's write_data can).

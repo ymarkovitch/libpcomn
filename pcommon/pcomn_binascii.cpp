@@ -25,10 +25,7 @@
  encoding/decoding routines is, of course, endianness-neutral)
 *******************************************************************************/
 
-const unsigned char BASE64_PAD = (unsigned char)-2 ;
-const char BASE64_PAD_CHAR = '=' ;
-
-static const char base64_a2b_table[] =
+const char base64_a2b_table[] =
 {
     -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
     -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
@@ -44,13 +41,16 @@ static const char base64_a2b_table[] =
 static const char base64_b2a_table[] =
 "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-size_t a2b_base64(const char *ascii_data, size_t ascii_len, void *buf)
+size_t a2b_base64(const char *ascii_data, size_t *ascii_len_ptr, void *buf, size_t buf_len)
 {
+   size_t ascii_len = ascii_len_ptr ? *ascii_len_ptr : 0;
    if (!buf || !ascii_len)
       return a2b_bufsize_base64(ascii_len) ;
 
    unsigned char *bin_data = reinterpret_cast<unsigned char *>(buf) ;
 
+   const char * const ascii_beg = ascii_data ;
+   const char * ascii_full_parsed = ascii_data ;
    size_t bin_len = 0 ;
    int quad_pos = 0 ;
    int leftbits = 0 ;
@@ -61,17 +61,24 @@ size_t a2b_base64(const char *ascii_data, size_t ascii_len, void *buf)
       unsigned char this_ch = *(const unsigned char *)ascii_data ;
 
       // Ignore illegal characters
-      if (this_ch > 0x7f || (this_ch = base64_a2b_table[this_ch]) == (unsigned char)-1)
+      if (this_ch > 0x7f || (this_ch = base64_a2b_table[this_ch]) == (unsigned char)-1) {
+         if (!quad_pos)
+            ascii_full_parsed = ascii_data + 1;
          continue ;
+      }
 
       // Check for pad sequences and ignore the invalid ones.
       if (this_ch == BASE64_PAD)
-         if (quad_pos < 2 ||  quad_pos == 2 && prev_ch != BASE64_PAD)
+         if (quad_pos < 2 || quad_pos == 2 && prev_ch != BASE64_PAD) {
+            prev_ch = BASE64_PAD ;
             continue ;
-         else
+         }
+         else {
             // A pad sequence means no more input.
             // We've already interpreted the data from the quad at this point.
-            break ;
+            *ascii_len_ptr = ascii_data + 1 - ascii_beg ;
+            return bin_len ;
+         }
 
       // Shift it in on the low end
       ++quad_pos &= 0x03 ;
@@ -86,10 +93,16 @@ size_t a2b_base64(const char *ascii_data, size_t ascii_len, void *buf)
          *bin_data++ = (leftchar >> leftbits) & 0xff ;
          ++bin_len ;
          leftchar &= ((1 << leftbits) - 1) ;
+         // only fully decoded
+         if (quad_pos == 0)
+            ascii_full_parsed = ascii_data + 1;
+         if (bin_len == buf_len)
+            break ;
       }
       prev_ch = this_ch ;
    }
 
+   *ascii_len_ptr = ascii_full_parsed - ascii_beg ;
    return bin_len ;
 }
 
@@ -137,13 +150,15 @@ size_t b2a_base64(const void *source, size_t source_len,
    return source_len ;
 }
 
-size_t a2b_base64(pcomn::shared_buffer &buffer, const char *ascii_data, size_t ascii_len)
+size_t a2b_base64(pcomn::shared_buffer &buffer, const char *ascii_data, size_t *ascii_len_ptr)
 {
-   size_t buflen = a2b_bufsize_base64(ascii_len) ;
+   if (!ascii_len_ptr)
+      return 0 ;
+   size_t buflen = a2b_bufsize_base64(*ascii_len_ptr) ;
    if (buflen)
    {
       const size_t initsize = buffer.size() ;
-      buflen = a2b_base64(ascii_data, ascii_len, pcomn::padd(buffer.resize(initsize + buflen), initsize)) ;
+      buflen = a2b_base64(ascii_data, ascii_len_ptr, pcomn::padd(buffer.resize(initsize + buflen), initsize), buflen) ;
       buffer.resize(initsize + buflen) ;
    }
    return buflen ;

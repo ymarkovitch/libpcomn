@@ -134,7 +134,7 @@ namespace atomic_op {
  even with kerenels it is available on due to abysmal performance
  (order of 1ms per call!)
 *******************************************************************************/
-template<novalue = {}>
+template<novalue = novalue()>
 struct process_membarrier_ {
       static void mb() ;
    #if !defined(PCOMN_PL_MS)

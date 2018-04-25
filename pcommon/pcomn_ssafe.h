@@ -106,7 +106,7 @@ public:
     const char *begin() const noexcept { return str() ; }
     const char *end() const noexcept { return this->pptr() ; }
     size_t size() const noexcept { return end() - begin() ; }
-    constexpr size_t max_size() const noexcept { return sz ; }
+    constexpr static size_t max_size() noexcept { return sz ; }
 
     bufstr_ostream &reset() noexcept
     {

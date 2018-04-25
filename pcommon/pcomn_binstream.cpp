@@ -54,8 +54,8 @@ binary_ibufstream::binary_ibufstream(binary_istream &s, size_t buf_capacity) :
    _bufend(_bufptr)
 {}
 
-binary_ibufstream::binary_ibufstream(binary_istream *s, size_t buf_capacity) :
-   _unbuffered(s),
+binary_ibufstream::binary_ibufstream(std::unique_ptr<binary_istream> &&stream_ptr, size_t buf_capacity) :
+   _unbuffered(std::move(stream_ptr)),
    _capacity(std::max(buf_capacity, (size_t)1)),
    _databound(UNBOUNDED),
    _buffer(_capacity > 1 ? new uint8_t[ensure_sane_capacity(buf_capacity) + 1] : _putback),
@@ -135,8 +135,8 @@ binary_obufstream::binary_obufstream(binary_ostream &s, size_t buf_capacity) :
    _bufptr(_buffer.begin())
 {}
 
-binary_obufstream::binary_obufstream(binary_ostream *s, size_t buf_capacity) :
-   _unbuffered(s),
+binary_obufstream::binary_obufstream(std::unique_ptr<binary_ostream> &&s, size_t buf_capacity) :
+   _unbuffered(std::move(s)),
    _buffer(ensure_sane_capacity(PCOMN_ENSURE_ARG(buf_capacity))),
    _bufptr(_buffer.begin())
 {}

@@ -46,33 +46,44 @@ struct ptr_shim {
       T *_ptr ;
 } ;
 
-/******************************************************************************/
-/** Reference wrapper object, which may, depending on construction mode, delete the
+/***************************************************************************//**
+ Reference wrapper object, which may, depending on construction mode, delete the
  object whose reference it holds.
 *******************************************************************************/
 template<typename T>
 class safe_ref {
+      PCOMN_NONCOPYABLE(safe_ref) ;
+      PCOMN_NONASSIGNABLE(safe_ref) ;
    public:
       typedef T type ; /**< For compatibility with std::reference_wrapper */
       typedef T element_type ;
 
+      /// Construct a safe reference that dows @e not own the passed object.
+      constexpr safe_ref(element_type &unowned_object) : _ref(unowned_object) {}
+
       /// Construct a safe reference that @e owns the passed object.
       /// @throw std::invalid_argument if @a owned_object is nullptr.
-      safe_ref(type *owned_object) :
-         _owner(PCOMN_ENSURE_ARG(owned_object)),
-         _ref(*owned_object)
+      safe_ref(std::unique_ptr<element_type> &&owned_object) :
+         _owner(std::move(PCOMN_ENSURE_ARG(owned_object))),
+         _ref(*_owner)
       {}
 
-      /// Construct a safe reference that dows @e not own the passed object.
-      safe_ref(type &unowned_object) : _ref(unowned_object) {}
+      /// Allow runtime selection of object ownership.
+      /// Either unowned or owned must be nonnull.
+      safe_ref(element_type *unowned, std::unique_ptr<element_type> &&owned) :
+         _owner(std::move(owned)),
+         _ref(_owner ? *_owner : *PCOMN_ENSURE_ARG(unowned))
+      {}
 
-      T &get() const { return _ref ; }
-      operator T&() const { return get() ; }
-      T* operator->() const { return get() ; }
+      constexpr T &get() const { return _ref ; }
+      constexpr operator T&() const { return get() ; }
+      constexpr T *operator->() const { return &get() ; }
+
+      constexpr bool owns() const { return !!_owner ; }
 
    private:
-      std::unique_ptr<type>   _owner ;
-      type &                  _ref ;
+      const std::unique_ptr<type>   _owner ;
+      type &                        _ref ;
 } ;
 
 /******************************************************************************/

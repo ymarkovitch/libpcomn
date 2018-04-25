@@ -148,13 +148,13 @@ size_t bitcount(InputIterator data, size_t nelements)
 }
 
 template<typename I>
-inline int log2floor(I i)
+constexpr inline int log2floor(I i)
 {
    return bit_traits<int_traits<I>::bitsize>::log2floor(i) ;
 }
 
 template<typename I>
-inline int log2ceil(I i)
+constexpr inline int log2ceil(I i)
 {
    return bit_traits<int_traits<I>::bitsize>::log2ceil(i) ;
 }
@@ -340,8 +340,8 @@ struct nzbit_iterator : std::iterator<std::forward_iterator_tag, I> {
          return tmp ;
       }
 
-      bool operator==(const nzbit_iterator &rhs) const { return _data == rhs._data ; }
-      bool operator!=(const nzbit_iterator &rhs) const { return !(rhs == *this) ; }
+      constexpr bool operator==(const nzbit_iterator &rhs) const { return _data == rhs._data ; }
+      constexpr bool operator!=(const nzbit_iterator &rhs) const { return !(rhs == *this) ; }
 
    private:
       I _data ;
@@ -351,7 +351,7 @@ struct nzbit_iterator : std::iterator<std::forward_iterator_tag, I> {
 /// Construct an object of type nzbit_iterator, where the iterable types is based
 /// on the data type passed as its parameter.
 template<typename I>
-inline nzbit_iterator<if_integer_t<I> > make_nzbit_iterator(I value)
+constexpr inline nzbit_iterator<if_integer_t<I> > make_nzbit_iterator(I value)
 {
    return nzbit_iterator<I>(value) ;
 }

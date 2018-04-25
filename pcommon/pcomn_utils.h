@@ -171,10 +171,12 @@ inline void outparam_set(O *outparam_ptr, V &&value)
       *outparam_ptr = std::forward<V>(value) ;
 }
 
-template<typename T, typename P>
-constexpr inline auto nullable_get(P &&ptr, T &&default_value) -> decltype(*std::forward<P>(ptr))
+template<typename P>
+constexpr inline auto
+nullable_get(P &&ptr, const valtype_t<decltype(*std::declval<P>())> &default_value)
+   -> const decltype(default_value) &
 {
-   return std::forward<P>(ptr) ? *std::forward<P>(ptr) : std::forward<T>(default_value) ;
+   return std::forward<P>(ptr) ? *std::forward<P>(ptr) : default_value ;
 }
 
 /// Compare two values for equality through pointers to that values or pointer-like
@@ -397,7 +399,7 @@ struct tdef<Principal, Tag, true> {
       tdef &operator=(Principal &&rhs) { _data = std::move(rhs) ; return *this ;}
 
       constexpr const Principal &data() const { return _data ; }
-      constexpr operator Principal() const { return _data ; }
+      constexpr operator const Principal &() const { return _data ; }
       operator Principal &() & { return _data ; }
       operator Principal &&() && { return std::move(_data) ; }
 
@@ -614,17 +616,30 @@ class omemstream : private std::basic_streambuf<char>, public std::ostream {
 } ;
 
 /***************************************************************************//**
+ @cond
+*******************************************************************************/
+namespace detail {
+template<typename... Tn>
+__noinline std::string string_cast_(Tn ...an)
+{
+   pcomn::omemstream os ;
+   const bool dummy[] = {(os << an, false)...} ;
+   (void)dummy ;
+   return os.checkout() ;
+}
+}
+/// @endcond
+
+/***************************************************************************//**
  Output the series of a values into std::ostream.
 *******************************************************************************/
-/**{@*/
-__forceinline std::ostream &print_values(std::ostream &os) { return os ; }
-
-template<typename T, typename... Tn>
-inline std::ostream &print_values(std::ostream &os, const T &a1, const Tn &...an)
+template<typename... Tn>
+inline std::ostream &print_values(std::ostream &os, const Tn &...an)
 {
-   return print_values(os << a1, an...) ;
+   const bool dummy[] = {false, (os << an, false)...} ;
+   (void)dummy ;
+   return os ;
 }
-/**}@*/
 
 /***************************************************************************//**
  Returns the result of streaming arg into pcomn::omemstream
@@ -640,18 +655,6 @@ string_cast(T &&arg)
 {
    return {std::forward<T>(arg)} ;
 }
-
-/// @cond
-namespace detail {
-template<typename... Tn>
-__noinline std::string string_cast_(Tn ...an)
-{
-   pcomn::omemstream os ;
-   print_values(os, an...) ;
-   return os.checkout() ;
-}
-}
-/// @endcond
 
 template<typename T>
 __forceinline
