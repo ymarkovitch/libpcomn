@@ -10,6 +10,8 @@
 #------------------------------------------------------------------------------
 cmake_minimum_required(VERSION 3.5.2)
 
+project(pcommn_unittests)
+
 unittests_project(libpcommon_unittests)
 
 set_project_link_libraries(crypto z)
@@ -29,6 +31,7 @@ unittest(unittest_strshims)
 unittest(unittest_strslice)
 
 unittest(unittest_algorithms)
+unittest(unittest_base64)
 unittest(unittest_cacher)
 #unittest(unittest_cdsqueue)
 unittest(unittest_cdscrq)
