@@ -254,6 +254,7 @@ realpath(const basic_strslice<char> &path)
 /// joinpath("", "a/", "", "b") == "a/b" ;
 /// joinpath("", "a", "/", "b") == "/b" ;
 /// joinpath("a", "", "c", "") == "a/c/" ;
+/// joinpath("a", "b/c") == "a/b/c" ;
 /// @endcode
 ///
 template<typename R = std::string>

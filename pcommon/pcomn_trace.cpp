@@ -125,6 +125,9 @@ static struct {
 
 static unsigned global_mode ;
 
+static constexpr PTraceSuperGroup dummy_supergroup ;
+const PTraceSuperGroup &PDiagBase::null_supergroup = dummy_supergroup ;
+
 PDiagBase::PDiagBase(Properties *grp)
 {
    if (grp && numOfGroups() < diag::MaxGroupsNum)
@@ -594,6 +597,8 @@ void PDiagBase::setlog(int fd, bool owned)
       UNLOCK_RETURN ;
    }
 
+   *ctx::log_name = 0 ;
+
    const int  prev_fd = ctx::log_fd ;
    const bool prev_owned = ctx::log_owned ;
 
@@ -634,8 +639,6 @@ const char *PDiagBase::logname()
 void PDiagBase::setlog(const char *logname)
 {
    ctx::LOCK() ;
-
-   *ctx::log_name = 0 ;
 
    if (!logname || !*logname)
       setlog(-1) ;

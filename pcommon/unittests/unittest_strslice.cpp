@@ -25,20 +25,24 @@ class StrSliceTests : public CppUnit::TestFixture {
       void Test_Strslice_Construct() ;
       void Test_Strslice_Compare() ;
       void Test_Strslice_Compare_CaseInsensitive() ;
+      void Test_Strslice_String_Concat() ;
       void Test_Strslice_IsProperty() ;
       void Test_String_Split() ;
       void Test_Strslice_Strip() ;
       void Test_Strslice_Strnew() ;
+      void Test_Strslice_Quote() ;
 
       CPPUNIT_TEST_SUITE(StrSliceTests) ;
 
       CPPUNIT_TEST(Test_Strslice_Construct) ;
       CPPUNIT_TEST(Test_Strslice_Compare) ;
       CPPUNIT_TEST(Test_Strslice_Compare_CaseInsensitive) ;
+      CPPUNIT_TEST(Test_Strslice_String_Concat) ;
       CPPUNIT_TEST(Test_Strslice_IsProperty) ;
       CPPUNIT_TEST(Test_String_Split) ;
       CPPUNIT_TEST(Test_Strslice_Strip) ;
       CPPUNIT_TEST(Test_Strslice_Strnew) ;
+      CPPUNIT_TEST(Test_Strslice_Quote) ;
 
       CPPUNIT_TEST_SUITE_END() ;
 } ;
@@ -145,6 +149,18 @@ void StrSliceTests::Test_Strslice_Compare_CaseInsensitive()
    CPPUNIT_LOG_ASSERT(lti("BCD", "cd")) ;
 }
 
+void StrSliceTests::Test_Strslice_String_Concat()
+{
+   using namespace pcomn ;
+   CPPUNIT_LOG_EQUAL(strslice("abc") + std::string("de"), std::string("abcde")) ;
+   CPPUNIT_LOG_EQUAL(std::string("abc") + strslice("de"), std::string("abcde")) ;
+
+   std::string abc ("abc") ;
+   CPPUNIT_LOG_EQUAL(abc + strslice("d") + 'e', std::string("abcde")) ;
+   CPPUNIT_LOG_EQUAL(strslice("d") + abc, std::string("dabc")) ;
+   CPPUNIT_LOG_EQUAL(strslice() + abc, std::string("abc")) ;
+}
+
 void StrSliceTests::Test_Strslice_IsProperty()
 {
    using namespace pcomn ;
@@ -227,6 +243,18 @@ void StrSliceTests::Test_Strslice_Strnew()
 
    CPPUNIT_LOG_RUN(str.reset(pcomn::str::strnew(sbuf2))) ;
    CPPUNIT_LOG_EQUAL(strlen(str.get()), strlen(sbuf2)) ;
+}
+
+void StrSliceTests::Test_Strslice_Quote()
+{
+   using namespace pcomn ;
+
+   CPPUNIT_LOG_EQ(string_cast(quote("Hello!")), R"("Hello!")") ;
+   CPPUNIT_LOG_EQ(string_cast(squote("Hello!")), R"('Hello!')") ;
+   CPPUNIT_LOG_EQ(string_cast(quote("Hello!\n")), R"("Hello!\n")") ;
+   CPPUNIT_LOG_EQ(string_cast(quote(strslice("Hello!\n"))), R"("Hello!\n")") ;
+   CPPUNIT_LOG_EQ(string_cast(quote('A')), "'A'") ;
+   CPPUNIT_LOG_EQ(string_cast(quote('\'')), R"('\'')") ;
 }
 
 int main(int argc, char *argv[])

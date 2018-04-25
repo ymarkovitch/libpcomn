@@ -112,7 +112,7 @@ struct basic_strslice {
       basic_strslice(const char_type *begin, const char_type *end) :
          _begin(begin), _end(end)
       {
-         NOXPRECONDITION(!begin && !end || begin <= end) ;
+         NOXCHECK(!begin == !end && begin <= end) ;
       }
 
       basic_strslice &operator=(const basic_strslice &) = default ;
@@ -276,6 +276,12 @@ struct basic_strslice {
 } ;
 
 /*******************************************************************************
+ Typedefs for narrow and wide chars
+*******************************************************************************/
+typedef basic_strslice<char>     strslice ;
+typedef basic_strslice<wchar_t>  wstrslice ;
+
+/*******************************************************************************
  basic_strslice equality compare and weak ordering
 *******************************************************************************/
 template<typename C>
@@ -391,8 +397,39 @@ lti(const S1 &lhs, const S2 &rhs)
    return lti(strslice_type(lhs), strslice_type(rhs)) ;
 }
 
-/******************************************************************************/
-/** An iterator over a sequence of strings contained in a character sequence,
+/***************************************************************************//**
+ basic_strslice and std::string concatenation.
+*******************************************************************************/
+/**@{*/
+inline std::string operator+(const std::string &x, const strslice &y)
+{
+   std::string result (x) ;
+   result.append(y.begin(), y.end()) ;
+   return result ;
+}
+
+inline std::string operator+(const strslice &x, const std::string &y)
+{
+   std::string result (x.begin(), x.end()) ;
+   result.append(y) ;
+   return result ;
+}
+
+inline std::string &&operator+(std::string &&x, const strslice &y)
+{
+   x.append(y.begin(), y.end()) ;
+   return std::move(x) ;
+}
+
+inline std::string &&operator+(const strslice &x, std::string &&y)
+{
+   y.insert(0, x.begin(), x.size()) ;
+   return std::move(y) ;
+}
+/**@}*/
+
+/***************************************************************************//**
+ An iterator over a sequence of strings contained in a character sequence,
  separated with '\0' and terminated by additional '\0' (like e.g. argv)
 *******************************************************************************/
 template<typename Value = const char *>
@@ -742,12 +779,6 @@ inline bool is_identifier(const basic_strslice<C> &s)
 }
 
 /*******************************************************************************
- Typedefs for narrow and wide chars
-*******************************************************************************/
-typedef basic_strslice<char>     strslice ;
-typedef basic_strslice<wchar_t>  wstrslice ;
-
-/*******************************************************************************
  Typedefs for split results
 *******************************************************************************/
 typedef std::pair<strslice, strslice>     strslice_pair ;
@@ -803,7 +834,7 @@ template<typename C>
 struct quote_ {
       typedef typename std::remove_cv<C>::type char_type ;
 
-      explicit constexpr quote_(const basic_strslice<C> &s) : _str(s) {}
+      constexpr quote_(const basic_strslice<C> &s) : _str(s) {}
       constexpr quote_(const basic_strslice<C> &s, C q) : _str(s), _quote(q ? q : '"') {}
 
       friend std::ostream &operator<<(std::ostream &os, const quote_&s)
@@ -819,35 +850,30 @@ struct quote_ {
 } // end of namespace pcomn::detail
 
 template<typename C>
-inline detail::quote_<C> quote(const basic_strslice<C> &s) { return detail::quote_<C>(s) ; }
+inline detail::quote_<C> quote(const basic_strslice<C> &s) { return {s} ; }
 
 template<typename C>
-inline detail::quote_<C> quote(const basic_strslice<C> &s, C q) { return detail::quote_<C>(s, q) ; }
+inline detail::quote_<C> quote(const basic_strslice<C> &s, C q) { return {s, q} ; }
 
 template<typename S>
-inline detail::quote_<typename string_traits<S>::char_type> quote(const S &s)
+inline auto quote(const S &s) -> decltype(detail::quote_<string_char_type_t<S>>(s))
 {
-   return detail::quote_<typename string_traits<S>::char_type>(s) ;
+   return {s} ;
+}
+
+inline detail::quote_<char> quote(const char &c) { return {{&c, &c + 1}, '\''} ; }
+
+template<typename S>
+inline detail::quote_<string_char_type_t<S>> quote(const S &s, string_char_type_t<S> q)
+{
+   return {s, q} ;
 }
 
 template<typename S>
-inline detail::quote_<string_char_type_t<S>>
-quote(const S &s, string_char_type_t<S> q)
-{
-   return detail::quote_<decltype(q)>(s, q) ;
-}
+inline auto squote(const S &s) -> decltype(quote(s, '\'')) { return {s, '\''} ; }
 
 template<typename S>
-inline auto squote(const S &s) -> decltype(quote(s, string_char_type_t<S>()))
-{
-   return quote(s, string_char_type_t<S>('\'')) ;
-}
-
-template<typename S>
-inline auto dquote(const S &s) -> decltype(quote(s, string_char_type_t<S>()))
-{
-   return quote(s, string_char_type_t<S>('"')) ;
-}
+inline auto dquote(const S &s) -> decltype(quote(s, '"'))  { return {s, '"'} ; }
 
 /*******************************************************************************
  omemstream

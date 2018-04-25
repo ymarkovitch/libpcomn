@@ -30,6 +30,7 @@ class UtilityTests : public CppUnit::TestFixture {
       void Test_StreamUtils() ;
       void Test_String_Cast() ;
       void Test_Underlying_Int() ;
+      void Test_Strong_Typedef() ;
       void Test_Folding() ;
 
       CPPUNIT_TEST_SUITE(UtilityTests) ;
@@ -41,6 +42,7 @@ class UtilityTests : public CppUnit::TestFixture {
       CPPUNIT_TEST(Test_StreamUtils) ;
       CPPUNIT_TEST(Test_String_Cast) ;
       CPPUNIT_TEST(Test_Underlying_Int) ;
+      CPPUNIT_TEST(Test_Strong_Typedef) ;
       CPPUNIT_TEST(Test_Folding) ;
 
       CPPUNIT_TEST_SUITE_END() ;
@@ -245,19 +247,8 @@ void UtilityTests::Test_TupleUtils()
 }
 
 namespace {
-#if PCOMN_STL_CXX14
-typedef std::less<void> lt ;
-typedef std::equal_to<void> eq ;
-#else
-struct lt {
-      template<typename T>
-      bool operator()(const T &x, const T &y) const { return std::less<T>()(x, y) ; }
-} ;
-struct eq {
-      template<typename T>
-      bool operator()(const T &x, const T &y) const { return std::equal_to<T>()(x, y) ; }
-} ;
-#endif
+typedef std::less<>     lt ;
+typedef std::equal_to<> eq ;
 }
 
 void UtilityTests::Test_TupleCompare()
@@ -427,6 +418,30 @@ void UtilityTests::Test_Underlying_Int()
    CPPUNIT_LOG_EQUAL(underlying_int((int8_t)-1), (int8_t)-1) ;
 
    CPPUNIT_LOG_EQUAL(underlying_int(true), true) ;
+}
+
+void UtilityTests::Test_Strong_Typedef()
+{
+   typedef strong_typedef<int, UtilityTests> strong_int ;
+
+   auto test_const = [](const int &v) { return v ; } ;
+   auto test_val = [](int v) { return v ; } ;
+   auto test_rref = [](int &&v) { return v ; } ;
+
+   CPPUNIT_LOG_EQ(0, strong_int()) ;
+   CPPUNIT_LOG_EQUAL(test_const(strong_int(5)), 5) ;
+   CPPUNIT_LOG_EQUAL(test_val(strong_int(5)), 5) ;
+   CPPUNIT_LOG_EQUAL(test_rref(strong_int(5)), 5) ;
+
+   constexpr strong_int si10 (10) ;
+   strong_int si15 (15) ;
+
+   PCOMN_STATIC_CHECK(pcomn::int_constant<si10 + 5>() == 15) ;
+
+   CPPUNIT_LOG_EQUAL(test_const(si10), 10) ;
+   CPPUNIT_LOG_EQUAL(test_val(si10), 10) ;
+   CPPUNIT_LOG_EQUAL(test_const(si15), 15) ;
+   CPPUNIT_LOG_EQUAL(test_val(si15), 15) ;
 }
 
 struct test_add {

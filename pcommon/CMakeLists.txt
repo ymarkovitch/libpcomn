@@ -23,7 +23,6 @@ include(pcommon)
 set(ENABLE_PCOMN_UNITTESTS  ON  CACHE BOOL "Enable unittests building. Requires CPPUntit.")
 set(ENABLE_PCOMN_STACKTRACE OFF CACHE BOOL "Enable stacktrace classes. Linux-only. Requires libunwind and libdw.")
 set(ENABLE_PCOMN_AVX        NO  CACHE BOOL "Enable use of AVX instruction set. Substantially accelerates e.g. hashing and pcomn::bitarray.")
-set(FORCE_PCOMN_CXX14       NO  CACHE BOOL "Force using C++14 for building both the pcommon library and unittests.")
 
 message("***** Processing ${PROJECT_NAME} *****")
 
@@ -94,7 +93,9 @@ add_library(pcommon STATIC
 
   ${T1HA_SOURCES}/t1ha0.c
   ${T1HA_SOURCES}/t1ha1.c
+  ${T1HA_SOURCES}/t1ha2.c
   ${T1HA_SOURCES}/t1ha0_ia32aes_avx.c
+  ${T1HA_SOURCES}/t1ha0_ia32aes_avx2.c
   ${T1HA_SOURCES}/t1ha0_ia32aes_noavx.c
 
   pcomn_trace.cpp
@@ -129,7 +130,7 @@ add_library(pcommon STATIC
   >
 )
 
-# At least C++11
+# C++14 required
 target_compile_features(pcommon
   PUBLIC
   cxx_alignas
@@ -137,16 +138,10 @@ target_compile_features(pcommon
   cxx_constexpr
   cxx_decltype
   cxx_delegating_constructors
+  cxx_return_type_deduction
+  cxx_relaxed_constexpr
+  cxx_lambda_init_captures
   )
-
-if (FORCE_PCOMN_CXX14)
-  target_compile_features(pcommon
-    PUBLIC
-    cxx_return_type_deduction
-    cxx_relaxed_constexpr
-    cxx_lambda_init_captures
-    )
-endif()
 
 set_target_properties(pcommon
   PROPERTIES

@@ -12,6 +12,8 @@
 #include <pcomn_cfgparser.h>
 #include <pcomn_strnum.h>
 
+#include <utility>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -38,6 +40,7 @@ static constexpr const char KEY_LINENUM[]    = "LINENUM" ;
 static constexpr const char KEY_THREADID[]   = "THREADID" ;
 static constexpr const char KEY_PID[]        = "PID" ;
 static constexpr const char KEY_LEVEL[]      = "LEVEL" ;
+static constexpr const char KEY_FORCELEVEL[] = "FORCELEVEL" ;
 
 using namespace pcomn ;
 
@@ -133,16 +136,34 @@ bool PTraceConfig::readProfile()
    if (cfgfile_get_value(cfgfile, TRACE_GROUP, KEY_LOGNAME, buf, ""))
       PDiagBase::setlog(buf) ;
 
-   for (iterator iter = begin() ; iter != end() ; ++iter)
-      (*iter).ena(!!cfgfile_get_intval(cfgfile, sectionName ((*iter).name()), SECTION_ENABLED, (*iter).enabled())) ;
+   std::pair<bool, unsigned char> level ;
+
+   const auto get_level = [&](const char *section, const char *key)
+   {
+      if (!cfgfile_get_value(cfgfile, section, key, buf, ""))
+         return false ;
+
+      unsigned ena, lev ;
+      sscanf(buf, "%u %u", &(ena = 0), &(lev = DBGL_LOWLEV)) ;
+      level = {!!ena, (unsigned char)lev} ;
+      return true ;
+   } ;
+
+   for (PTraceSuperGroup *sg = begin() ; sg != end() ; ++sg)
+   {
+      sg->ena(!!cfgfile_get_intval(cfgfile, sectionName(sg->name()), SECTION_ENABLED, sg->enabled())) ;
+      if (get_level(sectionName(sg->name()), KEY_FORCELEVEL))
+      {
+         sg->_force_enable = level.first ;
+         sg->_force_level  = level.second ;
+      }
+   }
 
    for (PDiagBase::Properties **p = PDiagBase::begin() ; p != PDiagBase::end() ; ++p)
-      if (cfgfile_get_value(cfgfile, sectionName ((*p)->superName()), (*p)->subName(), buf, ""))
+      if (get_level(sectionName((*p)->superName()), (*p)->subName()))
       {
-         unsigned ena, lev ;
-         sscanf(buf, "%u %u", &(ena = 0), &(lev = DBGL_LOWLEV)) ;
-         (*p)->ena(!!ena) ;
-         (*p)->level((unsigned char)lev) ;
+         (*p)->ena(level.first) ;
+         (*p)->level(level.second) ;
       }
 
    UNLOCK_CONTEXT() ;

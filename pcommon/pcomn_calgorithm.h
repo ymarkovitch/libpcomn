@@ -336,14 +336,8 @@ inline std::vector<T> &unique_sort(std::vector<T> &v)
 template<typename T, typename BinaryPredicate>
 inline std::vector<T> &unique_sort(std::vector<T> &v, BinaryPredicate &&pred)
 {
-   auto &p = std::forward<BinaryPredicate>(pred) ;
-   return unique(sort(v, p),
-                 #ifdef PCOMN_STL_CXX14
-                 [&](const auto &x, const auto &y) { return !p(x, y) ; }
-                 #else
-                 std::binary_negate<BinaryPredicate>(p)
-                 #endif
-                 ) ;
+   auto &&p = std::forward<BinaryPredicate>(pred) ;
+   return unique(sort(v, p), [&](const auto &x, const auto &y) { return !p(x, y) ; }) ;
 }
 
 template<typename T>

@@ -407,6 +407,8 @@ static typename membuf_traits<T>::type *_is_buffer(T**) ;
 
 template<typename T>
 struct _bufelem_size : std::integral_constant<size_t, sizeof(T)> {} ;
+template<typename T>
+struct _bufelem_size<const T> : _bufelem_size<T> {} ;
 template<>
 struct _bufelem_size<void> : std::integral_constant<size_t, 1> {} ;
 } // end of namespace pcomn::detail
@@ -468,27 +470,27 @@ struct memvec_traits<std::pair<E *, size_t>, true> {
 
 template<typename E>
 struct membuf_traits<std::pair<E *, size_t>> :
-         memvec_traits<std::pair<E *, size_t>, std::is_pod<E>::value>
+         memvec_traits<std::pair<E *, size_t>, std::is_pod<E>::value || std::is_void<E>::value>
 {} ;
 
 template<> struct membuf_traits<iovec_t> {
       typedef iovec_t type ;
 
-      static size_t size(const iovec_t &buffer) { return buffer.iov_len ; }
-      static const void *cdata(const iovec_t &buffer) { return buffer.iov_base ; }
-      static void *data(const iovec_t &buffer) { return buffer.iov_base ; }
+      static constexpr size_t size(const iovec_t &buffer) { return buffer.iov_len ; }
+      static constexpr const void *cdata(const iovec_t &buffer) { return buffer.iov_base ; }
+      static constexpr void *data(const iovec_t &buffer) { return buffer.iov_base ; }
 } ;
 
 template<size_t n> struct membuf_traits<const char[n]> {
       typedef const void *type ;
 
-      static size_t size(const char(&)[n]) { return n ; }
-      static const void *cdata(const char(&buf)[n]) { return buf + 0 ; }
+      static constexpr size_t size(const char(&)[n]) { return n ; }
+      static constexpr const void *cdata(const char(&buf)[n]) { return buf + 0 ; }
 } ;
 
 template<size_t n> struct membuf_traits<char[n]> : membuf_traits<const char[n]> {
       typedef void *type ;
-      static void *data(const char(&buf)[n]) { return buf + 0 ; }
+      static constexpr void *data(const char(&buf)[n]) { return buf + 0 ; }
 } ;
 
 /*******************************************************************************
@@ -497,19 +499,19 @@ template<size_t n> struct membuf_traits<char[n]> : membuf_traits<const char[n]> 
 namespace buf {
 
 template<typename T>
-inline const void *cdata(const T &buffer)
+constexpr inline const void *cdata(const T &buffer)
 {
    return ::pcomn::membuf_traits<T>::cdata(buffer) ;
 }
 
 template<typename T>
-inline void *data(T &buffer)
+constexpr inline void *data(T &buffer)
 {
    return ::pcomn::membuf_traits<typename std::remove_const<T>::type>::data(buffer) ;
 }
 
 template<typename T>
-inline size_t size(const T &buffer) { return ::pcomn::membuf_traits<T>::size(buffer) ; }
+constexpr inline size_t size(const T &buffer) { return ::pcomn::membuf_traits<T>::size(buffer) ; }
 
 template<typename T1, typename T2>
 inline bool eq(const T1 &left, const T2 &right)
@@ -523,10 +525,9 @@ inline bool eq(const T1 &left, const T2 &right)
 }
 
 template<typename T>
-inline cmemvec_t cmemvec(const T &buffer)
+constexpr inline cmemvec_t cmemvec(const T &buffer)
 {
-   const void * const data = ::pcomn::buf::cdata(buffer) ;
-   return cmemvec_t(data, ::pcomn::buf::size(buffer)) ;
+   return cmemvec_t(::pcomn::buf::cdata(buffer), ::pcomn::buf::size(buffer)) ;
 }
 
 template<typename T>
@@ -539,10 +540,9 @@ inline cmemvec_t cmemvec(const T &buffer, size_t offs, size_t len = -1)
 }
 
 template<typename T>
-inline memvec_t memvec(T &buffer)
+constexpr inline memvec_t memvec(T &buffer)
 {
-   void * const data = ::pcomn::buf::data(buffer) ;
-   return memvec_t(data, ::pcomn::buf::size(buffer)) ;
+   return memvec_t(::pcomn::buf::data(buffer), ::pcomn::buf::size(buffer)) ;
 }
 
 template<typename T>
@@ -560,6 +560,19 @@ inline memvec_t memvec(T &buffer, size_t offs, size_t len = -1)
 inline std::ostream &operator<<(std::ostream &os, const pcomn::iovec_t &v)
 {
    return os << '{' << v.iov_base << ',' << v.iov_len << '}' ;
+}
+
+namespace std {
+
+constexpr inline size_t size(const pcomn::iovec_t &v) { return pcomn::buf::size(v) ; }
+constexpr inline const void *data(const pcomn::iovec_t &v) { return pcomn::buf::cdata(v) ; }
+
+constexpr inline size_t size(const pcomn::cmemvec_t &v) { return pcomn::buf::size(v) ; }
+constexpr inline const void *data(const pcomn::cmemvec_t &v) { return pcomn::buf::cdata(v) ; }
+
+constexpr inline size_t size(const pcomn::memvec_t &v) { return pcomn::buf::size(v) ; }
+constexpr inline void *data(const pcomn::memvec_t &v) { return pcomn::buf::data(v) ; }
+
 }
 
 #endif /* __PCOMN_BUFFER_H */

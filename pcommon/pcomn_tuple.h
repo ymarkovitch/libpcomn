@@ -21,18 +21,6 @@
 #include <utility>
 #include <functional>
 
-/*******************************************************************************
- C++14 definitions for C++11 compiler
-*******************************************************************************/
-#ifndef PCOMN_STL_CXX14
-
-namespace std {
-template<std::size_t I, class Tuple>
-using tuple_element_t = typename tuple_element<I, Tuple>::type ;
-}
-
-#endif /* PCOMN_STL_CXX14 */
-
 namespace pcomn {
 
 /***************************************************************************//**

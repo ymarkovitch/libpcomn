@@ -283,7 +283,7 @@ inline if_integer_t<Num> strtonum(Range input)
 /// is true if conversion is successful and false otherwise; in case of conversion
 /// failure, pair.first is 0.
 template<typename Num, typename Range>
-if_integer_t<Num, std::pair<Num, bool>> strtonum_safe(Range input)
+if_integer_t<Num, std::pair<Num, bool>> strtonum_safe(Range input) noexcept
 {
    std::pair<Num, bool> result (Num(), false) ;
    try {

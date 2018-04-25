@@ -173,6 +173,12 @@ constexpr inline T *padd(T *p, ptrdiff_t offset)
    return (T *)((char *)p + offset) ;
 }
 
+template<typename T, typename U>
+constexpr inline T *pradd(U *p, ptrdiff_t offset)
+{
+   return (T *)((char *)p + offset) ;
+}
+
 inline ptrdiff_t pdiff(const void *p1, const void *p2)
 {
    return (const char *)p1 - (const char *)p2 ;
@@ -195,7 +201,26 @@ inline T *postinc(T *&p, ptrdiff_t offset)
 template<typename T>
 constexpr inline T *rebase(T *ptr, const void *oldbase, const void *newbase)
 {
-    return ptr ? (T *)padd(newbase, pdiff(ptr, oldbase)) : nullptr ;
+   return ptr ? (T *)padd(newbase, pdiff(ptr, oldbase)) : nullptr ;
+}
+
+template<typename T>
+constexpr inline auto bufsize(size_t count) -> decltype(sizeof(T)*count)
+{
+   return sizeof(T) * count ;
+}
+
+template<typename T>
+constexpr inline typename std::enable_if<std::is_same<T, void>::value, size_t>::type
+bufsize(size_t count)
+{
+   return count ;
+}
+
+template<typename T>
+constexpr inline auto bufsize(const volatile T *, size_t count) -> decltype(bufsize<T>(count))
+{
+   return bufsize<T>(count) ;
 }
 
 /*******************************************************************************
@@ -364,7 +389,7 @@ constexpr inline bool xinrange(const T &value, const std::pair<R, R> &range)
 }
 
 template<typename T>
-constexpr inline ptrdiff_t range_length(const std::pair<T, T> &range)
+constexpr inline auto range_length(const std::pair<T, T> &range) -> decltype(range.second-range.first)
 {
    return range.second - range.first ;
 }
@@ -759,22 +784,26 @@ inline void *hextob(void *buf, size_t bufsz, const char *hexstr)
 /// Define operators '+' and '-' for the type through corresponding augmented operations
 /// '+=' and '-='.
 #define PCOMN_DEFINE_ADDOP_FUNCTIONS(pfx, type)                         \
-   pfx inline type operator+(const type &lhs, const type &rhs) { type ret (lhs) ; return std::move(ret += rhs) ; } \
-   pfx inline type operator-(const type &lhs, const type &rhs) { type ret (lhs) ; return std::move(ret -= rhs) ; }
+   pfx inline type operator+(const type &lhs, const type &rhs) { type ret(lhs) ; ret += rhs ; return ret ; } \
+   pfx inline type operator-(const type &lhs, const type &rhs) { type ret(lhs) ; ret -= rhs ; return ret ; }
 
 #define PCOMN_DEFINE_NONASSOC_ADDOP_FUNCTIONS(pfx, type, rhstype)       \
-   pfx inline type operator+(const type &lhs, const rhstype &rhs) { type ret (lhs) ; return std::move(ret += rhs) ; } \
-   pfx inline type operator-(const type &lhs, const rhstype &rhs) { type ret (lhs) ; return std::move(ret -= rhs) ; }
+   pfx inline type operator+(const type &lhs, const rhstype &rhs) { type ret(lhs) ; ret += rhs ; return ret ; } \
+   pfx inline type operator-(const type &lhs, const rhstype &rhs) { type ret(lhs) ; ret -= rhs ; return ret ; }
+
+#define PCOMN_DEFINE_COMMUTATIVE_OP_FUNCTIONS(pfx, op, type, othertype)  \
+   pfx inline type operator+(const type &self, const othertype &other) { type ret(self) ; ret op##= other ; return ret ; } \
+   pfx inline type operator+(const othertype &other, const type &self) { return self op other ; }
 
 /// Define operators '+' and '-' for the type through corresponding augmented operations
 /// '+=' and '-='.
 #define PCOMN_DEFINE_ADDOP_METHODS(type)                                \
-   type operator+(const type &rhs) const { type ret (*this) ; return std::move(ret += rhs) ; } \
-   type operator-(const type &rhs) const { type ret (*this) ; return std::move(ret -= rhs) ; }
+   type operator+(const type &rhs) const { type ret(*this) ; ret += rhs ; return ret ; } \
+   type operator-(const type &rhs) const { type ret(*this) ; ret -= rhs ; return ret ; }
 
 #define PCOMN_DEFINE_NONASSOC_ADDOP_METHODS(type, rhstype)              \
-   type operator+(const rhstype &rhs) const { type ret (*this) ; return std::move(ret += rhs) ; } \
-   type operator-(const rhstype &rhs) const { type ret (*this) ; return std::move(ret -= rhs) ; }
+   type operator+(const rhstype &rhs) const { type ret(*this) ; ret += rhs ; return ret ; } \
+   type operator-(const rhstype &rhs) const { type ret(*this) ; ret -= rhs ; return ret ; }
 
 /// Define post(inc|dec)rement.
 #define PCOMN_DEFINE_POSTCREMENT(type, op) \
@@ -806,6 +835,32 @@ inline void *hextob(void *buf, size_t bufsz, const char *hexstr)
    __VA_ARGS__ inline auto pbegin(const type &x) -> decltype(&*std::begin(x)) { return std::begin(x) ; } \
    __VA_ARGS__ inline auto pend(type &x) -> decltype(&*std::end(x)) { return std::end(x) ; } \
    __VA_ARGS__ inline auto pend(const type &x) -> decltype(&*std::end(x)) { return std::end(x) ; }
+
+/// Define bit flag operations (|,&,~) over the specified enum type.
+#define PCOMN_DEFINE_FLAG_ENUM(enum_type)                               \
+   PCOMN_STATIC_CHECK(std::is_enum<enum_type>()) ;                      \
+   constexpr inline enum_type operator&(enum_type x, enum_type y)       \
+   {                                                                    \
+      typedef std::underlying_type_t<enum_type> int_type ;              \
+      return (enum_type)((int_type)x & (int_type)y) ;                   \
+   }                                                                    \
+   constexpr inline enum_type operator|(enum_type x, enum_type y)       \
+   {                                                                    \
+      typedef std::underlying_type_t<enum_type> int_type ;              \
+      return (enum_type)((int_type)x | (int_type)y) ;                   \
+   }                                                                    \
+   constexpr inline enum_type operator^(enum_type x, enum_type y)       \
+   {                                                                    \
+      typedef std::underlying_type_t<enum_type> int_type ;              \
+      return (enum_type)((int_type)x ^ (int_type)y) ;                   \
+   }                                                                    \
+   constexpr inline enum_type operator~(enum_type x)                    \
+   {                                                                    \
+      return (enum_type)(~(std::underlying_type_t<enum_type>)x) ;       \
+   }                                                                    \
+   inline enum_type &operator|=(enum_type &x, enum_type y) { return x = x | y ; } \
+   inline enum_type &operator&=(enum_type &x, enum_type y) { return x = x & y ; } \
+   inline enum_type &operator^=(enum_type &x, enum_type y) { return x = x ^ y ; }
 
 
 /*******************************************************************************

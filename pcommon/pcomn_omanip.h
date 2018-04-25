@@ -50,17 +50,8 @@ inline std::ostream &operator<<(std::ostream &os, NoOut) { return os ; }
 
 template<typename> struct omanip ;
 
-/*******************************************************************************
- Note the MSVC++ does allow C++14 constructs in C++11 code, but frequently
- unable to compile pretty valid C++11 constructs!
-*******************************************************************************/
-#ifdef PCOMN_STL_CXX14
-#  define PCOMN_DERIVE_OMANIP(basecall) { return basecall ; }
-#  define PCOMN_MAKE_OMANIP(...) { return pcomn::make_omanip(__VA_ARGS__) ; }
-#else
-#  define PCOMN_DERIVE_OMANIP(basecall) ->decltype(basecall) { return basecall ; }
-#  define PCOMN_MAKE_OMANIP(...) ->decltype(pcomn::make_omanip(__VA_ARGS__)) { return pcomn::make_omanip(__VA_ARGS__) ; }
-#endif
+#define PCOMN_DERIVE_OMANIP(basecall) { return basecall ; }
+#define PCOMN_MAKE_OMANIP(...) { return pcomn::make_omanip(__VA_ARGS__) ; }
 
 namespace detail {
 struct omanip_maker {

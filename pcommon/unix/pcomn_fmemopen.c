@@ -51,7 +51,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef ined(HAVE_FUNOPEN)
+#if defined(HAVE_FUNOPEN)
    typedef size_t  fmem_off_t;
    typedef fpos_t  seek_pos_t;
 
