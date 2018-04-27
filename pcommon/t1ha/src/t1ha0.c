@@ -186,7 +186,7 @@ uint64_t t1ha0_32le(const void *data, size_t len, uint64_t seed) {
     do {
       const uint32_t *v = (const uint32_t *)data;
       if (unlikely(need_align))
-        v = (const uint32_t *)memcpy(&align, v, 16);
+        v = (const uint32_t *)memcpy(&align, unaligned(v), 16);
 
       uint32_t w0 = fetch32_le(v + 0);
       uint32_t w1 = fetch32_le(v + 1);
@@ -213,7 +213,7 @@ uint64_t t1ha0_32le(const void *data, size_t len, uint64_t seed) {
 
   const uint8_t *v = (const uint8_t *)data;
   if (unlikely(need_align) && len > 4)
-    v = (const uint8_t *)memcpy(&align, v, len);
+    v = (const uint8_t *)memcpy(&align, unaligned(v), len);
 
   switch (len) {
   default:
@@ -259,7 +259,7 @@ uint64_t t1ha0_32be(const void *data, size_t len, uint64_t seed) {
     do {
       const uint32_t *v = (const uint32_t *)data;
       if (unlikely(need_align))
-        v = (const uint32_t *)memcpy(&align, v, 16);
+        v = (const uint32_t *)memcpy(&align, unaligned(v), 16);
 
       uint32_t w0 = fetch32_be(v + 0);
       uint32_t w1 = fetch32_be(v + 1);
@@ -286,7 +286,7 @@ uint64_t t1ha0_32be(const void *data, size_t len, uint64_t seed) {
 
   const uint8_t *v = (const uint8_t *)data;
   if (unlikely(need_align) && len > 4)
-    v = (const uint8_t *)memcpy(&align, v, len);
+    v = (const uint8_t *)memcpy(&align, unaligned(v), len);
 
   switch (len) {
   default:
@@ -320,7 +320,9 @@ uint64_t t1ha0_32be(const void *data, size_t len, uint64_t seed) {
 
 /***************************************************************************/
 
-#ifdef __ia32__
+#if T1HA0_RUNTIME_SELECT
+
+#if T1HA0_AESNI_AVAILABLE && defined(__ia32__)
 static uint64_t x86_cpu_features(void) {
   uint32_t features = 0;
   uint32_t extended = 0;
@@ -347,11 +349,7 @@ static uint64_t x86_cpu_features(void) {
 #endif
   return features | (uint64_t)extended << 32;
 }
-#endif /* __ia32__ */
-
-/***************************************************************************/
-
-#ifdef T1HA0_RUNTIME_SELECT
+#endif /* T1HA0_AESNI_AVAILABLE && __ia32__ */
 
 static
 #if __GNUC_PREREQ(4, 0) || __has_attribute(used)
@@ -359,7 +357,7 @@ static
 #endif
     uint64_t (*t1ha0_resolve(void))(const void *, size_t, uint64_t) {
 
-#ifdef __ia32__
+#if T1HA0_AESNI_AVAILABLE && defined(__ia32__)
   uint64_t features = x86_cpu_features();
   if (features & UINT32_C(0x02000000) /* check for AES-NI */) {
     if ((features & UINT32_C(0x1A000000)) ==
@@ -368,7 +366,7 @@ static
       return ((features >> 32) & 32) ? t1ha0_ia32aes_avx2 : t1ha0_ia32aes_avx;
     return t1ha0_ia32aes_noavx;
   }
-#endif /* __ia32__ */
+#endif /* T1HA0_AESNI_AVAILABLE && __ia32__ */
 
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 #if UINTPTR_MAX > 0xffffFFFFul || ULONG_MAX > 0xffffFFFFul
@@ -387,12 +385,12 @@ static
 
 #ifdef __ELF__
 
-#if __GNUC_PREREQ(4, 6) || __has_attribute(ifunc)
+#if __has_attribute(ifunc)
 uint64_t t1ha0(const void *data, size_t len, uint64_t seed)
     __attribute__((ifunc("t1ha0_resolve")));
 #else
 __asm("\t.globl\tt1ha0\n\t.type\tt1ha0, "
-      "@gnu_indirect_function\n\t.set\tt1ha0,t1ha0_resolve");
+      "%gnu_indirect_function\n\t.set\tt1ha0,t1ha0_resolve");
 #endif /* ifunc */
 
 #elif __GNUC_PREREQ(4, 0) || __has_attribute(constructor)
