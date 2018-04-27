@@ -71,6 +71,12 @@
 
 /*****************************************************************************/
 
+#ifdef _MSC_VER
+/* Avoid '16' bytes padding added after data member 't1ha_context::total'
+ * and other warnings from std-headers if warning-level > 3. */
+#pragma warning(push, 3)
+#endif
+
 #if defined(__cplusplus) && __cplusplus >= 201103L
 #include <climits>
 #include <cstddef>
@@ -109,19 +115,20 @@
 /* clang-format off */
 
 #if defined(__GLIBC__) || defined(__GNU_LIBRARY__) || defined(__ANDROID__) ||  \
-    __has_include(<endian.h>)
+    defined(HAVE_ENDIAN_H) || __has_include(<endian.h>)
 #include <endian.h>
 #elif defined(__APPLE__) || defined(__MACH__) || defined(__OpenBSD__) ||       \
-    __has_include(<machine/endian.h>)
+    defined(HAVE_MACHINE_ENDIAN_H) || __has_include(<machine/endian.h>)
 #include <machine/endian.h>
-#elif __has_include(<sys/isa_defs.h>)
+#elif defined(HAVE_SYS_ISA_DEFS_H) || __has_include(<sys/isa_defs.h>)
 #include <sys/isa_defs.h>
-#elif __has_include(<sys/types.h>) && __has_include(<sys/endian.h>)
+#elif (defined(HAVE_SYS_TYPES_H) && defined(HAVE_SYS_ENDIAN_H)) ||             \
+    (__has_include(<sys/types.h>) && __has_include(<sys/endian.h>))
 #include <sys/endian.h>
 #include <sys/types.h>
 #elif defined(__bsdi__) || defined(__DragonFly__) || defined(__FreeBSD__) ||   \
     defined(__NETBSD__) || defined(__NetBSD__) ||                              \
-    __has_include(<sys/param.h>)
+    defined(HAVE_SYS_PARAM_H) || __has_include(<sys/param.h>)
 #include <sys/param.h>
 #endif /* OS */
 
@@ -243,6 +250,10 @@ typedef struct t1ha_context {
   uint64_t total;
 } t1ha_context_t;
 
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
+
 /******************************************************************************
  *
  *  t1ha2 = 64 and 128-bit, SLIGHTLY MORE ATTENTION FOR QUALITY AND STRENGTH.
@@ -345,19 +356,34 @@ uint64_t t1ha0_32le(const void *data, size_t length, uint64_t seed);
 /* The big-endian variant for 32-bit CPU. */
 uint64_t t1ha0_32be(const void *data, size_t length, uint64_t seed);
 
-#if defined(__e2k__)
-#define T1HA0_AESNI_AVAILABLE
-uint64_t t1ha0_ia32aes_noavx(const void *data, size_t length, uint64_t seed);
-uint64_t t1ha0_ia32aes_avx(const void *data, size_t length, uint64_t seed);
-#elif defined(__ia32__) && (!defined(_M_IX86) || _MSC_VER > 1800)
-#define T1HA0_AESNI_AVAILABLE
-#define T1HA0_RUNTIME_SELECT
-uint64_t t1ha0_ia32aes_noavx(const void *data, size_t length, uint64_t seed);
-uint64_t t1ha0_ia32aes_avx(const void *data, size_t length, uint64_t seed);
-uint64_t t1ha0_ia32aes_avx2(const void *data, size_t length, uint64_t seed);
-#endif /* __ia32__ */
+/* Define T1HA0_AESNI_AVAILABLE to 0 for disable AES-NI support. */
+#ifndef T1HA0_AESNI_AVAILABLE
+#if defined(__e2k__) ||                                                        \
+    (defined(__ia32__) && (!defined(_M_IX86) || _MSC_VER > 1800))
+#define T1HA0_AESNI_AVAILABLE 1
+#else
+#define T1HA0_AESNI_AVAILABLE 0
+#endif
+#endif /* T1HA0_AESNI_AVAILABLE */
 
-#ifdef T1HA0_RUNTIME_SELECT
+/* Define T1HA0_RUNTIME_SELECT to 0 for disable dispatching t1ha0 at runtime. */
+#ifndef T1HA0_RUNTIME_SELECT
+#if T1HA0_AESNI_AVAILABLE && !defined(__e2k__)
+#define T1HA0_RUNTIME_SELECT 1
+#else
+#define T1HA0_RUNTIME_SELECT 0
+#endif
+#endif /* T1HA0_RUNTIME_SELECT */
+
+#if T1HA0_AESNI_AVAILABLE
+uint64_t t1ha0_ia32aes_noavx(const void *data, size_t length, uint64_t seed);
+uint64_t t1ha0_ia32aes_avx(const void *data, size_t length, uint64_t seed);
+#ifndef __e2k__
+uint64_t t1ha0_ia32aes_avx2(const void *data, size_t length, uint64_t seed);
+#endif
+#endif /* T1HA0_AESNI_AVAILABLE */
+
+#if T1HA0_RUNTIME_SELECT
 #ifdef __ELF__
 /* ifunc/gnu_indirect_function will be used on ELF.
  * Please see https://en.wikipedia.org/wiki/Executable_and_Linkable_Format */
