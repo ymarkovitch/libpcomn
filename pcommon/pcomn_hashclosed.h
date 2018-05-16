@@ -52,8 +52,14 @@ enum class bucket_state : uint8_t {
    End     = 3
 } ;
 
-/******************************************************************************/
-/** State extractor for a hashtable bucket with pointer value.
+/*******************************************************************************
+ Forward declarations (avoid including extra headers into pcomn_hashclosed.h)
+*******************************************************************************/
+template<typename> class basic_strslice ;
+struct strslice_state_extractor ;
+
+/***************************************************************************//**
+ State extractor for a hashtable bucket with pointer value.
 *******************************************************************************/
 template<typename T>
 struct pointer_state_extractor {
@@ -119,8 +125,8 @@ struct closed_hashtable_bucket {
       }
 } ;
 
-/******************************************************************************/
-/** Specialization of hashtable_item for items without state extractor.
+/***************************************************************************//**
+ Specialization of hashtable bucket for items without state extractor.
 *******************************************************************************/
 template<typename Value>
 struct closed_hashtable_bucket<Value, void> {
@@ -154,13 +160,22 @@ struct closed_hashtable_bucket<Value, void> {
       value_type     _value ;
 } ;
 
-/******************************************************************************/
-/** Specialization of hashtable_item for pointers; uses no additional space,
+/***************************************************************************//**
+ Specialization of hashtable bucket for pointers; uses no additional space,
  @p sizeof(bucket)==sizeof(void).
 *******************************************************************************/
 template<typename Value>
 struct closed_hashtable_bucket<Value *, void> :
    closed_hashtable_bucket<Value *, pointer_state_extractor<Value>>
+{} ;
+
+/***************************************************************************//**
+ Specialization of hashtable_item for strslice; uses no additional space,
+ @p sizeof(bucket)==sizeof(strslice).
+*******************************************************************************/
+template<typename C>
+struct closed_hashtable_bucket<basic_strslice<C>, void> :
+         closed_hashtable_bucket<basic_strslice<C>, strslice_state_extractor>
 {} ;
 
 /******************************************************************************/
@@ -950,3 +965,28 @@ inline void swap(pcomn::closed_hashtable<V, X, H, P, S> &lhs,
 } ;
 
 #endif /* __PCOMN_HASHCLOSED_H */
+
+/*******************************************************************************
+ Hash bucket state extractor specialization for strslice.
+ Provides sizeof(closed_hashtable<strslice>::bucket_type)==sizeof(strslice).
+
+ For this to work, include pcomn_hashclosed.h after pcomn_strslice.h (even if
+ pcomn_hashclosed.h is already included).
+*******************************************************************************/
+#if defined(__PCOMN_STRSLICE_H) && !defined(__PCOMN_STRSLICE_HASHCLOSED_H)
+#define __PCOMN_STRSLICE_HASHCLOSED_H
+namespace pcomn {
+struct strslice_state_extractor {
+      static bucket_state state(const strslice &s)
+      {
+         return pointer_state_extractor<const char>::state(s.begin()) ;
+      }
+
+      static strslice value(bucket_state s)
+      {
+         const char * const v = pointer_state_extractor<const char>::value(s) ;
+         return {v, v} ;
+      }
+} ;
+} // end of namespace pcomn
+#endif /* __PCOMN_STRSLICE_HASHCLOSED_H */
