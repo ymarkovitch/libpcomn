@@ -133,24 +133,24 @@ template<typename Value>
 struct closed_hashtable_bucket<Value, void> {
       typedef Value value_type ;
 
-      constexpr closed_hashtable_bucket() : _state(bucket_state::Empty), _value() {}
+      constexpr closed_hashtable_bucket() noexcept : _state(bucket_state::Empty), _value() {}
 
-      bucket_state state() const { return _state ; }
+      constexpr bucket_state state() const { return _state ; }
 
-      void set_state(bucket_state newstate)
+      void set_state(bucket_state newstate) noexcept
       {
          NOXCHECK(newstate <= bucket_state::End) ;
          _state = newstate ;
       }
 
-      const value_type &value() const { return _value ; }
-      void set_value(const value_type &v)
+      constexpr const value_type &value() const { return _value ; }
+      void set_value(const value_type &v) noexcept
       {
          _value = v ;
          _state = bucket_state::Valid ;
       }
 
-      bool is_available() const
+      constexpr bool is_available() const
       {
          const unsigned s = static_cast<uint8_t>(state()) ;
          return ((s >> 1) + s) & 1U ;
@@ -158,7 +158,7 @@ struct closed_hashtable_bucket<Value, void> {
 
    private:
       bucket_state _state ;
-      value_type     _value ;
+      value_type   _value ;
 } ;
 
 /***************************************************************************//**
@@ -285,7 +285,9 @@ class closed_hashtable {
       typedef basic_iterator<false> iterator ;
       typedef basic_iterator<true>  const_iterator ;
 
-      explicit closed_hashtable(size_type initsize = 0) ;
+      closed_hashtable() noexcept : closed_hashtable(0) {}
+
+      explicit closed_hashtable(size_type initsize) ;
 
       explicit closed_hashtable(const std::pair<size_type, float> &size_n_load) ;
 
@@ -296,7 +298,7 @@ class closed_hashtable {
          copy_buckets(other.begin_buckets(), other.end_buckets()) ;
       }
 
-      closed_hashtable(closed_hashtable &&other) : closed_hashtable(0) { swap(other) ; }
+      closed_hashtable(closed_hashtable &&other) noexcept : closed_hashtable(0) { swap(other) ; }
 
       closed_hashtable(const std::pair<size_type, float> &size_n_load,
                        const hasher &hf, const key_equal &keq = {}, const key_extract &kex = {}) :
@@ -331,7 +333,7 @@ class closed_hashtable {
 
       const key_extract &key_get() const { return _basic_state._key_get ; }
 
-      void swap(closed_hashtable &other)
+      void swap(closed_hashtable &other) noexcept
       {
          if (&other == this)
             return ;
