@@ -27,6 +27,7 @@
 #include <pcomn_except.h>
 #include <pcomn_hash.h>
 #include <pcomn_integer.h>
+#include <pcomn_iterator.h>
 
 #include <functional>
 
@@ -304,10 +305,16 @@ class closed_hashtable {
       {}
 
       closed_hashtable(const std::pair<size_type, float> &size_n_load,
-                       const key_extract &kx, const key_equal &eq = {}) :
-         _basic_state{{}, eq, kx, size_n_load.second},
-         _bucket_container(size_n_load.first, _basic_state)
+                       const key_extract &kex, const key_equal &keq = {}) :
+         closed_hashtable(size_n_load, {}, keq, kex)
       {}
+
+      template<typename InputIterator>
+      closed_hashtable(InputIterator b, InputIterator e) :
+         closed_hashtable(pcomn::estimated_distance(b, e))
+      {
+         insert(b, e) ;
+      }
 
       ~closed_hashtable() { container().clear(_basic_state) ; }
 

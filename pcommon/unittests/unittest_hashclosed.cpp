@@ -173,15 +173,15 @@ void ClosedHashTests::Test_Closed_Hash_Init()
    CPPUNIT_LOG_EQ(IntHash2.max_load_factor(), 0.5) ;
    CPPUNIT_LOG_EQ(IntHash2.bucket_count(), 8) ;
 
-   test_inthashtable IntHash3 ({1, {}}) ;
+   test_inthashtable IntHash3 ({1, 0.0}) ;
    CPPUNIT_LOG_EQ(IntHash3.max_load_factor(), 0.75) ;
    CPPUNIT_LOG_EQ(IntHash3.bucket_count(), 2) ;
 
-   test_inthashtable IntHash4 ({1, -1}) ;
+   test_inthashtable IntHash4 ({1, -1.0}) ;
    CPPUNIT_LOG_EQ(IntHash4.max_load_factor(), 0.75) ;
    CPPUNIT_LOG_EQ(IntHash4.bucket_count(), 2) ;
 
-   test_inthashtable IntHash5 ({0, 1}) ;
+   test_inthashtable IntHash5 ({0, 1.0}) ;
    CPPUNIT_LOG_EQ(IntHash5.max_load_factor(), 0.875) ;
 
    test_inthashtable IntHash6 ({0, 0.05}) ;
@@ -263,6 +263,29 @@ void ClosedHashTests::Test_Closed_Hash_Insert()
    CPPUNIT_LOG_EQUAL(*IntHash.find(26), 26L) ;
    CPPUNIT_LOG_EQUAL(*IntHash.find(28), 28L) ;
    CPPUNIT_LOG_EQUAL(IntHash.find(55), IntHash.end()) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   static const int values[] = {10, 4, 11} ;
+
+   test_inthashtable IntHashI (std::begin(values), std::end(values)) ;
+   CPPUNIT_LOG_EQ(IntHashI.max_load_factor(), 0.75) ;
+
+   CPPUNIT_LOG_EXPRESSION(IntHashI) ;
+   CPPUNIT_LOG_EQUAL(IntHashI.size(), (size_t)3) ;
+   CPPUNIT_LOG_EQ(IntHashI.bucket_count(), 4) ;
+
+   CPPUNIT_LOG_EQUAL(*IntHashI.find(11), 11L) ;
+   CPPUNIT_LOG_EQUAL(*IntHashI.find(10), 10L) ;
+   CPPUNIT_LOG_EQUAL(IntHashI.find(5), IntHashI.end()) ;
+
+   CPPUNIT_LOG_ASSERT(IntHashI.insert(5).second) ;
+   CPPUNIT_LOG_EXPRESSION(IntHashI) ;
+
+   CPPUNIT_LOG_EQUAL(IntHashI.size(), (size_t)4) ;
+   CPPUNIT_LOG_EQ(IntHashI.bucket_count(), 8) ;
+
+   CPPUNIT_LOG_EQ(*IntHashI.find(5), 5) ;
+   CPPUNIT_LOG_EQUAL(*IntHashI.find(10), 10L) ;
 }
 
 void ClosedHashTests::Test_Closed_Hash_Erase()
