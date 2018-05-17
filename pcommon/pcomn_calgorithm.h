@@ -20,6 +20,7 @@
 #include <vector>
 #include <array>
 #include <memory>
+#include <string>
 
 namespace pcomn {
 template<typename C>
@@ -210,6 +211,12 @@ inline auto pend(const std::vector<T, A> &v) -> decltype(v.data())
 {
    return v.data() + v.size() ;
 }
+
+template<typename C, typename R, typename A>
+inline const C *pbegin(const std::basic_string<C,R,A> &s) { return s.c_str() ; }
+
+template<typename C, typename R, typename A>
+inline const C *pend(const std::basic_string<C,R,A> &s) { return s.c_str() + s.size() ; }
 
 template<typename T, size_t N>
 inline constexpr T *pbegin(T (&a)[N]) { return a ; }
