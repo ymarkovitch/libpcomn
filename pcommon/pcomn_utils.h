@@ -548,13 +548,13 @@ class omemstream : private std::basic_streambuf<char>, public std::ostream {
       explicit omemstream(const basic_strslice<char> &initstr) ;
 
       /// Get constant reference to internal memory buffer
-      basic_strslice<char> str() const ;
+      basic_strslice<char> str() const noexcept ;
 
       /// Move out the resulting string
       ///
       /// After this call the internal buffer becomes empty
       ///
-      std::string checkout()
+      std::string checkout() noexcept
       {
          const char * const tail = pbase() + _data.size() ;
          _data.append(tail, pptr() - tail) ;

@@ -71,13 +71,13 @@ struct basic_strslice {
 
       /// Default constructor, creates an empty null slice
       ///
-      constexpr basic_strslice() : _begin(), _end() {}
+      constexpr basic_strslice() noexcept : _begin(), _end() {}
 
-      constexpr basic_strslice(const basic_strslice &) = default ;
-      constexpr basic_strslice(basic_strslice &&) = default ;
+      constexpr basic_strslice(const basic_strslice &) noexcept = default ;
+      constexpr basic_strslice(basic_strslice &&) noexcept = default ;
 
       template<typename O>
-      constexpr basic_strslice(const basic_strslice<O> &other) :
+      constexpr basic_strslice(const basic_strslice<O> &other) noexcept :
          _begin(other.begin()), _end(other.end())
       {}
 
@@ -109,17 +109,17 @@ struct basic_strslice {
 
       basic_strslice(const basic_strslice &str, const reg_match &range) ;
 
-      basic_strslice(const char_type *begin, const char_type *end) :
+      basic_strslice(const char_type *begin, const char_type *end) noexcept :
          _begin(begin), _end(end)
       {
          NOXCHECK(!begin == !end && begin <= end) ;
       }
 
-      basic_strslice &operator=(const basic_strslice &) = default ;
-      basic_strslice &operator=(basic_strslice &&) = default ;
+      basic_strslice &operator=(const basic_strslice &) noexcept = default ;
+      basic_strslice &operator=(basic_strslice &&) noexcept = default ;
 
       template<typename O>
-      basic_strslice &operator=(const basic_strslice<O> &other)
+      basic_strslice &operator=(const basic_strslice<O> &other) noexcept
       {
          _begin = other.begin() ;
          _end = other.end() ;
@@ -884,7 +884,7 @@ inline omemstream::omemstream(const strslice &initstr) : omemstream()
    init_buf() ;
 }
 
-inline strslice omemstream::str() const
+inline strslice omemstream::str() const noexcept
 {
    return {pbase(), pptr()} ;
 }
