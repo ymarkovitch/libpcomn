@@ -71,10 +71,9 @@ struct basic_strslice {
 
       /// Default constructor, creates an empty null slice
       ///
-      constexpr basic_strslice() noexcept : _begin(), _end() {}
-
-      constexpr basic_strslice(const basic_strslice &) noexcept = default ;
-      constexpr basic_strslice(basic_strslice &&) noexcept = default ;
+      constexpr basic_strslice() = default ;
+      constexpr basic_strslice(const basic_strslice &) = default ;
+      constexpr basic_strslice(basic_strslice &&) = default ;
 
       template<typename O>
       constexpr basic_strslice(const basic_strslice<O> &other) noexcept :
@@ -91,12 +90,12 @@ struct basic_strslice {
       /// argument, thus allowing to pass declared and initialized but not defined static
       /// const class members of type const char*.
       ///
-      basic_strslice(const char_type *s) :
+      basic_strslice(const char_type *s) noexcept :
          _begin(s), _end(_begin + str::len(s))
       {}
 
       template<typename S>
-      basic_strslice(const S &s, size_t from, enable_if_strchar_t<S, char_type, size_t> to) :
+      basic_strslice(const S &s, size_t from, enable_if_strchar_t<S, char_type, size_t> to) noexcept :
          _begin(str::cstr(s)), _end(_begin)
       {
          const size_t len = str::len(s) ;
@@ -115,8 +114,8 @@ struct basic_strslice {
          NOXCHECK(!begin == !end && begin <= end) ;
       }
 
-      basic_strslice &operator=(const basic_strslice &) noexcept = default ;
-      basic_strslice &operator=(basic_strslice &&) noexcept = default ;
+      basic_strslice &operator=(const basic_strslice &) = default ;
+      basic_strslice &operator=(basic_strslice &&) = default ;
 
       template<typename O>
       basic_strslice &operator=(const basic_strslice<O> &other) noexcept
@@ -271,8 +270,8 @@ struct basic_strslice {
       basic_strslice &strip_inplace() { return lstrip_inplace().rstrip_inplace() ; }
 
    private:
-      const char_type *_begin ;
-      const char_type *_end ;
+      const char_type *_begin = nullptr ;
+      const char_type *_end = nullptr ;
 } ;
 
 /*******************************************************************************

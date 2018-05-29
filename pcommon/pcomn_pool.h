@@ -165,7 +165,7 @@ class keyed_pool {
 
       typedef incdlist<value_entry, &value_entry::_lru_node> lru_list ;
 
-      typedef closed_hashtable<key_entry *, extract_key, hasher, key_equal> pool_data ;
+      typedef closed_hashtable<key_entry *, extract_key<>, hasher, key_equal> pool_data ;
       typedef std::recursive_mutex lock_type ;
 
    private:
