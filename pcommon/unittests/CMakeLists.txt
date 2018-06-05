@@ -70,5 +70,6 @@ unittest(unittest_zstream)
 add_adhoc_executable(test_readfile)
 add_adhoc_executable(test_backtrace)
 add_adhoc_executable(test_stacktrace)
+add_adhoc_executable(test_common_type)
 
 add_adhoc_executable(benchmark_mmap)
