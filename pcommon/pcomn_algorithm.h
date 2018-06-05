@@ -82,10 +82,10 @@ std::pair<InputIterator, OutputIterator> bound_copy_if
    template<typename V = void>                                          \
    struct extract_##member {                                            \
       template<typename T>                                              \
-      V operator() (T &&t) const { return std::forward<T>(t).member() ; } \
+      auto operator() (T &&t) const -> decltype(std::forward<T>(t).member(), V()) { return std::forward<T>(t).member() ; } \
                                                                         \
       template<typename T>                                              \
-      V operator() (T *t) const { return t ? t->member() : V() ; }      \
+      auto operator() (const T &t) const -> decltype(t->member(), V()) { return t ? t->member() : V() ; } \
    } ;                                                                  \
                                                                         \
    template<> struct extract_##member<void> {                           \
