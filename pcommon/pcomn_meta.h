@@ -128,7 +128,6 @@ template<typename T> using is_floating_point_t = typename std::is_floating_point
 template<typename T> using is_function_t     = typename std::is_function<T>::type ;
 template<typename T> using is_fundamental_t  = typename std::is_fundamental<T>::type ;
 template<typename T> using is_integral_t     = typename std::is_integral<T>::type ;
-template<typename T> using is_literal_type_t = typename std::is_literal_type<T>::type ;
 template<typename T> using is_lvalue_reference_t = typename std::is_lvalue_reference<T>::type ;
 template<typename T> using is_member_function_pointer_t = typename std::is_member_function_pointer<T>::type ;
 template<typename T> using is_member_object_pointer_t = typename std::is_member_object_pointer<T>::type ;

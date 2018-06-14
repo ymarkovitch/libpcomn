@@ -448,9 +448,8 @@ template<typename T>
 struct is_literal128 :
    std::bool_constant<sizeof(T) == sizeof(binary128_t) &&
                       alignof(T) == alignof(binary128_t) &&
-                      std::is_literal_type<binary128_t>::value>
+                      std::is_trivially_copyable<T>::value>
 {} ;
-
 
 template<typename T>
 inline std::enable_if_t<is_literal128<T>::value, T *> cast128(binary128_t *v)

@@ -42,7 +42,7 @@ class UUIDFixture : public unit::TestFixture<UUID_FIXTURE> {
 
 void UUIDFixture::Test_Empty_UUID()
 {
-   CPPUNIT_LOG_ASSERT(std::is_literal_type<uuid>::value) ;
+   CPPUNIT_LOG_ASSERT(std::is_trivially_copyable<uuid>::value) ;
 
    CPPUNIT_LOG_IS_FALSE(uuid()) ;
    CPPUNIT_LOG_EQUAL(uuid::size(), (size_t)16) ;
@@ -189,7 +189,7 @@ class MACFixture : public unit::TestFixture<MAC_FIXTURE> {
 
 void MACFixture::Test_Empty_MAC()
 {
-   CPPUNIT_LOG_ASSERT(std::is_literal_type<MAC>::value) ;
+   CPPUNIT_LOG_ASSERT(std::is_trivially_copyable<MAC>::value) ;
 
    CPPUNIT_LOG_IS_FALSE(MAC()) ;
    CPPUNIT_LOG_EQUAL(MAC::size(), (size_t)6) ;
