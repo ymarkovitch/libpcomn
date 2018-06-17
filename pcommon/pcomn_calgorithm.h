@@ -34,10 +34,20 @@ using container_value_t = typename std::remove_reference_t<C>::value_type ;
 /** Append contents of a container to the end of another container.
 *******************************************************************************/
 template<class C1, class C2>
-inline disable_if_t<has_key_type<std::remove_reference_t<C1> >::value, C1 &&>
+inline disable_if_t<has_key_type<valtype_t<C1>>::value, C1 &&>
 append_container(C1 &&c1, const C2 &c2)
 {
    c1.insert(c1.end(), std::begin(c2), std::end(c2)) ;
+   return std::forward<C1>(c1) ;
+}
+
+template<class C1, class C2, typename UnaryOperation>
+inline disable_if_t<has_key_type<valtype_t<C1>>::value, C1 &&>
+append_container(C1 &&c1, const C2 &c2, UnaryOperation &&xform)
+{
+   c1.insert(c1.end(),
+             xform_iter(std::begin(c2), std::ref(xform)),
+             xform_iter(std::end(c2), std::ref(xform))) ;
    return std::forward<C1>(c1) ;
 }
 
