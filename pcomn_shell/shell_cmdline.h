@@ -328,14 +328,14 @@ inline string_vector &split_args(const strslice &str, string_vector &result)
 {
     return split_args(str.begin(), str.end(), result) ;
 }
-
+!
 /// Split a description into "brief" and "long" parts.
 ///
 /// The split is made by the first '\n' iff it is directly followed by the second
 /// '\n', i.e. after the first paragraph but only if it ends with two end-of-lines in a
 /// row. If there is no such paragraph, the complete description is considered "long"
 /// (i.e., the  function returns ("", description)).
-strslice_pair split_description(const strslice &description) ;
+unipair<strslice> split_description(const strslice &description) ;
 
 } // end of namespace pcomn::sh
 } // end of namespace pcomn

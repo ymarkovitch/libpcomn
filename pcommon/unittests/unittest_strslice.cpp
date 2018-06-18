@@ -180,45 +180,45 @@ void StrSliceTests::Test_String_Split()
    using namespace pcomn ;
 
    // split
-   CPPUNIT_LOG_EQUAL(strsplit(strslice("abcdcfc"), 'c'), strslice_pair("ab", "dcfc")) ;
-   CPPUNIT_LOG_EQUAL(strsplit(strslice("abcdcfc"), strslice("c")), strslice_pair("ab", "dcfc")) ;
-   CPPUNIT_LOG_EQUAL(strsplit(strslice("abcdcfc"), strslice("")), strslice_pair("", "abcdcfc")) ;
+   CPPUNIT_LOG_EQUAL(strsplit(strslice("abcdcfc"), 'c'), unipair<strslice>("ab", "dcfc")) ;
+   CPPUNIT_LOG_EQUAL(strsplit(strslice("abcdcfc"), strslice("c")), unipair<strslice>("ab", "dcfc")) ;
+   CPPUNIT_LOG_EQUAL(strsplit(strslice("abcdcfc"), strslice("")), unipair<strslice>("", "abcdcfc")) ;
    CPPUNIT_LOG_IS_NULL(strsplit(strslice("abcdcfc"), strslice("")).first.begin()) ;
 
-   CPPUNIT_LOG_EQUAL(strsplit(strslice("abcdcfc"), 'A'), strslice_pair("abcdcfc", "")) ;
+   CPPUNIT_LOG_EQUAL(strsplit(strslice("abcdcfc"), 'A'), unipair<strslice>("abcdcfc", "")) ;
    CPPUNIT_LOG_IS_NULL(strsplit(strslice("abcdcfc"), 'A').second.begin()) ;
-   CPPUNIT_LOG_EQUAL(strsplit(strslice("abcdcfcA"), 'A'), strslice_pair("abcdcfc", "")) ;
+   CPPUNIT_LOG_EQUAL(strsplit(strslice("abcdcfcA"), 'A'), unipair<strslice>("abcdcfc", "")) ;
    CPPUNIT_LOG_ASSERT(strsplit(strslice("abcdcfcA"), 'A').second.begin()) ;
 
    // rsplit
    CPPUNIT_LOG(std::endl) ;
-   CPPUNIT_LOG_EQUAL(strrsplit(strslice("abcdcf"), 'c'), strslice_pair("abcd", "f")) ;
-   CPPUNIT_LOG_EQUAL(strrsplit(strslice("abcdcf"), strslice("c")), strslice_pair("abcd", "f")) ;
-   CPPUNIT_LOG_EQUAL(strrsplit(strslice("abcdcf"), strslice("")), strslice_pair("abcdcf", "")) ;
+   CPPUNIT_LOG_EQUAL(strrsplit(strslice("abcdcf"), 'c'), unipair<strslice>("abcd", "f")) ;
+   CPPUNIT_LOG_EQUAL(strrsplit(strslice("abcdcf"), strslice("c")), unipair<strslice>("abcd", "f")) ;
+   CPPUNIT_LOG_EQUAL(strrsplit(strslice("abcdcf"), strslice("")), unipair<strslice>("abcdcf", "")) ;
    CPPUNIT_LOG_IS_NULL(strrsplit(strslice("abcdcf"), strslice("")).second.begin()) ;
 
-   CPPUNIT_LOG_EQUAL(strrsplit(strslice("abcdcf"), 'A'), strslice_pair("", "abcdcf")) ;
+   CPPUNIT_LOG_EQUAL(strrsplit(strslice("abcdcf"), 'A'), unipair<strslice>("", "abcdcf")) ;
    CPPUNIT_LOG_IS_NULL(strrsplit(strslice("abcdcf"), 'A').first.begin()) ;
-   CPPUNIT_LOG_EQUAL(strrsplit(strslice("Aabcdcf"), 'A'), strslice_pair("", "abcdcf")) ;
+   CPPUNIT_LOG_EQUAL(strrsplit(strslice("Aabcdcf"), 'A'), unipair<strslice>("", "abcdcf")) ;
    CPPUNIT_LOG_ASSERT(strrsplit(strslice("Aabcdcf"), 'A').first.begin()) ;
 
    // string arguments instead of strslice
    CPPUNIT_LOG(std::endl) ;
-   CPPUNIT_LOG_EQUAL(strsplit("abcdcfc", 'c'), strslice_pair("ab", "dcfc")) ;
-   CPPUNIT_LOG_EQUAL(strsplit("abcdcfc", "c"), strslice_pair("ab", "dcfc")) ;
-   CPPUNIT_LOG_EQUAL(strsplit("abcdcfc", strslice("c")), strslice_pair("ab", "dcfc")) ;
-   CPPUNIT_LOG_EQUAL(strsplit(strslice("abcdcfc"), "c"), strslice_pair("ab", "dcfc")) ;
-   CPPUNIT_LOG_EQUAL(strsplit("abcdcfc", std::string("c")), strslice_pair("ab", "dcfc")) ;
-   CPPUNIT_LOG_EQUAL(strsplit(std::string("abcdcfc"), "c"), strslice_pair("ab", "dcfc")) ;
-   CPPUNIT_LOG_EQUAL(strsplit(std::string("abcdcfc"), 'c'), strslice_pair("ab", "dcfc")) ;
+   CPPUNIT_LOG_EQUAL(strsplit("abcdcfc", 'c'), unipair<strslice>("ab", "dcfc")) ;
+   CPPUNIT_LOG_EQUAL(strsplit("abcdcfc", "c"), unipair<strslice>("ab", "dcfc")) ;
+   CPPUNIT_LOG_EQUAL(strsplit("abcdcfc", strslice("c")), unipair<strslice>("ab", "dcfc")) ;
+   CPPUNIT_LOG_EQUAL(strsplit(strslice("abcdcfc"), "c"), unipair<strslice>("ab", "dcfc")) ;
+   CPPUNIT_LOG_EQUAL(strsplit("abcdcfc", std::string("c")), unipair<strslice>("ab", "dcfc")) ;
+   CPPUNIT_LOG_EQUAL(strsplit(std::string("abcdcfc"), "c"), unipair<strslice>("ab", "dcfc")) ;
+   CPPUNIT_LOG_EQUAL(strsplit(std::string("abcdcfc"), 'c'), unipair<strslice>("ab", "dcfc")) ;
 
-   CPPUNIT_LOG_EQUAL(strrsplit("abcdcf", 'c'), strslice_pair("abcd", "f")) ;
-   CPPUNIT_LOG_EQUAL(strrsplit("abcdcf", "c"), strslice_pair("abcd", "f")) ;
-   CPPUNIT_LOG_EQUAL(strrsplit("abcdcf", strslice("c")), strslice_pair("abcd", "f")) ;
-   CPPUNIT_LOG_EQUAL(strrsplit(strslice("abcdcf"), "c"), strslice_pair("abcd", "f")) ;
-   CPPUNIT_LOG_EQUAL(strrsplit("abcdcf", std::string("c")), strslice_pair("abcd", "f")) ;
-   CPPUNIT_LOG_EQUAL(strrsplit(std::string("abcdcf"), "c"), strslice_pair("abcd", "f")) ;
-   CPPUNIT_LOG_EQUAL(strrsplit(std::string("abcdcf"), 'c'), strslice_pair("abcd", "f")) ;
+   CPPUNIT_LOG_EQUAL(strrsplit("abcdcf", 'c'), unipair<strslice>("abcd", "f")) ;
+   CPPUNIT_LOG_EQUAL(strrsplit("abcdcf", "c"), unipair<strslice>("abcd", "f")) ;
+   CPPUNIT_LOG_EQUAL(strrsplit("abcdcf", strslice("c")), unipair<strslice>("abcd", "f")) ;
+   CPPUNIT_LOG_EQUAL(strrsplit(strslice("abcdcf"), "c"), unipair<strslice>("abcd", "f")) ;
+   CPPUNIT_LOG_EQUAL(strrsplit("abcdcf", std::string("c")), unipair<strslice>("abcd", "f")) ;
+   CPPUNIT_LOG_EQUAL(strrsplit(std::string("abcdcf"), "c"), unipair<strslice>("abcd", "f")) ;
+   CPPUNIT_LOG_EQUAL(strrsplit(std::string("abcdcf"), 'c'), unipair<strslice>("abcd", "f")) ;
 }
 
 void StrSliceTests::Test_Strslice_Strip()

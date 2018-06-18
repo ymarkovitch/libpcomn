@@ -43,7 +43,8 @@ using pcomn::path::joinpath ;
 using pcomn::path::realpath ;
 using pcomn::path::mkdirpath ;
 using pcomn::path::posix::path_dots ;
-using pcomn::strslice_pair ;
+using pcomn::unipair ;
+using pcomn::strslice ;
 
 void FilesystemTests::Test_Filesystem_Path()
 {
@@ -180,49 +181,49 @@ void FilesystemTests::Test_Filesystem_Path()
    CPPUNIT_LOG_IS_FALSE(path::posix::is_root_of(" ", "  ")) ;
 
    CPPUNIT_LOG(std::endl) ;
-   CPPUNIT_LOG_EQUAL(path::posix::split(""), strslice_pair()) ;
-   CPPUNIT_LOG_EQUAL(path::posix::split("."), strslice_pair(".", "")) ;
-   CPPUNIT_LOG_EQUAL(path::posix::split(".."), strslice_pair("..", "")) ;
-   CPPUNIT_LOG_EQUAL(path::posix::split("/"), strslice_pair("/", "")) ;
-   CPPUNIT_LOG_EQUAL(path::posix::split("hello"), strslice_pair("", "hello")) ;
-   CPPUNIT_LOG_EQUAL(path::posix::split("/hello"), strslice_pair("/", "hello")) ;
-   CPPUNIT_LOG_EQUAL(path::posix::split("/hello/"), strslice_pair("/hello", "")) ;
-   CPPUNIT_LOG_EQUAL(path::posix::split("/hello/world"), strslice_pair("/hello", "world")) ;
+   CPPUNIT_LOG_EQUAL(path::posix::split(""), unipair<strslice>()) ;
+   CPPUNIT_LOG_EQUAL(path::posix::split("."), unipair<strslice>(".", "")) ;
+   CPPUNIT_LOG_EQUAL(path::posix::split(".."), unipair<strslice>("..", "")) ;
+   CPPUNIT_LOG_EQUAL(path::posix::split("/"), unipair<strslice>("/", "")) ;
+   CPPUNIT_LOG_EQUAL(path::posix::split("hello"), unipair<strslice>("", "hello")) ;
+   CPPUNIT_LOG_EQUAL(path::posix::split("/hello"), unipair<strslice>("/", "hello")) ;
+   CPPUNIT_LOG_EQUAL(path::posix::split("/hello/"), unipair<strslice>("/hello", "")) ;
+   CPPUNIT_LOG_EQUAL(path::posix::split("/hello/world"), unipair<strslice>("/hello", "world")) ;
 
    CPPUNIT_LOG(std::endl) ;
-   CPPUNIT_LOG_EQUAL(path::posix::basename("/hello/world.txt"), pcomn::strslice("world.txt")) ;
-   CPPUNIT_LOG_EQUAL(path::posix::basename("world.txt"), pcomn::strslice("world.txt")) ;
-   CPPUNIT_LOG_EQUAL(path::posix::basename("/hello/"), pcomn::strslice()) ;
-   CPPUNIT_LOG_EQUAL(path::posix::basename("/"), pcomn::strslice()) ;
-   CPPUNIT_LOG_EQUAL(path::posix::basename("."), pcomn::strslice()) ;
-   CPPUNIT_LOG_EQUAL(path::posix::basename(".."), pcomn::strslice()) ;
-   CPPUNIT_LOG_EQUAL(path::posix::basename("/hello"), pcomn::strslice("hello")) ;
+   CPPUNIT_LOG_EQUAL(path::posix::basename("/hello/world.txt"), strslice("world.txt")) ;
+   CPPUNIT_LOG_EQUAL(path::posix::basename("world.txt"), strslice("world.txt")) ;
+   CPPUNIT_LOG_EQUAL(path::posix::basename("/hello/"), strslice()) ;
+   CPPUNIT_LOG_EQUAL(path::posix::basename("/"), strslice()) ;
+   CPPUNIT_LOG_EQUAL(path::posix::basename("."), strslice()) ;
+   CPPUNIT_LOG_EQUAL(path::posix::basename(".."), strslice()) ;
+   CPPUNIT_LOG_EQUAL(path::posix::basename("/hello"), strslice("hello")) ;
 
-   CPPUNIT_LOG_EQUAL(path::posix::basename(pcomn::strslice("world.txt/")(0, -1)), pcomn::strslice("world.txt")) ;
-
-   CPPUNIT_LOG(std::endl) ;
-   CPPUNIT_LOG_EQUAL(path::posix::dirname("/hello/world.txt"), pcomn::strslice("/hello")) ;
-   CPPUNIT_LOG_EQUAL(path::posix::dirname("world.txt"), pcomn::strslice()) ;
-   CPPUNIT_LOG_EQUAL(path::posix::dirname("/hello/"), pcomn::strslice("/hello")) ;
-   CPPUNIT_LOG_EQUAL(path::posix::dirname("/"), pcomn::strslice("/")) ;
-   CPPUNIT_LOG_EQUAL(path::posix::dirname("."), pcomn::strslice(".")) ;
-   CPPUNIT_LOG_EQUAL(path::posix::dirname(".."), pcomn::strslice("..")) ;
-   CPPUNIT_LOG_EQUAL(path::posix::dirname("/hello"), pcomn::strslice("/")) ;
+   CPPUNIT_LOG_EQUAL(path::posix::basename(strslice("world.txt/")(0, -1)), strslice("world.txt")) ;
 
    CPPUNIT_LOG(std::endl) ;
-   CPPUNIT_LOG_EQUAL(path::splitext(""), pcomn::strslice_pair()) ;
-   CPPUNIT_LOG_EQUAL(path::splitext("."), pcomn::strslice_pair(".", "")) ;
-   CPPUNIT_LOG_EQUAL(path::splitext(".."), pcomn::strslice_pair("..", "")) ;
-   CPPUNIT_LOG_EQUAL(path::splitext("../"), pcomn::strslice_pair("../", "")) ;
-   CPPUNIT_LOG_EQUAL(path::splitext("../hello.world/"), pcomn::strslice_pair("../hello.world/", "")) ;
-   CPPUNIT_LOG_EQUAL(path::splitext("abc.txt"), pcomn::strslice_pair("abc", ".txt")) ;
-   CPPUNIT_LOG_EQUAL(path::splitext("abc.d"), pcomn::strslice_pair("abc", ".d")) ;
-   CPPUNIT_LOG_EQUAL(path::splitext("abc.d.ef"), pcomn::strslice_pair("abc.d", ".ef")) ;
-   CPPUNIT_LOG_EQUAL(path::splitext(path::splitext("abc.d.ef").first), pcomn::strslice_pair("abc", ".d")) ;
-   CPPUNIT_LOG_EQUAL(path::splitext("hello.world/abc.d"), pcomn::strslice_pair("hello.world/abc", ".d")) ;
-   CPPUNIT_LOG_EQUAL(path::splitext("hello.world/abc.d.ef"), pcomn::strslice_pair("hello.world/abc.d", ".ef")) ;
-   CPPUNIT_LOG_EQUAL(path::splitext(".abc"), pcomn::strslice_pair(".abc", "")) ;
-   CPPUNIT_LOG_EQUAL(path::splitext("hello.world/.abc"), pcomn::strslice_pair("hello.world/.abc", "")) ;
+   CPPUNIT_LOG_EQUAL(path::posix::dirname("/hello/world.txt"), strslice("/hello")) ;
+   CPPUNIT_LOG_EQUAL(path::posix::dirname("world.txt"), strslice()) ;
+   CPPUNIT_LOG_EQUAL(path::posix::dirname("/hello/"), strslice("/hello")) ;
+   CPPUNIT_LOG_EQUAL(path::posix::dirname("/"), strslice("/")) ;
+   CPPUNIT_LOG_EQUAL(path::posix::dirname("."), strslice(".")) ;
+   CPPUNIT_LOG_EQUAL(path::posix::dirname(".."), strslice("..")) ;
+   CPPUNIT_LOG_EQUAL(path::posix::dirname("/hello"), strslice("/")) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_EQUAL(path::splitext(""), unipair<strslice>()) ;
+   CPPUNIT_LOG_EQUAL(path::splitext("."), unipair<strslice>(".", "")) ;
+   CPPUNIT_LOG_EQUAL(path::splitext(".."), unipair<strslice>("..", "")) ;
+   CPPUNIT_LOG_EQUAL(path::splitext("../"), unipair<strslice>("../", "")) ;
+   CPPUNIT_LOG_EQUAL(path::splitext("../hello.world/"), unipair<strslice>("../hello.world/", "")) ;
+   CPPUNIT_LOG_EQUAL(path::splitext("abc.txt"), unipair<strslice>("abc", ".txt")) ;
+   CPPUNIT_LOG_EQUAL(path::splitext("abc.d"), unipair<strslice>("abc", ".d")) ;
+   CPPUNIT_LOG_EQUAL(path::splitext("abc.d.ef"), unipair<strslice>("abc.d", ".ef")) ;
+   CPPUNIT_LOG_EQUAL(path::splitext(path::splitext("abc.d.ef").first), unipair<strslice>("abc", ".d")) ;
+   CPPUNIT_LOG_EQUAL(path::splitext("hello.world/abc.d"), unipair<strslice>("hello.world/abc", ".d")) ;
+   CPPUNIT_LOG_EQUAL(path::splitext("hello.world/abc.d.ef"), unipair<strslice>("hello.world/abc.d", ".ef")) ;
+   CPPUNIT_LOG_EQUAL(path::splitext(".abc"), unipair<strslice>(".abc", "")) ;
+   CPPUNIT_LOG_EQUAL(path::splitext("hello.world/.abc"), unipair<strslice>("hello.world/.abc", "")) ;
 }
 
 void FilesystemTests::Test_Filesystem_RealPath()

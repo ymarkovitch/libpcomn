@@ -85,16 +85,16 @@ inline bool is_root_of(const strslice &basedir, const strslice &path)
 /// Split a pathname into a dirname and basename.
 /// @return pair "(dirname, basename)" where "basename" is everything after the final
 /// slash. Either part may be empty.
-inline strslice_pair split(const strslice &path)
+inline unipair<strslice> split(const strslice &path)
 {
    if (path.empty())
-      return strslice_pair() ;
+      return {} ;
 
    const char *s = path.end() ;
    const char * const b = path.begin() + path_dots(path.begin(), path.end()) ;
    while (s-- != b && !is_pathname_separator(*s)) ;
 
-   return strslice_pair(strslice(path.begin(), s + (s <= b)), strslice(s + 1, path.end())) ;
+   return {{path.begin(), s + (s <= b)}, {s + 1, path.end()}} ;
 }
 
 /// Get a pathname with any leading directory components removed.
@@ -115,14 +115,14 @@ inline strslice dirname(const strslice &path)
 /// @return pair "(root, ext)"; ext may be empty.
 /// @note A nonempty returned extension always includes dot (e.g. ".h" for "foo.h")
 ///
-inline strslice_pair splitext(const strslice &path)
+inline unipair<strslice> splitext(const strslice &path)
 {
    if (const strslice &base = basename(path))
       for (const char *s = base.end() ; --s != base.begin() ;)
          if (*s == '.')
-            return strslice_pair(strslice(path.begin(), s), strslice(s, path.end())) ;
+            return {{path.begin(), s}, {s, path.end()}} ;
 
-   return strslice_pair(path, strslice()) ;
+   return {path, {}} ;
 }
 
 /// Join the two parts of a path intelligently and return the string length of result.

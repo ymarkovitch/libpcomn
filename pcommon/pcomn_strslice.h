@@ -12,6 +12,10 @@
  PROGRAMMED BY:   Yakov Markovitch
  CREATION DATE:   2 Dec 1997
 *******************************************************************************/
+/** @file
+  basic_strslice<C>
+  strslice
+*******************************************************************************/
 #include <pcomn_string.h>
 #include <pcomn_utils.h>
 #include <pcomn_hash.h>
@@ -776,12 +780,6 @@ inline bool is_identifier(const basic_strslice<C> &s)
          return false ;
    return true ;
 }
-
-/*******************************************************************************
- Typedefs for split results
-*******************************************************************************/
-typedef std::pair<strslice, strslice>     strslice_pair ;
-typedef std::pair<wstrslice, wstrslice>   wstrslice_pair ;
 
 /*******************************************************************************
  ostream output
