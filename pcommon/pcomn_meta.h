@@ -1,4 +1,4 @@
-/*-*- mode: c++; tab-width: 3; indent-tabs-mode: nil; c-file-style: "ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
+/*-*- mode:c++;tab-width:3;indent-tabs-mode:nil;c-file-style:"ellemtel";c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 #ifndef __PCOMN_META_H
 #define __PCOMN_META_H
 /*******************************************************************************
@@ -16,7 +16,7 @@
  The template metaprogramming support in e.g. Boost is _indisputably_ much more
  extensive, but PCommon library should not depend on Boost.
 
- Besides, pcommon @em requires C++11 support to the extent of at least Visual Studio 2013
+ Besides, pcommon @em requires C++14 support to the extent of at least Visual Studio 2015
  compiler in order to keep its own code as simple and clean as possible, in contrast to
  Boost and other "industrial-grade" libraries that are much more portable at the cost of
  cryptic workarounds and bloated portability layers.
@@ -73,6 +73,8 @@ inline constexpr auto data(T &&container) -> decltype(std::forward<T>(container)
 
 template<bool v>
 using bool_constant = std::integral_constant<bool, v> ;
+
+template<typename...> using void_t = void ;
 
 }
 
@@ -160,8 +162,8 @@ template<typename T> using is_volatile_t     = typename std::is_volatile<T>::typ
 template<typename T>
 T autoval() ;
 
-/******************************************************************************/
-/** disable_if is a complement to std::enable_if
+/***************************************************************************//**
+ disable_if is a complement to std::enable_if
 *******************************************************************************/
 template<bool disabled, typename T = void>
 using disable_if = std::enable_if<!disabled, T> ;
@@ -230,8 +232,8 @@ constexpr inline T fold_bitor(T a1, T a2, TN ...aN)
    return fold_bitor<T>(a1 | a2, aN...) ;
 }
 
-/******************************************************************************/
-/** Creates unique type from another type.
+/***************************************************************************//**
+ Creates unique type from another type.
 
  This allows to completely separate otherwise compatible types (e.g. pointer to derived
  and pointer to base, etc.)
@@ -250,8 +252,8 @@ struct default_constructed {
 template<typename T>
 const T default_constructed<T>::value = {} ;
 
-/******************************************************************************/
-/** Callable object to construct an object of its template parameter type.
+/***************************************************************************//**
+ Callable object to construct an object of its template parameter type.
 *******************************************************************************/
 template<typename T>
 struct make {
@@ -422,9 +424,9 @@ template<typename Base, typename Member>
 constexpr decltype(detail::is_derived_mem_fn_<Base>(std::declval<Member>()))
 is_derived_mem_fn(Member &&) { return {} ; }
 
-/******************************************************************************/
-/** Metafunction: check if the member of a derived class is derived from
- the base class or overloaded in the derived class.
+/***************************************************************************//**
+ Metafunction: is the member of a derived class is derived from the base class
+ or overloaded in the derived class.
 
  @return std::integral_constant<bool,true> if derived, std::integral_constant<bool,false>
  if overloaded.
@@ -433,14 +435,14 @@ template<typename Base, typename Member>
 constexpr decltype(detail::is_derived_mem_<Base>(std::declval<Member>()))
 is_derived_mem(Member &&) { return {} ; }
 
-/******************************************************************************/
-/** Uniform pair (i.e. pair<T,T>)
+/***************************************************************************//**
+ Uniform pair (i.e. pair<T,T>)
 *******************************************************************************/
 template<typename T>
 using unipair = std::pair<T, T> ;
 
-/******************************************************************************/
-/** Count types that satisfy a meta-predicate in the arguments pack
+/***************************************************************************//**
+ Count types that satisfy a meta-predicate in the arguments pack
 *******************************************************************************/
 template<template<typename> class Predicate, typename... Types>
 struct count_types_if ;
@@ -452,8 +454,8 @@ template<template<typename> class F, typename H, typename... T>
 struct count_types_if<F, H, T...> :
          std::integral_constant<int, ((int)!!F<H>::value + count_types_if<F, T...>::value)> {} ;
 
-/*******************************************************************************/
-/** Convert an enum value into the value of underlying integral type, or pass
+/****************************************************************************//**
+ Convert an enum value into the value of underlying integral type, or pass
  through the paramter if it is already of interal type.
 *******************************************************************************/
 template<typename T, int mode = (int)std::is_enum<T>::value - (int)std::is_integral<T>::value>

@@ -1,4 +1,4 @@
-/*-*- mode: c++; tab-width: 3; indent-tabs-mode: nil; c-file-style: "ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
+/*-*- mode:c++;tab-width:3;indent-tabs-mode:nil;c-file-style:"ellemtel";c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 #ifndef __PCOMN_UTILS_H
 #define __PCOMN_UTILS_H
 /*******************************************************************************
@@ -11,7 +11,29 @@
  CREATION DATE:   14 Dec 1994
 *******************************************************************************/
 /** @file
-    Various supplemental functions & templates
+ Various supplemental functions & templates
+
+ Functions:
+   clear_delete
+   clear_deletev
+   outparam_set
+   nullable_get
+   nullable_eq
+
+   print_values
+   string_cast
+
+ Types and classes:
+   tagged_ptr_union
+   tagged_cptr_union
+   tdef
+   principal_type_t
+
+   vsaver
+   bitsaver
+   auto_buffer
+   imemstream
+   omemstream
 *******************************************************************************/
 #include <pcommon.h>
 #include <pcomn_assert.h>
@@ -32,9 +54,9 @@ namespace pcomn {
 
 template<typename> struct basic_strslice ;
 
-/******************************************************************************/
-/** This template class is intended to save an old variable value before it is
-    changed and automatically restore upon exiting from the block.
+/***************************************************************************//**
+ Saves the current value of a variable before it is changed and automatically
+ restores upon exiting from the block.
 *******************************************************************************/
 template<typename T>
 class vsaver {
@@ -80,9 +102,9 @@ class vsaver {
       T *      _var ;
 } ;
 
-/******************************************************************************/
-/** This template class is intended to temporarily set a bit mask and then automatically
- restore the saved settings in the destructor.
+/***************************************************************************//**
+ Temporarily sets a bit mask and then in the destructor automatically restores
+ the saved settings.
 *******************************************************************************/
 template<typename T>
 class bitsaver {
@@ -106,8 +128,7 @@ class bitsaver {
 } ;
 
 /*******************************************************************************
-                 template<class T, typename R>
-                 class finalizer
+ finalizer
 *******************************************************************************/
 template<class T>
 class finalizer {
@@ -164,6 +185,10 @@ inline T *&clear_deletev(T *&vec)
    return vec ;
 }
 
+/// Assign given value to a variable passed by a pointer, if the pointer is not NULL,
+/// otherwise do nothing.
+/// This is a helper for a common C pattern when a (possibly NULL) pointer to an optional
+/// output parameter is passed to a function.
 template<typename O, typename V>
 inline void outparam_set(O *outparam_ptr, V &&value)
 {
@@ -171,12 +196,16 @@ inline void outparam_set(O *outparam_ptr, V &&value)
       *outparam_ptr = std::forward<V>(value) ;
 }
 
+/// Get a value by the pointer (plain or smart), or return the specified default value if
+/// the pointer is NULL (or rather !pointer is true).
+/// @note Beware of @a default_value lifetime, the function returns it by reference.
+///
 template<typename P>
 constexpr inline auto
 nullable_get(P &&ptr, const valtype_t<decltype(*std::declval<P>())> &default_value)
    -> const decltype(default_value) &
 {
-   return std::forward<P>(ptr) ? *std::forward<P>(ptr) : default_value ;
+   return !!std::forward<P>(ptr) ? *std::forward<P>(ptr) : default_value ;
 }
 
 /// Compare two values for equality through pointers to that values or pointer-like
@@ -475,8 +504,8 @@ struct auto_buffer final {
       PCOMN_NONASSIGNABLE(auto_buffer) ;
 } ;
 
-/******************************************************************************/
-/** Input stream from a memory buffer
+/***************************************************************************//**
+ Input stream from a memory buffer.
 *******************************************************************************/
 class imemstream : private std::basic_streambuf<char>, public std::istream {
       typedef std::istream ancestor ;
@@ -522,8 +551,8 @@ class imemstream : private std::basic_streambuf<char>, public std::istream {
       const char *  const  _data ;
 } ;
 
-/******************************************************************************/
-/** Implements stream output into memory buffer (std::stream)
+/***************************************************************************//**
+ Implements stream output into memory buffer (std::stream).
 
  Allows @em moving out the resulting std::string, thus avoiding extra result buffer
  copying. This is in contrast to std::ostringstream, whih allows only copying out
