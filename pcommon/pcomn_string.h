@@ -739,7 +739,7 @@ __noinline std::string strvprintf_(const char *format, va_list args)
    return result ;
 }
 
-template<Instantiate={}>
+template<Instantiate=Instantiate()>
 __noinline std::string &strvappendf_(std::string &s, const char *format, va_list args)
 {
    va_list tmp ;
