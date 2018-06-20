@@ -118,9 +118,11 @@ inline Container make_container(InputIterator first, InputIterator last, UnaryOp
 }
 
 template<class Container, class Source, typename UnaryOperation>
-inline Container make_container(const Source &source, UnaryOperation &&xform)
+inline Container make_container(Source &&source, UnaryOperation &&xform)
 {
-   return make_container<Container>(std::begin(source), std::end(source), std::forward<UnaryOperation>(xform)) ;
+   return make_container<Container>(std::begin(std::forward<Source>(source)),
+                                    std::end(std::forward<Source>(source)),
+                                    std::forward<UnaryOperation>(xform)) ;
 }
 
 template<class Container, typename T, size_t N, typename UnaryOperation>
