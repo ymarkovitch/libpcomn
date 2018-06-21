@@ -28,6 +28,10 @@
 #include <utility>
 #include <type_traits>
 
+#ifndef PCOMN_STL_CXX17
+#include <experimental/type_traits>
+#endif /* PCOMN_STL_CXX17 */
+
 #include <stdlib.h>
 #include <stddef.h>
 
@@ -75,6 +79,72 @@ template<bool v>
 using bool_constant = std::integral_constant<bool, v> ;
 
 template<typename...> using void_t = void ;
+
+using std::experimental::is_void_v ;
+using std::experimental::is_null_pointer_v ;
+using std::experimental::is_integral_v ;
+using std::experimental::is_floating_point_v ;
+using std::experimental::is_array_v ;
+using std::experimental::is_pointer_v ;
+using std::experimental::is_lvalue_reference_v ;
+using std::experimental::is_rvalue_reference_v ;
+using std::experimental::is_member_object_pointer_v ;
+using std::experimental::is_member_function_pointer_v ;
+using std::experimental::is_enum_v ;
+using std::experimental::is_union_v ;
+using std::experimental::is_class_v ;
+using std::experimental::is_function_v ;
+using std::experimental::is_reference_v ;
+using std::experimental::is_arithmetic_v ;
+using std::experimental::is_fundamental_v ;
+using std::experimental::is_object_v ;
+using std::experimental::is_scalar_v ;
+using std::experimental::is_compound_v ;
+using std::experimental::is_member_pointer_v ;
+using std::experimental::is_const_v ;
+using std::experimental::is_volatile_v ;
+using std::experimental::is_trivial_v ;
+using std::experimental::is_trivially_copyable_v ;
+using std::experimental::is_standard_layout_v ;
+using std::experimental::is_pod_v ;
+using std::experimental::is_literal_type_v ;
+using std::experimental::is_empty_v ;
+using std::experimental::is_polymorphic_v ;
+using std::experimental::is_abstract_v ;
+using std::experimental::is_final_v ;
+using std::experimental::is_signed_v ;
+using std::experimental::is_unsigned_v ;
+using std::experimental::is_constructible_v ;
+using std::experimental::is_trivially_constructible_v ;
+using std::experimental::is_nothrow_constructible_v ;
+using std::experimental::is_default_constructible_v ;
+using std::experimental::is_trivially_default_constructible_v ;
+using std::experimental::is_nothrow_default_constructible_v ;
+using std::experimental::is_copy_constructible_v ;
+using std::experimental::is_trivially_copy_constructible_v ;
+using std::experimental::is_nothrow_copy_constructible_v ;
+using std::experimental::is_move_constructible_v ;
+using std::experimental::is_trivially_move_constructible_v ;
+using std::experimental::is_nothrow_move_constructible_v ;
+using std::experimental::is_assignable_v ;
+using std::experimental::is_trivially_assignable_v ;
+using std::experimental::is_nothrow_assignable_v ;
+using std::experimental::is_copy_assignable_v ;
+using std::experimental::is_trivially_copy_assignable_v ;
+using std::experimental::is_nothrow_copy_assignable_v ;
+using std::experimental::is_move_assignable_v ;
+using std::experimental::is_trivially_move_assignable_v ;
+using std::experimental::is_nothrow_move_assignable_v ;
+using std::experimental::is_destructible_v ;
+using std::experimental::is_trivially_destructible_v ;
+using std::experimental::is_nothrow_destructible_v ;
+using std::experimental::has_virtual_destructor_v ;
+using std::experimental::alignment_of_v ;
+using std::experimental::rank_v;
+using std::experimental::extent_v ;
+using std::experimental::is_same_v ;
+using std::experimental::is_base_of_v ;
+using std::experimental::is_convertible_v ;
 
 }
 
