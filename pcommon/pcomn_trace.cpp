@@ -324,10 +324,12 @@ struct trace_context {
 
          LOCK() ;
          if (needs_configuration_check())
+         {
             if (is_configuration_changed())
                diag_readprofile() ;
             else
                last_cfgcheck = time(NULL) ;
+         }
          UNLOCK() ;
       }
 } ;

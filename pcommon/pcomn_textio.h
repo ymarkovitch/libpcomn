@@ -223,6 +223,7 @@ size_t text_reader::read_data(OutputDevice &result, ssize_t outsize, bool single
    {
       ++_lastread_bin ;
       if (_lastchar == '\r')
+      {
          if (c == '\n')
          {
             _lastchar = '\n' ;
@@ -230,8 +231,8 @@ size_t text_reader::read_data(OutputDevice &result, ssize_t outsize, bool single
             _eoltype |= eol_CRLF ;
             continue ;
          }
-         else
-            _eoltype |= eol_CR ;
+         _eoltype |= eol_CR ;
+      }
 
       switch (_lastchar = c)
       {
@@ -251,10 +252,10 @@ size_t text_reader::read_data(OutputDevice &result, ssize_t outsize, bool single
       }
 
       if (bufptr == bufend)
-         if (put_buffer(result, buf, bufend))
-            bufptr = buf ;
-         else
-            break ;
+      {
+         if (!put_buffer(result, buf, bufend)) break ;
+         bufptr = buf ;
+      }
    }
    if (c < 0)
    {
