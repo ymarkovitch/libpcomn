@@ -347,14 +347,12 @@ class static_vector {
          NOXPRECONDITION(size <= maxsize) ;
       }
 
-      static_vector(const static_vector &src) :
-         _size(src.size())
+      static_vector(const static_vector &src) : _size(src.size())
       {
          std::copy(src.begin(), src.end(), mutable_data()) ;
       }
 
-      static_vector(size_t size, const value_type &init) :
-         static_vector(size)
+      static_vector(size_t size, const value_type &init) : static_vector(size)
       {
          std::fill(mutable_data(), mutable_data() + size, init) ;
       }
