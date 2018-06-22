@@ -40,7 +40,9 @@ public:
 
     stack_trace &operator=(const stack_trace &other)
     {
-        memmove(this, &other, sizeof *this) ;
+        _thread_id = other._thread_id ;
+        _skip = other._skip ;
+        _stacktrace = other._stacktrace ;
         _begin = calc_begin(other) ;
         return *this ;
     }
