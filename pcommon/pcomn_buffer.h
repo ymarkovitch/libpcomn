@@ -162,88 +162,6 @@ class basic_buffer {
 } ;
 
 /******************************************************************************/
-/** Reference-counted growable buffer.
-*******************************************************************************/
-class shared_buffer {
-   public:
-      explicit shared_buffer(size_t sz = 0) : _buffer(new (sz) buf(sz)) {}
-
-      shared_buffer(const void *srcdata, size_t sz) : _buffer(new (sz) buf(sz))
-      {
-         memcpy(data(), srcdata, sz) ;
-      }
-
-      shared_buffer(const shared_buffer &) = default ;
-      shared_buffer(shared_buffer &&) = default ;
-
-      shared_buffer &operator=(const shared_buffer &) = default ;
-      shared_buffer &operator=(shared_buffer &&) = default ;
-
-      /// Get buffer size.
-      size_t size() const { return _buffer->_size ; }
-
-      /// Check whether the buffer has zero size.
-      bool empty() const { return !size() ; }
-
-      const void *data() const { return _buffer->_data ; }
-      void *data() { return _buffer->_data ; }
-
-      /// Get the pointer to buffer's memory.
-      void *get() { return _buffer->_data ; }
-      /// Get the pointer to buffer's memory.
-      const void *get() const { return _buffer->_data ; }
-
-      /// Get the pointer to buffer's memory.
-      operator const void *() const { return data() ; }
-      operator void *() { return data() ; }
-
-      void *resize(size_t size)
-      {
-         // Increment refcount to ensure the buffer will not be deleted
-         buf *buffer = static_cast<buf *>(inc_ref(_buffer.get())) ;
-         _buffer = 0 ;
-         _buffer = buffer->_realloc(size) ;
-         dec_ref(_buffer.get()) ;
-         return data() ;
-      }
-
-      void swap(shared_buffer &other) { other._buffer.swap(_buffer) ; }
-
-   private:
-      struct buf : PRefCount {
-
-            buf(size_t sz) : _size(sz), _data(sz ? this + 1 : NULL) {}
-
-            static void *operator new(size_t sz, size_t asz)
-            {
-               NOXCHECK(sz+asz >= sz) ;
-               return ensure_nonzero<std::bad_alloc>(std::malloc(sz+asz)) ;
-            }
-            static void operator delete(void *p, size_t) { std::free(p) ; }
-
-            buf *_realloc(size_t size)
-            {
-               _size = size ;
-               buf *self = static_cast<buf *>(std::realloc(this, size + sizeof *this)) ;
-               self->_data = self + 1 ;
-               return self ;
-            }
-
-            size_t _size ;
-            void * _data ;
-
-         private:
-            // Declare this to become the "usual deallocation function" for this class,
-            // to avoid interpreting operator delete(void *, size_t) as such "usual
-            // deallocation function"
-            static void operator delete(void *p) { std::free(p) ; }
-      } ;
-
-   private:
-      shared_intrusive_ptr<buf> _buffer ;
-} ;
-
-/******************************************************************************/
 /** Reference-counted copy-on-write fixed-size buffer
 *******************************************************************************/
 class cow_buffer {
@@ -381,7 +299,6 @@ class typed_buffer : private Buffer {
  swap overloads for various buffer classes
 *******************************************************************************/
 PCOMN_DEFINE_SWAP(cow_buffer) ;
-PCOMN_DEFINE_SWAP(shared_buffer) ;
 PCOMN_DEFINE_SWAP(basic_buffer) ;
 PCOMN_DEFINE_SWAP(typed_buffer<P_PASS(T, B)>, template<typename T, class B>) ;
 
@@ -442,7 +359,6 @@ struct pbuf_traits {
       static void *data(T &buffer) { return buffer.get() ; }
 } ;
 
-template<> struct membuf_traits<shared_buffer>   : pbuf_traits<shared_buffer> {} ;
 template<> struct membuf_traits<cow_buffer>   : pbuf_traits<cow_buffer> {} ;
 template<> struct membuf_traits<basic_buffer> : pbuf_traits<basic_buffer> {} ;
 

@@ -61,7 +61,8 @@ size_t a2b_base64(const char *ascii_data, size_t *ascii_len_ptr, void *buf, size
       unsigned char this_ch = *(const unsigned char *)ascii_data ;
 
       // Ignore illegal characters
-      if (this_ch > 0x7f || (this_ch = base64_a2b_table[this_ch]) == (unsigned char)-1) {
+      if (this_ch > 0x7f || (this_ch = base64_a2b_table[this_ch]) == (unsigned char)-1)
+      {
          if (!quad_pos)
             ascii_full_parsed = ascii_data + 1;
          continue ;
@@ -69,16 +70,17 @@ size_t a2b_base64(const char *ascii_data, size_t *ascii_len_ptr, void *buf, size
 
       // Check for pad sequences and ignore the invalid ones.
       if (this_ch == BASE64_PAD)
-         if (quad_pos < 2 || quad_pos == 2 && prev_ch != BASE64_PAD) {
+      {
+         if (quad_pos < 2 || quad_pos == 2 && prev_ch != BASE64_PAD)
+         {
             prev_ch = BASE64_PAD ;
             continue ;
          }
-         else {
-            // A pad sequence means no more input.
-            // We've already interpreted the data from the quad at this point.
-            *ascii_len_ptr = ascii_data + 1 - ascii_beg ;
-            return bin_len ;
-         }
+         // A pad sequence means no more input.
+         // We've already interpreted the data from the quad at this point.
+         *ascii_len_ptr = ascii_data + 1 - ascii_beg ;
+         return bin_len ;
+      }
 
       // Shift it in on the low end
       ++quad_pos &= 0x03 ;
@@ -150,7 +152,7 @@ size_t b2a_base64(const void *source, size_t source_len,
    return source_len ;
 }
 
-size_t a2b_base64(pcomn::shared_buffer &buffer, const char *ascii_data, size_t *ascii_len_ptr)
+size_t a2b_base64(pcomn::basic_buffer &buffer, const char *ascii_data, size_t *ascii_len_ptr)
 {
    if (!ascii_len_ptr)
       return 0 ;
@@ -158,8 +160,8 @@ size_t a2b_base64(pcomn::shared_buffer &buffer, const char *ascii_data, size_t *
    if (buflen)
    {
       const size_t initsize = buffer.size() ;
-      buflen = a2b_base64(ascii_data, ascii_len_ptr, pcomn::padd(buffer.resize(initsize + buflen), initsize), buflen) ;
-      buffer.resize(initsize + buflen) ;
+      buflen = a2b_base64(ascii_data, ascii_len_ptr, pcomn::padd(buffer.grow(initsize + buflen), initsize), buflen) ;
+      buffer.grow(initsize + buflen) ;
    }
    return buflen ;
 }
