@@ -889,7 +889,7 @@ inline const char *demangle(const char *mangled, char *buf, size_t buflen)
       size_t len = buflen ;
       // On failure, return the source name
       if (!abi::__cxa_demangle(mangled, buf, &len, &status))
-         strncpy(buf, mangled, buflen)[buflen - 1] = 0 ;
+         strncpy(buf, mangled, buflen - 1)[buflen - 1] = 0 ;
    }
    return buf ;
 }
