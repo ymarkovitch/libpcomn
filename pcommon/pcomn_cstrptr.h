@@ -22,21 +22,21 @@
 
 namespace pcomn {
 
-/******************************************************************************/
-/** C string (const char *) proxy object.
+/***************************************************************************//**
+ C string (const char *) proxy object.
 *******************************************************************************/
 template<typename C, typename Deleter = void>
 struct basic_cstrptr ;
 
-/******************************************************************************/
-/** Implementation of basic_cstrptr
+/***************************************************************************//**
+ Implementation of basic_cstrptr
 *******************************************************************************/
 template<typename C>
 struct basic_cstrptr_base {
 
       typedef C char_type ;
 
-      char operator[](ptrdiff_t pos) const
+      char_type operator[](ptrdiff_t pos) const
       {
          NOXPRECONDITION((size_t)pos < size()) ;
          return _str[pos] ;
@@ -107,8 +107,8 @@ struct basic_cstrptr : basic_cstrptr_base<C> {
 template<typename C, typename Deleter>
 typename basic_cstrptr<C, Deleter>::deleter_type basic_cstrptr<C, Deleter>::_deleter ;
 
-/******************************************************************************/
-/** String traits for basic_cstrptr_base<C> and basic_cstrptr<C, D>
+/***************************************************************************//**
+ String traits for basic_cstrptr_base<C> and basic_cstrptr<C, D>
 *******************************************************************************/
 template<typename C>
 struct string_traits<basic_cstrptr_base<C>> {
