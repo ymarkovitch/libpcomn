@@ -244,6 +244,17 @@ using disable_if_t = typename disable_if<disabled, T>::type ;
 template<bool enabled>
 using instance_if_t = std::enable_if_t<enabled, Instantiate> ;
 
+/***************************************************************************//**
+ Utility metafunction that maps a sequence of any types to the type specified
+ as its first argument.
+
+ This metafunction is like void_t used in template metaprogramming to detect
+ ill-formed types in SFINAE context. It differs from std::void_t in that it maps
+ to some specified type intead of void, facilitating specification of function
+ argument and/or type types.
+*******************************************************************************/
+template<typename T, typename...> using type_t = T ;
+
 /*******************************************************************************
  Template compile-time logic operations.
 *******************************************************************************/
