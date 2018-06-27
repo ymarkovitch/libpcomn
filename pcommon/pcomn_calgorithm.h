@@ -30,6 +30,9 @@
     find_keyed_value
     get_keyed_value
     erase_keyed_value
+    erase_by_iterator
+    erase_first
+    erase_first_if
     both_ends
     pbegin
     pend
@@ -179,6 +182,30 @@ inline bool erase_keyed_value(Map &c, Key &&key, typename Map::mapped_type &resu
    result = std::move(i->second) ;
    c.erase(i) ;
    return true ;
+}
+
+template<class Container, typename Iterator>
+inline auto erase_by_iterator(Container &c, const Iterator &i) ->type_t<decltype(bool(i == c.end())),
+                                                                        decltype(c.erase(i))>
+{
+   if (i == c.end())
+      return false ;
+   c.erase(i) ;
+   return true ;
+}
+
+template<class Container, typename Key>
+inline auto erase_first(Container &c, const Key &key) ->type_t<bool,
+                                                               decltype(c.erase(c.begin()))>
+{
+   return erase_by_iterator(c, std::find(c.begin(), c.end(), key)) ;
+}
+
+template<class Container, typename UnaryPredicate>
+inline auto erase_first_if(Container &c, UnaryPredicate &&pred) ->type_t<bool,
+                                                                         decltype(c.erase(c.begin()))>
+{
+   return erase_by_iterator(c, std::find_if(c.begin(), c.end(), std::forward<UnaryPredicate>(pred))) ;
 }
 
 /*******************************************************************************
