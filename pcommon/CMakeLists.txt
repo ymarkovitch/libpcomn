@@ -126,6 +126,7 @@ add_library(pcommon STATIC
   pcomn_crypthash
   unix/pcomn_posix_exec.cpp
   unix/pcomn_shutil.cpp
+  unix/pcomn_sys.cpp
   $<$<BOOL:${ENABLE_PCOMN_STACKTRACE}>:unix/pcomn_stacktrace.cpp>
   >
 )

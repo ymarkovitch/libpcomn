@@ -1,4 +1,4 @@
-/*-*- mode: c++; tab-width: 3; indent-tabs-mode: nil; c-file-style: "ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
+/*-*- mode:c++;tab-width:3;indent-tabs-mode:nil;c-file-style:"ellemtel";c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 #ifndef __PCOMN_META_H
 #define __PCOMN_META_H
 /*******************************************************************************
@@ -16,7 +16,7 @@
  The template metaprogramming support in e.g. Boost is _indisputably_ much more
  extensive, but PCommon library should not depend on Boost.
 
- Besides, pcommon @em requires C++11 support to the extent of at least Visual Studio 2013
+ Besides, pcommon @em requires C++14 support to the extent of at least Visual Studio 2015
  compiler in order to keep its own code as simple and clean as possible, in contrast to
  Boost and other "industrial-grade" libraries that are much more portable at the cost of
  cryptic workarounds and bloated portability layers.
@@ -27,6 +27,10 @@
 #include <limits>
 #include <utility>
 #include <type_traits>
+
+#ifndef PCOMN_STL_CXX17
+#include <experimental/type_traits>
+#endif /* PCOMN_STL_CXX17 */
 
 #include <stdlib.h>
 #include <stddef.h>
@@ -73,6 +77,74 @@ inline constexpr auto data(T &&container) -> decltype(std::forward<T>(container)
 
 template<bool v>
 using bool_constant = std::integral_constant<bool, v> ;
+
+template<typename...> using void_t = void ;
+
+using std::experimental::is_void_v ;
+using std::experimental::is_null_pointer_v ;
+using std::experimental::is_integral_v ;
+using std::experimental::is_floating_point_v ;
+using std::experimental::is_array_v ;
+using std::experimental::is_pointer_v ;
+using std::experimental::is_lvalue_reference_v ;
+using std::experimental::is_rvalue_reference_v ;
+using std::experimental::is_member_object_pointer_v ;
+using std::experimental::is_member_function_pointer_v ;
+using std::experimental::is_enum_v ;
+using std::experimental::is_union_v ;
+using std::experimental::is_class_v ;
+using std::experimental::is_function_v ;
+using std::experimental::is_reference_v ;
+using std::experimental::is_arithmetic_v ;
+using std::experimental::is_fundamental_v ;
+using std::experimental::is_object_v ;
+using std::experimental::is_scalar_v ;
+using std::experimental::is_compound_v ;
+using std::experimental::is_member_pointer_v ;
+using std::experimental::is_const_v ;
+using std::experimental::is_volatile_v ;
+using std::experimental::is_trivial_v ;
+using std::experimental::is_trivially_copyable_v ;
+using std::experimental::is_standard_layout_v ;
+using std::experimental::is_pod_v ;
+using std::experimental::is_literal_type_v ;
+using std::experimental::is_empty_v ;
+using std::experimental::is_polymorphic_v ;
+using std::experimental::is_abstract_v ;
+using std::experimental::is_final_v ;
+using std::experimental::is_signed_v ;
+using std::experimental::is_unsigned_v ;
+using std::experimental::is_constructible_v ;
+using std::experimental::is_trivially_constructible_v ;
+using std::experimental::is_nothrow_constructible_v ;
+using std::experimental::is_default_constructible_v ;
+using std::experimental::is_trivially_default_constructible_v ;
+using std::experimental::is_nothrow_default_constructible_v ;
+using std::experimental::is_copy_constructible_v ;
+using std::experimental::is_trivially_copy_constructible_v ;
+using std::experimental::is_nothrow_copy_constructible_v ;
+using std::experimental::is_move_constructible_v ;
+using std::experimental::is_trivially_move_constructible_v ;
+using std::experimental::is_nothrow_move_constructible_v ;
+using std::experimental::is_assignable_v ;
+using std::experimental::is_trivially_assignable_v ;
+using std::experimental::is_nothrow_assignable_v ;
+using std::experimental::is_copy_assignable_v ;
+using std::experimental::is_trivially_copy_assignable_v ;
+using std::experimental::is_nothrow_copy_assignable_v ;
+using std::experimental::is_move_assignable_v ;
+using std::experimental::is_trivially_move_assignable_v ;
+using std::experimental::is_nothrow_move_assignable_v ;
+using std::experimental::is_destructible_v ;
+using std::experimental::is_trivially_destructible_v ;
+using std::experimental::is_nothrow_destructible_v ;
+using std::experimental::has_virtual_destructor_v ;
+using std::experimental::alignment_of_v ;
+using std::experimental::rank_v;
+using std::experimental::extent_v ;
+using std::experimental::is_same_v ;
+using std::experimental::is_base_of_v ;
+using std::experimental::is_convertible_v ;
 
 }
 
@@ -128,7 +200,6 @@ template<typename T> using is_floating_point_t = typename std::is_floating_point
 template<typename T> using is_function_t     = typename std::is_function<T>::type ;
 template<typename T> using is_fundamental_t  = typename std::is_fundamental<T>::type ;
 template<typename T> using is_integral_t     = typename std::is_integral<T>::type ;
-template<typename T> using is_literal_type_t = typename std::is_literal_type<T>::type ;
 template<typename T> using is_lvalue_reference_t = typename std::is_lvalue_reference<T>::type ;
 template<typename T> using is_member_function_pointer_t = typename std::is_member_function_pointer<T>::type ;
 template<typename T> using is_member_object_pointer_t = typename std::is_member_object_pointer<T>::type ;
@@ -161,8 +232,8 @@ template<typename T> using is_volatile_t     = typename std::is_volatile<T>::typ
 template<typename T>
 T autoval() ;
 
-/******************************************************************************/
-/** disable_if is a complement to std::enable_if
+/***************************************************************************//**
+ disable_if is a complement to std::enable_if
 *******************************************************************************/
 template<bool disabled, typename T = void>
 using disable_if = std::enable_if<!disabled, T> ;
@@ -172,6 +243,17 @@ using disable_if_t = typename disable_if<disabled, T>::type ;
 
 template<bool enabled>
 using instance_if_t = std::enable_if_t<enabled, Instantiate> ;
+
+/***************************************************************************//**
+ Utility metafunction that maps a sequence of any types to the type specified
+ as its first argument.
+
+ This metafunction is like void_t used in template metaprogramming to detect
+ ill-formed types in SFINAE context. It differs from std::void_t in that it maps
+ to some specified type intead of void, facilitating specification of function
+ argument and/or type types.
+*******************************************************************************/
+template<typename T, typename...> using type_t = T ;
 
 /*******************************************************************************
  Template compile-time logic operations.
@@ -231,8 +313,8 @@ constexpr inline T fold_bitor(T a1, T a2, TN ...aN)
    return fold_bitor<T>(a1 | a2, aN...) ;
 }
 
-/******************************************************************************/
-/** Creates unique type from another type.
+/***************************************************************************//**
+ Creates unique type from another type.
 
  This allows to completely separate otherwise compatible types (e.g. pointer to derived
  and pointer to base, etc.)
@@ -251,8 +333,8 @@ struct default_constructed {
 template<typename T>
 const T default_constructed<T>::value = {} ;
 
-/******************************************************************************/
-/** Callable object to construct an object of its template parameter type.
+/***************************************************************************//**
+ Callable object to construct an object of its template parameter type.
 *******************************************************************************/
 template<typename T>
 struct make {
@@ -339,7 +421,7 @@ template<typename T>
 using noref_result_of_t = typename noref_result_of<T>::type ;
 
 template<typename T>
-using valtype_t = std::remove_cv_t<std::remove_reference_t<T> > ;
+using valtype_t = std::remove_cv_t<std::remove_reference_t<T>> ;
 
 template<typename T, typename... A>
 struct rebind___t {
@@ -423,9 +505,9 @@ template<typename Base, typename Member>
 constexpr decltype(detail::is_derived_mem_fn_<Base>(std::declval<Member>()))
 is_derived_mem_fn(Member &&) { return {} ; }
 
-/******************************************************************************/
-/** Metafunction: check if the member of a derived class is derived from
- the base class or overloaded in the derived class.
+/***************************************************************************//**
+ Metafunction: is the member of a derived class is derived from the base class
+ or overloaded in the derived class.
 
  @return std::integral_constant<bool,true> if derived, std::integral_constant<bool,false>
  if overloaded.
@@ -434,14 +516,14 @@ template<typename Base, typename Member>
 constexpr decltype(detail::is_derived_mem_<Base>(std::declval<Member>()))
 is_derived_mem(Member &&) { return {} ; }
 
-/******************************************************************************/
-/** Uniform pair (i.e. pair<T,T>)
+/***************************************************************************//**
+ Uniform pair (i.e. pair<T,T>)
 *******************************************************************************/
 template<typename T>
 using unipair = std::pair<T, T> ;
 
-/******************************************************************************/
-/** Count types that satisfy a meta-predicate in the arguments pack
+/***************************************************************************//**
+ Count types that satisfy a meta-predicate in the arguments pack
 *******************************************************************************/
 template<template<typename> class Predicate, typename... Types>
 struct count_types_if ;
@@ -453,8 +535,8 @@ template<template<typename> class F, typename H, typename... T>
 struct count_types_if<F, H, T...> :
          std::integral_constant<int, ((int)!!F<H>::value + count_types_if<F, T...>::value)> {} ;
 
-/*******************************************************************************/
-/** Convert an enum value into the value of underlying integral type, or pass
+/****************************************************************************//**
+ Convert an enum value into the value of underlying integral type, or pass
  through the paramter if it is already of interal type.
 *******************************************************************************/
 template<typename T, int mode = (int)std::is_enum<T>::value - (int)std::is_integral<T>::value>

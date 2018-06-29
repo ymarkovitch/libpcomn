@@ -74,16 +74,16 @@ inline size_t a2b_base64(const char *ascii_data, size_t ascii_len, void *buf)
    return a2b_base64(ascii_data, &ascii_len, buf, a2b_bufsize_base64(ascii_len)) ;
 }
 
-_PCOMNEXP size_t a2b_base64(pcomn::shared_buffer &buffer,
+_PCOMNEXP size_t a2b_base64(pcomn::basic_buffer &buffer,
                             const char *ascii_data,
                             size_t *ascii_len_ptr) ;
 
-inline size_t a2b_base64(pcomn::shared_buffer &buffer, const char *ascii_data, size_t ascii_len)
+inline size_t a2b_base64(pcomn::basic_buffer &buffer, const char *ascii_data, size_t ascii_len)
 {
    return a2b_base64(buffer, ascii_data, &ascii_len) ;
 }
 
-inline size_t a2b_base64(pcomn::shared_buffer &buffer, const char *ascii_data)
+inline size_t a2b_base64(pcomn::basic_buffer &buffer, const char *ascii_data)
 {
    return a2b_base64(buffer, ascii_data, strlen(ascii_data)) ;
 }

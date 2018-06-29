@@ -270,20 +270,19 @@ string_vector &split_args(const char *begin, const char *end, string_vector &res
     return result ;
 }
 
-strslice_pair split_description(const strslice &description)
+unipair<strslice> split_description(const strslice &description)
 {
     const char *eop = (const char *)memchr(description.begin(), '\n', description.size()) ;
 
     if (!eop)
         // Only brief
-        return strslice_pair(description, strslice()) ;
-    else if (eop && ++eop != description.end() && *eop++ == '\n')
+        return {description, {}} ;
+    if (eop && ++eop != description.end() && *eop++ == '\n')
         // Brief and detailed
-        return strslice_pair(strslice(description.begin(), eop-2),
-                             strslice(eop, description.end())) ;
-    else
-        // Only detailed
-        return strslice_pair(strslice(), description) ;
+        return {{description.begin(), eop-2}, {eop, description.end()}} ;
+
+    // Only detailed
+    return {{}, description} ;
 }
 
 } // end of namespace pcomn::sh

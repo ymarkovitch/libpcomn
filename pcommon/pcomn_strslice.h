@@ -12,6 +12,40 @@
  PROGRAMMED BY:   Yakov Markovitch
  CREATION DATE:   2 Dec 1997
 *******************************************************************************/
+/** @file
+  basic_strslice<C>
+  strslice
+
+  ssafe_strslice
+  stdstr
+  strnew
+  strslicecpy
+  memslicemove
+
+  cstrseq_iterator
+  cstrseq_keyval_iterator
+
+  eqi
+  lti
+
+  to_lower_inplace
+  to_upper_inplace
+
+  lstrip
+  rstrip
+  strip
+  strsplit
+  strrsplit
+
+  startswith
+  endswith
+
+  quote
+  squote
+  dquote
+
+  is_identifier
+*******************************************************************************/
 #include <pcomn_string.h>
 #include <pcomn_utils.h>
 #include <pcomn_hash.h>
@@ -40,12 +74,10 @@ struct reg_match ;
 #define PCOMN_STRSLICEBUF(size, slice)                                  \
    (pcomn::strslicecpy(std::array<decltype(((slice).front())), (size)>().data(), (slice), (size)))
 
-namespace mongo { class StringData ; }
-
 namespace pcomn {
 
-/******************************************************************************/
-/** Non-owning reference to a part (range) of a string, "unowning substring".
+/***************************************************************************//**
+ Non-owning reference to a part (range) of a string, "unowning substring".
 
  Its purpose is to enable handling of read-only substring of a string whose data
  is already owned somewhere.
@@ -71,13 +103,12 @@ struct basic_strslice {
 
       /// Default constructor, creates an empty null slice
       ///
-      constexpr basic_strslice() : _begin(), _end() {}
-
+      constexpr basic_strslice() = default ;
       constexpr basic_strslice(const basic_strslice &) = default ;
       constexpr basic_strslice(basic_strslice &&) = default ;
 
       template<typename O>
-      constexpr basic_strslice(const basic_strslice<O> &other) :
+      constexpr basic_strslice(const basic_strslice<O> &other) noexcept :
          _begin(other.begin()), _end(other.end())
       {}
 
@@ -91,12 +122,12 @@ struct basic_strslice {
       /// argument, thus allowing to pass declared and initialized but not defined static
       /// const class members of type const char*.
       ///
-      basic_strslice(const char_type *s) :
+      basic_strslice(const char_type *s) noexcept :
          _begin(s), _end(_begin + str::len(s))
       {}
 
       template<typename S>
-      basic_strslice(const S &s, size_t from, enable_if_strchar_t<S, char_type, size_t> to) :
+      basic_strslice(const S &s, size_t from, enable_if_strchar_t<S, char_type, size_t> to) noexcept :
          _begin(str::cstr(s)), _end(_begin)
       {
          const size_t len = str::len(s) ;
@@ -109,7 +140,7 @@ struct basic_strslice {
 
       basic_strslice(const basic_strslice &str, const reg_match &range) ;
 
-      basic_strslice(const char_type *begin, const char_type *end) :
+      basic_strslice(const char_type *begin, const char_type *end) noexcept :
          _begin(begin), _end(end)
       {
          NOXCHECK(!begin == !end && begin <= end) ;
@@ -119,7 +150,7 @@ struct basic_strslice {
       basic_strslice &operator=(basic_strslice &&) = default ;
 
       template<typename O>
-      basic_strslice &operator=(const basic_strslice<O> &other)
+      basic_strslice &operator=(const basic_strslice<O> &other) noexcept
       {
          _begin = other.begin() ;
          _end = other.end() ;
@@ -271,8 +302,8 @@ struct basic_strslice {
       basic_strslice &strip_inplace() { return lstrip_inplace().rstrip_inplace() ; }
 
    private:
-      const char_type *_begin ;
-      const char_type *_end ;
+      const char_type *_begin = nullptr ;
+      const char_type *_end = nullptr ;
 } ;
 
 /*******************************************************************************
@@ -281,7 +312,7 @@ struct basic_strslice {
 typedef basic_strslice<char>     strslice ;
 typedef basic_strslice<wchar_t>  wstrslice ;
 
-/*******************************************************************************
+/***************************************************************************//**
  basic_strslice equality compare and weak ordering
 *******************************************************************************/
 template<typename C>
@@ -330,6 +361,7 @@ inline bool lti(const basic_strslice<C> &lhs, const basic_strslice<C> &rhs)
                                          (uchar_type)char_traits::tolower(b) ;
                                    }) ;
 }
+
 /*******************************************************************************
  basic_strslice vs string equality compare and weak ordering
 *******************************************************************************/
@@ -474,8 +506,8 @@ class cstrseq_iterator :
       const char *_buffer ;
 } ;
 
-/******************************************************************************/
-/** An iterator over a sequence of "key=value" strings contained in a character
+/***************************************************************************//**
+ An iterator over a sequence of "key=value" strings contained in a character
  sequence, separated with '\0' and terminated by additional '\0' (like argv)
 *******************************************************************************/
 template<typename Key = basic_strslice<char>, typename Value = const char *>
@@ -779,12 +811,6 @@ inline bool is_identifier(const basic_strslice<C> &s)
 }
 
 /*******************************************************************************
- Typedefs for split results
-*******************************************************************************/
-typedef std::pair<strslice, strslice>     strslice_pair ;
-typedef std::pair<wstrslice, wstrslice>   wstrslice_pair ;
-
-/*******************************************************************************
  ostream output
 *******************************************************************************/
 template<typename C>
@@ -800,9 +826,9 @@ inline std::ostream &operator<<(std::ostream &os, const wstrslice &slice)
 }
 
 template<typename C, typename OutputIterator>
-inline OutputIterator escape_string(const basic_strslice<typename std::remove_cv<C>::type> &s, OutputIterator out, C delim)
+inline OutputIterator escape_string(const basic_strslice<std::remove_cv_t<C>> &s, OutputIterator out, C delim)
 {
-   return escape_range(s.begin(), s.end(), out, (typename std::remove_cv<C>::type)delim) ;
+   return escape_range(s.begin(), s.end(), out, (std::remove_cv_t<C>)delim) ;
 }
 
 template<typename S, typename OutputIterator>
@@ -812,10 +838,10 @@ inline OutputIterator escape_string(const S &s, OutputIterator out, typename str
 }
 
 template<typename C, typename OutputIterator>
-inline OutputIterator quote_string(const basic_strslice<typename std::remove_cv<C>::type> &s, OutputIterator out, C quote)
+inline OutputIterator quote_string(const basic_strslice<std::remove_cv_t<C>> &s, OutputIterator out, C quote)
 {
    *out = quote ;
-   out = escape_range(s.begin(), s.end(), ++out, (typename std::remove_cv<C>::type)quote) ;
+   out = escape_range(s.begin(), s.end(), ++out, (std::remove_cv_t<C>)quote) ;
    *out = quote ;
    return ++out ;
 }
@@ -827,12 +853,9 @@ inline OutputIterator quote_string(const S &s, OutputIterator out, typename stri
 }
 
 namespace detail {
-/******************************************************************************/
-/** Stream manipulator: outputs its parameter string quoted
-*******************************************************************************/
 template<typename C>
 struct quote_ {
-      typedef typename std::remove_cv<C>::type char_type ;
+      typedef std::remove_cv_t<C> char_type ;
 
       constexpr quote_(const basic_strslice<C> &s) : _str(s) {}
       constexpr quote_(const basic_strslice<C> &s, C q) : _str(s), _quote(q ? q : '"') {}
@@ -849,6 +872,12 @@ struct quote_ {
 } ;
 } // end of namespace pcomn::detail
 
+/***************************************************************************//**
+ Stream manipulator: outputs a string slice quoted with the specified quote.
+
+ @note While usually is '\'', '"', or '`', _any_ character can be used as a quote.
+*******************************************************************************/
+/**@{*/
 template<typename C>
 inline detail::quote_<C> quote(const basic_strslice<C> &s) { return {s} ; }
 
@@ -868,10 +897,17 @@ inline detail::quote_<string_char_type_t<S>> quote(const S &s, string_char_type_
 {
    return {s, q} ;
 }
+/**@}*/
 
+/// Output manipulator: allows to insert a single-quoted string into an output stream.
+/// Equivalent of C++14 std:quoted(s,'\'','\\') but works with _any_ string type
+/// described by pcomn::string_traits as well as with pcomn::strslice.
 template<typename S>
 inline auto squote(const S &s) -> decltype(quote(s, '\'')) { return {s, '\''} ; }
 
+/// Output manipulator: allows to insert a double-quoted string into an output stream.
+/// Equivalent of C++14 std:quoted(s,'"','\\') but works with _any_ string type
+/// described by pcomn::string_traits as well as with pcomn::strslice.
 template<typename S>
 inline auto dquote(const S &s) -> decltype(quote(s, '"'))  { return {s, '"'} ; }
 
@@ -884,7 +920,7 @@ inline omemstream::omemstream(const strslice &initstr) : omemstream()
    init_buf() ;
 }
 
-inline strslice omemstream::str() const
+inline strslice omemstream::str() const noexcept
 {
    return {pbase(), pptr()} ;
 }

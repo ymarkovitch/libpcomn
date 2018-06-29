@@ -350,8 +350,12 @@ static __always_inline uint16_t bswap16(uint16_t v) { return v << 8 | v >> 8; }
 #pragma clang diagnostic ignored "-Wignored-attributes"
 #define unaligned(ptr) ((const char __attribute__((packed, aligned(1))) *)(ptr))
 #elif defined(__GNUC__)
+#if __GNUC__ < 8
 #pragma GCC diagnostic ignored "-Wpacked"
 #define unaligned(ptr) ((const char __attribute__((packed, aligned(1))) *)(ptr))
+#else
+#define unaligned(ptr) ((const char __attribute__((packed)) *)(ptr))
+#endif
 #elif defined(_MSC_VER)
 #pragma warning(                                                               \
     disable : 4235) /* nonstandard extension used: '__unaligned'               \

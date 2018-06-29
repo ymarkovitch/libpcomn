@@ -11,7 +11,45 @@
  PROGRAMMED BY:   Yakov Markovitch
  CREATION DATE:   25 Apr 2010
 *******************************************************************************/
-/** Algorithms defined on containers instead of interators
+/** @file
+  STL-like algorithms defined on containers instead of interators.
+
+  Type traits:
+    container_iterator_t<C>:       Container::iterator
+    container_const_iterator_t<C>: Container::const_iterator
+    container_value_t<C>:          Container::value_type
+
+  All traits automatically remove references from its parameters, so e.g. both
+  container_iterator_t<std::vector<int>> and
+  container_iterator_t<const std::vector<int>&>
+  are OK.
+
+  Algorithms:
+    make_container
+    append_container
+    find_keyed_value
+    get_keyed_value
+    erase_keyed_value
+    erase_by_iterator
+    erase_first
+    erase_first_if
+    both_ends
+    pbegin
+    pend
+    ensure_size
+    extend_container
+    truncate_container
+    sort
+    unique
+    unique_sort
+    clear_icontainer
+    caccumulate
+
+    has_item
+    all_of
+    any_of
+    none_of
+    equal_seq
 *******************************************************************************/
 #include <pcomn_algorithm.h>
 #include <pcomn_iterator.h>
@@ -20,6 +58,7 @@
 #include <vector>
 #include <array>
 #include <memory>
+#include <string>
 
 namespace pcomn {
 template<typename C>
@@ -29,25 +68,47 @@ using container_const_iterator_t = typename std::remove_reference_t<C>::const_it
 template<typename C>
 using container_value_t = typename std::remove_reference_t<C>::value_type ;
 
-/******************************************************************************/
-/** Append contents of a container to the end of another container.
+/***************************************************************************//**
+ Append contents of a container to the end of another container.
 *******************************************************************************/
+/**@{*/
 template<class C1, class C2>
-inline disable_if_t<has_key_type<std::remove_reference_t<C1> >::value, C1 &&>
+inline disable_if_t<has_key_type<valtype_t<C1>>::value, C1 &&>
 append_container(C1 &&c1, const C2 &c2)
 {
    c1.insert(c1.end(), std::begin(c2), std::end(c2)) ;
    return std::forward<C1>(c1) ;
 }
 
+template<class C1, class C2, typename UnaryOperation>
+inline disable_if_t<has_key_type<valtype_t<C1>>::value, C1 &&>
+append_container(C1 &&c1, const C2 &c2, UnaryOperation &&xform)
+{
+   c1.insert(c1.end(),
+             xform_iter(std::begin(c2), std::ref(xform)),
+             xform_iter(std::end(c2), std::ref(xform))) ;
+   return std::forward<C1>(c1) ;
+}
+/**@}*/
+
 /// Insert the contents of a container into a keyed container (like map or hash table).
+/**@{*/
 template<class KeyedContainer, class Container>
-inline std::enable_if_t<has_key_type<std::remove_reference_t<KeyedContainer> >::value, KeyedContainer &&>
+inline std::enable_if_t<has_key_type<std::remove_reference_t<KeyedContainer>>::value, KeyedContainer &&>
 append_container(KeyedContainer &&c1, const Container &c2)
 {
    c1.insert(std::begin(c2), std::end(c2)) ;
    return std::forward<KeyedContainer>(c1) ;
 }
+
+template<class KeyedContainer, class Container, typename UnaryOperation>
+inline std::enable_if_t<has_key_type<std::remove_reference_t<KeyedContainer>>::value, KeyedContainer &&>
+append_container(KeyedContainer &&c1, const Container &c2, UnaryOperation &&xform)
+{
+   c1.insert(xform_iter(std::begin(c2), std::ref(xform)), xform_iter(std::end(c2), std::ref(xform))) ;
+   return std::forward<KeyedContainer>(c1) ;
+}
+/**@}*/
 
 /******************************************************************************/
 /** Apply given function to iterator range items and construct a container from
@@ -60,9 +121,11 @@ inline Container make_container(InputIterator first, InputIterator last, UnaryOp
 }
 
 template<class Container, class Source, typename UnaryOperation>
-inline Container make_container(const Source &source, UnaryOperation &&xform)
+inline Container make_container(Source &&source, UnaryOperation &&xform)
 {
-   return make_container<Container>(std::begin(source), std::end(source), std::forward<UnaryOperation>(xform)) ;
+   return make_container<Container>(std::begin(std::forward<Source>(source)),
+                                    std::end(std::forward<Source>(source)),
+                                    std::forward<UnaryOperation>(xform)) ;
 }
 
 template<class Container, typename T, size_t N, typename UnaryOperation>
@@ -102,7 +165,7 @@ get_keyed_value(const Map &c, Key &&key,
 
 template<class Set, typename Key,
          typename C = typename Set::key_compare, typename K = typename Set::key_type>
-inline std::enable_if_t<std::is_same<K, typename Set::value_type>::value, const K> &
+inline std::enable_if_t<std::is_same<K, container_value_t<Set>>::value, const K> &
 get_keyed_value(const Set &c, Key &&key,
                 const typename Set::key_type &defval = default_constructed<typename Set::key_type>::value)
 {
@@ -121,6 +184,30 @@ inline bool erase_keyed_value(Map &c, Key &&key, typename Map::mapped_type &resu
    return true ;
 }
 
+template<class Container, typename Iterator>
+inline auto erase_by_iterator(Container &c, const Iterator &i) ->type_t<decltype(bool(i == c.end())),
+                                                                        decltype(c.erase(i))>
+{
+   if (i == c.end())
+      return false ;
+   c.erase(i) ;
+   return true ;
+}
+
+template<class Container, typename Key>
+inline auto erase_first(Container &c, const Key &key) ->type_t<bool,
+                                                               decltype(c.erase(c.begin()))>
+{
+   return erase_by_iterator(c, std::find(c.begin(), c.end(), key)) ;
+}
+
+template<class Container, typename UnaryPredicate>
+inline auto erase_first_if(Container &c, UnaryPredicate &&pred) ->type_t<bool,
+                                                                         decltype(c.erase(c.begin()))>
+{
+   return erase_by_iterator(c, std::find_if(c.begin(), c.end(), std::forward<UnaryPredicate>(pred))) ;
+}
+
 /*******************************************************************************
 
 *******************************************************************************/
@@ -135,7 +222,7 @@ has_item(Container &&container, const Value &item)
 }
 
 template<class KeyedContainer, typename Value>
-inline std::enable_if_t<has_key_type<std::remove_reference_t<KeyedContainer> >::value, bool>
+inline std::enable_if_t<has_key_type<std::remove_reference_t<KeyedContainer>>::value, bool>
 has_item(KeyedContainer &&container, const Value &item)
 {
    return !!std::forward<KeyedContainer>(container).count(item) ;
@@ -181,7 +268,7 @@ range_size(C &&c)
    return std::distance(std::begin(std::forward<C>(c)), std::end(std::forward<C>(c))) ;
 }
 
-template<typename T, typename = instance_if_t<std::is_arithmetic<T>::value> >
+template<typename T, typename = instance_if_t<std::is_arithmetic<T>::value>>
 inline auto range_size(const unipair<T> &c) -> decltype(c.second - c.first)
 {
    return c.second - c.first ;
@@ -211,6 +298,12 @@ inline auto pend(const std::vector<T, A> &v) -> decltype(v.data())
    return v.data() + v.size() ;
 }
 
+template<typename C, typename R, typename A>
+inline const C *pbegin(const std::basic_string<C,R,A> &s) { return s.c_str() ; }
+
+template<typename C, typename R, typename A>
+inline const C *pend(const std::basic_string<C,R,A> &s) { return s.c_str() + s.size() ; }
+
 template<typename T, size_t N>
 inline constexpr T *pbegin(T (&a)[N]) { return a ; }
 
@@ -219,26 +312,25 @@ inline constexpr T *pend(T (&a)[N]) { return a + N ; }
 
 PCOMN_DEFINE_PRANGE(std::array<P_PASS(T, N)>, template<typename T, size_t N>) ;
 
-/******************************************************************************/
-/** Clear a container containing pointers: delete all pointed values and clear
- the container itself.
+/***************************************************************************//**
+ Clear a container containing pointers: delete all pointed values and clear the container
+ itself.
  @note The name 'clear_icontainer' stands for 'clear indirect container'
 *******************************************************************************/
-template<typename C>
+template<typename C, typename=std::enable_if_t<std::is_pointer<container_value_t<C>>::value>>
 inline C &clear_icontainer(C &container)
 {
    std::for_each(container.begin(), container.end(),
-                 std::default_delete<std::remove_pointer_t<typename C::value_type> >()) ;
+                 std::default_delete<std::remove_pointer_t<container_value_t<C>>>()) ;
    container.clear() ;
    return container ;
 }
 
-/******************************************************************************/
-/** Ensure the size of a container is at least as big as specified; resize
- the container to the specified size if its current size is less
+/***************************************************************************//**
+ Ensure the size of a container is at least as big as specified: resize
+ the container to the specified size if its current size is less than specified.
 
- In contrast with common STL container resize() method, never shrinks
- the container.
+ In contrast with common STL container resize() method, never shrinks the container.
 *******************************************************************************/
 template<typename C>
 inline C &ensure_size(C &container, size_t sz)
@@ -358,6 +450,7 @@ inline std::vector<T> &&unique_sort(std::vector<T> &&v, BinaryPredicate &&pred)
  The first version uses operator+ to sum up the elements, the second version uses
  the given binary function op.
 *******************************************************************************/
+/**@{*/
 template<typename Container, typename T>
 inline T caccumulate(Container &&range, T init)
 {
@@ -373,6 +466,7 @@ inline T caccumulate(Container &&range, T init, BinaryOperation &&op)
       init = std::forward<BinaryOperation>(op)(init, v) ;
    return init ;
 }
+/**@}*/
 
 template<typename C, typename F>
 inline C &&cfor_each(C &&container, F &&fn)
@@ -382,14 +476,10 @@ inline C &&cfor_each(C &&container, F &&fn)
    return std::forward<C>(container) ;
 }
 
-/*******************************************************************************
- Erase all the elements satisfying specific criteria from the vector
- and return the reference to the vector.
+/***************************************************************************//**
+ Test sequences/containers are equal.
 *******************************************************************************/
-
-/*******************************************************************************
- Test sequences/containers are equal
-*******************************************************************************/
+/**@{*/
 template<typename S1, typename S2>
 inline bool equal_seq(S1 &&x, S2 &&y)
 {
@@ -408,6 +498,7 @@ inline bool equal_seq(S1 &&x, S2 &&y, BinaryPredicate &&pred)
       std::equal(begin(std::forward<S1>(x)), end(std::forward<S1>(x)), begin(std::forward<S2>(y)),
                  std::forward<BinaryPredicate>(pred)) ;
 }
+/**@}*/
 
 } // end of namespace pcomn
 

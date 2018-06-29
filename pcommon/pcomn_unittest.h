@@ -794,22 +794,24 @@ struct assertion_traits_unordered {
       }
 } ;
 
-template<typename K, typename T>
-struct assertion_traits<std::map<K, T> > : assertion_traits_sequence<std::map<K, T> > {} ;
+template<typename K, typename T, typename C>
+struct assertion_traits<std::map<K, T, C>> : assertion_traits_sequence<std::map<K, T, C>> {} ;
+template<typename K, typename C>
+struct assertion_traits<std::set<K, C>> : assertion_traits_sequence<std::set<K, C>> {} ;
+template<typename K, typename C>
+struct assertion_traits<std::multiset<K, C>> : assertion_traits_sequence<std::multiset<K, C>> {} ;
 
 #define _CPPUNIT_ASSERTION_TRAITS_SEQUENCE(sequence)                    \
    template<typename T>                                                 \
-   struct assertion_traits<sequence<T> > : assertion_traits_sequence<sequence<T> > {}
+   struct assertion_traits<sequence<T> > : assertion_traits_sequence<sequence<T>> {}
 
 #define _CPPUNIT_ASSERTION_TRAITS_MATRIX(matrix)                        \
    template<typename T>                                                 \
-   struct assertion_traits<matrix<T> > : assertion_traits_matrix<matrix<T> > {}
+   struct assertion_traits<matrix<T> > : assertion_traits_matrix<matrix<T>> {}
 
 _CPPUNIT_ASSERTION_TRAITS_SEQUENCE(std::vector) ;
 _CPPUNIT_ASSERTION_TRAITS_SEQUENCE(std::list) ;
 _CPPUNIT_ASSERTION_TRAITS_SEQUENCE(std::deque) ;
-_CPPUNIT_ASSERTION_TRAITS_SEQUENCE(std::set) ;
-_CPPUNIT_ASSERTION_TRAITS_SEQUENCE(std::multiset) ;
 _CPPUNIT_ASSERTION_TRAITS_SEQUENCE(pcomn::simple_vector) ;
 
 _CPPUNIT_ASSERTION_TRAITS_MATRIX(pcomn::matrix_slice) ;

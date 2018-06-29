@@ -79,7 +79,17 @@ std::pair<InputIterator, OutputIterator> bound_copy_if
  Member extractors
 *******************************************************************************/
 #define PCOMN_MEMBER_EXTRACTOR(member)                                  \
+   template<typename V = void>                                          \
    struct extract_##member {                                            \
+      template<typename T>                                              \
+      auto operator() (T &&t) const -> decltype(std::forward<T>(t).member(), V()) { return std::forward<T>(t).member() ; } \
+                                                                        \
+      template<typename T>                                              \
+      auto operator() (const T &t) const -> decltype(t->member(), V()) { return t ? t->member() : V() ; } \
+   } ;                                                                  \
+                                                                        \
+   template<> struct extract_##member<void> {                           \
+      typedef void is_transparent ;                                     \
       template<typename T>                                              \
       auto operator() (T &&t) const ->decltype(std::declval<T>().member()) \
       { return std::forward<T>(t).member() ; }                          \
@@ -91,7 +101,9 @@ std::pair<InputIterator, OutputIterator> bound_copy_if
       }                                                                 \
    } ;                                                                  \
                                                                         \
-   constexpr inline extract_##member member##_extractor() { return {} ; }
+   template<typename V>                                                 \
+   constexpr inline extract_##member<V> member##_extractor() { return {} ; } \
+   constexpr inline extract_##member<> member##_extractor() { return {} ; }
 
 PCOMN_MEMBER_EXTRACTOR(name) ;
 PCOMN_MEMBER_EXTRACTOR(key) ;

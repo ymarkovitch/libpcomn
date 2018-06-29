@@ -19,8 +19,8 @@
 namespace pcomn {
 namespace sys {
 
-/******************************************************************************/
-/** File/directory copying flags.
+/***************************************************************************//**
+ File/directory copying flags.
 *******************************************************************************/
 enum CopyFlags {
    CP_IGNORE_ERRORS     = 0x01,  /**< On error, don't throw exception, just return false */
@@ -30,6 +30,8 @@ enum CopyFlags {
    CP_SRC_ALLOW_DIR     = 0x10,  /**< The source argument allowed to be a directory, in which case it is recursively copied. */
    CP_DST_REQUIRE_DIR   = 0x20   /**< The destination argument must be an existent directory */
 } ;
+
+PCOMN_DEFINE_FLAG_ENUM(CopyFlags) ;
 
 /// Copy the contents of a source file to a destination file or a directory.
 /// @param source Source file name; must not refer to a directory.
@@ -41,8 +43,8 @@ _PCOMNEXP bool copyfile(const pcomn::strslice &source, const pcomn::strslice &de
 
 _PCOMNEXP bool copytree(const pcomn::strslice &sourcedir, const pcomn::strslice &destdir, unsigned flags = 0) ;
 
-/******************************************************************************/
-/** Remove flags.
+/***************************************************************************//**
+ Remove flags.
 
  @note By default, pcomn::sys::rm is more or less "foolprof", disallowing by default
  the most dangerous behaviours. When needed, these behaviours may be allowed explicitly
@@ -55,6 +57,8 @@ enum RmFlags {
    RM_ALLOW_RELPATH  = 0x08,  /**< Allow to specify relative paths */
    RM_ALLOW_ROOTDIR  = 0x10   /**< Allow to remove immediately from "/" */
 } ;
+
+PCOMN_DEFINE_FLAG_ENUM(RmFlags) ;
 
 _PCOMNEXP bool rm(const pcomn::strslice &path, unsigned flags = 0) ;
 

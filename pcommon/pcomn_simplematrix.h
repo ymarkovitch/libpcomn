@@ -347,14 +347,12 @@ class static_vector {
          NOXPRECONDITION(size <= maxsize) ;
       }
 
-      static_vector(const static_vector &src) :
-         _size(src.size())
+      static_vector(const static_vector &src) : _size(src.size())
       {
          std::copy(src.begin(), src.end(), mutable_data()) ;
       }
 
-      static_vector(size_t size, const value_type &init) :
-         static_vector(size)
+      static_vector(size_t size, const value_type &init) : static_vector(size)
       {
          std::fill(mutable_data(), mutable_data() + size, init) ;
       }
@@ -1275,20 +1273,28 @@ operator!=(const simple_slice<T> &x, const simple_slice<U> &y)
 }
 
 template<typename T, typename S>
-inline std::enable_if_t<std::is_convertible<S, simple_slice<std::add_const_t<T> > >::value, bool>
+inline std::enable_if_t<std::is_convertible_v<S, simple_cslice<T>>, bool>
 operator==(const simple_slice<T> &x, const S &y)
 {
-   const simple_slice<std::add_const_t<T> > &sy = y ;
+   const simple_cslice<T> &sy = y ;
    return x == sy ;
 }
 
 template<typename T, typename S>
-inline std::enable_if_t<std::is_convertible<S, simple_slice<std::add_const_t<T> > >::value, bool>
+inline std::enable_if_t<std::is_convertible_v<S, simple_cslice<T>>, bool>
 operator==(const S &x, const simple_slice<T> &y)
 {
-   const simple_slice<std::add_const_t<T> > &sx = x ;
+   const simple_cslice<T> &sx = x ;
    return sx == y ;
 }
+
+template<typename T, typename S>
+inline std::enable_if_t<std::is_convertible_v<S, simple_cslice<T>>, bool>
+operator!=(const simple_slice<T> &x, const S &y) { return !(x == y) ; }
+
+template<typename T, typename S>
+inline std::enable_if_t<std::is_convertible_v<S, simple_cslice<T>>, bool>
+operator!=(const S &x, const simple_slice<T> &y) { return y != x ; }
 
 /*******************************************************************************
  pbegin()/pend()

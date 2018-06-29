@@ -324,10 +324,12 @@ struct trace_context {
 
          LOCK() ;
          if (needs_configuration_check())
+         {
             if (is_configuration_changed())
                diag_readprofile() ;
             else
                last_cfgcheck = time(NULL) ;
+         }
          UNLOCK() ;
       }
 } ;
@@ -685,11 +687,13 @@ void PDiagBase::trace_message(const char *type,
          fname = fn + 1 ;
    }
 
+   static constexpr char LINENUM_PLACEHOLDER[8] = "       " ;
+
    pcomn::bufstr_ostream<DIAG_MAXMESSAGE> out ;
 
    if (!(mode() & DisableLineNum))
       // Keep place for line number
-      out << "       " ;
+      out << LINENUM_PLACEHOLDER ;
 
    out << type << ' ' ;
 
@@ -719,8 +723,8 @@ void PDiagBase::trace_message(const char *type,
 
    if (!(mode() & DisableLineNum))
    {
-      snprintf(outstr, 7, "%6.6u", ++line_count) ;
-      outstr[6] = ':' ;
+      snprintf(outstr, 8, "%7.7u", ++line_count) ;
+      outstr[7] = ':' ;
    }
 
    if(!(mode() & DisableDebuggerLog) && ctx::log_fd < 0)

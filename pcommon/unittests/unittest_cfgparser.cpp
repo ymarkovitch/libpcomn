@@ -95,6 +95,10 @@ void CfgParserTests::Test_CfgFileRead()
       CPPUNIT_LOG_EQUAL(std::string(buf), std::string("the Universe")) ;
       CPPUNIT_LOG_EQUAL(cfgfile_get_value(fname, "Restaurant", "by", buf, "Troll"), strlen("Troll")) ;
       CPPUNIT_LOG_EQUAL(std::string(buf), std::string("Troll")) ;
+      CPPUNIT_LOG_EQUAL(cfgfile_get_value(fname, "Restaurant", "OF", buf), strlen("the Universe")) ;
+      CPPUNIT_LOG_EQUAL(std::string(buf), std::string("the Universe")) ;
+      CPPUNIT_LOG_EQUAL(cfgfile_get_value(fname, "RESTAURANT", "OF", buf, "Troll"), strlen("the Universe")) ;
+      CPPUNIT_LOG_EQUAL(std::string(buf), std::string("the Universe")) ;
       CPPUNIT_LOG_EQUAL(cfgfile_get_intval(fname, "Restaurant", "by", -1), -1) ;
       CPPUNIT_LOG_EQUAL(cfgfile_get_intval(fname, "Restaurant", "by", 20), 20) ;
       CPPUNIT_LOG_EQUAL(cfgfile_get_intval(fname, "Bar", "2x2", -1), 4) ;

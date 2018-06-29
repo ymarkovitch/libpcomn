@@ -49,14 +49,14 @@ size_t abspath(const char *name, char *result, size_t bufsize)
    const size_t cwdsz = strlen(pathbuf) ;
 
    if (namelen == 1 && *name == '.')
+   {
       if (cwdsz >= bufsize)
          return 0 ;
-      else
-      {
-         memcpy(result, pathbuf, cwdsz) ;
-         result[cwdsz] = 0 ;
-         return cwdsz ;
-      }
+
+      memcpy(result, pathbuf, cwdsz) ;
+      result[cwdsz] = 0 ;
+      return cwdsz ;
+   }
 
    pathbuf[cwdsz] = '/' ;
    strcpy(pathbuf + cwdsz + 1, name) ;
@@ -180,10 +180,12 @@ size_t normpath(const char *name, char *result, size_t bufsize)
             if (dest > pathbuf_begin + 1)
                *dest++ = '/' ;
             else if (dest == pathbuf_begin + 1)
+            {
                if (*pathbuf_begin == '.')
                   dest = pathbuf_begin ;
                else if (*pathbuf_begin != '/')
                   *dest++ = '/' ;
+            }
 
             if (dest + csize >= pathbuf_end)
                return 0 ;

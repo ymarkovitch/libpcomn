@@ -27,6 +27,7 @@
 #include <pcomn_except.h>
 #include <pcomn_hash.h>
 #include <pcomn_integer.h>
+#include <pcomn_iterator.h>
 
 #include <functional>
 
@@ -52,8 +53,14 @@ enum class bucket_state : uint8_t {
    End     = 3
 } ;
 
-/******************************************************************************/
-/** State extractor for a hashtable bucket with pointer value.
+/*******************************************************************************
+ Forward declarations (avoid including extra headers into pcomn_hashclosed.h)
+*******************************************************************************/
+template<typename> class basic_strslice ;
+struct strslice_state_extractor ;
+
+/***************************************************************************//**
+ State extractor for a hashtable bucket with pointer value.
 *******************************************************************************/
 template<typename T>
 struct pointer_state_extractor {
@@ -119,31 +126,31 @@ struct closed_hashtable_bucket {
       }
 } ;
 
-/******************************************************************************/
-/** Specialization of hashtable_item for items without state extractor.
+/***************************************************************************//**
+ Specialization of hashtable bucket for items without state extractor.
 *******************************************************************************/
 template<typename Value>
 struct closed_hashtable_bucket<Value, void> {
       typedef Value value_type ;
 
-      constexpr closed_hashtable_bucket() : _state(bucket_state::Empty), _value() {}
+      constexpr closed_hashtable_bucket() noexcept : _state(bucket_state::Empty), _value() {}
 
-      bucket_state state() const { return _state ; }
+      constexpr bucket_state state() const { return _state ; }
 
-      void set_state(bucket_state newstate)
+      void set_state(bucket_state newstate) noexcept
       {
          NOXCHECK(newstate <= bucket_state::End) ;
          _state = newstate ;
       }
 
-      const value_type &value() const { return _value ; }
-      void set_value(const value_type &v)
+      constexpr const value_type &value() const { return _value ; }
+      void set_value(const value_type &v) noexcept
       {
          _value = v ;
          _state = bucket_state::Valid ;
       }
 
-      bool is_available() const
+      constexpr bool is_available() const
       {
          const unsigned s = static_cast<uint8_t>(state()) ;
          return ((s >> 1) + s) & 1U ;
@@ -151,16 +158,25 @@ struct closed_hashtable_bucket<Value, void> {
 
    private:
       bucket_state _state ;
-      value_type     _value ;
+      value_type   _value ;
 } ;
 
-/******************************************************************************/
-/** Specialization of hashtable_item for pointers; uses no additional space,
+/***************************************************************************//**
+ Specialization of hashtable bucket for pointers; uses no additional space,
  @p sizeof(bucket)==sizeof(void).
 *******************************************************************************/
 template<typename Value>
 struct closed_hashtable_bucket<Value *, void> :
    closed_hashtable_bucket<Value *, pointer_state_extractor<Value>>
+{} ;
+
+/***************************************************************************//**
+ Specialization of hashtable_item for strslice; uses no additional space,
+ @p sizeof(bucket)==sizeof(strslice).
+*******************************************************************************/
+template<typename C>
+struct closed_hashtable_bucket<basic_strslice<C>, void> :
+         closed_hashtable_bucket<basic_strslice<C>, strslice_state_extractor>
 {} ;
 
 /******************************************************************************/
@@ -269,7 +285,9 @@ class closed_hashtable {
       typedef basic_iterator<false> iterator ;
       typedef basic_iterator<true>  const_iterator ;
 
-      explicit closed_hashtable(size_type initsize = 0) ;
+      closed_hashtable() noexcept : closed_hashtable(0) {}
+
+      explicit closed_hashtable(size_type initsize) ;
 
       explicit closed_hashtable(const std::pair<size_type, float> &size_n_load) ;
 
@@ -280,7 +298,7 @@ class closed_hashtable {
          copy_buckets(other.begin_buckets(), other.end_buckets()) ;
       }
 
-      closed_hashtable(closed_hashtable &&other) : closed_hashtable(0) { swap(other) ; }
+      closed_hashtable(closed_hashtable &&other) noexcept : closed_hashtable(0) { swap(other) ; }
 
       closed_hashtable(const std::pair<size_type, float> &size_n_load,
                        const hasher &hf, const key_equal &keq = {}, const key_extract &kex = {}) :
@@ -289,10 +307,16 @@ class closed_hashtable {
       {}
 
       closed_hashtable(const std::pair<size_type, float> &size_n_load,
-                       const key_extract &kx, const key_equal &eq = {}) :
-         _basic_state{{}, eq, kx, size_n_load.second},
-         _bucket_container(size_n_load.first, _basic_state)
+                       const key_extract &kex, const key_equal &keq = {}) :
+         closed_hashtable(size_n_load, {}, keq, kex)
       {}
+
+      template<typename InputIterator>
+      closed_hashtable(InputIterator b, InputIterator e) :
+         closed_hashtable(pcomn::estimated_distance(b, e))
+      {
+         insert(b, e) ;
+      }
 
       ~closed_hashtable() { container().clear(_basic_state) ; }
 
@@ -309,7 +333,7 @@ class closed_hashtable {
 
       const key_extract &key_get() const { return _basic_state._key_get ; }
 
-      void swap(closed_hashtable &other)
+      void swap(closed_hashtable &other) noexcept
       {
          if (&other == this)
             return ;
@@ -950,3 +974,28 @@ inline void swap(pcomn::closed_hashtable<V, X, H, P, S> &lhs,
 } ;
 
 #endif /* __PCOMN_HASHCLOSED_H */
+
+/*******************************************************************************
+ Hash bucket state extractor specialization for strslice.
+ Provides sizeof(closed_hashtable<strslice>::bucket_type)==sizeof(strslice).
+
+ For this to work, include pcomn_hashclosed.h after pcomn_strslice.h (even if
+ pcomn_hashclosed.h is already included).
+*******************************************************************************/
+#if defined(__PCOMN_STRSLICE_H) && !defined(__PCOMN_STRSLICE_HASHCLOSED_H)
+#define __PCOMN_STRSLICE_HASHCLOSED_H
+namespace pcomn {
+struct strslice_state_extractor {
+      static bucket_state state(const strslice &s)
+      {
+         return pointer_state_extractor<const char>::state(s.begin()) ;
+      }
+
+      static strslice value(bucket_state s)
+      {
+         const char * const v = pointer_state_extractor<const char>::value(s) ;
+         return {v, v} ;
+      }
+} ;
+} // end of namespace pcomn
+#endif /* __PCOMN_STRSLICE_HASHCLOSED_H */

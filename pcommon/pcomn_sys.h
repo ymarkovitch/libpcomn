@@ -90,7 +90,12 @@ inline fileoff_t filesize(int fd) ;
 /// @overload
 inline fileoff_t filesize(const char *name) ;
 
-inline Access fileaccess(const char *name, int mode = 0)
+inline fileoff_t filesize(const cstrptr &name)
+{
+   return filesize(name.c_str()) ;
+}
+
+inline Access fileaccess(const cstrptr &name, int mode = 0)
 {
    if (::access(name, mode) == 0)
       return ACC_EXISTS ;
@@ -103,11 +108,6 @@ inline Access fileaccess(const char *name, int mode = 0)
       case EACCES:   return ACC_DENIED ;
    }
    return ACC_ERROR ;
-}
-
-inline Access fileaccess(const std::string &name, int mode = 0)
-{
-   return fileaccess(name.c_str(), mode) ;
 }
 
 /// Get CPU cores count on the system.
@@ -226,7 +226,7 @@ struct fsstat : stat {
       explicit operator bool() const { return st_nlink || st_dev || st_ino || st_mode ; }
 } ;
 
-inline fsstat filestat(const char *path, RaiseError raise = DONT_RAISE_ERROR)
+inline fsstat filestat(const cstrptr &path, RaiseError raise = DONT_RAISE_ERROR)
 {
    _PCOMN_SYS_FSTAT(stat, path, raise) ;
 }
@@ -237,7 +237,7 @@ inline fsstat filestat(int fd, RaiseError raise = DONT_RAISE_ERROR)
 }
 
 #ifdef PCOMN_PL_POSIX
-inline fsstat linkstat(const char *path, RaiseError raise = DONT_RAISE_ERROR)
+inline fsstat linkstat(const cstrptr &path, RaiseError raise = DONT_RAISE_ERROR)
 {
    _PCOMN_SYS_FSTAT(lstat, path, raise) ;
 }

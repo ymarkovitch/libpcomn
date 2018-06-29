@@ -12,6 +12,7 @@
 #include <pcomn_hashclosed.h>
 #include <pcomn_string.h>
 #include <pcomn_strslice.h>
+#include <pcomn_hashclosed.h>
 #include <pcomn_unittest.h>
 
 #include <typeinfo>
@@ -53,6 +54,7 @@ class ClosedHashTests : public CppUnit::TestFixture {
       void Test_Closed_Hash_Move() ;
       void Test_Closed_Hash_Extract_Key() ;
       void Test_Closed_Hash_CString() ;
+      void Test_Closed_Hash_Strslice() ;
       void Test_Closed_Hash_PtrVal() ;
 
       CPPUNIT_TEST_SUITE(ClosedHashTests) ;
@@ -70,6 +72,7 @@ class ClosedHashTests : public CppUnit::TestFixture {
       CPPUNIT_TEST(Test_Closed_Hash_Move) ;
       CPPUNIT_TEST(Test_Closed_Hash_Extract_Key) ;
       CPPUNIT_TEST(Test_Closed_Hash_CString) ;
+      CPPUNIT_TEST(Test_Closed_Hash_Strslice) ;
       CPPUNIT_TEST(Test_Closed_Hash_PtrVal) ;
 
       CPPUNIT_TEST_SUITE_END() ;
@@ -170,15 +173,15 @@ void ClosedHashTests::Test_Closed_Hash_Init()
    CPPUNIT_LOG_EQ(IntHash2.max_load_factor(), 0.5) ;
    CPPUNIT_LOG_EQ(IntHash2.bucket_count(), 8) ;
 
-   test_inthashtable IntHash3 ({1, {}}) ;
+   test_inthashtable IntHash3 ({1, 0.0}) ;
    CPPUNIT_LOG_EQ(IntHash3.max_load_factor(), 0.75) ;
    CPPUNIT_LOG_EQ(IntHash3.bucket_count(), 2) ;
 
-   test_inthashtable IntHash4 ({1, -1}) ;
+   test_inthashtable IntHash4 ({1, -1.0}) ;
    CPPUNIT_LOG_EQ(IntHash4.max_load_factor(), 0.75) ;
    CPPUNIT_LOG_EQ(IntHash4.bucket_count(), 2) ;
 
-   test_inthashtable IntHash5 ({0, 1}) ;
+   test_inthashtable IntHash5 ({0, 1.0}) ;
    CPPUNIT_LOG_EQ(IntHash5.max_load_factor(), 0.875) ;
 
    test_inthashtable IntHash6 ({0, 0.05}) ;
@@ -260,6 +263,29 @@ void ClosedHashTests::Test_Closed_Hash_Insert()
    CPPUNIT_LOG_EQUAL(*IntHash.find(26), 26L) ;
    CPPUNIT_LOG_EQUAL(*IntHash.find(28), 28L) ;
    CPPUNIT_LOG_EQUAL(IntHash.find(55), IntHash.end()) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   static const int values[] = {10, 4, 11} ;
+
+   test_inthashtable IntHashI (std::begin(values), std::end(values)) ;
+   CPPUNIT_LOG_EQ(IntHashI.max_load_factor(), 0.75) ;
+
+   CPPUNIT_LOG_EXPRESSION(IntHashI) ;
+   CPPUNIT_LOG_EQUAL(IntHashI.size(), (size_t)3) ;
+   CPPUNIT_LOG_EQ(IntHashI.bucket_count(), 4) ;
+
+   CPPUNIT_LOG_EQUAL(*IntHashI.find(11), 11L) ;
+   CPPUNIT_LOG_EQUAL(*IntHashI.find(10), 10L) ;
+   CPPUNIT_LOG_EQUAL(IntHashI.find(5), IntHashI.end()) ;
+
+   CPPUNIT_LOG_ASSERT(IntHashI.insert(5).second) ;
+   CPPUNIT_LOG_EXPRESSION(IntHashI) ;
+
+   CPPUNIT_LOG_EQUAL(IntHashI.size(), (size_t)4) ;
+   CPPUNIT_LOG_EQ(IntHashI.bucket_count(), 8) ;
+
+   CPPUNIT_LOG_EQ(*IntHashI.find(5), 5) ;
+   CPPUNIT_LOG_EQUAL(*IntHashI.find(10), 10L) ;
 }
 
 void ClosedHashTests::Test_Closed_Hash_Erase()
@@ -640,6 +666,50 @@ void ClosedHashTests::Test_Closed_Hash_CString()
    CPPUNIT_LOG_ASSERT(TestHash.count("Hello")) ;
    CPPUNIT_LOG_ASSERT(TestHash.count(hello)) ;
    CPPUNIT_LOG_IS_FALSE(TestHash.count("")) ;
+}
+
+void ClosedHashTests::Test_Closed_Hash_Strslice()
+{
+   using namespace pcomn ;
+   typedef closed_hashtable<strslice> testtable_type ;
+   CPPUNIT_LOG_EQUAL(typeid(testtable_type::key_type), typeid(strslice)) ;
+   CPPUNIT_LOG_EQUAL(typeid(testtable_type::value_type), typeid(strslice)) ;
+
+   testtable_type TestHash ;
+   const std::string hello ("Hello") ;
+
+   CPPUNIT_LOG_ASSERT(TestHash.insert("Hello").second) ;
+   CPPUNIT_LOG_ASSERT(TestHash.insert("world").second) ;
+   CPPUNIT_LOG_IS_FALSE(TestHash.insert(hello.c_str()).second) ;
+   CPPUNIT_LOG_EQ(TestHash.size(), 2) ;
+
+   CPPUNIT_LOG_ASSERT(TestHash.count("Hello")) ;
+   CPPUNIT_LOG_ASSERT(TestHash.count(hello)) ;
+   CPPUNIT_LOG_IS_FALSE(TestHash.count("")) ;
+   CPPUNIT_LOG_IS_FALSE(TestHash.count(strslice())) ;
+
+   CPPUNIT_LOG_ASSERT(TestHash.insert(strslice()).second) ;
+   CPPUNIT_LOG_ASSERT(TestHash.count(strslice())) ;
+   CPPUNIT_LOG_EQ(TestHash.size(), 3) ;
+   CPPUNIT_LOG_IS_FALSE(TestHash.insert(hello).second) ;
+   CPPUNIT_LOG_EQ(TestHash.size(), 3) ;
+
+   CPPUNIT_LOG_ASSERT(TestHash.erase(strslice("Hello"))) ;
+   CPPUNIT_LOG_EQ(TestHash.size(), 2) ;
+   CPPUNIT_LOG_IS_FALSE(TestHash.count("Hello")) ;
+   CPPUNIT_LOG_ASSERT(TestHash.insert("Hello").second) ;
+   CPPUNIT_LOG_EQ(TestHash.size(), 3) ;
+   CPPUNIT_LOG_EQUAL(*TestHash.find("Hello"), strslice("Hello")) ;
+   CPPUNIT_LOG_EQUAL(*TestHash.find("world"), strslice("world")) ;
+   CPPUNIT_LOG_IS_FALSE(TestHash.insert("Hello").second) ;
+   CPPUNIT_LOG_EQUAL(*TestHash.insert("Hello").first, strslice("Hello")) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_ASSERT(TestHash.insert("foo").second) ;
+   CPPUNIT_LOG_ASSERT(TestHash.insert("bar").second) ;
+   CPPUNIT_LOG_ASSERT(TestHash.insert("quux").second) ;
+   CPPUNIT_LOG_EQ(TestHash.size(), 6) ;
+   CPPUNIT_LOG_EQUAL(*TestHash.find("Hello"), strslice("Hello")) ;
 }
 
 void ClosedHashTests::Test_Closed_Hash_PtrVal()

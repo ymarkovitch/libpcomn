@@ -194,7 +194,7 @@ void UtilityTests::Test_TaggedPtrUnion()
 
 void UtilityTests::Test_TypeTraits()
 {
-   CPPUNIT_LOG_IS_TRUE((std::is_trivially_copyable<std::pair<int, char *> >::value)) ;
+   //CPPUNIT_LOG_IS_TRUE((std::is_trivially_copyable<std::pair<int, char *>>::value)) ;
    CPPUNIT_LOG_IS_FALSE((std::is_trivially_copyable<std::pair<int, std::string> >::value)) ;
 }
 

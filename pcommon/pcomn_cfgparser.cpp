@@ -451,6 +451,7 @@ int cfgfile_write_value(const char *filename, const char *section, const char *k
          const size_t oldlen = strlen(linebuf) - 1 ; // Take '\n' into account
          nonempty_line = atValue(linebuf, linebuf) ;
          if (in_section && nonempty_line)
+         {
             if (stricmp(linebuf, key))
             {
                ENSURE_FILEOP(fgetpos(file, &sectpos), 0) ;
@@ -465,6 +466,7 @@ int cfgfile_write_value(const char *filename, const char *section, const char *k
                return
                   substPart(file, linebuf, start, start + oldlen) ;
             }
+         }
       }
    if (!section_found)
    {

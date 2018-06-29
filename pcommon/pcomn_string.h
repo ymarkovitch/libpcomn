@@ -18,6 +18,54 @@
  classes/types.
  @par
  String "shim" functions "normalize" different string interfaces to a common interface.
+
+ template<typename C>               struct is_char
+ template<typename S>               struct is_string
+ template<typename S, typename C>   struct is_strchar
+ template<typename S, typename C>   struct is_string_or_char
+ template<typename S1, typename S2> struct is_compatible_strings
+
+ template<typename S, typename T=void>             struct enable_if_string
+ template<typename S, typename T=void>             struct disable_if_string
+ template<typename S, typename C, typename T=void> struct enable_if_strchar
+ template<typename S, typename C, typename T=void> struct disable_if_strchar
+
+ template<typename S, typename Other, typename T=void> struct enable_if_other_string
+ template<typename S1, typename S2, typename T=void> struct enable_if_compatible_strings
+
+ cstr
+ cstr
+
+ stdstr
+ strnew
+
+ str::convert_inplace
+ str::convert_copy
+ str::to_lower_inplace
+ str::to_lower<S>
+ str::to_upper_inplace
+ str::to_upper<S>
+
+ str::lstrip_inplace
+ str::rstrip_inplace
+ str::strip_inplace
+
+ str::is_empty
+ str::startswith
+ str::endswith
+
+ esc2chr
+ chr2esc
+ escape_char
+ unescape_char
+ escape_range
+
+ strprintf
+ strvprintf
+ strappendf
+ strvappendf
+ bufprintf
+ vbufprintf
 *******************************************************************************/
 #include <pcommon.h>
 #include <pcomn_hash.h>
@@ -64,8 +112,7 @@ inline typename string_traits<S>::size_type len(const S &str)
 }
 
 /*******************************************************************************
-                     template<typename C>
-                     struct ctype_traits
+ ctype_traits
 *******************************************************************************/
 template<typename C>
 struct ctype_traits { typedef char undefined ; } ;
@@ -101,7 +148,7 @@ template<>
 struct ctype_traits<wchar_t> {
       typedef wchar_t char_type ;
       typedef std::conditional_t<!std::is_signed<wchar_t>::value, wchar_t,
-                                 std::conditional_t<(sizeof(wchar_t) < sizeof(unsigned)), unsigned short, unsigned> >
+                                 std::conditional_t<(sizeof(wchar_t) < sizeof(unsigned)), unsigned short, unsigned>>
       uchar_type ;
 
       static char_type tolower(char_type c) { return std::towlower(c) ; }
@@ -127,8 +174,7 @@ struct ctype_traits<wchar_t> {
 } ;
 
 /*******************************************************************************
-                     template<typename C>
-                     struct cstring_traits
+ cstring_traits
 *******************************************************************************/
 template<typename C>
 struct cstring_traits {
@@ -147,8 +193,7 @@ struct cstring_traits {
 } ;
 
 /*******************************************************************************
-                     template<typename S, bool immutable>
-                     struct stdstring_traits
+ stdstring_traits
 *******************************************************************************/
 template<typename S, bool immutable>
 struct stdstring_traits {
@@ -165,18 +210,19 @@ struct stdstring_traits {
 } ;
 
 
-/*******************************************************************************/
-/** String traits for any string with c_str() member.
-  Assumes c_str() return pointer to zero-delimited chartype sequence, which
-  correctly represent the string.
+/****************************************************************************//**
+ String traits for any string with c_str() member.
+
+ Assumes c_str() returns a pointer to zero-delimited chartype sequence correctly
+ representing the string.
 *******************************************************************************/
 template<typename S, typename C, typename Z = size_t>
 struct anystring_traits {
       typedef S      type ;
       typedef C      char_type ;
       typedef Z      size_type ;
-      // The definition of hash_type is essentially not necessary, but allows to
-      // employ SFINAE while defining hasher functions
+      // The definition of hash_type makes the traits SFINAE-friendly while defining
+      // hasher functions.
       typedef size_t hash_type ;
 
       static constexpr const bool has_std_read = false ;
@@ -186,8 +232,8 @@ struct anystring_traits {
       static constexpr const char_type *cstr(const type &s) { return s.c_str() ; }
 } ;
 
-/******************************************************************************/
-/** Safe/smart pointer to char, interpreted as a C string
+/***************************************************************************//**
+ Safe/smart pointer to char, interpreted as a C string
 *******************************************************************************/
 template<typename P>
 struct pstring_traits {
@@ -203,10 +249,10 @@ struct pstring_traits {
       static constexpr const char_type *cstr(const type &s) { return s.get() ; }
 } ;
 
-/*******************************************************************************
-                     template<typename S>
-                     struct string_traits
+/***************************************************************************//**
+ Predefined string_traits specialization.
 *******************************************************************************/
+/**@{*/
 template<typename S>
 struct string_traits { typedef char undefined ; } ;
 
@@ -235,13 +281,14 @@ struct string_traits<wchar_t [N]> : cstring_traits<wchar_t> {} ;
 template<size_t N>
 struct string_traits<const wchar_t [N]> : cstring_traits<wchar_t> {} ;
 template<typename Char, class Traits, class A>
-struct string_traits<std::basic_string<Char, Traits, A> > :
+struct string_traits<std::basic_string<Char, Traits, A>> :
          stdstring_traits<std::basic_string<Char, Traits, A>, false> {} ;
 
 template<typename D>
-struct string_traits<std::unique_ptr<char[], D> > : pstring_traits<std::unique_ptr<char[], D> > {} ;
+struct string_traits<std::unique_ptr<char[], D>> : pstring_traits<std::unique_ptr<char[], D>> {} ;
 template<typename D>
-struct string_traits<std::unique_ptr<const char[], D> > : pstring_traits<std::unique_ptr<const char[], D> > {} ;
+struct string_traits<std::unique_ptr<const char[], D>> : pstring_traits<std::unique_ptr<const char[], D>> {} ;
+/**@}*/
 
 /// @cond
 namespace detail {
@@ -280,40 +327,40 @@ is_string_or_char : bool_constant<is_char<C>::value || is_strchar<S, C>::value> 
 template<typename S1, typename S2> struct
 is_compatible_strings : detail::_is_compatible_str<S1, S2, is_string<S1>::value && is_string<S2>::value> {} ;
 
-template<typename S, typename Type> struct
-enable_if_string : std::enable_if<is_string<S>::value, Type> {} ;
+template<typename S, typename T> struct
+enable_if_string : std::enable_if<is_string<S>::value, T> {} ;
 
-template<typename S, typename Type> struct
-disable_if_string : std::enable_if<!is_string<S>::value, Type> {} ;
+template<typename S, typename T> struct
+disable_if_string : std::enable_if<!is_string<S>::value, T> {} ;
 
-template<typename S, typename Char, typename Type> struct
-enable_if_strchar : std::enable_if<is_strchar<S, Char>::value, Type> {} ;
+template<typename S, typename Char, typename T> struct
+enable_if_strchar : std::enable_if<is_strchar<S, Char>::value, T> {} ;
 
-template<typename S, typename Char, typename Type> struct
-disable_if_strchar : std::enable_if<!is_strchar<S, Char>::value, Type> {} ;
+template<typename S, typename Char, typename T> struct
+disable_if_strchar : std::enable_if<!is_strchar<S, Char>::value, T> {} ;
 
-template<typename S, typename Other, typename Type> struct
-enable_if_other_string : std::enable_if<is_string<Other>::value && !std::is_base_of<S, Other>::value, Type> {} ;
+template<typename S, typename Other, typename T> struct
+enable_if_other_string : std::enable_if<is_string<Other>::value && !std::is_base_of<S, Other>::value, T> {} ;
 
-template<typename S1, typename S2, typename Type = std::nullptr_t> struct
-enable_if_compatible_strings : std::enable_if<is_compatible_strings<S1, S2>::value, Type> {} ;
+template<typename S1, typename S2, typename T = void> struct
+enable_if_compatible_strings : std::enable_if<is_compatible_strings<S1, S2>::value, T> {} ;
 
-template<typename S, typename T = std::nullptr_t>
+template<typename S, typename T = void>
 using enable_if_string_t = typename enable_if_string<S, T>::type ;
 
-template<typename S, typename T = std::nullptr_t>
+template<typename S, typename T = void>
 using disable_if_string_t = typename disable_if_string<S, T>::type ;
 
-template<typename S, typename C, typename T = std::nullptr_t>
+template<typename S, typename C, typename T = void>
 using enable_if_strchar_t = typename enable_if_strchar<S, C, T>::type ;
 
-template<typename S, typename C, typename T = std::nullptr_t>
+template<typename S, typename C, typename T = void>
 using disable_if_strchar_t = typename disable_if_strchar<S, C, T>::type ;
 
-template<typename S, typename O, typename T = std::nullptr_t>
+template<typename S, typename O, typename T = void>
 using enable_if_other_string_t = typename enable_if_other_string<S, O, T>::type ;
 
-template<typename S1, typename S2, typename T = std::nullptr_t>
+template<typename S1, typename S2, typename T = void>
 using enable_if_compatible_strings_t = typename enable_if_compatible_strings<S1, S2, T>::type ;
 
 template<typename S>
@@ -341,7 +388,7 @@ namespace str {
 /// @cond
 namespace detail {
 template<typename S, typename C>
-inline std::basic_string<C> stdstr_(const S &str, ::pcomn::string_traits<std::basic_string<C> > *)
+inline std::basic_string<C> stdstr_(const S &str, ::pcomn::string_traits<std::basic_string<C>> *)
 {
    return std::basic_string<C>(str) ;
 }
@@ -490,27 +537,27 @@ inline S &&convert_inplace_stdstr(S &&s, Converter &converter,
 } // end of namespace pcomn::str::detail
 /// @endcond
 
-template<typename Converter, typename S>
+template<typename X, typename S>
 inline std::enable_if_t<string_traits<S>::has_std_write, S &&>
-convert_inplace(S &&s, Converter converter, size_t offs = 0, size_t size = std::string::npos)
+convert_inplace(S &&s, X &&converter, size_t offs = 0, size_t size = std::string::npos)
 {
-   return detail::convert_inplace_stdstr(std::forward<S>(s), converter, offs, size) ;
+   return detail::convert_inplace_stdstr(std::forward<S>(s), std::forward<X>(converter), offs, size) ;
 }
 
-template<typename Converter, typename Char>
+template<typename X, typename Char>
 inline std::enable_if_t<is_char<Char>::value, Char *>
-convert_inplace(Char *s, Converter converter, size_t offs = 0, size_t size = (size_t)-1)
+convert_inplace(Char *s, X &&converter, size_t offs = 0, size_t size = (size_t)-1)
 {
-   std::transform(s + offs, (size == (size_t)-1 ? s + len(s) : s + size), s + offs, converter) ;
+   std::transform(s + offs, (size == (size_t)-1 ? s + len(s) : s + size), s + offs, std::forward<X>(converter)) ;
    return s ;
 }
 
-template<typename Buf, typename Converter, typename S>
+template<typename Buf, typename X, typename S>
 inline std::enable_if_t<string_traits<S>::has_std_read, S>
-convert_copy(const S &s, Converter converter, size_t offs = 0, size_t size = std::string::npos)
+convert_copy(const S &s, X &&converter, size_t offs = 0, size_t size = std::string::npos)
 {
    Buf buf(s) ;
-   return S(convert_inplace(buf, converter, offs, size)) ;
+   return S(convert_inplace(buf, std::forward<X>(converter), offs, size)) ;
 }
 
 template<typename S>
@@ -546,7 +593,7 @@ inline Char *to_upper_inplace(Char (&s)[n], size_t offs = 0,
 template<typename C>
 inline std::basic_string<C> to_lower(const std::basic_string<C> &s)
 {
-   return convert_copy<std::basic_string<C> >(s, ctype_traits<C>::tolower) ;
+   return convert_copy<std::basic_string<C>>(s, ctype_traits<C>::tolower) ;
 }
 
 template<typename C>
@@ -558,7 +605,7 @@ inline std::basic_string<C> to_lower(std::basic_string<C> &&s)
 template<typename C>
 inline std::basic_string<C> to_upper(const std::basic_string<C> &s)
 {
-   return convert_copy<std::basic_string<C> >(s, ctype_traits<C>::toupper) ;
+   return convert_copy<std::basic_string<C>>(s, ctype_traits<C>::toupper) ;
 }
 
 template<typename C>
@@ -584,25 +631,22 @@ inline const wchar_t *select_cstring<wchar_t>(const char *, const wchar_t *s) { 
 } // end of namespace pcomn::str
 
 
-/******************************************************************************/
-/** Provides static constant empty string of type @a S.
+/***************************************************************************//**
+ Provides static constant empty string of type @a S.
  This allows to avoid construction of an empty string object in every expression
  it is needed.
  E.g. pcomn::emptystr<std::string>::value
 *******************************************************************************/
 template<class S> struct emptystr { static const S value ; } ;
 template<class S> const S emptystr<S>::value ;
-#ifdef PCOMN_COMPILER_CXX14
 template<class S>
 const auto &emptystr_v = emptystr<S>::value ;
-#endif
 
 template<size_t n> struct emptystr<char[n]> { static const char value[n] ; } ;
 template<size_t n> const char emptystr<char[n]>::value[n] = "" ;
 
 template<size_t n> struct emptystr<wchar_t[n]> { static const wchar_t value[n] ; } ;
 template<size_t n> const wchar_t emptystr<wchar_t[n]>::value[n] = L"" ;
-
 
 /*******************************************************************************
  Global basic string functions (like strip, etc.)
@@ -651,13 +695,15 @@ inline size_t strbuflen(const char (&s)[n]) { return strbuflen(s, n) ; }
 template<size_t n>
 inline size_t strbuflen(char (&s)[n]) { return strbuflen(s, n) ; }
 
-/*******************************************************************************
+/***************************************************************************//**
  strchr/strrchr, overloaded for both char and wchar_t
 *******************************************************************************/
+/**@{*/
 inline char *cstrchr(const char *s, int c) { return const_cast<char *>(strchr(s, c)) ; }
 inline wchar_t *cstrchr(const wchar_t *s, int c) { return const_cast<wchar_t *>(wcschr(s, c)) ; }
 inline char *cstrrchr(const char *s, int c) { return const_cast<char *>(strrchr(s, c)) ; }
 inline wchar_t *cstrrchr(const wchar_t *s, int c) { return const_cast<wchar_t *>(wcsrchr(s, c)) ; }
+/**@}*/
 
 /******************************************************************************/
 /** pcomn::hash_fn_string is used as a default implementation of the hash function
@@ -693,7 +739,7 @@ __noinline std::string strvprintf_(const char *format, va_list args)
    return result ;
 }
 
-template<nullptr_t>
+template<Instantiate=Instantiate()>
 __noinline std::string &strvappendf_(std::string &s, const char *format, va_list args)
 {
    va_list tmp ;
@@ -731,7 +777,7 @@ inline std::string strprintf(const char *format, ...)
 
 inline std::string &strvappendf(std::string &s, const char *format, va_list args)
 {
-   return detail::strvappendf_<nullptr>(s, format, args) ;
+   return detail::strvappendf_<>(s, format, args) ;
 }
 
 inline std::string &strappendf(std::string &s, const char *format, ...)
