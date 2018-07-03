@@ -518,7 +518,7 @@ struct sha1hash_t {
       unsigned char *data() { return reinterpret_cast<unsigned char *>(_idata) ; }
       const unsigned char *data() const { return reinterpret_cast<const unsigned char *>(_idata) ; }
 
-      static size_t size() { return sizeof _idata ; }
+      static constexpr size_t size() { return sizeof _idata ; }
 
       _PCOMNEXP std::string to_string() const ;
 
