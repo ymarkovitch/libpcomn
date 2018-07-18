@@ -8,7 +8,7 @@
 # PROGRAMMED BY:  Yakov Markovitch
 # CREATION DATE:  11 Sep 2014
 #------------------------------------------------------------------------------
-cmake_minimum_required(VERSION 3.7)
+cmake_minimum_required(VERSION 3.6)
 
 project(pcommn_unittests)
 
