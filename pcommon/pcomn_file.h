@@ -17,6 +17,7 @@
 #include <pcomn_meta.h>
 
 #include <iterator>
+#include <string>
 
 #include <string.h>
 #include <stdio.h>
@@ -32,7 +33,9 @@ namespace pcomn {
 *******************************************************************************/
 struct auto_unlink {
       auto_unlink(auto_unlink &&other) { swap(other) ; }
+
       explicit auto_unlink(const char *path) : _path(path && *path ? strdup(path) : NULL) {}
+      explicit auto_unlink(const std::string &path) : auto_unlink(path.c_str()) {}
 
       ~auto_unlink() { path() && unlink(path()) ; }
 
