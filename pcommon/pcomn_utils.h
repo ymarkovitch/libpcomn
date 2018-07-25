@@ -432,6 +432,10 @@ struct tdef<Principal, Tag, true> {
       operator Principal &() & { return _data ; }
       operator Principal &&() && { return std::move(_data) ; }
 
+      const Principal &get() const & { return _data ; }
+      Principal &get() & { return _data ; }
+      Principal &&get() && { return std::move(_data) ; }
+
    private:
       Principal _data {} ;
 } ;
@@ -452,6 +456,10 @@ struct tdef<Principal, Tag, false> {
       operator const Principal &() const { return _data ; }
       operator Principal &() & { return _data ; }
       operator Principal &&() && { return std::move(_data) ; }
+
+      const Principal &get() const & { return _data ; }
+      Principal &get() & { return _data ; }
+      Principal &&get() && { return std::move(_data) ; }
 
    private:
       Principal _data {} ;
@@ -713,6 +721,25 @@ namespace std {
 *******************************************************************************/
 template<typename P, typename G>
 struct hash<pcomn::tdef<P,G>> : hash<P> {} ;
+
+template<typename P, typename G>
+inline auto begin(const pcomn::tdef<P,G> &x)->decltype(begin(x.get())) { return begin(x.get()) ; }
+
+template<typename P, typename G>
+inline auto begin(pcomn::tdef<P,G> &x)->decltype(begin(x.get())) { return begin(x.get()) ; }
+
+template<typename P, typename G>
+inline auto begin(pcomn::tdef<P,G> &&x)->decltype(begin(move(x).get())) { return begin(move(x).get()) ; }
+
+template<typename P, typename G>
+inline auto end(const pcomn::tdef<P,G> &x)->decltype(end(x.get())) { return end(x.get()) ; }
+
+template<typename P, typename G>
+inline auto end(pcomn::tdef<P,G> &x)->decltype(end(x.get())) { return end(x.get()) ; }
+
+template<typename P, typename G>
+inline auto end(pcomn::tdef<P,G> &&x)->decltype(end(move(x).get())) { return end(move(x).get()) ; }
+
 } // end of std namespace
 
 #endif /* __PCOMN_UTILS_H */
