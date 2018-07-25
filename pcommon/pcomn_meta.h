@@ -23,6 +23,7 @@
 *******************************************************************************/
 #include <pcomn_platform.h>
 #include <pcomn_macros.h>
+#include <pcomn_assert.h>
 
 #include <limits>
 #include <utility>
@@ -222,6 +223,18 @@ template<typename T> using is_volatile_t     = typename std::is_volatile<T>::typ
 /**@}*/
 
 } // end of inline namespace pcomn::traits
+
+template<typename To, typename From>
+constexpr __forceinline To bit_cast(const From &from) noexcept
+{
+   PCOMN_STATIC_CHECK(sizeof(To) == sizeof(From)) ;
+   PCOMN_STATIC_CHECK(alignof(To) <= alignof(From)) ;
+   PCOMN_STATIC_CHECK(std::is_trivially_copyable_v<From> && std::is_trivially_copyable_v<To>) ;
+
+   const char * const src = reinterpret_cast<const char *>(&from) ;
+   To result = *reinterpret_cast<const To *>(src) ;
+   return result ;
+}
 
 /******************************************************************************/
 /** Function for getting T value in unevaluated context for e.g. passsing
