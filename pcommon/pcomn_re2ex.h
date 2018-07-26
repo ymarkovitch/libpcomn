@@ -112,7 +112,7 @@ class _PCOMNEXP re2ex : public regex_matcher {
                   re2::StringPiece(&zero, 0) ;
 
                P_FAST_BUFFER(submatch, re2::StringPiece, subexp_count + 1, 512) ;
-               memset(submatch, 0, sizeof *submatch * subexp_count) ;
+               memset((void*)submatch, 0, sizeof *submatch * subexp_count) ;
 
                std::pair<bool, reg_match *> result
                   (exp.Match(str, 0, str.size(), re2::RE2::UNANCHORED, submatch, subexp_count),
