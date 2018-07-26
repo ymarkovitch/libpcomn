@@ -127,36 +127,50 @@ class bitsaver {
       const T  _status ;
 } ;
 
-/*******************************************************************************
- finalizer
+/***************************************************************************//**
+ Automatically calls the functor passed into the constructor upon destructor call
+ (usually at the scope exit).
 *******************************************************************************/
-template<class T>
+template<typename F>
 class finalizer {
       PCOMN_NONCOPYABLE(finalizer) ;
       PCOMN_NONASSIGNABLE(finalizer) ;
    public:
-      typedef std::function<void (T*)> finalizer_type ;
+      explicit constexpr finalizer(const F &on_finish) : _finalize(on_finish) {}
+      explicit constexpr finalizer(F &&on_finish) : _finalize(std::move(on_finish)) {}
 
-      finalizer(T &var, const finalizer_type &fn) : _var(var), _finalize(fn) {}
-      finalizer(T &var, finalizer_type &&fn) : _var(var), _finalize(fn) {}
+      finalizer(finalizer &&other) :
+         _finalize(std::move(other._finalize)),
+         _released(std::exchange(other._released, true))
+      {}
 
       ~finalizer() { finalize() ; }
 
-      void release() { _finalize = finalizer_type() ; }
+      /// Prevent finalizer function from being called.
+      /// Can be called arbitrary number of times, idempotent.
+      void release() { _released = true ; }
 
+      /// Explicitly call the finalizer if it hasn't yet been called or released.
+      /// Can be called arbitrary number of times: after the first call all the
+      /// subsequent are ignored.
       void finalize()
       {
-         if (_finalize)
-         {
-            _finalize(&_var) ;
-            release() ;
-         }
-      }
+         if (_released)
+            return ;
 
+         release() ;
+         _finalize() ;
+      }
    private:
-      T & _var ;
-      finalizer_type _finalize ;
+      F     _finalize ;         /* Call this in the destructor. */
+      bool  _released = false ; /* Don't call _finalize if true. */
 } ;
+
+template<typename F>
+inline finalizer<std::remove_cvref_t<F>> make_finalizer(F &&on_finish)
+{
+   return finalizer<std::remove_cvref_t<F>>(std::forward<F>(on_finish)) ;
+}
 
 /*******************************************************************************
  Utility functions
