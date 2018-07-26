@@ -147,9 +147,23 @@ using std::experimental::is_same_v ;
 using std::experimental::is_base_of_v ;
 using std::experimental::is_convertible_v ;
 
-}
+} // end of namespace std
 
 #endif /* PCOMN_STL_CXX17 */
+
+#ifndef PCOMN_STL_CXX20
+
+namespace std {
+
+template<typename T>
+using remove_cvref = std::remove_cv<std::remove_reference_t<T>> ;
+
+template<typename T>
+using remove_cvref_t = typename remove_cvref<T>::type ;
+
+} // end of namespace std
+
+#endif /* PCOMN_STL_CXX20 */
 
 namespace pcomn {
 
