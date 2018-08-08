@@ -145,12 +145,14 @@ inline int set_fflags(int fd, unsigned flags, unsigned mask)
    return oldflags ;
 }
 
-/// Reopen a file by its descriptor
-///
-/// Does @em not duplicates file descriptor, but creates a new entry in the open file
-/// table, so e.g. resulting descriptor can have completely independent state, offset,
-/// flock locks, etc.
-///
+/***************************************************************************//**
+ Reopen a file by its descriptor.
+
+ Does @em not duplicates file descriptor, but creates a new entry in the open file
+ table, so e.g. resulting descriptor can have completely independent state, offset,
+ flock locks, etc.
+*******************************************************************************/
+/**@{*/
 inline int reopen(int fd, int flags)
 {
    int newfd ;
@@ -170,7 +172,11 @@ inline int reopen(int fd, int flags)
 }
 
 inline int reopen(int fd) { return reopen(fd, fflags(fd)) ; }
+/**@}*/
 
+/*******************************************************************************
+ Function family to manipulate directory fd's
+*******************************************************************************/
 inline int opendirfd(const char *name, RaiseError raise = DONT_RAISE_ERROR)
 {
   const int flags = O_RDONLY|O_NDELAY|O_DIRECTORY|O_LARGEFILE
@@ -184,6 +190,9 @@ inline int opendirfd(const char *name, RaiseError raise = DONT_RAISE_ERROR)
   return fd ;
 }
 
+/*******************************************************************************
+
+*******************************************************************************/
 inline int hardflush(int fd)
 {
    return fsync(fd) ;

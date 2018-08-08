@@ -12,7 +12,21 @@
  CREATION DATE:   24 Jan 2009
 *******************************************************************************/
 /** @file
- Filesystem path functions
+ Filesystem path functions.
+
+    - path_dots:   if the path starts with "." or "..", return 1 or 2
+    - is_pathname_separator: is char a pathname separator
+    - is_absolute: is the path absolute
+    - is_root_of:  is one path is the root of the other
+    - split:       split a pathname into a dirname and basename
+    - basename:    strip directory from filename
+    - dirname:     strip last component from file name
+    - splitext:    split filename into dir/basename and extension
+    - joinpath:    join the two parts of a path intelligently
+    - normpath:    normalize the pathname removing redundant path components
+    - abspath:     convert a path to the normalized absolute path
+    - realpath:    convert a path to absolute path with resolved symlinks
+    - mkdirpath:   ensure the path has final '/'
 *******************************************************************************/
 #include <pcomn_string.h>
 #include <pcomn_strslice.h>
@@ -27,7 +41,7 @@ namespace path {
 namespace posix {
 
 /*******************************************************************************
- Filesystem paths
+ Path properties detection
 *******************************************************************************/
 inline size_t path_dots(const char *path)
 {
@@ -82,6 +96,9 @@ inline bool is_root_of(const strslice &basedir, const strslice &path)
           || is_pathname_separator(path[basedir.size() - 1])) ;
 }
 
+/*******************************************************************************
+ Splitting and joining paths
+*******************************************************************************/
 /// Split a pathname into a dirname and basename.
 /// @return pair "(dirname, basename)" where "basename" is everything after the final
 /// slash. Either part may be empty.
@@ -134,6 +151,10 @@ inline bool is_basename(const strslice &name)
       name && !split(name).first && (*name.begin() != '.' || name.size() > 1 && name[1] != '.') ;
 }
 
+/*******************************************************************************
+ Path normalization
+*******************************************************************************/
+
 /// Normalize the pathname removing redundant components such as "foo/../", "./" and
 /// trailing "/.".
 size_t normpath(const char *name, char *result, size_t bufsize) ;
@@ -144,6 +165,9 @@ size_t abspath(const char *name, char *result, size_t bufsize) ;
 /// If @a name is a symlink, follows the link chain and returns the contents of the last
 /// link converted with abspath(); otherwise, equivalent of abspath().
 ssize_t realpath(const char *name, char *result, size_t bufsize) ;
+
+/*******************************************************************************
+*******************************************************************************/
 
 } // end of namespace pcomn::path::posix
 
