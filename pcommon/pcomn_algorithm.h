@@ -3,7 +3,7 @@
 #define __PCOMN_ALGORITHM_H
 /*******************************************************************************
  FILE         :   pcomn_algorithm.h
- COPYRIGHT    :   Yakov Markovitch, 1998-2017. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1998-2018. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Some necessary and useful algorithms that absent in STL.

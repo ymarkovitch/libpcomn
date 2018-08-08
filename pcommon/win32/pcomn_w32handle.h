@@ -3,7 +3,7 @@
 #define __PCOMN_W32HANDLE_H
 /*******************************************************************************
  FILE         :   pcomn_w32handle.h
- COPYRIGHT    :   Yakov Markovitch, 2005-2017. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2005-2018. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Win32 HANDLE and HMODULE handle traits for safe_handle<>

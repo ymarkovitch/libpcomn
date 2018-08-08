@@ -3,7 +3,7 @@
 #define __PCOMN_INTEGER_H
 /*******************************************************************************
  FILE         :   pcomn_integer.h
- COPYRIGHT    :   Yakov Markovitch, 2006-2017. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2006-2018. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Integral types traits.

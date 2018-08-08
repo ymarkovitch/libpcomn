@@ -3,7 +3,7 @@
 #define __PCOMN_STOPWATCH_H
 /*******************************************************************************
  FILE         :   pcomn_stopwatch.h
- COPYRIGHT    :   Yakov Markovitch, 1998-2017. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1998-2018. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Stopwatches - classes for both CPU and real time counting for different

@@ -3,7 +3,7 @@
 #define __PCOMN_SSAFE_H
 /*******************************************************************************
  FILE         :   pcomn_ssafe.h
- COPYRIGHT    :   Yakov Markovitch, 2017
+ COPYRIGHT    :   Yakov Markovitch, 2018
 
  DESCRIPTION  :   Simple, safe, and signal-safe functions.
 

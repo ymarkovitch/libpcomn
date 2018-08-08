@@ -3,7 +3,7 @@
 #define __PCOMN_RE2EX_H
 /*******************************************************************************
  FILE         :   pcomn_re2ex.h
- COPYRIGHT    :   Yakov Markovitch, 2013-2017. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2013-2018. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Regular expression class, a wrapper around RE2 regular expressions.

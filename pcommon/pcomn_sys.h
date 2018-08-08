@@ -3,7 +3,7 @@
 #define __PCOMN_SYS_H
 /*******************************************************************************
  FILE         :   pcomn_sys.h
- COPYRIGHT    :   Yakov Markovitch, 2008-2017. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2008-2018. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   System (platform) functions

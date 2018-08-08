@@ -3,7 +3,7 @@
 #define __PCOMN_TESTHELPERS_H
 /*******************************************************************************
  FILE         :   pcomn_testhelpers.h
- COPYRIGHT    :   Yakov Markovitch, 2003-2017. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2003-2018. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Helpers for unit testing with CPPUnit

@@ -3,7 +3,7 @@
 #define __PCOMN_COUNTER_H
 /*******************************************************************************
  FILE         :   pcomn_counter.h
- COPYRIGHT    :   Yakov Markovitch, 1999-2017. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1999-2018. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Counter classes/templates

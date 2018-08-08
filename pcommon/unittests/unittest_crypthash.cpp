@@ -1,7 +1,7 @@
 /*-*- tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   unittest_crypthash.cpp
- COPYRIGHT    :   Yakov Markovitch, 2011-2017. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2011-2018. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Unittests for cryptohash classes/functions (MD5, SHA1, etc.)

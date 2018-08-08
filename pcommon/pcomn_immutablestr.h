@@ -3,7 +3,7 @@
 #define __PCOMN_IMMUTABLESTR_H
 /*******************************************************************************
  FILE         :   pcomn_immutablestr.h
- COPYRIGHT    :   Yakov Markovitch, 2006-2017. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2006-2018. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   The immutable string template.

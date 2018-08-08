@@ -3,7 +3,7 @@
 #define __PCOMN_FILE_H
 /*******************************************************************************
  FILE         :   pcomn_file.h
- COPYRIGHT    :   Yakov Markovitch, 2001-2017. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2001-2018. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Various file objects and utilities

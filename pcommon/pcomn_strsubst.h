@@ -3,7 +3,7 @@
 #define __PCOMN_STRSUBST_H
 /*******************************************************************************
  FILE         :   pcomn_strsubst.h
- COPYRIGHT    :   Yakov Markovitch, 2007-2017. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2007-2018. All rights reserved.
 
  DESCRIPTION  :   String substitution a la Perl templates or Python.Template class.
 

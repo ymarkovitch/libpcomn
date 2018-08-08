@@ -3,7 +3,7 @@
 #define __PCOMN_MACROS_H
 /*******************************************************************************
  FILE         :   pcomn_macros.h
- COPYRIGHT    :   Yakov Markovitch, 1996-2017. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1996-2018. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Helper macros for C preprocessor tricks and for writing other

@@ -3,7 +3,7 @@
 #define __PCOMN_META_H
 /*******************************************************************************
  FILE         :   pcomn_meta.h
- COPYRIGHT    :   Yakov Markovitch, 2006-2017. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2006-2018. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Basic template metaprogramming support.

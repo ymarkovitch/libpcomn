@@ -3,7 +3,7 @@
 #define __PCOMN_CDSMEM_H
 /*******************************************************************************
  FILE         :   pcomn_cdsmem.h
- COPYRIGHT    :   Yakov Markovitch, 2016-2017. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2016-2018. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Memory management for concurrent data structures.

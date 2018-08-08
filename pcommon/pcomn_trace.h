@@ -3,7 +3,7 @@
 #define __PTRACE_H
 /*******************************************************************************
  FILE         :   pcomn_trace.h
- COPYRIGHT    :   Yakov Markovitch, 1996-2017. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1996-2018. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Tracing paraphernalia (diagnostic groups, tracing macros, etc.)

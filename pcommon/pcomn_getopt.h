@@ -3,7 +3,7 @@
 #define __PCOMN_GETOPT_H
 /*******************************************************************************
  FILE         :   pcomn_getopt.h
- COPYRIGHT    :   Yakov Markovitch, 2008-2017. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2008-2018. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Helpers for command-line utilities.

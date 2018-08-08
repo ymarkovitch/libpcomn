@@ -1,7 +1,7 @@
 /*-*- mode:swig;tab-width:4;indent-tabs-mode:nil;c-file-style:"stroustrup";c-file-offsets:((innamespace . 0)(inline-open . 0)(case-label . +)) -*-*/
 /*******************************************************************************
  FILE         :   pcomn_macros.swg
- COPYRIGHT    :   Yakov Markovitch, 2004-2017
+ COPYRIGHT    :   Yakov Markovitch, 2004-2018
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Helper SWIG macros used for writing typemaps

@@ -1,7 +1,7 @@
 /*-*- tab-width:3;indent-tabs-mode:nil;c-file-style:"ellemtel";c-file-offsets:((inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   pcomn_mkstemp.c
- COPYRIGHT    :   Yakov Markovitch, 2010-2017. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2010-2018. All rights reserved.
 
  DESCRIPTION  :   Securely create a unique temporary file.
                   Inspired by Cornelius Krasel version, completely rewritten

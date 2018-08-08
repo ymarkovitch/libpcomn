@@ -3,7 +3,7 @@
 #define __PCOMN_STRSLICE_H
 /*******************************************************************************
  FILE         :   pcomn_strslice.h
- COPYRIGHT    :   Yakov Markovitch, 1997-2017. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1997-2018. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Substring class.

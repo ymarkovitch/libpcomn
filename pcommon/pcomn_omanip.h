@@ -3,7 +3,7 @@
 #define __PCOMN_OMANIP_H
 /*******************************************************************************
  FILE         :   pcomn_omanip.h
- COPYRIGHT    :   Yakov Markovitch, 2000-2017. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2000-2018. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Output manipulators

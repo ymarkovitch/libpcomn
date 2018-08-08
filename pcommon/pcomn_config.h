@@ -3,7 +3,7 @@
 #define __PCOMN_CONFIG_H
 /*******************************************************************************
  FILE         :   pcomn_config.h
- COPYRIGHT    :   Yakov Markovitch, 1997-2017. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1997-2018. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Configuration header (for PCOMMON to configure for different compilers,

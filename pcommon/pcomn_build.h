@@ -3,7 +3,7 @@
 #define __PCOMN_BUILD_H
 /*******************************************************************************
  FILE          :  pcomn_build.h
- COPYRIGHT    :   Yakov Markovitch, 2009-2017. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2009-2018. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION   :  Build configuration constants.

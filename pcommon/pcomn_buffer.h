@@ -3,7 +3,7 @@
 #define __PCOMN_BUFFER_H
 /*******************************************************************************
  FILE         :   pcomn_buffer.h
- COPYRIGHT    :   Yakov Markovitch, 1996-2017. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1996-2018. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Raw memory buffers (copy-on-write buffer and always shared

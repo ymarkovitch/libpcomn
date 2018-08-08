@@ -3,7 +3,7 @@
 #define __TESTLOGGER_H
 /*******************************************************************************
  FILE         :   TestLogger.h
- COPYRIGHT    :   Yakov Markovitch, 2003-2017. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2003-2018. All rights reserved.
 
  DESCRIPTION  :   Logging extensions for CPPUnit
                   See LICENSE for information on usage/redistribution.

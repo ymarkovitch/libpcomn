@@ -1,7 +1,7 @@
 #------------------------------------------------------------------------------
 # FILE         :  CMakeLists.txt
 #
-# COPYRIGHT    :  Yakov Markovitch, 2014-2017
+# COPYRIGHT    :  Yakov Markovitch, 2014-2018
 #                 See LICENSE for information on usage/redistribution.
 #
 # DESCRIPTION  :  CMake script for building pcommon library
