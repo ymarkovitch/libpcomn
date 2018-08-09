@@ -18,6 +18,8 @@
 #include <pcomn_alloca.h>
 #include <pcomn_cstrptr.h>
 
+#include <chrono>
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/time.h>
@@ -211,20 +213,20 @@ _PCOMNEXP void daemonize(const char *dir = "/",
 /*******************************************************************************
  Clock routines
 *******************************************************************************/
-typedef int64_t nanotime_t ;
+typedef std::chrono::nanoseconds nanotime_t ;
 
 /// Convert timespec structure to a 64-bit integer containing the number of nanoseconds
 /// since epoch
 inline nanotime_t timespec_to_nsec(const struct timespec &ts)
 {
-   return ts.tv_sec * 1000000000LL + ts.tv_nsec ;
+   return nanotime_t(ts.tv_sec * 1000000000LL + ts.tv_nsec) ;
 }
 
 /// Convert a 64-bit integer containing the number of nanoseconds since epoch to a
 /// timespec structure
 inline struct timespec nsec_to_timespec(nanotime_t t)
 {
-   const struct timespec ts = { t / 1000000000LL, t % 1000000000LL } ;
+   const struct timespec ts = { t.count() / 1000000000LL, t.count() % 1000000000LL } ;
    return ts ;
 }
 
