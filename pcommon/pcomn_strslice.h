@@ -94,12 +94,16 @@ namespace pcomn {
 *******************************************************************************/
 template<typename C>
 struct basic_strslice {
-
       typedef C char_type ;
       typedef const char_type *iterator ;
       typedef const char_type *const_iterator ;
       typedef std::reverse_iterator<iterator> reverse_iterator ;
       typedef reverse_iterator const_reverse_iterator ;
+
+      template<typename S>
+      static constexpr bool is_compatible_v = is_strchar<std::remove_cvref_t<S>, C>::value ;
+      template<typename S, typename T = void>
+      using enable_if_compatible_t = enable_if_strchar_t<std::remove_cvref_t<S>, C, T> ;
 
       /// Default constructor, creates an empty null slice
       ///
@@ -112,9 +116,16 @@ struct basic_strslice {
          _begin(other.begin()), _end(other.end())
       {}
 
-      template<typename S, typename = enable_if_strchar_t<S, char_type>>
+      template<typename S, typename = enable_if_compatible_t<S>>
       basic_strslice(const S &s) :
          _begin(str::cstr(s)), _end(_begin + str::len(s))
+      {}
+
+      template<typename S,
+               typename = std::enable_if_t<!is_compatible_v<S> &&
+                                           is_compatible_v<decltype(std::declval<S>().c_str())>>>
+      basic_strslice(S &&s) :
+         basic_strslice(s.c_str())
       {}
 
       /// Explicitly specify a constructor for const char* argument, despite the generic
@@ -127,7 +138,7 @@ struct basic_strslice {
       {}
 
       template<typename S>
-      basic_strslice(const S &s, size_t from, enable_if_strchar_t<S, char_type, size_t> to) noexcept :
+      basic_strslice(const S &s, size_t from, enable_if_compatible_t<S, size_t> to) noexcept :
          _begin(str::cstr(s)), _end(_begin)
       {
          const size_t len = str::len(s) ;
@@ -136,7 +147,7 @@ struct basic_strslice {
       }
 
       template<typename S>
-      basic_strslice(const S &str, enable_if_strchar_t<S, C, const reg_match &> range) ;
+      basic_strslice(const S &str, enable_if_compatible_t<S, const reg_match &> range) ;
 
       basic_strslice(const basic_strslice &str, const reg_match &range) ;
 

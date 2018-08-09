@@ -391,7 +391,7 @@ namespace pcomn {
 
 template<typename C>
 template<typename S>
-inline basic_strslice<C>::basic_strslice(const S &str, enable_if_strchar_t<S, C, const reg_match &> range)
+inline basic_strslice<C>::basic_strslice(const S &str, enable_if_compatible_t<S, const reg_match &> range)
 {
    if (!PSUBEXP_EMPTY(range))
    {
