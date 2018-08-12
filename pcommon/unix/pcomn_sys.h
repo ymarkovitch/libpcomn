@@ -248,6 +248,17 @@ inline nanotime_t clock_gettime(clockid_t clk_id)
 
 inline nanotime_t clock_realtime() { return clock_gettime(CLOCK_REALTIME) ; }
 
+inline nanotime_t clock_realtime_coarse()
+{
+   return clock_gettime(
+      #ifdef PCOMN_PL_LINUX
+      CLOCK_REALTIME_COARSE
+      #else
+      CLOCK_REALTIME
+      #endif
+      ) ;
+}
+
 inline nanotime_t clock_uptime() { return clock_gettime(CLOCK_MONOTONIC) ; }
 
 inline nanotime_t clock_cputime_process() { return clock_gettime(CLOCK_PROCESS_CPUTIME_ID) ; }

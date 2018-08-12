@@ -50,7 +50,7 @@ _PCOMNEXP bool copytree(const pcomn::strslice &sourcedir, const pcomn::strslice 
  the most dangerous behaviours. When needed, these behaviours may be allowed explicitly
  using RM_ALLOW_RELPATH, RM_ALLOW_DEPTH1, and RM_ALLOW_ROOT flags.
 *******************************************************************************/
-enum RmFlags {
+enum RmFlags : unsigned short {
    RM_IGNORE_ERRORS  = 0x01,  /**< On error, don't throw exception, just return false */
    RM_IGNORE_NEXIST  = 0x02,  /**< Ignore nonexistent files (and return true) */
    RM_RECURSIVE      = 0x04,  /**< Remove directories */
@@ -60,7 +60,7 @@ enum RmFlags {
 
 PCOMN_DEFINE_FLAG_ENUM(RmFlags) ;
 
-_PCOMNEXP bool rm(const pcomn::strslice &path, unsigned flags = 0) ;
+_PCOMNEXP bool rm(const pcomn::strslice &path, RmFlags flags = {}) ;
 
 } // end of namespace pcomn::sys
 } // end of namespace pcomn

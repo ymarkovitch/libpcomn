@@ -95,7 +95,7 @@ bool copytree(const pcomn::strslice &sourcedir, const pcomn::strslice &destdir, 
 /*******************************************************************************
  rm
 *******************************************************************************/
-bool rm(const pcomn::strslice &path, unsigned flags)
+bool rm(const pcomn::strslice &path, RmFlags flags)
 {
    PCOMN_ENSURE_ARG(path) ;
 
