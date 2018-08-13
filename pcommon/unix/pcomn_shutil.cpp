@@ -123,44 +123,82 @@ rm_info rm(const pcomn::strslice &path, const skip_logger &skiplogger, RmFlags f
       return false ;
    }
 
-   // Walk along the directory tree
+   /****************************************************************************
+    Walk along the directory tree
+   ****************************************************************************/
    struct file_handler {
          RmFlags     _flags ;
          skip_logger _skiplogger ;
          rm_info     _info ;
+         std::string _xinfo ;
          std::exception_ptr _exception ;
    } handler = { flags, skiplogger ? skiplogger : [](int, const char *, const fsstat &){} } ;
 
    static thread_local file_handler *current_handler = nullptr ;
    const vsaver<file_handler *> set_handler (current_handler, &handler) ;
 
-   const int retcode = nftw(spath.c_str(), [](const char *fpath, const struct stat *sb, int typeflag, FTW *)
+   /****************************************************************************
+    Main handler, passed to nftw
+   ****************************************************************************/
+   auto rm_file = [](const char *fpath, const struct stat *sb, int typeflag, FTW *) -> int
    {
-      switch (typeflag)
+      int lasterr = 0 ;
+
+      auto append_exception = [](int err, const char *fpath, const fsstat &s)
       {
-         // file
-         case FTW_F:   std::cout << "FILE      " << fpath << ' ' << sb->st_size << std::endl ; break ;
-            // symlink
-         case FTW_SL:  std::cout << "SYMLINK   " << fpath << std::endl ; break ;
-            // directory, after processing contents
-         case FTW_DP:  std::cout << "DIR(post) " << fpath << std::endl ; break ;
+      } ;
 
-            // directory
-         case FTW_D:   std::cout << "DIR(pre)  " << fpath << std::endl ; break ;
-            // directory, cannot read
-         case FTW_DNR: std::cout << "DIR(bad)  " << fpath << std::endl ; break ;
-            // cannot stat
-         case FTW_NS:  std::cout << "NOSTAT    " << fpath << std::endl ; break ;
+      auto unlink_file = [](const char *fpath, const fsstat &s)
+      {
+         const int err = posix_errno(unlink(fpath)) ;
+         current_handler->_info._rm_size += s.st_size * !err * !!S_ISREG(s.st_mode) ;
+         return err ;
+      } ;
 
-         default:      std::cout << "UNKNOWN   " << fpath << std::endl ; break ;
+      ++current_handler->_info._visit_count ;
+
+      if (typeflag == FTW_DP)
+      {
+         // directory, after processing contents
+         lasterr = posix_errno(rmdir(fpath)) ;
+         if (lasterr == ENOTDIR)
+            lasterr = unlink_file(fpath, filestat(fpath)) ;
+      }
+      else
+      {
+         lasterr = unlink_file(fpath, *sb) ;
+         if (lasterr == EISDIR)
+            lasterr = posix_errno(rmdir(fpath)) ;
+      }
+
+      if (!lasterr)
+         return 0 ;
+
+      if (lasterr == ENOENT && (current_handler->_flags & RM_IGNORE_NEXIST))
+         --current_handler->_info._visit_count ;
+      else
+      {
+         ++current_handler->_info._skip_count ;
+         append_exception(lasterr, fpath, *sb) ;
+         current_handler->_skiplogger(lasterr, fpath, *sb) ;
       }
       return 0 ;
-   },
+   } ;
 
-   128,
-   FTW_DEPTH | FTW_PHYS) ;
+   const fsstat &topstat = filestat(spath) ;
 
-   const int lasterr = posix_errno(retcode) ;
+   const int typeflag = !topstat                   ? FTW_NS :
+                        S_ISDIR(topstat.st_mode)   ? FTW_DP :
+                        S_ISLNK(topstat.st_mode)   ? FTW_SL :
+                        FTW_F ;
+
+   const int lasterr = typeflag == FTW_NS
+      ? errno
+      : posix_errno(typeflag == FTW_DP && (flags & RM_RECURSIVE)
+                    // The specified path is a directory: walk through the directory tree
+                    ? nftw(spath.c_str(), rm_file, 128, FTW_DEPTH | FTW_PHYS)
+                    // The specified path is a file: remove it immediatrely
+                    : rm_file(spath.c_str(), &topstat, typeflag, nullptr)) ;
 
    if (handler._exception)
       std::rethrow_exception(handler._exception) ;
