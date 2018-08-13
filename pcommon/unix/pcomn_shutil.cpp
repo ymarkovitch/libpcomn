@@ -1,4 +1,4 @@
-/*-*- tab-width:3;indent-tabs-mode:nil;c-file-style:"ellemtel";c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
+/*-*- tab-width:3;indent-tabs-mode:nil;c-file-style:"ellemtel";c-file-offsets:((innamespace . 0)(inclass . ++)(inlambda . 0)) -*-*/
 /*******************************************************************************
  FILE         :   pcomn_shutil.cpp
  COPYRIGHT    :   Yakov Markovitch, 2011-2018. All rights reserved.
@@ -14,9 +14,11 @@
 #include <pcomn_exec.h>
 #include <pcomn_path.h>
 #include <pcomn_except.h>
+#include <pcomn_sys.h>
 
 #include <unistd.h>
 #include <sys/types.h>
+#include <ftw.h>
 
 namespace pcomn {
 namespace sys {
@@ -95,7 +97,9 @@ bool copytree(const pcomn::strslice &sourcedir, const pcomn::strslice &destdir, 
 /*******************************************************************************
  rm
 *******************************************************************************/
-bool rm(const pcomn::strslice &path, RmFlags flags)
+typedef std::function<void(int, const char *, const fsstat &)> skip_logger ;
+
+rm_info rm(const pcomn::strslice &path, const skip_logger &skiplogger, RmFlags flags)
 {
    PCOMN_ENSURE_ARG(path) ;
 
@@ -119,22 +123,59 @@ bool rm(const pcomn::strslice &path, RmFlags flags)
       return false ;
    }
 
-   std::string cmdline ;
-   cmdline.reserve(spath.size() + 64) ;
+   // Walk along the directory tree
+   struct file_handler {
+         RmFlags     _flags ;
+         skip_logger _skiplogger ;
+         rm_info     _info ;
+         std::exception_ptr _exception ;
+   } handler = { flags, skiplogger ? skiplogger : [](int, const char *, const fsstat &){} } ;
 
-   cmdline.append("rm") ;
-   if (flags & RM_RECURSIVE)
-      cmdline.append(" -R") ;
-   if (flags & RM_IGNORE_NEXIST)
-      cmdline.append(" -f") ;
+   static thread_local file_handler *current_handler = nullptr ;
+   const vsaver<file_handler *> set_handler (current_handler, &handler) ;
 
-   append_semiquoted(cmdline.append(" \""), spath)
-      .append(1, '"')
-      // Swallow stdout, capture stderr, plug stdin
-      .append(" </dev/null 2>&1 1>/dev/null") ;
+   const int retcode = nftw(spath.c_str(), [](const char *fpath, const struct stat *sb, int typeflag, FTW *)
+   {
+      switch (typeflag)
+      {
+         // file
+         case FTW_F:   std::cout << "FILE      " << fpath << ' ' << sb->st_size << std::endl ; break ;
+            // symlink
+         case FTW_SL:  std::cout << "SYMLINK   " << fpath << std::endl ; break ;
+            // directory, after processing contents
+         case FTW_DP:  std::cout << "DIR(post) " << fpath << std::endl ; break ;
 
-   return
-      shellcmd(cmdline, raise_error, 64*KiB).first == 0 ;
+            // directory
+         case FTW_D:   std::cout << "DIR(pre)  " << fpath << std::endl ; break ;
+            // directory, cannot read
+         case FTW_DNR: std::cout << "DIR(bad)  " << fpath << std::endl ; break ;
+            // cannot stat
+         case FTW_NS:  std::cout << "NOSTAT    " << fpath << std::endl ; break ;
+
+         default:      std::cout << "UNKNOWN   " << fpath << std::endl ; break ;
+      }
+      return 0 ;
+   },
+
+   128,
+   FTW_DEPTH | FTW_PHYS) ;
+
+   const int lasterr = posix_errno(retcode) ;
+
+   if (handler._exception)
+      std::rethrow_exception(handler._exception) ;
+
+   switch (lasterr)
+   {
+      case 0: break ;
+      case ENOENT: if (flags & RM_IGNORE_NEXIST) break ;
+
+      default:
+         handler._info._skip_count = std::max(handler._info._skip_count, 1U) ;
+         PCOMN_CHECK_POSIX(raise_error ? -1 : 0, "Error while removing '%s'", spath.c_str()) ;
+   }
+
+   return handler._info ;
 }
 
 } // end of namespace pcomn::sys

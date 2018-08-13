@@ -15,6 +15,9 @@
  High-level operations on files and collections of files, in particular, file copying.
 *******************************************************************************/
 #include <pcomn_strslice.h>
+#include <pcomn_sys.h>
+
+#include <functional>
 
 namespace pcomn {
 namespace sys {
@@ -39,9 +42,9 @@ PCOMN_DEFINE_FLAG_ENUM(CopyFlags) ;
 /// @a source, if refers to a directory, @a source is copied to that directory.
 /// @param flags  ORed CopyFlags
 ///
-_PCOMNEXP bool copyfile(const pcomn::strslice &source, const pcomn::strslice &dest, unsigned flags = 0) ;
+_PCOMNEXP bool copyfile(const strslice &source, const strslice &dest, unsigned flags = 0) ;
 
-_PCOMNEXP bool copytree(const pcomn::strslice &sourcedir, const pcomn::strslice &destdir, unsigned flags = 0) ;
+_PCOMNEXP bool copytree(const strslice &sourcedir, const strslice &destdir, unsigned flags = 0) ;
 
 /***************************************************************************//**
  Remove flags.
@@ -60,7 +63,32 @@ enum RmFlags : unsigned short {
 
 PCOMN_DEFINE_FLAG_ENUM(RmFlags) ;
 
-_PCOMNEXP bool rm(const pcomn::strslice &path, RmFlags flags = {}) ;
+/// rm() return value.
+struct rm_info {
+      constexpr rm_info() = default ;
+      constexpr rm_info(bool result) : _skip_count(!result) {}
+
+      /// Get the total size of deleted files
+      constexpr size_t removed_bytes() const { return _rm_size ; }
+      constexpr unsigned visited() const { return _visit_count ; }
+      constexpr unsigned skipped() const { return std::min(_visit_count, _skip_count) ; }
+      constexpr unsigned removed() const { return std::max(_visit_count, _skip_count) - _skip_count ; }
+
+      constexpr explicit operator bool() const { return !_skip_count ; }
+
+      size_t   _rm_size = 0 ;     /* Total size of deleted files */
+      unsigned _visit_count = 0 ; /* Visited items (both files and dirs) */
+      unsigned _skip_count = 0 ;  /* Of them, skipped (not deleted due to errors) */
+} ;
+
+_PCOMNEXP rm_info rm(const strslice &path,
+                     const std::function<void(int errn, const char *fpath, const fsstat &)> &skiplogger,
+                     RmFlags flags = {}) ;
+
+inline rm_info rm(const strslice &path, RmFlags flags = {})
+{
+   return rm(path, {}, flags) ;
+}
 
 } // end of namespace pcomn::sys
 } // end of namespace pcomn
