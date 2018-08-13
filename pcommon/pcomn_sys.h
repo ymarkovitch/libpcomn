@@ -217,13 +217,14 @@ inline int opendirfd(const cstrptr &dirname, unsigned flags, OutputIterator file
       if ((raise))                                 \
          PCOMN_ENSURE_POSIX(r, #statfn) ;          \
       else if (r == -1)                            \
-         (result).clear() ;                        \
+         (result) = {} ;                           \
       return result ;                              \
    } while(false)
 
 struct fsstat : stat {
-      void clear() { memset(this, 0, sizeof *this) ; }
-      explicit operator bool() const { return st_nlink || st_dev || st_ino || st_mode ; }
+      constexpr fsstat() : stat() {}
+      constexpr fsstat(const stat &src) : stat(src) {}
+      constexpr explicit operator bool() const { return st_nlink || st_dev || st_ino || st_mode ; }
 } ;
 
 inline fsstat filestat(const cstrptr &path, RaiseError raise = DONT_RAISE_ERROR)

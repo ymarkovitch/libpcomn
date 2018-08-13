@@ -89,7 +89,7 @@ inline void pagefree(void *p)
       if ((raise))                                                   \
          PCOMN_ENSURE_POSIX(r, #statfn) ;                            \
       else if (r == -1)                                              \
-         (result).clear() ;                                          \
+         (result) = {} ;                                             \
       return result ;                                                \
    } while(false)
 
