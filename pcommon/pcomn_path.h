@@ -145,6 +145,8 @@ inline unipair<strslice> splitext(const strslice &path)
 /// Join the two parts of a path intelligently and return the string length of result.
 size_t joinpath(const strslice &p1, const strslice &p2, char *result, size_t bufsize) ;
 
+/// Indicate if the name is a valid basename, non-path, (i.e., nonempty, does not contain
+/// path separators, not equal to "." and does not start with "..").
 inline bool is_basename(const strslice &name)
 {
    return
