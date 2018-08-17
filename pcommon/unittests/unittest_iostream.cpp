@@ -518,6 +518,7 @@ void BinaryStreamTests::Test_Readfile()
    CPPUNIT_LOG_EQ(readfile(CPPUNIT_AT_TESTDIR("unittest.empty.lst")), "") ;
    CPPUNIT_LOG_EQ(readfile(CPPUNIT_AT_TESTDIR("unittest.1byte.lst")), "A") ;
    CPPUNIT_LOG_EQ(readfile(CPPUNIT_AT_TESTDIR("RawStreamTests.2.lst")), "42") ;
+   CPPUNIT_LOG_EQ(readfile(strslice(CPPUNIT_AT_TESTDIR("RawStreamTests.2.lst"))), "42") ;
    const std::string r1 = readfile(CPPUNIT_AT_TESTDIR("RawStreamTests.Test_Ftream.lst")) ;
 
    CPPUNIT_LOG_EQ(r1.size(), 60000) ;

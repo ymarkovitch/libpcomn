@@ -216,6 +216,8 @@ using posix::basename ;
 using posix::dirname ;
 using posix::splitext ;
 
+typedef strslice_buffer<PATH_MAX + 1> path_buffer ;
+
 /// @overload
 template<typename R = std::string, typename S>
 std::enable_if_t<is_compatible_strings<R, S>::value, R>
@@ -229,8 +231,7 @@ template<typename R = std::string>
 enable_if_strchar_t<R, char, R>
 abspath(const basic_strslice<char> &path)
 {
-   auto_buffer<PATH_MAX + 1> buf (path.size() + 1) ;
-   return abspath<R>(strslicecpy(buf.get(), path, path.size() + 1)) ;
+   return abspath<R>(path_buffer(path).c_str()) ;
 }
 
 /// @overload
@@ -246,8 +247,7 @@ template<typename R = std::string>
 enable_if_strchar_t<R, char, R>
 normpath(const basic_strslice<char> &path)
 {
-   auto_buffer<PATH_MAX + 1> buf (path.size() + 1) ;
-   return normpath<R>(strslicecpy(buf.get(), path, path.size() + 1)) ;
+   return normpath<R>(path_buffer(path).c_str()) ;
 }
 
 /// Convert a path to absolute path with resolved symlinks.
@@ -267,8 +267,7 @@ template<typename R = std::string>
 enable_if_strchar_t<R, char, R>
 realpath(const basic_strslice<char> &path)
 {
-   auto_buffer<PATH_MAX + 1> buf (path.size() + 1) ;
-   return realpath<R>(strslicecpy(buf.get(), path, path.size() + 1)) ;
+   return realpath<R>(path_buffer(path).c_str()) ;
 }
 /**@}*/
 

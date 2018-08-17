@@ -505,7 +505,7 @@ inline std::ostream &operator<<(std::ostream &os, const tdef<P,G> &v) { return o
 
  Intended to be used as a stack variable.
 *******************************************************************************/
-template<size_t threshold, size_t alignment = 1>
+template<size_t threshold, size_t alignment = 0>
 struct auto_buffer final {
 
       explicit auto_buffer(size_t sz) :
@@ -523,8 +523,8 @@ struct auto_buffer final {
       char *get() const { return _data ; }
 
    private:
-      std::aligned_storage_t<threshold, ct_max<size_t, alignment, alignof(char *)>::value> _buf ;
       char * const _data ;
+      std::aligned_storage_t<threshold, ct_max<size_t, alignment, alignof(char *)>::value> _buf ;
 
       PCOMN_NONCOPYABLE(auto_buffer) ;
       PCOMN_NONASSIGNABLE(auto_buffer) ;

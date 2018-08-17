@@ -471,6 +471,26 @@ inline std::string &&operator+(const strslice &x, std::string &&y)
 }
 /**@}*/
 
+/*******************************************************************************
+ strslice_buffer
+*******************************************************************************/
+template<size_t threshold>
+struct strslice_buffer final {
+
+      explicit strslice_buffer(const strslice &s) : _data(s.size() + 1)
+      {
+         memmove(_data.get(), s.begin(), s.size()) ;
+         *(_data.get() + s.size()) = 0 ;
+      }
+
+      const char *c_str() const { return _data.get() ; }
+
+      operator const char *() const { return c_str() ; }
+
+   private:
+      auto_buffer<threshold> _data ;
+} ;
+
 /***************************************************************************//**
  An iterator over a sequence of strings contained in a character sequence,
  separated with '\0' and terminated by additional '\0' (like e.g. argv)

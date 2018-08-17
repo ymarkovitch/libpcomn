@@ -103,8 +103,15 @@ using std::nullptr_t ;
 
 const size_t PCOMN_MSGBUFSIZE = 1024 ;
 
-/******************************************************************************/
-/** Exception class: indicates some functionality is not implemented yet.
+/*******************************************************************************
+ Forward declarations
+*******************************************************************************/
+template<typename> struct basic_strslice ;
+typedef basic_strslice<char>     strslice ;
+typedef basic_strslice<wchar_t>  wstrslice ;
+
+/***************************************************************************//**
+ Exception class: indicates some functionality is not implemented yet.
 *******************************************************************************/
 class not_implemented_error : public std::logic_error {
    public:

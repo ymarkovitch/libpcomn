@@ -55,7 +55,12 @@ int fdprintf(int fd, const char *format, ...)
 /// Get the contnents of the whole file as a single string.
 _PCOMNEXP std::string readfile(int fd) ;
 _PCOMNEXP std::string readfile(const char *filename) ;
-_PCOMNEXP std::string readfile(const std::string &filename) ;
+_PCOMNEXP std::string readfile(const strslice &filename) ;
+
+inline std::string readfile(const std::string &filename)
+{
+   return readfile(filename.c_str()) ;
+}
 
 } // end of namespace pcomn
 

@@ -13,6 +13,7 @@
 #include <pcomn_unistd.h>
 #include <pcomn_sys.h>
 #include <pcomn_handle.h>
+#include <pcomn_strslice.h>
 
 #include <stdlib.h>
 
@@ -57,9 +58,9 @@ std::string readfile(const char *filename)
    return readfile(fd_safehandle(fd)) ;
 }
 
-std::string readfile(const std::string &filename)
+std::string readfile(const strslice &filename)
 {
-   return readfile(filename.c_str()) ;
+   return readfile(path::path_buffer(filename).c_str()) ;
 }
 
 } // end of namespace pcomn
