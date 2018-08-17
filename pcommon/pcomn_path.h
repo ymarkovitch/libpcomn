@@ -164,6 +164,8 @@ size_t normpath(const char *name, char *result, size_t bufsize) ;
 /// Change a relative path to an absolute path and then normalize it (see normpath()).
 size_t abspath(const char *name, char *result, size_t bufsize) ;
 
+/// Convert a path to absolute path with resolved symlinks.
+///
 /// If @a name is a symlink, follows the link chain and returns the contents of the last
 /// link converted with abspath(); otherwise, equivalent of abspath().
 ssize_t realpath(const char *name, char *result, size_t bufsize) ;
@@ -248,7 +250,11 @@ normpath(const basic_strslice<char> &path)
    return normpath<R>(strslicecpy(buf.get(), path, path.size() + 1)) ;
 }
 
-/// @overload
+/// Convert a path to absolute path with resolved symlinks.
+///
+/// If @a path is a symlink, follows the link chain and returns the contents of the last
+/// link converted with abspath(); otherwise, equivalent of abspath().
+/**@{*/
 template<typename R = std::string, typename S>
 std::enable_if_t<is_compatible_strings<R, S>::value, R>
 realpath(const S &path)
@@ -264,6 +270,7 @@ realpath(const basic_strslice<char> &path)
    auto_buffer<PATH_MAX + 1> buf (path.size() + 1) ;
    return realpath<R>(strslicecpy(buf.get(), path, path.size() + 1)) ;
 }
+/**@}*/
 
 /// Join one or more path components intelligently.
 ///

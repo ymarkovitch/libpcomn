@@ -19,6 +19,7 @@
 #include <pcomn_except.h>
 #include <pcomn_unistd.h>
 #include <pcomn_path.h>
+#include <pcomn_handle.h>
 
 #include "platform/dirent.h"
 
@@ -139,12 +140,11 @@ const unsigned ODIR_CLOSE_DIR    = 0x0004 ; /**< Close directory descriptor on r
 /// @cond
 namespace detail {
 template<typename OutputIterator>
-DIR *listdir(const char *dirname, unsigned flags, OutputIterator &filenames, RaiseError raise)
+DIR *listdir(DIR *d, const char *dirname, unsigned flags, OutputIterator &filenames, RaiseError raise)
 {
-   DIR * const d = ::opendir(PCOMN_ENSURE_ARG(dirname)) ;
    if (!d)
    {
-      PCOMN_CHECK_POSIX(-!!raise, "Cannot open directory '%s'", dirname) ;
+      PCOMN_CHECK_POSIX(-!!raise, *dirname ? "Cannot open directory '%s'" : "Cannot open directory", dirname) ;
       return NULL ;
    }
 
@@ -161,12 +161,44 @@ DIR *listdir(const char *dirname, unsigned flags, OutputIterator &filenames, Rai
       if (!err)
          return NaP ;
 
-      PCOMN_CHECK_POSIX(-!!raise, "Cannot read directory '%s'", dirname) ;
+      PCOMN_CHECK_POSIX(-!!raise, *dirname ? "Cannot open directory '%s'" : "Cannot open directory", dirname) ;
       return NULL ;
    }
 
    return d ;
 }
+
+template<typename OutputIterator>
+inline DIR *listdir(const char *dirname, unsigned flags, OutputIterator &filenames, RaiseError raise)
+{
+   return listdir(::opendir(PCOMN_ENSURE_ARG(dirname)), dirname, flags, filenames, raise) ;
+}
+
+#ifdef PCOMN_PL_POSIX
+template<typename OutputIterator>
+inline DIR *listdir(int dirfd, unsigned flags, OutputIterator &filenames, RaiseError raise)
+{
+   fd_safehandle guard (dirfd) ;
+   DIR * const dir = ::fdopendir(dirfd) ;
+   if (dir || !(flags & ODIR_CLOSE_DIR))
+      guard.release() ;
+
+   return listdir(dir, dirname, flags, filenames, raise) ;
+}
+
+template<typename Dir, typename OutputIterator>
+inline int listdirfd(const Dir &dir, unsigned flags, OutputIterator &filenames, RaiseError raise)
+{
+   if (DIR * const d = listdir(dir, flags &~ ODIR_CLOSE_DIR, filenames, raise))
+   {
+      const int result_fd = (flags & ODIR_CLOSE_DIR) ? 0 : dup(dirfd(d)) ;
+      ::closedir(d) ;
+      return result_fd ;
+   }
+   else
+      return -1 ;
+}
+#endif
 }
 /// @endcond
 
@@ -180,6 +212,7 @@ inline DIR *opendir(const cstrptr &dirname, unsigned flags, OutputIterator filen
    return detail::listdir(dirname, flags, filenames, raise) ;
 }
 
+/// Open, read, and close a directory.
 template<typename OutputIterator>
 inline OutputIterator ls(const cstrptr &dirname, unsigned flags, OutputIterator filenames, RaiseError raise = DONT_RAISE_ERROR)
 {
@@ -187,7 +220,7 @@ inline OutputIterator ls(const cstrptr &dirname, unsigned flags, OutputIterator 
    return filenames ;
 }
 
-#ifdef PCOMN_PL_LINUX
+#ifdef PCOMN_PL_POSIX
 /// Open and read a directory.
 /// @return A file descriptor of directory @a dirname; if @a raise is DONT_RAISE_ERROR
 /// and there happens an error while opening/reading a directory, returns -1.
@@ -195,17 +228,28 @@ inline OutputIterator ls(const cstrptr &dirname, unsigned flags, OutputIterator 
 template<typename OutputIterator>
 inline int opendirfd(const cstrptr &dirname, unsigned flags, OutputIterator filenames, RaiseError raise = DONT_RAISE_ERROR)
 {
-   if (DIR * const d = detail::listdir(dirname, flags &~ ODIR_CLOSE_DIR, filenames, raise))
-   {
-      const int result_fd = (flags & ODIR_CLOSE_DIR) ? 0 : dup(dirfd(d)) ;
-      ::closedir(d) ;
-      return result_fd ;
-   }
-   else
-      return -1 ;
+   return detail::listdirfd(dirname, flags, filenames, raise) ;
+}
+
+template<typename OutputIterator>
+inline int opendirfd(int dirfd, unsigned flags, OutputIterator filenames, RaiseError raise = DONT_RAISE_ERROR)
+{
+   return detail::listdirfd(dirfd, flags, filenames, raise) ;
+}
+
+template<typename OutputIterator>
+inline DIR *opendir(int dirfd, unsigned flags, OutputIterator filenames, RaiseError raise = DONT_RAISE_ERROR)
+{
+   return detail::listdir(dirfd, flags, filenames, raise) ;
+}
+
+template<typename OutputIterator>
+inline OutputIterator ls(int dirfd, unsigned flags, OutputIterator filenames, RaiseError raise = DONT_RAISE_ERROR)
+{
+   detail::listdir(dirfd, flags | ODIR_CLOSE_DIR, filenames, raise) ;
+   return filenames ;
 }
 #endif
-
 
 /*******************************************************************************
  filestat
