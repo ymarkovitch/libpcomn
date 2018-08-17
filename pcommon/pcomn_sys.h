@@ -1,4 +1,4 @@
-/*-*- mode: c++; tab-width: 3; indent-tabs-mode: nil; c-file-style: "ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
+/*-*- mode:c++;tab-width:3;indent-tabs-mode:nil;c-file-style:"ellemtel";c-file-offsets:((innamespace . 0)(inclass . ++)(inlambda . 0)) -*-*/
 #ifndef __PCOMN_SYS_H
 #define __PCOMN_SYS_H
 /*******************************************************************************
@@ -183,7 +183,7 @@ inline DIR *listdir(int dirfd, unsigned flags, OutputIterator &filenames, RaiseE
    if (dir || !(flags & ODIR_CLOSE_DIR))
       guard.release() ;
 
-   return listdir(dir, dirname, flags, filenames, raise) ;
+   return listdir(dir, "", flags, filenames, raise) ;
 }
 
 template<typename Dir, typename OutputIterator>
@@ -257,7 +257,7 @@ inline OutputIterator ls(int dirfd, unsigned flags, OutputIterator filenames, Ra
 #define _PCOMN_SYS_FSTAT(statfn, path, raise)      \
    do {                                            \
       fsstat result ;                              \
-      const int r = ::statfn((path), &(result)) ;  \
+      const int r = statfn((path), &(result)) ;    \
       if ((raise))                                 \
          PCOMN_ENSURE_POSIX(r, #statfn) ;          \
       else if (r == -1)                            \
@@ -273,18 +273,27 @@ struct fsstat : stat {
 
 inline fsstat filestat(const cstrptr &path, RaiseError raise = DONT_RAISE_ERROR)
 {
-   _PCOMN_SYS_FSTAT(stat, path, raise) ;
+   _PCOMN_SYS_FSTAT(::stat, path, raise) ;
 }
 
 inline fsstat filestat(int fd, RaiseError raise = DONT_RAISE_ERROR)
 {
-   _PCOMN_SYS_FSTAT(fstat, fd, raise) ;
+   _PCOMN_SYS_FSTAT(::fstat, fd, raise) ;
 }
 
 #ifdef PCOMN_PL_POSIX
 inline fsstat linkstat(const cstrptr &path, RaiseError raise = DONT_RAISE_ERROR)
 {
-   _PCOMN_SYS_FSTAT(lstat, path, raise) ;
+   _PCOMN_SYS_FSTAT(::lstat, path, raise) ;
+}
+
+inline fsstat linkstat(int dirfd, const cstrptr &name, RaiseError raise = DONT_RAISE_ERROR)
+{
+   const auto fstatat = [dirfd](const cstrptr &name, struct stat *buf)
+   {
+      return ::fstatat(dirfd, name, buf, AT_SYMLINK_NOFOLLOW) ;
+   } ;
+   _PCOMN_SYS_FSTAT(fstatat, name, raise) ;
 }
 #endif
 
