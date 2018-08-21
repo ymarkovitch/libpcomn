@@ -1,4 +1,4 @@
-/*-*- mode: c++; tab-width: 3; indent-tabs-mode: nil; c-file-style: "ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
+/*-*- mode:c++;tab-width:3;indent-tabs-mode:nil;c-file-style:"ellemtel";c-file-offsets:((innamespace . 0)(inclass . ++)(inlambda . 0)) -*-*/
 #ifndef __PTRACE_H
 #define __PTRACE_H
 /*******************************************************************************
@@ -793,6 +793,14 @@ inline std::ostream &operator<<(std::ostream &os, EndArgs) { return os ; }
 
 using pcomn::oenum ;
 
+inline auto ostrerror(int errn) PCOMN_MAKE_OMANIP(([](std::ostream &os, int errn) -> std::ostream &
+{
+   char buf[256] ;
+   *buf = 0 ;
+   strerror_r(errn, buf, sizeof(buf)) ;
+   return os << buf ;
+}), errn) ;
+
 } // end of namespace diag
 
 namespace pcomn {
@@ -800,6 +808,7 @@ using diag::oderef ;
 using diag::otptr ;
 using diag::ofncall ;
 using diag::EndArgs ;
+using diag::ostrerror ;
 } ;
 
 /*******************************************************************************
