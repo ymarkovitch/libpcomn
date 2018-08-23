@@ -79,7 +79,7 @@ class vsaver {
          if (_var) *_var = _saved ;
       }
 
-      const T &release()
+      const T &release() noexcept
       {
          _var = NULL ;
          return _saved ;
@@ -95,7 +95,7 @@ class vsaver {
          return _saved ;
       }
 
-      const T &saved() const { return _saved ; }
+      const T &saved() const noexcept { return _saved ; }
 
    private:
       const T  _saved ;
