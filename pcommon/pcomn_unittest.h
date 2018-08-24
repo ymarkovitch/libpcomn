@@ -502,7 +502,8 @@ class TestFixture : public CppUnit::TestFixture {
       {
          _datadir_ready = true ;
          CPPUNIT_LOG(_datadir << " cleanup." << std::endl) ;
-         CPPUNIT_ASSERT((unsigned)system(("rm -rf " + _datadir).c_str()) <= 1) ;
+         system(("chmod --preserve-root --quiet -R u+w '" + _datadir_abs + "'").c_str()) ;
+         CPPUNIT_ASSERT((unsigned)system(("rm --preserve-root -rf '" + _datadir_abs + "'").c_str()) <= 1) ;
          _datadir_ready = false ;
       }
 
