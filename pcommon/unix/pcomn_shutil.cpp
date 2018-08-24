@@ -105,8 +105,8 @@ struct rm_handler {
          _flags(flags), _skiplogger(logger)
       {}
 
-      const rm_stat &info() const { return _info ; }
-      rm_stat &info() { return _info ; }
+      const rmstat &info() const { return _info ; }
+      rmstat &info() { return _info ; }
       const std::exception_ptr &last_exception() { return _exception ; }
 
       int rmfile(const char *fpath, const fsstat &s, int typeflag)
@@ -152,7 +152,7 @@ struct rm_handler {
    private:
       RmFlags     _flags ;
       skip_logger _skiplogger ;
-      rm_stat     _info ;
+      rmstat     _info ;
       std::string _xinfo ;
       std::exception_ptr _exception ;
 
@@ -179,7 +179,7 @@ struct rm_handler {
 } ;
 } // end of unnamed namespace
 
-rm_stat rm(const pcomn::strslice &path, const skip_logger &skiplogger, RmFlags flags)
+rmstat rm(const pcomn::strslice &path, const skip_logger &skiplogger, RmFlags flags)
 {
    PCOMN_ENSURE_ARG(path) ;
 

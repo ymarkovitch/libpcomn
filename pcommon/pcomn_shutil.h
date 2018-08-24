@@ -64,9 +64,9 @@ enum RmFlags : unsigned short {
 PCOMN_DEFINE_FLAG_ENUM(RmFlags) ;
 
 /// rm() return value.
-struct rm_stat {
-      constexpr rm_stat() = default ;
-      constexpr rm_stat(bool result) : _skip_count(!result) {}
+struct rmstat {
+      constexpr rmstat() = default ;
+      constexpr rmstat(bool result) : _skip_count(!result) {}
 
       /// Get the total size of deleted files
       constexpr size_t removed_bytes() const { return _rm_size ; }
@@ -81,11 +81,11 @@ struct rm_stat {
       unsigned _skip_count = 0 ;  /* Of them, skipped (not deleted due to errors) */
 } ;
 
-_PCOMNEXP rm_stat rm(const strslice &path,
-                     const std::function<void(int errn, const char *fpath, const fsstat &)> &skiplogger,
-                     RmFlags flags = {}) ;
+_PCOMNEXP rmstat rm(const strslice &path,
+                    const std::function<void(int errn, const char *fpath, const fsstat &)> &skiplogger,
+                    RmFlags flags = {}) ;
 
-inline rm_stat rm(const strslice &path, RmFlags flags = {})
+inline rmstat rm(const strslice &path, RmFlags flags = {})
 {
    return rm(path, {}, flags) ;
 }

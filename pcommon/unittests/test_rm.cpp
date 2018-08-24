@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
     const RmFlags flags = FLAG(IGNORE_ERRORS)|FLAG(IGNORE_NEXIST)|FLAG(RECURSIVE)|FLAG(ALLOW_RELPATH) ;
 
     try {
-        const rm_stat &result = rm(path, flags) ;
+        const rmstat &result = rm(path, flags) ;
 
         std::cout << (result ? "OK" : "FAILURE") << '\n'
                   << "VISITED: " << result.visited() << '\n'
