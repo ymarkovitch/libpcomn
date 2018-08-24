@@ -96,7 +96,7 @@ inline fileoff_t filesize(const cstrptr &name)
    return filesize(name.c_str()) ;
 }
 
-inline Access fileaccess(const cstrptr &name, int mode = 0)
+inline Access fileaccess(const cstrptr &name, int mode = 0) noexcept
 {
    if (::access(name, mode) == 0)
       return ACC_EXISTS ;
