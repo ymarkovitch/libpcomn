@@ -145,14 +145,15 @@ struct rm_handler {
          {
             ++_info._skip_count ;
             append_exception(lasterr, fpath, s) ;
+            errno = lasterr ;
          }
-         return 0 ;
+         return -!!_exception  ;
       }
 
    private:
       RmFlags     _flags ;
       skip_logger _skiplogger ;
-      rmstat     _info ;
+      rmstat      _info ;
       std::string _xinfo ;
       std::exception_ptr _exception ;
 
