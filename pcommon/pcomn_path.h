@@ -182,6 +182,7 @@ using posix::joinpath ;
 using posix::abspath ;
 using posix::normpath ;
 using posix::realpath ;
+using posix::path_dots ;
 using posix::is_absolute ;
 using posix::is_pathname_separator ;
 using posix::is_root_of ;
