@@ -59,6 +59,17 @@ GCC_DIAGNOSTIC_PUSH_IGNORE(unused-result)
 namespace pcomn {
 namespace unit {
 
+enum DiffOptions : unsigned {
+   DF_SENSE_TRAIL_SPACE  = 0x01,
+   DF_SENSE_SPACE_CHANGE = 0x02,
+   DF_SENSE_TABS         = 0x04,
+   DF_SENSE_BLANK_LINES  = 0x08
+} ;
+
+PCOMN_DEFINE_FLAG_ENUM(DiffOptions) ;
+
+constexpr DiffOptions DF_SENSE_ALL = DF_SENSE_TRAIL_SPACE|DF_SENSE_SPACE_CHANGE|DF_SENSE_TABS|DF_SENSE_BLANK_LINES ;
+
 /*******************************************************************************
  Test environment
 *******************************************************************************/
@@ -467,6 +478,10 @@ class TestFixture : public CppUnit::TestFixture {
       /// Get per-test-function writeable output file name ($TESTNAME.out)
       const std::string &data_file() const { return _datafile ; }
 
+      /// Get writeable output file name ($TESTNAME.$n.out)
+      /// @note If @a n is 0, returns data_file()
+      std::string data_file(unsigned n) const ;
+
       /// Get thread-locked per-test-function output data stream (@see data_file())
       locked_out data_ostream() const ;
 
@@ -487,16 +502,22 @@ class TestFixture : public CppUnit::TestFixture {
          return at_src_dir_abs(filename) ;
       }
 
-      /// Run external diff to compare current content of data_file() with
+      /// Run external diff to compare current content of data_file(out_ndx) with
       /// @a data_sample_filename
       ///
       /// @param data_sample_filename The name of a sample file to compare the result of
-      /// test output to data_ostream() with
+      /// test output to data_file(out_ndx) with
       ///
       /// If @a data_sample_filename is not absolute, it is considered relative to the
       /// test sources directory (@see at_src_dir_abs())
       ///
-      void ensure_data_file_match(const strslice &data_sample_filename = {}) const ;
+      void ensure_data_file_match(const strslice &data_sample_filename = {}, unsigned out_ndx = 0,
+                                  DiffOptions options = {}) const ;
+
+      void ensure_data_file_match(unsigned out_ndx, DiffOptions options) const
+      {
+         ensure_data_file_match({}, out_ndx, options) ;
+      }
 
       virtual void cleanupDirs()
       {
@@ -598,18 +619,42 @@ typename TestFixture<private_dirname>::locked_out TestFixture<private_dirname>::
 }
 
 template<const char *private_dirname>
-void TestFixture<private_dirname>::ensure_data_file_match(const strslice &data_sample_filename) const
+__noinline std::string TestFixture<private_dirname>::data_file(unsigned ndx) const
 {
-   static const char diffopts[] = "-u -w -B" ;
+   const auto &s = path::splitext(_datafile) ;
+   return !ndx ? data_file() : s.first + std::string(".") + std::to_string(ndx) + s.second ;
+}
+
+template<const char *private_dirname>
+void TestFixture<private_dirname>::ensure_data_file_match(const strslice &data_sample_filename,
+                                                          unsigned out_file_ndx, DiffOptions opts) const
+{
+   static constexpr DiffOptions sense_space = DF_SENSE_TRAIL_SPACE|DF_SENSE_SPACE_CHANGE|DF_SENSE_TABS ;
+   const char * const diffopts[] =
+   {
+      (opts & sense_space)           ? "-u" : ((opts |= sense_space), "-u -w"),
+      (opts & DF_SENSE_TRAIL_SPACE)  ? "" : " -Z",
+      (opts & DF_SENSE_SPACE_CHANGE) ? "" : " -b",
+      (opts & DF_SENSE_TABS)         ? "" : " -E",
+      (opts & DF_SENSE_BLANK_LINES)  ? "" : " -B"
+   } ;
+
+   const std::string outfile_filename = data_file(out_file_ndx) ;
+
    const std::string sample_filename { at_src_dir_abs(data_sample_filename
                                                       ? std::string(data_sample_filename)
-                                                      : std::string(path::basename(data_file())) + ".tst") } ;
+                                                      : std::string(path::basename(outfile_filename)) + ".tst") } ;
+
    char command[2048] ;
    auto rundiff = [&](const char *opt, const char *redir, const char *redir_ext)
    {
-      bufprintf(command, "diff %s %s '%s' '%s'%s%s%s",
-                diffopts, opt, sample_filename.c_str(), data_file().c_str(),
+      bufprintf(command, "diff %s%s%s%s%s" "%s" " '%s' '%s'" "%s%s%s",
+
+                diffopts[0], diffopts[1], diffopts[2], diffopts[3], diffopts[4],
+                opt,
+                sample_filename.c_str(), outfile_filename.c_str(),
                 *redir || *redir_ext ? " >" : "", redir, redir_ext) ;
+
       CPPUNIT_LOG_LINE("\n" << command) ;
       const int status = system(command) ;
       if (status < 0)
@@ -618,19 +663,21 @@ void TestFixture<private_dirname>::ensure_data_file_match(const strslice &data_s
       {
          case 0:  return true ;
          case 1:  return false ;
-         default: CPPUNIT_FAIL(bufprintf(command, "DIFF FAILURE: Either '%s' or '%s' does not exist", data_file().c_str(), sample_filename.c_str())) ;
+         default: CPPUNIT_FAIL(bufprintf(command,
+                                         "DIFF FAILURE: Either '%s' or '%s' does not exist",
+                                         outfile_filename.c_str(), sample_filename.c_str())) ;
       }
       return false ;
    } ;
 
-   if (_out)
+   if (!out_file_ndx && _out)
       data_ostream().stream() << std::flush ;
 
-   if (!rundiff("-q", "", ""))
+   if (!rundiff(" -q", "", ""))
    {
       // There is a difference
-      rundiff("", data_file().c_str(), ".diff") ;
-      CPPUNIT_FAIL(bufprintf(command, "MISMATCH '%s' and '%s'", data_file().c_str(), sample_filename.c_str())) ;
+      rundiff("", outfile_filename.c_str(), ".diff") ;
+      CPPUNIT_FAIL(bufprintf(command, "MISMATCH '%s' and '%s'", outfile_filename.c_str(), sample_filename.c_str())) ;
    }
 }
 
