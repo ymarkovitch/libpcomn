@@ -476,7 +476,11 @@ class TestFixture : public CppUnit::TestFixture {
       }
 
       /// Get per-test-function writeable output file name ($TESTNAME.out)
-      const std::string &data_file() const { return _datafile ; }
+      const std::string &data_file() const
+      {
+         ensure_datadir() ;
+         return _datafile ;
+      }
 
       /// Get writeable output file name ($TESTNAME.$n.out)
       /// @note If @a n is 0, returns data_file()
@@ -1136,7 +1140,10 @@ template<typename S>
 __noinline pcomn::enable_if_strchar_t<S, char, std::string>
 full_file(const S &name)
 {
-   return full_file(pcomn::FILE_safehandle(fopen(pcomn::str::cstr(name), "r")).handle()) ;
+   FILE * const file = fopen(pcomn::str::cstr(name), "r") ;
+   PCOMN_ASSERT_POSIX(file ? 0 : -1, std::runtime_error,
+                      "Cannot open '%s' for reading", pcomn::str::cstr(name)) ;
+   return full_file(pcomn::FILE_safehandle(file).handle()) ;
 }
 
 template<typename S>
