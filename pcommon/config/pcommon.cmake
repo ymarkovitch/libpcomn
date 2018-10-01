@@ -299,7 +299,13 @@ function(unittest name)
   target_link_libraries(${name} PRIVATE pcommon cppunit)
   apply_project_requirements(${name} LIBS ${PCOMN_UNITTEST_LIBS})
 
-  target_compile_options    (${name} PRIVATE ${PCOMN_UNITTEST_OPTS})
+  target_compile_options    (${name}
+      PRIVATE
+      $<$<CXX_COMPILER_ID:GNU>:-Wno-unused-function>
+      $<$<CXX_COMPILER_ID:Clang>:-Wno-unused-function>
+      ${PCOMN_UNITTEST_OPTS}
+      )
+
   target_compile_definitions(${name} PRIVATE ${PCOMN_UNITTEST_DEFS} -DCPPUNIT_USE_TYPEINFO_NAME -DPCOMN_TESTDIR=${CMAKE_CURRENT_SOURCE_DIR})
 
   set_target_properties(${name} PROPERTIES EXCLUDE_FROM_ALL true)
