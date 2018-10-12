@@ -957,13 +957,15 @@ inline strslice omemstream::str() const noexcept
 }
 
 /***************************************************************************//**
- MD5- and SHA-hashing strings and string slices
+ MD5-, SHA-, and T1HA2 hashing strings and string slices
 *******************************************************************************/
 /**@{*/
 template<typename C>
 inline md5hash_t md5hash(const basic_strslice<C> &s) { return md5hash(s.begin(), s.size() * sizeof(C)) ; }
 template<typename C>
 inline md5hash_t sha1hash(const basic_strslice<C> &s) { return sha1hash(s.begin(), s.size() * sizeof(C)) ; }
+template<typename C>
+inline t1ha2hash_t t1ha2hash(const basic_strslice<C> &s) { return t1ha2hash(s.begin(), s.size() * sizeof(C)) ; }
 /**@}*/
 
 /*******************************************************************************

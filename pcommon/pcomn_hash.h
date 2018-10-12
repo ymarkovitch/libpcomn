@@ -544,6 +544,18 @@ PCOMN_STATIC_CHECK(sizeof(sha1hash_t) == 20) ;
 PCOMN_DEFINE_RELOP_FUNCTIONS(, sha1hash_t) ;
 
 /***************************************************************************//**
+ t1ha2 128-bit hash
+*******************************************************************************/
+struct t1ha2hash_t : binary128_t {
+
+      constexpr t1ha2hash_t() = default ;
+      explicit constexpr t1ha2hash_t(const binary128_t &src) : binary128_t(src) {}
+      explicit t1ha2hash_t(const char *hexstr) : binary128_t(hexstr) {}
+
+      constexpr size_t hash() const { return _idata[0] ^ _idata[1] ; }
+} ;
+
+/***************************************************************************//**
  Backward compatibility typedefs
 *******************************************************************************/
 /**{@*/
@@ -594,8 +606,8 @@ inline md5hash_t md5hash() { return md5hash_t() ; }
 
 /// Compute MD5 for a buffer.
 ///
-/// @note For convenient overloadings of this function see pcomn_strslice.h (md5 for any
-/// string) and pcomn_buffer.h (md5 for any buffer)
+/// @note There are convenient overloading of this function for any object that provides
+/// pcomn::buf::cdata() and pcomn::buf::size() and strslice.
 ///
 _PCOMNEXP md5hash_t md5hash(const void *buf, size_t size) ;
 /// Compute MD5 for a file specified by a filename.
@@ -630,7 +642,7 @@ inline md5hash_t md5hash_file(FILE *file, size_t *size = NULL)
 
 /******************************************************************************/
 /** SHA1 hash accumulator: calculates SHA1 incrementally.
-*******************************************************************************/
+ *******************************************************************************/
 class _PCOMNEXP SHA1Hash {
    public:
       SHA1Hash() { memset(&_state, 0, sizeof _state) ; }
@@ -655,8 +667,8 @@ inline sha1hash_t sha1hash() { return sha1hash_t() ; }
 
 /// Compute SHA1 for a buffer.
 ///
-/// @note For convenient overloadings of this function see pcomn_strslice.h (md5 for any
-/// string) and pcomn_buffer.h (md5 for any buffer)
+/// @note There are convenient overloading of this function for any object that provides
+/// pcomn::buf::cdata() and pcomn::buf::size().
 ///
 _PCOMNEXP sha1hash_t sha1hash(const void *buf, size_t size) ;
 /// Compute SHA1 for a file specified by a filename.
@@ -687,6 +699,24 @@ inline sha1hash_t sha1hash_file(FILE *file, size_t *size = NULL)
    if (size)
       *size = crypthasher.size() ;
    return crypthasher.value() ;
+}
+
+/*******************************************************************************
+ Leo Yuriev's t1ha2 128-bit hashing
+*******************************************************************************/
+/// Create zero t1ha2.
+inline t1ha2hash_t t1ha2hash() { return {} ; }
+
+/// Compute 128-bit t1ha2 hash for a buffer.
+///
+/// @note There are convenient overloading of this function for any object that provides
+/// pcomn::buf::cdata() and pcomn::buf::size() and for strslice.
+///
+inline t1ha2hash_t t1ha2hash(const void *data, size_t size)
+{
+   uint64_t hi = 0 ;
+   const uint64_t lo = t1ha2_atonce128(&hi, data, size, 0) ;
+   return t1ha2hash_t(binary128_t(hi, lo)) ;
 }
 
 /***************************************************************************//**
@@ -851,6 +881,7 @@ namespace std {
 template<> struct hash<pcomn::binary128_t>: pcomn::hash_fn_member<pcomn::binary128_t> {} ;
 template<> struct hash<pcomn::md5hash_t>  : pcomn::hash_fn_member<pcomn::md5hash_t> {} ;
 template<> struct hash<pcomn::sha1hash_t> : pcomn::hash_fn_member<pcomn::sha1hash_t> {} ;
+template<> struct hash<pcomn::t1ha2hash_t>: pcomn::hash_fn_member<pcomn::t1ha2hash_t> {} ;
 }
 
 #endif /* __cplusplus */
@@ -883,6 +914,8 @@ template<typename B>
 inline enable_if_buffer_t<B, md5hash_t>  md5hash(const B &b) { return md5hash(buf::cdata(b), buf::size(b)) ; }
 template<typename B>
 inline enable_if_buffer_t<B, sha1hash_t> sha1hash(const B &b) { return sha1hash(buf::cdata(b), buf::size(b)) ; }
+template<typename B>
+inline enable_if_buffer_t<B, t1ha2hash_t> t1ha2hash(const B &b) { return t1ha2hash(buf::cdata(b), buf::size(b)) ; }
 
 } // end of namespace pcomn
 #endif /* __cplusplus && __PCOMN_BUFFER_H */
