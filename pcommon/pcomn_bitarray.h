@@ -85,6 +85,7 @@ struct bitarray_base {
       bool all() const
       {
          const element_type * const b = cbits() ;
+         GCC_DIAGNOSTIC_PUSH_IGNORE(implicit-fallthrough)
          switch (const size_t n = nelements())
          {
             default:
@@ -94,6 +95,7 @@ struct bitarray_base {
             case 1: return (b[n-1] & tailmask(size())) == tailmask(size()) ;
             case 0: break ;
          }
+         GCC_DIAGNOSTIC_POP()
          return true ;
       }
 
