@@ -50,7 +50,7 @@
 #define NOXPRECONDITIONX(p,s)   ((void)0)
 #define NOXCHECKX(p,s)          ((void)0)
 #define PARANOID_NOXCHECKX(p,s) ((void)0)
-#define NOXVERIFY(p)            ((bool)(p))
+#define NOXVERIFY(p)            (PCOMN_SUPPRESS_VALUE_NOT_USED((bool)(p)))
 #define NOXDBG(...)
 
 #define PCOMN_DEBUG_FAIL(msg) ((void)0)
@@ -235,6 +235,11 @@ __noinline __noreturn void pcomn_fail(const char *fmt, const char *msg, const ch
 
 #ifdef __cplusplus
 #define PCOMN_STATIC_CHECK(...) static_assert((__VA_ARGS__), #__VA_ARGS__)
+
+template<typename T>
+inline T PCOMN_SUPPRESS_VALUE_NOT_USED(T value) { return value ; }
+#else
+#define PCOMN_SUPPRESS_VALUE_NOT_USED(value) (value)
 #endif // __cplusplus
 
 #endif // __PCOMN_ASSERT_H
