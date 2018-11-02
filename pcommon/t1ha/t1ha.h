@@ -43,6 +43,134 @@
 
 #pragma once
 
+/*****************************************************************************
+ *
+ * PLEASE PAY ATTENTION TO THE FOLLOWING NOTES
+ * about macros definitions which controls t1ha behaviour and/or performance.
+ *
+ *
+ * 1) T1HA_SYS_UNALIGNED_ACCESS = Defines the system/platform/CPU/architecture
+ *                                abilities for unaligned data access.
+ *
+ *    By default, when the T1HA_SYS_UNALIGNED_ACCESS not defined,
+ *    it will defined on the basis hardcoded knowledge about of capabilities
+ *    of most common CPU architectures. But you could override this
+ *    default behavior when build t1ha library itself:
+ *
+ *      // To disable unaligned access at all.
+ *      #define T1HA_SYS_UNALIGNED_ACCESS 0
+ *
+ *      // To enable unaligned access, but indicate that it significally slow.
+ *      #define T1HA_SYS_UNALIGNED_ACCESS 1
+ *
+ *      // To enable unaligned access, and indicate that it effecient.
+ *      #define T1HA_SYS_UNALIGNED_ACCESS 2
+ *
+ *
+ * 2) T1HA_USE_FAST_ONESHOT_READ = Controls the data reads at the end of buffer.
+ *
+ *    When defined to non-zero, t1ha will use 'one shot' method for reading
+ *    up to 8 bytes at the end of data. In this case just the one 64-bit read
+ *    will be performed even when the available less than 8 bytes.
+ *
+ *    This is little bit faster that switching by length of data tail.
+ *    Unfortunately this will triggering a false-positive alarms from Valgrind,
+ *    AddressSanitizer and other similar tool.
+ *
+ *    By default, t1ha defines it to 1, but you could override this
+ *    default behavior when build t1ha library itself:
+ *
+ *      // For little bit faster and small code.
+ *      #define T1HA_USE_FAST_ONESHOT_READ 1
+ *
+ *      // For calmness if doubt.
+ *      #define T1HA_USE_FAST_ONESHOT_READ 0
+ *
+ *
+ * 3) T1HA0_RUNTIME_SELECT = Controls choice fastest function in runtime.
+ *
+ *    t1ha library offers the t1ha0() function as the fastest for current CPU.
+ *    But actual CPU's features/capabilities and may be significantly different,
+ *    especially on x86 platform. Therefore, internally, t1ha0() may require
+ *    dynamic dispatching for choice best implementation.
+ *
+ *    By default, t1ha enables such runtime choice and (may be) corresponding
+ *    indirect calls if it reasonable, but you could override this default
+ *    behavior when build t1ha library itself:
+ *
+ *      // To enable runtime choice of fastest implementation.
+ *      #define T1HA0_RUNTIME_SELECT 1
+ *
+ *      // To disable runtime choice of fastest implementation.
+ *      #define T1HA0_RUNTIME_SELECT 0
+ *
+ *    When T1HA0_RUNTIME_SELECT is nonzero the t1ha0_resolve() function could
+ *    be used to get actual t1ha0() implementation address at runtime. This is
+ *    useful for two cases:
+ *      - calling by local pointer-to-function usually is little
+ *        bit faster (less overhead) than via a PLT thru the DSO boundary.
+ *      - GNU Indirect functions (see below) don't supported by environment
+ *        and calling by t1ha0_funcptr is not available and/or expensive.
+ *
+ * 4) T1HA_USE_INDIRECT_FUNCTIONS = Controls usage of GNU Indirect functions.
+ *
+ *    In continue of T1HA0_RUNTIME_SELECT the T1HA_USE_INDIRECT_FUNCTIONS
+ *    controls usage of ELF indirect functions feature. In general, when
+ *    available, this reduces overhead of indirect function's calls though
+ *    a DSO-bundary (https://sourceware.org/glibc/wiki/GNU_IFUNC).
+ *
+ *    By default, t1ha engage GNU Indirect functions when it available
+ *    and useful, but you could override this default behavior when build
+ *    t1ha library itself:
+ *
+ *      // To enable use of GNU ELF Indirect functions.
+ *      #define T1T1HA_USE_INDIRECT_FUNCTIONS 1
+ *
+ *      // To disable use of GNU ELF Indirect functions. This may be useful
+ *      // if the actual toolchain or the system's loader don't support ones.
+ *      #define T1HA_USE_INDIRECT_FUNCTIONS 0
+ *
+ * 5) T1HA0_AESNI_AVAILABLE = Controls AES-NI detection and dispatching on x86.
+ *
+ *    In continue of T1HA0_RUNTIME_SELECT the T1HA0_AESNI_AVAILABLE controls
+ *    detection and usage of AES-NI CPU's feature. On the other hand, this
+ *    requires compiling parts of t1ha library with certain properly options,
+ *    and could be difficult or inconvenient in some cases.
+ *
+ *    By default, t1ha engade AES-NI for t1ha0() on the x86 platform, but
+ *    you could override this default behavior when build t1ha library itself:
+ *
+ *      // To disable detection and usage of AES-NI instructions for t1ha0().
+ *      // This may be useful when you unable to build t1ha library properly
+ *      // or known that AES-NI will be unavailable at the deploy.
+ *      #define T1HA0_AESNI_AVAILABLE 0
+ *
+ *      // To force detection and usage of AES-NI instructions for t1ha0(),
+ *      // but I don't known reasons to anybody would need this.
+ *      #define T1HA0_AESNI_AVAILABLE 1
+ *
+ * 6) T1HA0_DISABLED, T1HA1_DISABLED, T1HA2_DISABLED = Controls availability of
+ *    t1ha functions.
+ *
+ *    In some cases could be useful to import/use only few of t1ha functions
+ *    or just the one. So, this definitions allows disable corresponding parts
+ *    of t1ha library.
+ *
+ *      // To disable t1ha0(), t1ha0_32le(), t1ha0_32be() and all AES-NI.
+ *      #define T1HA0_DISABLED
+ *
+ *      // To disable t1ha1_le() and t1ha1_be().
+ *      #define T1HA1_DISABLED
+ *
+ *      // To disable t1ha2_atonce(), t1ha2_atonce128() and so on.
+ *      #define T1HA2_DISABLED
+ *
+ *****************************************************************************/
+
+#define T1HA_VERSION_MAJOR 2
+#define T1HA_VERSION_MINOR 1
+#define T1HA_VERSION_RELEASE 0
+
 #ifndef __has_attribute
 #define __has_attribute(x) (0)
 #endif
@@ -68,6 +196,15 @@
 #define __CLANG_PREREQ(maj, min) (0)
 #endif
 #endif /* __CLANG_PREREQ */
+
+#ifndef __LCC_PREREQ
+#ifdef __LCC__
+#define __LCC_PREREQ(maj, min)                                                 \
+  ((__LCC__ << 16) + __LCC_MINOR__ >= ((maj) << 16) + (min))
+#else
+#define __LCC_PREREQ(maj, min) (0)
+#endif
+#endif /* __LCC_PREREQ */
 
 /*****************************************************************************/
 
@@ -209,12 +346,24 @@
 #endif
 #endif /* __dll_import */
 
+#ifndef __force_inline
+#ifdef _MSC_VER
+#define __force_inline __forceinline
+#elif __GNUC_PREREQ(3, 2) || __has_attribute(always_inline)
+#define __force_inline __inline __attribute__((always_inline))
+#else
+#define __force_inline __inline
+#endif
+#endif /* __force_inline */
+
+#ifndef T1HA_API
 #if defined(t1ha_EXPORTS)
 #define T1HA_API __dll_export
 #elif defined(t1ha_IMPORTS)
 #define T1HA_API __dll_import
 #else
 #define T1HA_API
+#endif
 #endif /* T1HA_API */
 
 #if defined(_MSC_VER) && defined(__ia32__)
@@ -229,6 +378,30 @@
 #else
 #define T1HA_ALIGN_SUFFIX
 #endif /* GCC x86 */
+
+#ifndef T1HA_USE_INDIRECT_FUNCTIONS
+/* GNU ELF indirect functions usage control. For more info please see
+ * https://en.wikipedia.org/wiki/Executable_and_Linkable_Format
+ * and https://sourceware.org/glibc/wiki/GNU_IFUNC */
+#if __has_attribute(ifunc) &&                                                  \
+    defined(__ELF__) /* ifunc is broken on Darwin/OSX */
+/* Use ifunc/gnu_indirect_function if corresponding attribute is available,
+ * Assuming compiler will generate properly code even when
+ * the -fstack-protector-all and/or the -fsanitize=address are enabled. */
+#define T1HA_USE_INDIRECT_FUNCTIONS 1
+#elif defined(__ELF__) && !defined(__SANITIZE_ADDRESS__) &&                    \
+    !defined(__SSP_ALL__)
+/* ifunc/gnu_indirect_function will be used on ELF, but only if both
+ * -fstack-protector-all and -fsanitize=address are NOT enabled. */
+#define T1HA_USE_INDIRECT_FUNCTIONS 1
+#else
+#define T1HA_USE_INDIRECT_FUNCTIONS 0
+#endif
+#endif /* T1HA_USE_INDIRECT_FUNCTIONS */
+
+#if __GNUC_PREREQ(4, 0)
+#pragma GCC visibility push(hidden)
+#endif /* __GNUC_PREREQ(4,0) */
 
 #ifdef __cplusplus
 extern "C" {
@@ -256,6 +429,58 @@ typedef struct t1ha_context {
 
 /******************************************************************************
  *
+ * Self-testing API.
+ *
+ * Unfortunately, some compilers (exactly only Microsoft Visual C/C++) has
+ * a bugs which leads t1ha-functions to produce wrong results. This API allows
+ * check the correctness of the actual code in runtime.
+ *
+ * All check-functions returns 0 on success, or -1 in case the corresponding
+ * hash-function failed verification. PLEASE, always perform such checking at
+ * initialization of your code, if you using MSVC or other troubleful compilers.
+ */
+
+T1HA_API int t1ha_selfcheck__all_enabled(void);
+
+#ifndef T1HA2_DISABLED
+T1HA_API int t1ha_selfcheck__t1ha2_atonce(void);
+T1HA_API int t1ha_selfcheck__t1ha2_atonce128(void);
+T1HA_API int t1ha_selfcheck__t1ha2_stream(void);
+T1HA_API int t1ha_selfcheck__t1ha2(void);
+#endif /* T1HA2_DISABLED */
+
+#ifndef T1HA1_DISABLED
+T1HA_API int t1ha_selfcheck__t1ha1_le(void);
+T1HA_API int t1ha_selfcheck__t1ha1_be(void);
+T1HA_API int t1ha_selfcheck__t1ha1(void);
+#endif /* T1HA1_DISABLED */
+
+#ifndef T1HA0_DISABLED
+T1HA_API int t1ha_selfcheck__t1ha0_32le(void);
+T1HA_API int t1ha_selfcheck__t1ha0_32be(void);
+T1HA_API int t1ha_selfcheck__t1ha0(void);
+
+/* Define T1HA0_AESNI_AVAILABLE to 0 for disable AES-NI support. */
+#ifndef T1HA0_AESNI_AVAILABLE
+#if defined(__e2k__) ||                                                        \
+    (defined(__ia32__) && (!defined(_M_IX86) || _MSC_VER > 1800))
+#define T1HA0_AESNI_AVAILABLE 1
+#else
+#define T1HA0_AESNI_AVAILABLE 0
+#endif
+#endif /* ifndef T1HA0_AESNI_AVAILABLE */
+
+#if T1HA0_AESNI_AVAILABLE
+T1HA_API int t1ha_selfcheck__t1ha0_ia32aes_noavx(void);
+T1HA_API int t1ha_selfcheck__t1ha0_ia32aes_avx(void);
+#ifndef __e2k__
+T1HA_API int t1ha_selfcheck__t1ha0_ia32aes_avx2(void);
+#endif
+#endif /* if T1HA0_AESNI_AVAILABLE */
+#endif /* T1HA0_DISABLED */
+
+/******************************************************************************
+ *
  *  t1ha2 = 64 and 128-bit, SLIGHTLY MORE ATTENTION FOR QUALITY AND STRENGTH.
  *
  *    - The recommended version of "Fast Positive Hash" with good quality
@@ -269,6 +494,7 @@ typedef struct t1ha_context {
  * Note: Due performance reason 64- and 128-bit results are completely
  *       different each other, i.e. 64-bit result is NOT any part of 128-bit.
  */
+#ifndef T1HA2_DISABLED
 
 /* The at-once variant with 64-bit result */
 T1HA_API uint64_t t1ha2_atonce(const void *data, size_t length, uint64_t seed);
@@ -299,6 +525,8 @@ T1HA_API void t1ha2_update(t1ha_context_t *__restrict ctx,
 T1HA_API uint64_t t1ha2_final(t1ha_context_t *__restrict ctx,
                               uint64_t *__restrict extra_result /* optional */);
 
+#endif /* T1HA2_DISABLED */
+
 /******************************************************************************
  *
  *  t1ha1 = 64-bit, BASELINE FAST PORTABLE HASH:
@@ -314,6 +542,7 @@ T1HA_API uint64_t t1ha2_final(t1ha_context_t *__restrict ctx,
  *      However, nowadays this issue has resolved in the next t1ha2(),
  *      that was initially planned to providing a bit more quality.
  */
+#ifndef T1HA1_DISABLED
 
 /* The little-endian variant. */
 T1HA_API uint64_t t1ha1_le(const void *data, size_t length, uint64_t seed);
@@ -321,10 +550,7 @@ T1HA_API uint64_t t1ha1_le(const void *data, size_t length, uint64_t seed);
 /* The big-endian variant. */
 T1HA_API uint64_t t1ha1_be(const void *data, size_t length, uint64_t seed);
 
-/* The historical nicname for generic little-endian variant. */
-static __inline uint64_t t1ha(const void *data, size_t length, uint64_t seed) {
-  return t1ha1_le(data, length, seed);
-}
+#endif /* T1HA1_DISABLED */
 
 /******************************************************************************
  *
@@ -349,7 +575,18 @@ static __inline uint64_t t1ha(const void *data, size_t length, uint64_t seed) {
  *      Briefly, such hash-results and their derivatives, should be
  *      used only in runtime, but should not be persist or transferred
  *      over a network.
+ *
+ *
+ *  When T1HA0_RUNTIME_SELECT is nonzero the t1ha0_resolve() function could
+ *  be used to get actual t1ha0() implementation address at runtime. This is
+ *  useful for two cases:
+ *    - calling by local pointer-to-function usually is little
+ *      bit faster (less overhead) than via a PLT thru the DSO boundary.
+ *    - GNU Indirect functions (see below) don't supported by environment
+ *      and calling by t1ha0_funcptr is not available and/or expensive.
  */
+
+#ifndef T1HA0_DISABLED
 
 /* The little-endian variant for 32-bit CPU. */
 uint64_t t1ha0_32le(const void *data, size_t length, uint64_t seed);
@@ -375,6 +612,14 @@ uint64_t t1ha0_32be(const void *data, size_t length, uint64_t seed);
 #endif
 #endif /* T1HA0_RUNTIME_SELECT */
 
+#if !T1HA0_RUNTIME_SELECT && !defined(T1HA0_USE_DEFINE)
+#if defined(__LCC__)
+#define T1HA0_USE_DEFINE 1
+#else
+#define T1HA0_USE_DEFINE 0
+#endif
+#endif /* T1HA0_USE_DEFINE */
+
 #if T1HA0_AESNI_AVAILABLE
 uint64_t t1ha0_ia32aes_noavx(const void *data, size_t length, uint64_t seed);
 uint64_t t1ha0_ia32aes_avx(const void *data, size_t length, uint64_t seed);
@@ -384,38 +629,95 @@ uint64_t t1ha0_ia32aes_avx2(const void *data, size_t length, uint64_t seed);
 #endif /* T1HA0_AESNI_AVAILABLE */
 
 #if T1HA0_RUNTIME_SELECT
-#ifdef __ELF__
-/* ifunc/gnu_indirect_function will be used on ELF.
- * Please see https://en.wikipedia.org/wiki/Executable_and_Linkable_Format */
+typedef uint64_t (*t1ha0_function_t)(const void *, size_t, uint64_t);
+T1HA_API t1ha0_function_t t1ha0_resolve(void);
+#if T1HA_USE_INDIRECT_FUNCTIONS
 T1HA_API uint64_t t1ha0(const void *data, size_t length, uint64_t seed);
 #else
 /* Otherwise function pointer will be used.
  * Unfortunately this may cause some overhead calling. */
 T1HA_API extern uint64_t (*t1ha0_funcptr)(const void *data, size_t length,
                                           uint64_t seed);
-static __inline uint64_t t1ha0(const void *data, size_t length, uint64_t seed) {
+static __force_inline uint64_t t1ha0(const void *data, size_t length,
+                                     uint64_t seed) {
   return t1ha0_funcptr(data, length, seed);
 }
-#endif /* __ELF__ */
+#endif /* T1HA_USE_INDIRECT_FUNCTIONS */
 
 #elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-static __inline uint64_t t1ha0(const void *data, size_t length, uint64_t seed) {
-#if UINTPTR_MAX > 0xffffFFFFul || ULONG_MAX > 0xffffFFFFul
+
+#if T1HA0_USE_DEFINE
+
+#if (UINTPTR_MAX > 0xffffFFFFul || ULONG_MAX > 0xffffFFFFul) &&                \
+    (!defined(T1HA1_DISABLED) || !defined(T1HA2_DISABLED))
+#if defined(T1HA1_DISABLED)
+#define t1ha0 t1ha2_atonce
+#else
+#define t1ha0 t1ha1_be
+#endif /* T1HA1_DISABLED */
+#else  /* 32/64 */
+#define t1ha0 t1ha0_32be
+#endif /* 32/64 */
+
+#else /* T1HA0_USE_DEFINE */
+
+static __force_inline uint64_t t1ha0(const void *data, size_t length,
+                                     uint64_t seed) {
+#if (UINTPTR_MAX > 0xffffFFFFul || ULONG_MAX > 0xffffFFFFul) &&                \
+    (!defined(T1HA1_DISABLED) || !defined(T1HA2_DISABLED))
+#if defined(T1HA1_DISABLED)
+  return t1ha2_atonce(data, length, seed);
+#else
   return t1ha1_be(data, length, seed);
-#else
+#endif /* T1HA1_DISABLED */
+#else  /* 32/64 */
   return t1ha0_32be(data, length, seed);
-#endif
+#endif /* 32/64 */
 }
+
+#endif /* !T1HA0_USE_DEFINE */
+
+#else /* !T1HA0_RUNTIME_SELECT && __BYTE_ORDER__ != __ORDER_BIG_ENDIAN__ */
+
+#if T1HA0_USE_DEFINE
+
+#if (UINTPTR_MAX > 0xffffFFFFul || ULONG_MAX > 0xffffFFFFul) &&                \
+    (!defined(T1HA1_DISABLED) || !defined(T1HA2_DISABLED))
+#if defined(T1HA1_DISABLED)
+#define t1ha0 t1ha2_atonce
 #else
-static __inline uint64_t t1ha0(const void *data, size_t length, uint64_t seed) {
-#if UINTPTR_MAX > 0xffffFFFFul || ULONG_MAX > 0xffffFFFFul
+#define t1ha0 t1ha1_le
+#endif /* T1HA1_DISABLED */
+#else  /* 32/64 */
+#define t1ha0 t1ha0_32le
+#endif /* 32/64 */
+
+#else
+
+static __force_inline uint64_t t1ha0(const void *data, size_t length,
+                                     uint64_t seed) {
+#if (UINTPTR_MAX > 0xffffFFFFul || ULONG_MAX > 0xffffFFFFul) &&                \
+    (!defined(T1HA1_DISABLED) || !defined(T1HA2_DISABLED))
+#if defined(T1HA1_DISABLED)
+  return t1ha2_atonce(data, length, seed);
+#else
   return t1ha1_le(data, length, seed);
-#else
+#endif /* T1HA1_DISABLED */
+#else  /* 32/64 */
   return t1ha0_32le(data, length, seed);
-#endif
+#endif /* 32/64 */
 }
+
+#endif /* !T1HA0_USE_DEFINE */
+
 #endif /* !T1HA0_RUNTIME_SELECT */
+
+#endif /* T1HA0_DISABLED */
 
 #ifdef __cplusplus
 }
 #endif
+
+#if __GNUC_PREREQ(4, 0)
+#pragma GCC visibility pop
+#endif /* __GNUC_PREREQ(4,0) */
