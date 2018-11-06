@@ -116,6 +116,7 @@ add_library(pcommon STATIC
   pcomn_ssafe.cpp
   pcomn_strsubst.cpp
   pcomn_textio.cpp
+  pcomn_threadpool.cpp
   pcomn_uri.cpp
   pcomn_uuid.cpp
 

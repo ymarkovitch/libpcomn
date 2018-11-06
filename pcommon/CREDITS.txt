@@ -1,5 +1,5 @@
 PCOMMON C++ Utility Library
-Copyright (c) 1994-2017, Yakov Markovitch
+Copyright (c) 1994-2018, Yakov Markovitch
 
 ==============================================================================
 AUTHOR
