@@ -793,6 +793,8 @@ inline std::ostream &operator<<(std::ostream &os, EndArgs) { return os ; }
 
 using pcomn::oenum ;
 
+GCC_DIAGNOSTIC_PUSH_IGNORE(unused-result)
+
 inline auto ostrerror(int errn) PCOMN_MAKE_OMANIP(([](std::ostream &os, int errn) -> std::ostream &
 {
    char buf[256] ;
@@ -800,6 +802,8 @@ inline auto ostrerror(int errn) PCOMN_MAKE_OMANIP(([](std::ostream &os, int errn
    strerror_r(errn, buf, sizeof(buf)) ;
    return os << buf ;
 }), errn) ;
+
+GCC_DIAGNOSTIC_POP()
 
 } // end of namespace diag
 
