@@ -240,15 +240,7 @@ inline size_t native_rzcnt(I v, generic_isa_tag)
 template<typename I>
 inline size_t native_bitcount(I v, sse42_isa_tag)
 {
-   size_t result ;
-   const uintmax_t source = (std::make_unsigned_t<I>)v ;
-   // POPCNT sets ZF, thus "cc" constraint
-   asm(
-      "popcnt %[source], %[result]"
-      : [result]"=r"(result)
-      : [source]"rm"(source) : "cc"
-      ) ;
-   return result ;
+   return __builtin_popcount((std::make_unsigned_t<I>)v) ;
 }
 
 template<typename I>
