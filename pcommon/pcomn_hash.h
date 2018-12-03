@@ -408,19 +408,20 @@ struct binary128_t {
       /// Get the length of string representation (32 chars)
       static constexpr size_t slen() { return 2*size() ; }
 
+      constexpr uint64_t hi() const { return value_from_big_endian(_idata[0]) ; }
+      constexpr uint64_t lo() const { return value_from_big_endian(_idata[1]) ; }
+
       _PCOMNEXP std::string to_string() const ;
       _PCOMNEXP char *to_strbuf(char *buf) const ;
 
-      friend bool operator==(const binary128_t &l, const binary128_t &r)
+      friend constexpr bool operator==(const binary128_t &l, const binary128_t &r)
       {
          return !((l._idata[0] ^ r._idata[0]) | (l._idata[1] ^ r._idata[1])) ;
       }
 
-      friend bool operator<(const binary128_t &l, const binary128_t &r)
+      friend constexpr bool operator<(const binary128_t &l, const binary128_t &r)
       {
-         return
-            value_from_big_endian(l._idata[0]) < value_from_big_endian(r._idata[0]) ||
-            l._idata[0] == r._idata[0] && value_from_big_endian(l._idata[1]) < value_from_big_endian( r._idata[1]) ;
+         return l.hi() < r.hi() || l._idata[0] == r._idata[0] && l.lo() < r.lo() ;
       }
 
       size_t hash() const { return tuplehash(_idata[0], _idata[1]) ; }
