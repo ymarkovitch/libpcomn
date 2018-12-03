@@ -46,12 +46,20 @@ constexpr const float PCOMN_CLOSED_HASH_LOAD_FACTOR = 0.75 ;
 
 namespace pcomn {
 
+/*******************************************************************************
+ Valid must be 0
+ End must be 3
+*******************************************************************************/
 enum class bucket_state : uint8_t {
    Valid   = 0,
    Empty   = 1,
    Deleted = 2,
    End     = 3
 } ;
+
+PCOMN_STATIC_CHECK((size_t)bucket_state::Valid == 0 && (size_t)bucket_state::End == 3 &&
+                   inrange(bucket_state::Empty,   bucket_state::Valid, bucket_state::End) &&
+                   inrange(bucket_state::Deleted, bucket_state::Valid, bucket_state::End)) ;
 
 /*******************************************************************************
  Forward declarations (avoid including extra headers into pcomn_hashclosed.h)
