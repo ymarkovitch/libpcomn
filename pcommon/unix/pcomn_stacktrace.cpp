@@ -901,13 +901,6 @@ static int create_tempscript(pid_t guilty_thread, const void *frame_sp, const vo
     (script <<
      "pretty-run info sharedlibrary\n"
      "pretty-run info threads\n"
-     "pretty-run thread apply all backtrace\n"
-     "pretty-run thread apply all info registers\n"
-     "pretty-run thread apply all disassemble\n"
-     "pretty-run thread apply all backtrace full\n"
-
-     // Print memory maps
-     "print_mmaps\n"
 
      "pretty-run shell uname -a\n"
      "pretty-run shell df -lh\n"
