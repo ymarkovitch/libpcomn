@@ -35,7 +35,7 @@ namespace pcomn {
 template<typename T>
 class simple_slice {
       template<typename P, typename U=P>
-      using enable_if_src_pointer =
+      using enable_if_ptr =
          std::enable_if_t<(std::is_same<P, T *>::value || std::is_same<P, std::remove_cv_t<T> *>::value) &&
                           (std::is_same<U, T *>::value || std::is_same<U, std::remove_cv_t<T> *>::value)> ;
    public:
@@ -59,10 +59,11 @@ class simple_slice {
       constexpr simple_slice(value_type (&data)[n]) :
          _start(data), _finish(data + n) {}
 
-      template<typename V, typename = enable_if_src_pointer<decltype(std::declval<V>().data()),
-                                                            decltype(&*std::declval<V>().begin())>>
+      template<typename V, typename = enable_if_ptr<decltype(std::declval<V>().data()),
+                                                    decltype(&*std::declval<V>().begin())>>
       constexpr simple_slice(V &&src) :
-         _start(&*std::forward<V>(src).begin()), _finish(&*std::forward<V>(src).end())
+         _start(std::forward<V>(src).data()),
+         _finish(vector_end(std::forward<V>(src), is_pointer_t<decltype(src.begin())>()))
       {}
 
       constexpr simple_slice(std::initializer_list<std::remove_cv_t<value_type>> init) :
@@ -119,6 +120,15 @@ class simple_slice {
    private:
       value_type *_start   = nullptr ;
       value_type *_finish  = nullptr ;
+
+   private:
+      template<typename V>
+      static value_type *vector_end(V &&v, std::true_type) { return std::forward<V>(v).end() ; }
+      template<typename V>
+      static value_type *vector_end(V &&v, std::false_type)
+      {
+         return std::forward<V>(v).data() + std::forward<V>(v).size() ;
+      }
 } ;
 
 /// Slice of a constant array
