@@ -69,11 +69,10 @@ unsigned cpu_core_count(unsigned *phys_sockets, unsigned *ht_count)
             {
                ++cpu_count ;
             }
-            else if (sscanf(line, "physical id     : %d\n", &c) == 1 && c != last_cpu)
+            else if (sscanf(line, "physical id     : %d\n", &c) == 1 && c > last_cpu)
             {
                ++cpu_sockets ;
                last_cpu = c ;
-               last_core = -1 ;
             }
             break ;
 
