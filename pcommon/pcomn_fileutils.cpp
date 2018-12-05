@@ -55,9 +55,14 @@ ssize_t readfile(int fd, void *buf, size_t size, void **allocbuf)
    long readcount = 0 ;
    long lastcount = 0 ;
 
-   char *data ;
+   char *data = actual_buf ;
    do {
-      data = actual_buf ;
+      if (data != actual_buf)
+      {
+         if (data == buf)
+            memcpy(actual_buf, buf, readcount) ;
+         data = actual_buf ;
+      }
 
       while (readcount < bufsize && (lastcount = read(fd, data + readcount, bufsize - readcount)) > 0)
          readcount += lastcount ;
