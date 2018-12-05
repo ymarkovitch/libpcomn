@@ -191,6 +191,7 @@ target_compile_options(pcommon
 target_link_libraries(pcommon
   PUBLIC
   $<$<OR:$<PLATFORM_ID:Linux>,$<PLATFORM_ID:Cygwin>,$<PLATFORM_ID:MinGW>>:-pthread>
+  $<$<BOOL:${ENABLE_PCOMN_STACKTRACE}>:gcc_s>
   $<$<BOOL:${ENABLE_PCOMN_STACKTRACE}>:unwind>
   $<$<BOOL:${ENABLE_PCOMN_STACKTRACE}>:dw>
   $<$<BOOL:${ENABLE_PCOMN_STACKTRACE}>:elf>
