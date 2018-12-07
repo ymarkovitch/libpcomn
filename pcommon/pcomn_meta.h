@@ -230,6 +230,7 @@ template<typename T> using is_signed_t       = typename std::is_signed<T>::type 
 template<typename T> using is_standard_layout_t = typename std::is_standard_layout<T>::type ;
 template<typename T> using is_trivial_t      = typename std::is_trivial<T>::type ;
 template<typename T> using is_trivially_copyable_t = typename std::is_trivially_copyable<T>::type ;
+template<typename T> using is_trivially_destructible_t = typename std::is_trivially_destructible<T>::type ;
 template<typename T> using is_union_t        = typename std::is_union<T>::type ;
 template<typename T> using is_unsigned_t     = typename std::is_unsigned<T>::type ;
 template<typename T> using is_void_t         = typename std::is_void<T>::type ;
