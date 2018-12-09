@@ -491,7 +491,7 @@ struct md5hash_t : binary128_t {
       explicit constexpr md5hash_t(const binary128_t &src) : binary128_t(src) {}
       explicit md5hash_t(const char *hexstr) : binary128_t(hexstr) {}
 
-      constexpr size_t hash() const { return _idata[0] ^ _idata[1] ; }
+      constexpr size_t hash() const { return _idata[0] ; }
 } ;
 
 /***************************************************************************//**
@@ -553,7 +553,7 @@ struct t1ha2hash_t : binary128_t {
       explicit constexpr t1ha2hash_t(const binary128_t &src) : binary128_t(src) {}
       explicit t1ha2hash_t(const char *hexstr) : binary128_t(hexstr) {}
 
-      constexpr size_t hash() const { return _idata[0] ^ _idata[1] ; }
+      constexpr size_t hash() const { return _idata[0] ; }
 } ;
 
 /***************************************************************************//**
