@@ -87,7 +87,7 @@ class simple_slice {
 
       value_type &operator[] (ptrdiff_t ndx) const { return _start[ndx] ; }
 
-      simple_slice operator()(ptrdiff_t from, ptrdiff_t to = INT_MAX) const
+      simple_slice operator()(ptrdiff_t from, ptrdiff_t to) const
       {
          const ptrdiff_t sz = size() ;
          if (from < 0)
@@ -99,6 +99,15 @@ class simple_slice {
          return from >= to
             ? simple_slice()
             : simple_slice(_start + from, _start + to) ;
+      }
+
+      simple_slice operator()(ptrdiff_t from) const
+      {
+         const ptrdiff_t sz = size() ;
+         from = std::min(sz, std::max((ptrdiff_t)0, from < 0 ? from + sz : from)) ;
+         return from >= sz
+            ? simple_slice()
+            : simple_slice(_start + from, end()) ;
       }
 
       void swap(simple_slice &other)
