@@ -71,6 +71,12 @@ using native_isa_tag =
 template<int nbits>
 struct bit_traits ;
 
+template<int nbits>
+using bit_stype_t = typename bit_traits<nbits>::stype ;
+
+template<int nbits>
+using bit_utype_t = typename bit_traits<nbits>::utype ;
+
 /******************************************************************************/
 /** bit_traits specialization for 64-bit integers
 *******************************************************************************/
