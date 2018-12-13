@@ -557,6 +557,49 @@ struct t1ha2hash_t : binary128_t {
 } ;
 
 /***************************************************************************//**
+ 256-bit binary
+*******************************************************************************/
+struct binary256_t {
+
+      constexpr binary256_t() : _idata() {}
+      constexpr binary256_t(uint64_t q0, uint64_t q1, uint64_t q2, uint64_t q3) :
+         _idata{q0, q1, q2, q3}
+      {}
+
+      /// Check helper
+      explicit constexpr operator bool() const { return !!((_idata[0] | _idata[1]) | (_idata[2] | _idata[3])) ; }
+
+      unsigned char *data() { return _cdata ; }
+      constexpr const unsigned char *data() const { return _cdata ; }
+
+      uint64_t *idata() { return _idata ; }
+      constexpr const uint64_t *idata() const { return _idata ; }
+
+      /// Get the count of octets (16)
+      static constexpr size_t size() { return sizeof _idata ; }
+      /// Get the length of string representation (32 chars)
+      static constexpr size_t slen() { return 2*size() ; }
+
+      friend constexpr bool operator==(const binary256_t &x, const binary256_t &y)
+      {
+         return !(((x._idata[0] ^ y._idata[0]) | (x._idata[1] ^ y._idata[1])) |
+                  ((x._idata[2] ^ y._idata[2]) | (x._idata[3] ^ y._idata[3]))) ;
+      }
+
+      size_t hash() const { return tuplehash(_idata[0], _idata[1], _idata[3], _idata[4]) ; }
+
+   protected:
+      union {
+            uint64_t       _idata[4] ;
+            unsigned char  _cdata[32] ;
+      } ;
+
+   protected:
+      template<typename T>
+      static constexpr T be(T value) { return value_to_big_endian(value) ; }
+} ;
+
+/***************************************************************************//**
  Backward compatibility typedefs
 *******************************************************************************/
 /**{@*/
@@ -872,6 +915,7 @@ inline size_t hash_sequence(std::initializer_list<T> s) { return hash_sequence(s
 *******************************************************************************/
 std::ostream &operator<<(std::ostream &, const binary128_t &) ;
 std::ostream &operator<<(std::ostream &, const sha1hash_t &) ;
+std::ostream &operator<<(std::ostream &, const binary256_t &) ;
 
 } // end of namespace pcomn
 
