@@ -566,6 +566,26 @@ struct binary256_t {
          _idata{q0, q1, q2, q3}
       {}
 
+      /// Create value from a hex string representation.
+      /// @note @a hexstr need not be null-terminated, the constructor will scan at most
+      /// 64 characters, or until '\0' encountered, whatever comes first.
+      explicit binary256_t(const char *hexstr)
+      {
+         if (!hextob(_idata, sizeof _idata, hexstr))
+            *this = {} ;
+         else
+         {
+            const uint64_t q0 = be(_idata[3]) ;
+            const uint64_t q1 = be(_idata[2]) ;
+            const uint64_t q2 = be(_idata[1]) ;
+            const uint64_t q3 = be(_idata[0]) ;
+            _idata[0] = q0 ;
+            _idata[1] = q1 ;
+            _idata[2] = q2 ;
+            _idata[3] = q3 ;
+         }
+      }
+
       /// Check helper
       explicit constexpr operator bool() const { return !!((_idata[0] | _idata[1]) | (_idata[2] | _idata[3])) ; }
 
@@ -580,13 +600,29 @@ struct binary256_t {
       /// Get the length of string representation (32 chars)
       static constexpr size_t slen() { return 2*size() ; }
 
+      size_t hash() const { return tuplehash(_idata[0], _idata[1], _idata[3], _idata[4]) ; }
+
+      char *to_strbuf(char *buf) const
+      {
+         PCOMN_STATIC_CHECK(slen() >= 2*binary128_t::slen()) ;
+         binary128_t(*(idata() + 3), *(idata() + 2)).to_strbuf(buf) ;
+         binary128_t(*(idata() + 1), *(idata() + 0)).to_strbuf(buf + binary128_t::slen()) ;
+
+         return buf ;
+      }
+
       friend constexpr bool operator==(const binary256_t &x, const binary256_t &y)
       {
          return !(((x._idata[0] ^ y._idata[0]) | (x._idata[1] ^ y._idata[1])) |
                   ((x._idata[2] ^ y._idata[2]) | (x._idata[3] ^ y._idata[3]))) ;
       }
 
-      size_t hash() const { return tuplehash(_idata[0], _idata[1], _idata[3], _idata[4]) ; }
+      friend constexpr bool operator<(const binary256_t &x, const binary256_t &y)
+      {
+         const uint64_t xv[4] {be(x._idata[3]), be(x._idata[2]), be(x._idata[1]), be(x._idata[0])} ;
+         const uint64_t yv[4] {be(y._idata[3]), be(y._idata[2]), be(y._idata[1]), be(y._idata[0])} ;
+         return memcmp(&xv, &yv, sizeof xv) < 0 ;
+      }
 
    protected:
       union {
@@ -598,6 +634,9 @@ struct binary256_t {
       template<typename T>
       static constexpr T be(T value) { return value_to_big_endian(value) ; }
 } ;
+
+// Define !=, >, <=, >= for binary256_t
+PCOMN_DEFINE_RELOP_FUNCTIONS(, binary256_t) ;
 
 /***************************************************************************//**
  Backward compatibility typedefs

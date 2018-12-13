@@ -189,6 +189,11 @@ void UUIDFixture::Test_Binary256()
    CPPUNIT_LOG_NOT_EQUAL(binary256_t(0, 3, 0, 1), binary256_t(0, 0, 0, 1)) ;
    CPPUNIT_LOG_EQUAL(binary256_t(0, 3, 0, 1), binary256_t(0, 3, 0, 1)) ;
    CPPUNIT_LOG_NOT_EQUAL(binary256_t(0, 3, 0, 1), binary256_t(0, 3, 0, 2)) ;
+
+   CPPUNIT_LOG_EQ(string_cast(binary256_t(0, 3, 0, 1)),
+                  "0000000000000001000000000000000000000000000000030000000000000000") ;
+
+   CPPUNIT_LOG_EQUAL(binary256_t(string_cast(binary256_t(0, 3, 0, 1)).c_str()), binary256_t(0, 3, 0, 1)) ;
 }
 
 /*******************************************************************************

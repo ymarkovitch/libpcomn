@@ -263,13 +263,8 @@ std::ostream &operator<<(std::ostream &os, const binary128_t &v)
 
 std::ostream &operator<<(std::ostream &os, const binary256_t &v)
 {
-   PCOMN_STATIC_CHECK(binary256_t::slen() >= binary128_t::slen()) ;
-
    char buf[binary256_t::slen() + 1] ;
-   binary128_t(*(v.idata() + 0), *(v.idata() + 1)).to_strbuf(buf) ;
-   binary128_t(*(v.idata() + 2), *(v.idata() + 3)).to_strbuf(buf + binary256_t::slen()) ;
-
-   return os.write(buf, binary256_t::slen()) ;
+   return os.write(v.to_strbuf(buf), binary256_t::slen()) ;
 }
 
 } // namespace pcomn
