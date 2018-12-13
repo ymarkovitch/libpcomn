@@ -33,6 +33,7 @@ typedef strong_typedef<uint8_t, ternary_tag> tlogic_t ;
 *******************************************************************************/
 template<> class tdef<uint8_t, ternary_tag, true> {
     static tlogic_t b(const bool *) ;
+    static constexpr uint8_t build_tconsensus(unsigned a_plus_b) { return (a_plus_b & 1U)|(a_plus_b >> 1) ; }
 public:
     /// Numeric values of logical states.
     /// @note These values are _not_ arbitrary, these are not the "implementation
@@ -77,6 +78,18 @@ public:
     /// `(true,true)->T`, `(true,false)->N`, `(false,true)->N`.
     template<typename B, typename=decltype(b(std::add_pointer_t<std::decay_t<B>>()))>
     explicit constexpr tdef(B x, B y) : _data((uint8_t)x + (uint8_t)y) {}
+
+    /// Ternary consensus, i.e.  `(F,F)->F`, `(T,T)->T`, `(T,F)->N`, `(T,T)->N`,
+    /// `(any,N)->N`, `(N,any)->N`.
+    explicit constexpr tdef(tdef x, tdef y) : _data(build_tconsensus(x._data + y._data)) {}
+
+    /// Ternary consensus.
+    template<typename B, typename=decltype(b(std::add_pointer_t<std::decay_t<B>>()))>
+    explicit constexpr tdef(B x, tdef y) : _data((x + 1U + y._data) >> 1) {}
+
+    /// Ternary consensus.
+    template<typename B, typename=decltype(b(std::add_pointer_t<std::decay_t<B>>()))>
+    explicit constexpr tdef(tdef x, B y) : tdef(y, x) {}
 
     tdef &operator=(const tdef &) = default ;
     tdef &operator=(tdef &&) = default ;

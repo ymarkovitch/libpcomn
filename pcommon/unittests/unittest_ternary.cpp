@@ -226,6 +226,33 @@ void TernaryLogicTests::Test_TLogic_Logic()
    CPPUNIT_LOG_EQUAL(tlogic_t(false, false), TFALSE) ;
    CPPUNIT_LOG_EQUAL(tlogic_t(true, false),  TUNKNOWN) ;
    CPPUNIT_LOG_EQUAL(tlogic_t(false, true),  TUNKNOWN) ;
+   CPPUNIT_LOG(std::endl) ;
+
+   // Check the "ternary consensus" operator
+   CPPUNIT_LOG_EQUAL(tlogic_t(TTRUE,      TTRUE),     TTRUE) ;
+   CPPUNIT_LOG_EQUAL(tlogic_t(TFALSE,     TFALSE),    TFALSE) ;
+   CPPUNIT_LOG_EQUAL(tlogic_t(TUNKNOWN,   TUNKNOWN),  TUNKNOWN) ;
+   CPPUNIT_LOG_EQUAL(tlogic_t(TTRUE,      TFALSE),    TUNKNOWN) ;
+   CPPUNIT_LOG_EQUAL(tlogic_t(TFALSE,     TTRUE),     TUNKNOWN) ;
+   CPPUNIT_LOG_EQUAL(tlogic_t(TTRUE,      TUNKNOWN),  TUNKNOWN) ;
+   CPPUNIT_LOG_EQUAL(tlogic_t(TFALSE,     TUNKNOWN),  TUNKNOWN) ;
+   CPPUNIT_LOG_EQUAL(tlogic_t(TUNKNOWN,   TTRUE),     TUNKNOWN) ;
+   CPPUNIT_LOG_EQUAL(tlogic_t(TUNKNOWN,   TFALSE),    TUNKNOWN) ;
+
+   CPPUNIT_LOG_EQUAL(tlogic_t(true,    TTRUE),  TTRUE) ;
+   CPPUNIT_LOG_EQUAL(tlogic_t(TTRUE,   true),   TTRUE) ;
+   CPPUNIT_LOG_EQUAL(tlogic_t(false,   TFALSE), TFALSE) ;
+   CPPUNIT_LOG_EQUAL(tlogic_t(TFALSE,  false),  TFALSE) ;
+
+   CPPUNIT_LOG_EQUAL(tlogic_t(TFALSE,  true),   TUNKNOWN) ;
+   CPPUNIT_LOG_EQUAL(tlogic_t(true,    TFALSE), TUNKNOWN) ;
+   CPPUNIT_LOG_EQUAL(tlogic_t(false,   TTRUE),  TUNKNOWN) ;
+   CPPUNIT_LOG_EQUAL(tlogic_t(TTRUE,   false),  TUNKNOWN) ;
+
+   CPPUNIT_LOG_EQUAL(tlogic_t(true,       TUNKNOWN),  TUNKNOWN) ;
+   CPPUNIT_LOG_EQUAL(tlogic_t(TUNKNOWN,   true),      TUNKNOWN) ;
+   CPPUNIT_LOG_EQUAL(tlogic_t(false,      TUNKNOWN),  TUNKNOWN) ;
+   CPPUNIT_LOG_EQUAL(tlogic_t(TUNKNOWN,   false),     TUNKNOWN) ;
 }
 
 int main(int argc, char *argv[])
