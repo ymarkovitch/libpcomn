@@ -617,7 +617,7 @@ struct binary256_t {
                   ((x._idata[2] ^ y._idata[2]) | (x._idata[3] ^ y._idata[3]))) ;
       }
 
-      friend constexpr bool operator<(const binary256_t &x, const binary256_t &y)
+      friend bool operator<(const binary256_t &x, const binary256_t &y)
       {
          const uint64_t xv[4] {be(x._idata[3]), be(x._idata[2]), be(x._idata[1]), be(x._idata[0])} ;
          const uint64_t yv[4] {be(y._idata[3]), be(y._idata[2]), be(y._idata[1]), be(y._idata[0])} ;
