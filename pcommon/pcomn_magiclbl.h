@@ -109,6 +109,21 @@ constexpr inline magic64 operator"" _magic64() { return detail::make_magiclbl<ui
 } // end of pcomn::literals
 
 /*******************************************************************************
+ eqi(), lti() specializations.
+*******************************************************************************/
+template<typename I>
+inline bool eqi(const strslice &x, magiclbl<I> y) { return eqi(x, strslice(y)) ; }
+
+template<typename I>
+inline bool eqi(magiclbl<I> x, const strslice &y) { return eqi(y, x) ; }
+
+template<typename I>
+inline bool lti(const strslice &x, magiclbl<I> y) { return lti(x, strslice(y)) ; }
+
+template<typename I>
+inline bool lti(magiclbl<I> x, const strslice &y) { return lti(strslice(x), y) ; }
+
+/*******************************************************************************
  Print magic label.
 *******************************************************************************/
 template<typename I>
