@@ -261,10 +261,28 @@ struct basic_bitvector : basic_bitvector<const E> {
          return *this ;
       }
 
+      bool set(size_t pos) const
+      {
+         element_type &data = elem(pos) ;
+         const element_type mask = bitmask(pos) ;
+         const element_type old = data ;
+         data |= mask ;
+         return old & mask ;
+      }
+
+      bool reset(size_t pos) const
+      {
+         element_type &data = elem(pos) ;
+         const element_type mask = bitmask(pos) ;
+         const element_type old = data ;
+         data &= ~mask ;
+         return old & mask ;
+      }
+
       /// Set bit value at the given position.
       ///
       /// @return Old value of the bit at @a pos.
-      bool set(size_t pos, bool val = true) const
+      bool set(size_t pos, bool val) const
       {
          element_type &data = elem(pos) ;
          const element_type mask = bitmask(pos) ;
@@ -272,7 +290,6 @@ struct basic_bitvector : basic_bitvector<const E> {
          set_flags(data, val, mask) ;
          return old ;
       }
-
       /// Atomically set a bit at the given position to specified value.
       bool set(size_t pos, bool val, std::memory_order order) const
       {
