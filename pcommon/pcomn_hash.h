@@ -40,6 +40,7 @@ _PCOMNEXP uint32_t calc_crc32(uint32_t crc, const void *buf, size_t len) ;
 #ifdef __cplusplus
 
 #include <pcomn_meta.h>
+#include <pcomn_integer.h>
 
 #include <string>
 #include <iosfwd>
@@ -594,6 +595,15 @@ struct binary256_t {
 
       uint64_t *idata() { return _idata ; }
       constexpr const uint64_t *idata() const { return _idata ; }
+
+      unsigned bitcount() const
+      {
+         return
+            bitop::bitcount(_idata[0]) +
+            bitop::bitcount(_idata[1]) +
+            bitop::bitcount(_idata[2]) +
+            bitop::bitcount(_idata[3]) ;
+      }
 
       /// Get the count of octets (16)
       static constexpr size_t size() { return sizeof _idata ; }
