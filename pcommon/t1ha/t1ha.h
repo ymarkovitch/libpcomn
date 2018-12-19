@@ -525,6 +525,8 @@ T1HA_API void t1ha2_update(t1ha_context_t *__restrict ctx,
 T1HA_API uint64_t t1ha2_final(t1ha_context_t *__restrict ctx,
                               uint64_t *__restrict extra_result /* optional */);
 
+T1HA_API uint64_t t1ha2_bin128(uint64_t lo, uint64_t hi);
+
 #endif /* T1HA2_DISABLED */
 
 /******************************************************************************
