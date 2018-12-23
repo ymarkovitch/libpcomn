@@ -415,6 +415,17 @@ struct is_trivially_swappable<std::pair<T1, T2>> :
          ct_and<is_trivially_swappable<T1>, is_trivially_swappable<T2>>
 {} ;
 
+template<typename T>
+struct is_memmovable : std::bool_constant<std::is_trivially_copyable<T>::value &&
+                                          std::is_trivially_destructible<T>::value>
+{} ;
+
+template<typename T>
+constexpr bool is_trivially_swappable_v = is_trivially_swappable<T>::value ;
+
+template<typename T>
+constexpr bool is_memmovable_v = is_memmovable<T>::value ;
+
 /*******************************************************************************
  Parameter type
 *******************************************************************************/
