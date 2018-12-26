@@ -370,6 +370,44 @@ inline size_t tuplehash(A1 &&a1, A2 &&a2, A3 &&a3, Args &&...args)
    return result ;
 }
 
+/*******************************************************************************
+ Bit operations on big binary types implementer.
+*******************************************************************************/
+/// @cond
+namespace detail {
+struct combine_bigbinary_bits {
+      template<typename T, typename F>
+      __forceinline
+      static constexpr T eval(const T &x, const T &y, const F &combine)
+      {
+         T result ;
+         const uint64_t * const xd = x.idata() ;
+         const uint64_t * const yd = y.idata() ;
+         uint64_t * const rd = result.idata() ;
+
+         for (size_t i = 0 ; i < sizeof(T)/sizeof(uint64_t) ; ++i)
+         {
+            rd[i] = combine(xd[i], yd[i]) ;
+         }
+         return result ;
+      }
+
+      template<typename T>
+      __forceinline
+      static constexpr T invert(const T &x)
+      {
+         T result ;
+         const uint64_t * const xd = x.idata() ;
+         uint64_t * const rd = result.idata() ;
+
+         for (size_t i = 0 ; i < sizeof(T)/sizeof(uint64_t) ; rd[i] = ~xd[i], ++i) ;
+
+         return result ;
+      }
+} ;
+}
+/// @endcond
+
 /***************************************************************************//**
  128-bit binary big-endian POD data, aligned to 64-bit boundary.
 *******************************************************************************/
@@ -412,9 +450,44 @@ struct binary128_t {
       constexpr uint64_t hi() const { return value_from_big_endian(_idata[0]) ; }
       constexpr uint64_t lo() const { return value_from_big_endian(_idata[1]) ; }
 
+      unsigned bitcount() const
+      {
+         return
+            bitop::bitcount(_idata[0]) +
+            bitop::bitcount(_idata[1]) ;
+      }
+
+      size_t hash() const { return tuplehash(_idata[0], _idata[1]) ; }
+
       _PCOMNEXP std::string to_string() const ;
       _PCOMNEXP char *to_strbuf(char *buf) const ;
 
+      /*********************************************************************//**
+       Bit operations (~,&,|,^).
+      *************************************************************************/
+      friend constexpr binary128_t operator&(const binary128_t &x, const binary128_t &y)
+      {
+         return detail::combine_bigbinary_bits::eval(x, y, std::bit_and<>()) ;
+      }
+
+      friend constexpr binary128_t operator|(const binary128_t &x, const binary128_t &y)
+      {
+         return detail::combine_bigbinary_bits::eval(x, y, std::bit_or<>()) ;
+      }
+
+      friend constexpr binary128_t operator^(const binary128_t &x, const binary128_t &y)
+      {
+         return detail::combine_bigbinary_bits::eval(x, y, std::bit_xor<>()) ;
+      }
+
+      friend constexpr binary128_t operator~(const binary128_t &x)
+      {
+         return detail::combine_bigbinary_bits::invert(x) ;
+      }
+
+      /*********************************************************************//**
+       Equality (==), ordering (<)
+      *************************************************************************/
       friend constexpr bool operator==(const binary128_t &l, const binary128_t &r)
       {
          return !((l._idata[0] ^ r._idata[0]) | (l._idata[1] ^ r._idata[1])) ;
@@ -424,8 +497,6 @@ struct binary128_t {
       {
          return l.hi() < r.hi() || l._idata[0] == r._idata[0] && l.lo() < r.lo() ;
       }
-
-      size_t hash() const { return tuplehash(_idata[0], _idata[1]) ; }
 
    protected:
       union {
@@ -438,6 +509,11 @@ struct binary128_t {
    protected:
       template<typename T>
       static constexpr T be(T value) { return value_to_big_endian(value) ; }
+
+      uint64_t *idata() { return _idata ; }
+      constexpr const uint64_t *idata() const { return _idata ; }
+
+      friend detail::combine_bigbinary_bits ;
 } ;
 
 PCOMN_STATIC_CHECK(sizeof(binary128_t) == 16) ;
@@ -522,8 +598,13 @@ struct sha1hash_t {
 
       static constexpr size_t size() { return sizeof _idata ; }
 
+      constexpr size_t hash() const { return ((uint64_t)_idata[3] << 32) | (uint64_t)_idata[4] ; }
+
       _PCOMNEXP std::string to_string() const ;
 
+      /*********************************************************************//**
+       Equality (==), ordering (<)
+      *************************************************************************/
       friend bool operator==(const sha1hash_t &l, const sha1hash_t &r)
       {
          return !memcmp(l._idata, r._idata, sizeof l._idata) ;
@@ -533,8 +614,6 @@ struct sha1hash_t {
       {
          return memcmp(l._idata, r._idata, sizeof l._idata) < 0 ;
       }
-
-      constexpr size_t hash() const { return ((uint64_t)_idata[3] << 32) | (uint64_t)_idata[4] ; }
 
    private:
       uint32_t _idata[5] ;
@@ -621,6 +700,32 @@ struct binary256_t {
          return buf ;
       }
 
+      /*********************************************************************//**
+       Bit operations (~,&,|,^).
+      *************************************************************************/
+      friend constexpr binary256_t operator&(const binary256_t &x, const binary256_t &y)
+      {
+         return detail::combine_bigbinary_bits::eval(x, y, std::bit_and<>()) ;
+      }
+
+      friend constexpr binary256_t operator|(const binary256_t &x, const binary256_t &y)
+      {
+         return detail::combine_bigbinary_bits::eval(x, y, std::bit_or<>()) ;
+      }
+
+      friend constexpr binary256_t operator^(const binary256_t &x, const binary256_t &y)
+      {
+         return detail::combine_bigbinary_bits::eval(x, y, std::bit_xor<>()) ;
+      }
+
+      friend constexpr binary256_t operator~(const binary256_t &x)
+      {
+         return detail::combine_bigbinary_bits::invert(x) ;
+      }
+
+      /*********************************************************************//**
+       Equality (==), ordering (<)
+      *************************************************************************/
       friend constexpr bool operator==(const binary256_t &x, const binary256_t &y)
       {
          return !(((x._idata[0] ^ y._idata[0]) | (x._idata[1] ^ y._idata[1])) |
