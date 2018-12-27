@@ -96,7 +96,7 @@
 
 #define P_APPL1(macro, arg, nargs, ...) P_PASS(P_APPL1_##nargs##_(macro, arg, __VA_ARGS__))
 
-#define P_FOR(count, macro, ...) P_FOR_##count##_(macro, __VA_ARGS__)
+#define P_FOR(count, macro, ...) P_FOR_##count##_(macro, ##__VA_ARGS__)
 
 #define P_TARGLIST(count, ...)     P_FOR(count, P_TARG_, __VA_ARGS__)
 
@@ -124,16 +124,16 @@
  Private macros
 *******************************************************************************/
 #define P_FOR_0_(macro, ...)
-#define P_FOR_1_(macro, ...) macro(1, __VA_ARGS__)
-#define P_FOR_2_(macro, ...) P_FOR_1_(macro, __VA_ARGS__), macro(2, __VA_ARGS__)
-#define P_FOR_3_(macro, ...) P_FOR_2_(macro, __VA_ARGS__), macro(3, __VA_ARGS__)
-#define P_FOR_4_(macro, ...) P_FOR_3_(macro, __VA_ARGS__), macro(4, __VA_ARGS__)
-#define P_FOR_5_(macro, ...) P_FOR_4_(macro, __VA_ARGS__), macro(5, __VA_ARGS__)
-#define P_FOR_6_(macro, ...) P_FOR_5_(macro, __VA_ARGS__), macro(6, __VA_ARGS__)
-#define P_FOR_7_(macro, ...) P_FOR_6_(macro, __VA_ARGS__), macro(7, __VA_ARGS__)
-#define P_FOR_8_(macro, ...) P_FOR_7_(macro, __VA_ARGS__), macro(8, __VA_ARGS__)
-#define P_FOR_9_(macro, ...) P_FOR_8_(macro, __VA_ARGS__), macro(9, __VA_ARGS__)
-#define P_FOR_10_(macro, ...) P_FOR_9_(macro, __VA_ARGS__), macro(10, __VA_ARGS__)
+#define P_FOR_1_(macro, ...) macro(1, ##__VA_ARGS__)
+#define P_FOR_2_(macro, ...) P_FOR_1_(macro, ##__VA_ARGS__), macro(2, ##__VA_ARGS__)
+#define P_FOR_3_(macro, ...) P_FOR_2_(macro, ##__VA_ARGS__), macro(3, ##__VA_ARGS__)
+#define P_FOR_4_(macro, ...) P_FOR_3_(macro, ##__VA_ARGS__), macro(4, ##__VA_ARGS__)
+#define P_FOR_5_(macro, ...) P_FOR_4_(macro, ##__VA_ARGS__), macro(5, ##__VA_ARGS__)
+#define P_FOR_6_(macro, ...) P_FOR_5_(macro, ##__VA_ARGS__), macro(6, ##__VA_ARGS__)
+#define P_FOR_7_(macro, ...) P_FOR_6_(macro, ##__VA_ARGS__), macro(7, ##__VA_ARGS__)
+#define P_FOR_8_(macro, ...) P_FOR_7_(macro, ##__VA_ARGS__), macro(8, ##__VA_ARGS__)
+#define P_FOR_9_(macro, ...) P_FOR_8_(macro, ##__VA_ARGS__), macro(9, ##__VA_ARGS__)
+#define P_FOR_10_(macro, ...) P_FOR_9_(macro, ##__VA_ARGS__), macro(10, ##__VA_ARGS__)
 
 #define P_TARG_(num, ...)        P_PASS_I(__VA_ARGS__) P##num
 
