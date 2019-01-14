@@ -221,6 +221,16 @@ void TernaryLogicTests::Test_TLogic_Logic()
    CPPUNIT_LOG_EQUAL(TUNKNOWN || true,    TTRUE) ;
 
    CPPUNIT_LOG(std::endl) ;
+   // Check the as_inverted
+   CPPUNIT_LOG_EQUAL(TTRUE.as_inverted(false),    TTRUE) ;
+   CPPUNIT_LOG_EQUAL(TFALSE.as_inverted(false),   TFALSE) ;
+   CPPUNIT_LOG_EQUAL(TUNKNOWN.as_inverted(false), TUNKNOWN) ;
+
+   CPPUNIT_LOG_EQUAL(TTRUE.as_inverted(true),     TFALSE) ;
+   CPPUNIT_LOG_EQUAL(TFALSE.as_inverted(true),    TTRUE) ;
+   CPPUNIT_LOG_EQUAL(TUNKNOWN.as_inverted(true),  TUNKNOWN) ;
+
+   CPPUNIT_LOG(std::endl) ;
    // Check the "consensus" operator
    CPPUNIT_LOG_EQUAL(tlogic_t(true, true),   TTRUE) ;
    CPPUNIT_LOG_EQUAL(tlogic_t(false, false), TFALSE) ;

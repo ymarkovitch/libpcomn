@@ -79,7 +79,7 @@ public:
     template<typename B, typename=decltype(b(std::add_pointer_t<std::decay_t<B>>()))>
     explicit constexpr tdef(B x, B y) : _data((uint8_t)x + (uint8_t)y) {}
 
-    /// Ternary consensus, i.e.  `(F,F)->F`, `(T,T)->T`, `(T,F)->N`, `(T,T)->N`,
+    /// Ternary consensus, i.e.  `(F,F)->F`, `(T,T)->T`, `(T,F)->N`, `(F,T)->N`,
     /// `(any,N)->N`, `(N,any)->N`.
     explicit constexpr tdef(tdef x, tdef y) : _data(build_tconsensus(x._data + y._data)) {}
 
@@ -121,6 +121,11 @@ public:
      Logical operations
     ***************************************************************************/
     constexpr tdef operator!() const { return {(State)(2 - _data)} ; }
+
+    constexpr tdef as_inverted(bool invert) const
+    {
+        return {(State)(((2 - _data) & (-invert)) | (_data & ~(-invert)))} ;
+    }
 
     friend constexpr inline tlogic_t operator&&(tlogic_t x, tlogic_t y)
     {
