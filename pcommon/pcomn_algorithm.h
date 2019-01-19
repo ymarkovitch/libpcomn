@@ -122,6 +122,32 @@ struct less_by : std::binary_function<T, T, bool> {
       X<T, V> _xtract ;
 } ;
 
+/***************************************************************************//**
+ Transparent functor to order-compare pairs of compatible types.
+
+ For use in place of std::less<void> with std::map<>/std::set<> where key_type
+ is std::pair<>.
+*******************************************************************************/
+struct less_pair {
+
+   private:
+      template<typename T1, typename T2>
+      static auto c(const T1 &v1, const T2 &v2) ->decltype(std::less<void>()(v1, v2))
+      {
+         return std::less<void>()(v1, v2) ;
+      }
+
+   public:
+      typedef bool is_transparent ;
+
+      template<typename T11, typename T12, typename T21, typename T22>
+      auto operator()(const std::pair<T11, T12> &p1, const std::pair<T21, T22> &p2) const
+
+         ->decltype(c(p1.first, p2.first) && c(p2.first, p1.first) && c(p1.second, p2.second))
+      {
+         return c(p1.first, p2.first) || !c(p2.first, p1.first) && c(p1.second, p2.second) ;
+      }
+} ;
 
 /******************************************************************************/
 /** Function object for performing comparison of keys by keyed values in a container
