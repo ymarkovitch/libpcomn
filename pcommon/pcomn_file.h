@@ -45,7 +45,7 @@ struct auto_unlink {
 
       void reset()
       {
-         if (!path())
+         if (path())
          {
             unlink(path()) ;
             release() ;
