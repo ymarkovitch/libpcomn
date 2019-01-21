@@ -191,6 +191,8 @@ class _PCOMNEXP PDiagBase {
                                  const char *fname, unsigned line) ;
 
       static const PTraceSuperGroup &null_supergroup ;
+
+      static void do_setlog(int fd, bool own) ;
 } ;
 
 /******************************************************************************/
