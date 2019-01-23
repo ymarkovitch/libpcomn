@@ -760,4 +760,18 @@ inline auto end(pcomn::tdef<P,G> &&x)->decltype(end(move(x).get())) { return end
 
 } // end of std namespace
 
+#ifndef PCOMN_STL_CXX17
+
+namespace std {
+
+template<typename  T>
+constexpr inline const T &clamp(const T &v, const T &lo, const T &hi)
+{
+   return pcomn::midval(lo, hi, v) ;
+}
+
+} // end of namespace std
+
+#endif /* PCOMN_STL_CXX17 */
+
 #endif /* __PCOMN_UTILS_H */

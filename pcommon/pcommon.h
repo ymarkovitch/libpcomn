@@ -417,7 +417,7 @@ xchange(T &dest, U &&src)
 }
 
 template<typename  T>
-inline const T& midval(const T& minVal, const T& maxVal, const T& val)
+constexpr inline const T& midval(const T& minVal, const T& maxVal, const T& val)
 {
    return std::min(maxVal, std::max(minVal, val)) ;
 }
