@@ -19,6 +19,6 @@ threadpool::threadpool() = default ;
 
 threadpool::~threadpool() { stop(true) ; }
 
-void threadpool::flush_task_queue() { _task_queue = {} ; }
+void threadpool::flush_task_queue() { _task_queue = decltype(_task_queue)() ; }
 
 } // end of namespace pcomn
