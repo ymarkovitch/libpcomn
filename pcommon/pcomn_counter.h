@@ -50,7 +50,7 @@ struct active_counter_base<std::atomic<T>> {
 
       count_type reset(count_type new_value = count_type())
       {
-         return _counter.exchange(std::memory_order_acq_rel) ;
+         return _counter.exchange(new_value, std::memory_order_acq_rel) ;
       }
 
       count_type inc_passive() { return _counter.fetch_add(1, std::memory_order_acq_rel) + 1 ; }
