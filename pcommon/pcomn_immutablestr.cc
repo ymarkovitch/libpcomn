@@ -28,7 +28,7 @@ void *refcounted_storage<C,A>::do_alloc(size_type &char_count) const
 {
     NOXCHECK(char_count) ;
     const size_type allocated_items = aligner_count(char_count) ;
-    void * const allocated = actual_allocator(*this).allocate(allocated_items, 0) ;
+    void * const allocated = actual_allocator().allocate(allocated_items, 0) ;
     char_count = allocated_count(allocated_items) ;
     return allocated ;
 }
@@ -52,8 +52,7 @@ refcounted_storage<C,A>::create_str_data(size_type &char_count) const
 
 template<typename C, class A>
 refcounted_storage<C,A>::refcounted_storage(const value_type *source, size_type len,
-                                            const allocator_type &a) :
-   allocator_type(a),
+                                            const allocator_type &) :
    _data(const_cast<value_type *>(data_type::zero.begin()))
 {
    if (!len) return ;
@@ -62,10 +61,8 @@ refcounted_storage<C,A>::refcounted_storage(const value_type *source, size_type 
    raw_copy(source, source + len, _data = create_str_data(capacity)->begin()) ;
 }
 
-
 template<typename C, class A>
-refcounted_storage<C,A>::refcounted_storage(size_type len, value_type c, const allocator_type &a) :
-   allocator_type(a),
+refcounted_storage<C,A>::refcounted_storage(size_type len, value_type c, const allocator_type &) :
    _data(const_cast<value_type *>(data_type::zero.begin()))
 {
    if (!len) return ;

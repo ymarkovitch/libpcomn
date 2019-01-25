@@ -22,13 +22,11 @@
 #include <pcomn_counter.h>
 #include <pcomn_function.h>
 #include <pcomn_algorithm.h>
-#include <pcomn_strmanip.h>
 #include <pcomn_except.h>
+#include <pcomn_string.h>
 
 #include <utility>
 #include <iterator>
-#include <algorithm>
-#include <string>
 #include <iostream>
 #include <limits>
 
@@ -43,6 +41,16 @@ template<typename C>
 class immutable_string ;
 template<typename C>
 class mutable_strbuf ;
+
+/*******************************************************************************
+ istring
+ iwstring
+*******************************************************************************/
+typedef immutable_string<char>    istring ;
+typedef immutable_string<wchar_t> iwstring ;
+
+typedef mutable_strbuf<char>     mstrbuf ;
+typedef mutable_strbuf<wchar_t>  mwstrbuf ;
 
 /***************************************************************************//**
  Reference-counted storage for both the immutable_string and mutable_strbuf
@@ -78,8 +86,7 @@ struct refcounted_strdata {
  *storage.end() is always allowed and produces value_type().
 *******************************************************************************/
 template<typename C, class Allocator = typename std::basic_string<C>::allocator_type>
-class refcounted_storage : public Allocator {
-      typedef Allocator                         ancestor ;
+class refcounted_storage {
       typedef refcounted_storage<C, Allocator>  self_type ;
 
       template<typename>
@@ -95,38 +102,30 @@ class refcounted_storage : public Allocator {
       typedef typename Allocator::const_pointer const_iterator ;
       typedef typename Allocator::size_type     size_type ;
 
-      refcounted_storage() noexcept : ancestor(),
+      refcounted_storage() noexcept :
          _data(const_cast<value_type *>(data_type::zero.begin()))
       {}
 
       refcounted_storage(const refcounted_storage &source) noexcept :
-         ancestor(source.get_allocator()),
          _data(source._data)
       {
          incref(str_data()) ;
       }
 
-      refcounted_storage(refcounted_storage &&source) noexcept :
-         refcounted_storage(source.get_allocator())
+      refcounted_storage(refcounted_storage &&source) noexcept
       {
          swap(source) ;
       }
 
-      refcounted_storage(const allocator_type &a) :
-         ancestor(a),
-         _data(const_cast<value_type *>(data_type::zero.begin()))
-      {}
-
-      refcounted_storage(allocator_type &&a) noexcept :
-         ancestor(std::move(a)),
+      refcounted_storage(const allocator_type &) :
          _data(const_cast<value_type *>(data_type::zero.begin()))
       {}
 
       refcounted_storage(const value_type *source, size_type len,
-                         const allocator_type &a = allocator_type()) ;
+                         const allocator_type & = allocator_type()) ;
 
       refcounted_storage(size_type len, value_type c,
-                         const allocator_type &a = allocator_type()) ;
+                         const allocator_type & = allocator_type()) ;
 
       ~refcounted_storage() noexcept { do_decref() ; }
 
@@ -161,8 +160,6 @@ class refcounted_storage : public Allocator {
       const value_type *c_str() const noexcept { return begin() ; }
       const value_type *data() const noexcept { return begin() ; }
 
-      allocator_type get_allocator() const { return *this; }
-
    protected:
       static size_type allocated_size(size_type char_count)
       {
@@ -183,8 +180,7 @@ class refcounted_storage : public Allocator {
       {
          // Zero stings are _never_ deleted, they are static
          NOXCHECK(d->_size) ;
-         actual_allocator(*this)
-            .deallocate(reinterpret_cast<aligner *>(d), aligner_count(d->_size)) ;
+         actual_allocator().deallocate(reinterpret_cast<aligner *>(d), aligner_count(d->_size)) ;
       }
 
       void clear()
@@ -290,6 +286,8 @@ class shared_string : protected refcounted_storage<C> {
             bad_pos(pos) ;
          return (*this)[pos] ;
       }
+
+      explicit operator std::basic_string<char_type>() const { return {begin(), end()} ; }
 
       size_type find(const shared_string &str, size_type pos = 0) const
       {
@@ -511,8 +509,7 @@ class shared_string : protected refcounted_storage<C> {
             return ;
          }
 
-         storage_type tmp (str.data() + pos, newsize,
-                           *static_cast<const typename storage_type::allocator_type *>(this)) ;
+         storage_type tmp (str.data() + pos, newsize) ;
          storage_type::swap(tmp) ;
       }
 
@@ -905,20 +902,13 @@ PCOMN_DEFINE_SWAP(immutable_string<C>, template<typename C>) ;
 PCOMN_DEFINE_SWAP(mutable_strbuf<C>,   template<typename C>) ;
 
 /*******************************************************************************
- istring
- iwstring
+ Decalre explicit instantiations.
 *******************************************************************************/
 extern template class immutable_string<char> ;
 extern template class immutable_string<wchar_t> ;
 
 extern template class mutable_strbuf<char> ;
 extern template class mutable_strbuf<wchar_t> ;
-
-typedef immutable_string<char>    istring ;
-typedef immutable_string<wchar_t> iwstring ;
-
-typedef mutable_strbuf<char>     mstrbuf ;
-typedef mutable_strbuf<wchar_t>  mwstrbuf ;
 
 /*******************************************************************************
  Stream output
@@ -1042,26 +1032,6 @@ inline immutable_string<C> to_upper(const immutable_string<C> &s)
 }
 
 } // end of namespace pcomn::str
-
-/*******************************************************************************
- reader & writer
-*******************************************************************************/
-namespace io {
-
-/// String writer for mutable_strbuf.
-template<typename C>
-struct writer<mutable_strbuf<C>> : iodevice<mutable_strbuf<C> &>  {
-
-      static ssize_t write(mutable_strbuf<C> &buffer, const C *from, const C *to)
-      {
-         const ssize_t sz = to - from ;
-         NOXCHECK(sz >= 0);
-         buffer.append(from, sz) ;
-         return sz ;
-      }
-} ;
-} // end of namespace pcomn::io
-
 } // end of namespace pcomn
 
 #endif /* __PCOMN_IMMUTABLESTR_H */

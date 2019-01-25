@@ -10,6 +10,7 @@
  CREATION DATE:   23 Nov 2006
 *******************************************************************************/
 #include <pcomn_immutablestr.h>
+#include <pcomn_strslice.h>
 #include <pcomn_unittest.h>
 #include <vector>
 #include <set>
@@ -24,6 +25,8 @@ class ImmutableStringTests : public CppUnit::TestFixture {
       typedef typename istring::value_type      char_type ;
       typedef typename istring::traits_type     traits_type ;
       typedef pcomn::mutable_strbuf<char_type>  strbuf ;
+
+      typedef basic_strslice<char_type>         string_slice ;
       typedef std::basic_string<char_type>      std_string ;
 
       static std_string random_string(size_t len)
@@ -39,9 +42,10 @@ class ImmutableStringTests : public CppUnit::TestFixture {
       void Test_Concatenation() ;
       void Test_Mutable_Strbuf() ;
 
+      void Test_To_Upper_Lower() ;
+
       void Test_Comparison() ;
       void Test_Find() ;
-      void Test_To_Upper_Lower() ;
 
       CPPUNIT_TEST_SUITE(ImmutableStringTests<ImmutableString>) ;
 
@@ -50,9 +54,10 @@ class ImmutableStringTests : public CppUnit::TestFixture {
       CPPUNIT_TEST(Test_Concatenation) ;
       CPPUNIT_TEST(Test_Mutable_Strbuf) ;
 
+      CPPUNIT_TEST(Test_To_Upper_Lower) ;
+
       CPPUNIT_TEST(Test_Comparison) ;
       CPPUNIT_TEST(Test_Find) ;
-      CPPUNIT_TEST(Test_To_Upper_Lower) ;
 
       CPPUNIT_TEST_SUITE_END() ;
 
@@ -73,6 +78,13 @@ struct literals {
       static const CharT upper_case[] ;
       static const CharT line[] ;
 
+      static const CharT foo[] ;
+      static const CharT Foo[] ;
+      static const CharT bar[] ;
+      static const CharT BAR[] ;
+      static const CharT s123[] ;
+      static const CharT s1567[] ;
+
       static const CharT fmt1[] ;
       static const CharT fmt2[] ;
       static const CharT fmt3[] ;
@@ -86,7 +98,16 @@ STRING_LITERAL(empty_string, "") ;
 STRING_LITERAL(some_string, "0123456789abcdefghijklmnopqrstuvwxyz") ;
 STRING_LITERAL(lower_case, "0123456789abcdefghijklmnopqrstuvwxyz") ;
 STRING_LITERAL(upper_case, "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ") ;
+
 STRING_LITERAL(line, "abc\n") ;
+
+STRING_LITERAL(foo,  "foo") ;
+STRING_LITERAL(Foo,  "Foo") ;
+STRING_LITERAL(bar,  "bar") ;
+STRING_LITERAL(BAR,  "BAR") ;
+STRING_LITERAL(s123, "123") ;
+STRING_LITERAL(s1567,"1567") ;
+
 STRING_LITERAL(fmt1, "abcd") ;
 STRING_LITERAL(fmt2, "0x%08x0x%08x0x%08x0x%08x") ;
 
@@ -309,16 +330,6 @@ void ImmutableStringTests<ImmutableString>::Test_Mutable_Strbuf()
 }
 
 template<class ImmutableString>
-void ImmutableStringTests<ImmutableString>::Test_Comparison()
-{
-}
-
-template<class ImmutableString>
-void ImmutableStringTests<ImmutableString>::Test_Find()
-{
-}
-
-template<class ImmutableString>
 void ImmutableStringTests<ImmutableString>::Test_To_Upper_Lower()
 {
    istring locase (literals<char_type>::lower_case) ;
@@ -336,6 +347,28 @@ void ImmutableStringTests<ImmutableString>::Test_To_Upper_Lower()
    CPPUNIT_LOG_ASSERT(locase.c_str() == lo_cstr) ;
    CPPUNIT_LOG_ASSERT(upcase.c_str() == up_cstr) ;
 }
+
+template<class ImmutableString>
+void ImmutableStringTests<ImmutableString>::Test_Comparison()
+{
+   typedef literals<char_type> lit ;
+   const istring foo = lit::foo ;
+   const std_string stdfoo = (std_string)foo ;
+   const string_slice sfoo = foo ;
+
+   CPPUNIT_LOG_EQUAL(std_string(foo), std_string(lit::foo)) ;
+   CPPUNIT_LOG_NOT_EQUAL(istring(lit::foo), istring(lit::Foo)) ;
+
+   CPPUNIT_LOG_EQ(sfoo, string_slice(lit::foo)) ;
+
+   CPPUNIT_LOG_ASSERT(istring(lit::foo) > string_slice(lit::foo)(0, 1)) ;
+}
+
+template<class ImmutableString>
+void ImmutableStringTests<ImmutableString>::Test_Find()
+{
+}
+
 
 int main(int argc, char *argv[])
 {
