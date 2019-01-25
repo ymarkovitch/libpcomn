@@ -20,11 +20,11 @@ using namespace pcomn ;
 template<class ImmutableString>
 class ImmutableStringTests : public CppUnit::TestFixture {
 
-      typedef ImmutableString                            istring ;
-      typedef typename istring::value_type               char_type ;
-      typedef typename istring::traits_type              traits_type ;
-      typedef pcomn::mutable_strbuf<char_type, traits_type>  strbuf ;
-      typedef std::basic_string<char_type, traits_type>  std_string ;
+      typedef ImmutableString                   istring ;
+      typedef typename istring::value_type      char_type ;
+      typedef typename istring::traits_type     traits_type ;
+      typedef pcomn::mutable_strbuf<char_type>  strbuf ;
+      typedef std::basic_string<char_type>      std_string ;
 
       static std_string random_string(size_t len)
       {
@@ -36,13 +36,12 @@ class ImmutableStringTests : public CppUnit::TestFixture {
 
       void Test_Constructors_Compilation() ;
       void Test_Constructors_Invariants() ;
-      void Test_Comparison() ;
-      void Test_Find() ;
       void Test_Concatenation() ;
       void Test_Mutable_Strbuf() ;
+
+      void Test_Comparison() ;
+      void Test_Find() ;
       void Test_To_Upper_Lower() ;
-      void Test_Format() ;
-      void Test_IO() ;
 
       CPPUNIT_TEST_SUITE(ImmutableStringTests<ImmutableString>) ;
 
@@ -50,6 +49,9 @@ class ImmutableStringTests : public CppUnit::TestFixture {
       CPPUNIT_TEST(Test_Constructors_Invariants) ;
       CPPUNIT_TEST(Test_Concatenation) ;
       CPPUNIT_TEST(Test_Mutable_Strbuf) ;
+
+      CPPUNIT_TEST(Test_Comparison) ;
+      CPPUNIT_TEST(Test_Find) ;
       CPPUNIT_TEST(Test_To_Upper_Lower) ;
 
       CPPUNIT_TEST_SUITE_END() ;
@@ -307,6 +309,16 @@ void ImmutableStringTests<ImmutableString>::Test_Mutable_Strbuf()
 }
 
 template<class ImmutableString>
+void ImmutableStringTests<ImmutableString>::Test_Comparison()
+{
+}
+
+template<class ImmutableString>
+void ImmutableStringTests<ImmutableString>::Test_Find()
+{
+}
+
+template<class ImmutableString>
 void ImmutableStringTests<ImmutableString>::Test_To_Upper_Lower()
 {
    istring locase (literals<char_type>::lower_case) ;
@@ -327,9 +339,10 @@ void ImmutableStringTests<ImmutableString>::Test_To_Upper_Lower()
 
 int main(int argc, char *argv[])
 {
-   pcomn::unit::TestRunner runner ;
-   runner.addTest(ImmutableStringTests<pcomn::immutable_string<char> >::suite()) ;
-   runner.addTest(ImmutableStringTests<pcomn::immutable_string<wchar_t> >::suite()) ;
-   return pcomn::unit::run_tests(runner, argc, argv, "unittest.diag.ini",
-                                 "Immutable string tests.") ;
+   return pcomn::unit::run_tests
+       <
+          ImmutableStringTests<pcomn::immutable_string<char>>,
+          ImmutableStringTests<pcomn::immutable_string<wchar_t>>
+       >
+       (argc, argv) ;
 }

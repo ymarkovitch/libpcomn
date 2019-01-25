@@ -37,11 +37,11 @@ namespace pcomn {
 /*******************************************************************************
  Forward declarations
 *******************************************************************************/
-template<typename C, class CharTraits>
+template<typename C>
 class shared_string ;
-template<typename C, class CharTraits>
+template<typename C>
 class immutable_string ;
-template<typename C, class CharTraits>
+template<typename C>
 class mutable_strbuf ;
 
 /***************************************************************************//**
@@ -82,7 +82,7 @@ class refcounted_storage : public Allocator {
       typedef Allocator                         ancestor ;
       typedef refcounted_storage<C, Allocator>  self_type ;
 
-      template<typename, class>
+      template<typename>
       friend class mutable_strbuf ;
 
    protected:
@@ -245,13 +245,13 @@ class refcounted_storage : public Allocator {
  Implements all constant methods of std::basic_string so is interface-compatible
  with it by read operations.
 *******************************************************************************/
-template<typename C, class CharTraits = std::char_traits<C>>
+template<typename C>
 class shared_string : protected refcounted_storage<C> {
    public:
       typedef refcounted_storage<C> storage_type ;
       typedef C                     value_type ;
       typedef C                     char_type ;
-      typedef CharTraits            traits_type ;
+      typedef std::char_traits<C>   traits_type ;
 
       typedef size_t            size_type ;
       typedef const char_type * pointer ;
@@ -262,7 +262,7 @@ class shared_string : protected refcounted_storage<C> {
       typedef std::reverse_iterator<iterator>         reverse_iterator ;
       typedef std::reverse_iterator<const_iterator>   const_reverse_iterator ;
 
-      static const size_type npos = static_cast<size_type>(-1) ;
+      static constexpr size_type npos = static_cast<size_type>(-1) ;
 
    public:
       using storage_type::begin ;
@@ -369,14 +369,14 @@ class shared_string : protected refcounted_storage<C> {
          return current - start ;
       }
 
+      size_type find_first_of(const value_type *s, size_type pos, size_type n) const ;
+      size_type find_last_of(const value_type* s, size_type pos, size_type n) const ;
+      size_type find_first_not_of(const value_type *s, size_type pos, size_type n) const ;
+      size_type find_last_not_of(const value_type* s, size_type pos, size_type n) const ;
+
       size_type find_first_of(const shared_string &str, size_type pos = 0) const
       {
          return find_first_of(str.data(), pos, str.size()) ;
-      }
-
-      size_type find_first_of(const value_type *s, size_type pos, size_type n) const
-      {
-         return __find_first<identity>(s, pos, n) ;
       }
 
       size_type find_first_of(const value_type *s, size_type pos = 0) const
@@ -389,17 +389,12 @@ class shared_string : protected refcounted_storage<C> {
          return find(c, pos) ;
       }
 
-      size_type find_last_of (const shared_string &str, size_type pos = npos) const
+      size_type find_last_of(const shared_string &str, size_type pos = npos) const
       {
          return find_last_of(str.data(), pos, str.length());
       }
 
-      size_type find_last_of(const value_type* s, size_type pos, size_type n) const
-      {
-         return __find_last<identity>(s, pos, n) ;
-      }
-
-      size_type find_last_of (const value_type* s, size_type pos = npos) const
+      size_type find_last_of(const value_type* s, size_type pos = npos) const
       {
          return find_last_of(s, pos, traits_type::length(s));
       }
@@ -412,11 +407,6 @@ class shared_string : protected refcounted_storage<C> {
       size_type find_first_not_of(const shared_string &str, size_type pos = 0) const
       {
          return find_first_not_of(str.data(), pos, str.size());
-      }
-
-      size_type find_first_not_of(const value_type *s, size_type pos, size_type n) const
-      {
-         return __find_first<std::logical_not<const char_type *>>(s, pos, n) ;
       }
 
       size_type find_first_not_of(const value_type* s, size_type pos = 0) const
@@ -432,11 +422,6 @@ class shared_string : protected refcounted_storage<C> {
       size_type find_last_not_of(const shared_string &str, size_type pos = npos) const
       {
          return find_last_not_of(str.data(), pos, str.length());
-      }
-
-      size_type find_last_not_of(const value_type* s, size_type pos, size_type n) const
-      {
-         return __find_last<std::logical_not<const char_type *>>(s, pos, n) ;
       }
 
       size_type find_last_not_of(const value_type* s, size_type pos = npos) const
@@ -538,73 +523,35 @@ class shared_string : protected refcounted_storage<C> {
 
    private:
       template<class Predicate>
-      size_type __find_first(const value_type *s, size_type pos, size_type n) const
-      {
-         Predicate predicate ;
-         if (pos > size() || !n)
-            return npos ;
-         const const_iterator start (begin()) ;
-         const const_iterator finish (end()) ;
-         for (const_iterator current (start + pos) ; current != finish ; ++current)
-            if (predicate(traits_type::find(s, n, *current)))
-               return current - start ;
-         return npos ;
-      }
+      size_type __find_first(const value_type *s, size_type pos, size_type n) const ;
 
       template<class Predicate>
-      size_type __find_last(const value_type *s, size_type pos, size_type n) const
-      {
-         Predicate predicate ;
-         const size_type sz = size() ;
-         const size_type startpos = std::min(pos, sz) ;
-         if (!startpos || !n)
-            return npos ;
-
-         const const_iterator finish (begin()) ;
-         const_iterator current (finish + (startpos - 1)) ;
-         while (!predicate(traits_type::find(s, n, *current)))
-         {
-            if (current == finish)
-               return npos ;
-            --current ;
-         }
-         return current - finish ;
-      }
+      size_type __find_last(const value_type *s, size_type pos, size_type n) const ;
 
       __noreturn void bad_pos(size_type pos) const ;
 
       void operator=(pcomn::Instantiate) ;
 } ;
 
-template<typename C, class CharTraits, class Storage>
-__noreturn void shared_string<C, CharTraits, Storage>::bad_pos(size_type pos) const
-{
-   char buf[96] ;
-   sprintf(buf, "Position %u is out of range for shared string of size %u.", pos, size()) ;
-   throw std::out_of_range(buf) ;
-}
-
 /*******************************************************************************
  mutable_strbuf_ref - proxy reference for mutable_strbuf copying.
 *******************************************************************************/
-template<typename C, class CharTraits>
+template<typename C>
 struct mutable_strbuf_ref {
-      mutable_strbuf_ref(mutable_strbuf<C, CharTraits, Storage> &rval) :
-         _ref(rval)
-		{}
+      mutable_strbuf_ref(mutable_strbuf<C> &rval) : _ref(rval) {}
 
-      mutable_strbuf<C, CharTraits, Storage> &_ref ;
+      mutable_strbuf<C> &_ref ;
 } ;
 
 /***************************************************************************//**
  The mutable string buffer with move-only (no copy) logic.
 *******************************************************************************/
-template<typename C, class CharTraits = std::char_traits<C>>
-class mutable_strbuf : public shared_string<C, CharTraits> {
-      typedef shared_string<C, CharTraits>   ancestor ;
-      typedef typename ancestor::data_type      data_type ;
+template<typename C>
+class mutable_strbuf : public shared_string<C> {
+      typedef shared_string<C>               ancestor ;
+      typedef typename ancestor::data_type   data_type ;
 
-      friend class immutable_string<C, CharTraits> ;
+      friend class immutable_string<C> ;
 
       PCOMN_NONASSIGNABLE(mutable_strbuf) ;
       mutable_strbuf(const mutable_strbuf &) ;
@@ -623,8 +570,7 @@ class mutable_strbuf : public shared_string<C, CharTraits> {
       typedef std::reverse_iterator<iterator>         reverse_iterator ;
       typedef std::reverse_iterator<const_iterator>   const_reverse_iterator ;
 
-      typedef mutable_strbuf<char_type, traits_type, storage_type>      class_type ;
-      typedef mutable_strbuf_ref<char_type, traits_type, storage_type>  ref_type ;
+      typedef mutable_strbuf_ref<char_type> ref_type ;
 
       using ancestor::npos ;
       using ancestor::data ;
@@ -633,25 +579,11 @@ class mutable_strbuf : public shared_string<C, CharTraits> {
       using ancestor::rbegin ;
       using ancestor::rend ;
 
-      mutable_strbuf() :
-         _capacity(0)
-      {}
+      mutable_strbuf() = default ;
+      mutable_strbuf(mutable_strbuf &src) { swap(src) ; }
+      mutable_strbuf(const ref_type &src) { swap(src._ref) ; }
 
-      mutable_strbuf(mutable_strbuf &src) :
-         ancestor(),
-         _capacity(0)
-      {
-         swap(src) ;
-      }
-
-      mutable_strbuf(const ref_type &src) :
-         ancestor(),
-         _capacity(0)
-      {
-         swap(src._ref) ;
-      }
-
-      template<typename S, enable_if_strchar_t<S, char_type, nullptr_t> = nullptr>
+      template<typename S, typename=enable_if_strchar_t<S, char_type>>
       mutable_strbuf(const S &s) :
          ancestor(str::cstr(s), str::len(s)),
          _capacity(allocated_capacity(ancestor::size()))
@@ -667,8 +599,8 @@ class mutable_strbuf : public shared_string<C, CharTraits> {
          _capacity(allocated_capacity(ancestor::size()))
       {}
 
-      template<typename C, size_type n>
-      mutable_strbuf(C (&s)[n], size_type from_pos, size_type length) :
+      template<size_type n>
+      mutable_strbuf(const char_type (&s)[n], size_type from_pos, size_type length) :
          ancestor(s + ensure_lt<std::out_of_range>(from_pos, n, "String position is out of range"),
                   length == npos
                   ? (std::find(s + std::min(n, from_pos), s + n, 0) - s) - from_pos
@@ -716,9 +648,9 @@ class mutable_strbuf : public shared_string<C, CharTraits> {
          return *this ;
       }
 
-      template<typename C>
+      template<typename Z>
       std::enable_if_t<std::is_same<C, value_type>::value, mutable_strbuf &>
-      append(const C *input, size_type n)
+      append(const Z *input, size_type n)
       {
          if (n)
             pcomn::raw_copy(input, input + n, expand(n)) ;
@@ -754,9 +686,8 @@ class mutable_strbuf : public shared_string<C, CharTraits> {
          return *this ;
       }
 
-      template<typename S>
-      enable_if_strchar_t<S, char_type, mutable_strbuf &>
-      operator+=(const S &rhs)
+      template<typename S, typename=enable_if_strchar_t<S, char_type>>
+      mutable_strbuf &operator+=(const S &rhs)
       {
          return append(str::cstr(rhs), str::len(rhs)) ;
       }
@@ -772,9 +703,8 @@ class mutable_strbuf : public shared_string<C, CharTraits> {
          return *this ;
       }
 
-      template<typename S>
-      std::enable_if_t<is_string_or_char<S, char_type>::value, mutable_strbuf>
-      operator+(const S &rhs)
+      template<typename S, typename=std::enable_if_t<is_string_or_char<S, char_type>::value>>
+      mutable_strbuf operator+(const S &rhs)
       {
          return ref_type(mutable_strbuf(*this) += rhs) ;
       }
@@ -787,8 +717,9 @@ class mutable_strbuf : public shared_string<C, CharTraits> {
       }
 
    private:
-      size_t _capacity ;
+      size_t _capacity = 0 ;
 
+   private:
       data_type &reserve(size_type requested_capacity)
       {
          NOXCHECK(this->storage_type::_data &&
@@ -821,10 +752,10 @@ class mutable_strbuf : public shared_string<C, CharTraits> {
  The immutable reference-counted string read-interface compatible
  with std::basic_string.
 *******************************************************************************/
-template<typename C, class CharTraits = std::char_traits<C>>
-class immutable_string : public shared_string<C, CharTraits> {
-      typedef shared_string<C, CharTraits>   ancestor ;
-      typedef mutable_strbuf<C, CharTraits>  strbuf ;
+template<typename C>
+class immutable_string : public shared_string<C> {
+      typedef shared_string<C>   ancestor ;
+      typedef mutable_strbuf<C>  strbuf ;
    public:
       typedef typename ancestor::storage_type   storage_type ;
       typedef typename ancestor::char_type      char_type ;
@@ -850,9 +781,7 @@ class immutable_string : public shared_string<C, CharTraits> {
          ancestor(str::cstr(s), str::len(s))
       {}
 
-      immutable_string(const immutable_string &str,
-                       size_type from_pos,
-                       size_type length) :
+      immutable_string(const immutable_string &str, size_type from_pos, size_type length) :
          ancestor(str, from_pos, length)
       {}
 
@@ -869,8 +798,8 @@ class immutable_string : public shared_string<C, CharTraits> {
          ancestor(s + from_pos, length == npos ? str::len(s + from_pos) : length)
       {}
 
-      template<typename C, size_type n>
-      immutable_string(C (&s)[n], size_type from_pos, size_type length) :
+      template<size_type n>
+      immutable_string(const char_type (&s)[n], size_type from_pos, size_type length) :
          ancestor(s + ensure_lt<std::out_of_range>(from_pos, n, "String position is out of range"),
                   length == npos
                   ? (std::find(s + std::min(n, from_pos), s + n, 0) - s) - from_pos
@@ -921,22 +850,10 @@ class immutable_string : public shared_string<C, CharTraits> {
          return *this ;
       }
 
-      template<typename S>
-      enable_if_strchar_t<S, char_type, immutable_string &>
-      operator=(const S &src)
+      template<typename S, typename=enable_if_strchar_t<S, char_type>>
+      immutable_string &operator=(const S &src)
       {
          immutable_string tmp (str::cstr(src), 0, str::len(src)) ;
-         swap(tmp) ;
-         return *this ;
-      }
-
-      // This specialization is necessary for MSVC++ 8.0 (VS2005) to prevent
-      // ICE when attempting to assign string literal to immutable string
-      // (e.g. foostring = "Hello, world!", where foostring is immutable_string<char>).
-      template<size_t n>
-      immutable_string &operator=(const char_type (&src)[n])
-      {
-         immutable_string tmp (src + 0, 0, npos) ;
          swap(tmp) ;
          return *this ;
       }
@@ -967,9 +884,8 @@ class immutable_string : public shared_string<C, CharTraits> {
          return *this = immutable_string(src, pos, n) ;
       }
 
-      template<typename R>
-      std::enable_if_t<is_string_or_char<R, char_type>::value, strbuf>
-      operator+(const R &rhs) const
+      template<typename R, typename=std::enable_if_t<is_string_or_char<R, char_type>::value>>
+      strbuf operator+(const R &rhs) const
       {
          return typename strbuf::ref_type(strbuf(*this) += rhs) ;
       }
@@ -985,13 +901,19 @@ class immutable_string : public shared_string<C, CharTraits> {
 /*******************************************************************************
  swap specializations for immutable strings and mutable stringbufs
 *******************************************************************************/
-PCOMN_DEFINE_SWAP(immutable_string<P_PASS(C, T, S)>, template<typename C, class T, class S>) ;
-PCOMN_DEFINE_SWAP(mutable_strbuf<P_PASS(C, T, S)>, template<typename C, class T, class S>) ;
+PCOMN_DEFINE_SWAP(immutable_string<C>, template<typename C>) ;
+PCOMN_DEFINE_SWAP(mutable_strbuf<C>,   template<typename C>) ;
 
 /*******************************************************************************
  istring
  iwstring
 *******************************************************************************/
+extern template class immutable_string<char> ;
+extern template class immutable_string<wchar_t> ;
+
+extern template class mutable_strbuf<char> ;
+extern template class mutable_strbuf<wchar_t> ;
+
 typedef immutable_string<char>    istring ;
 typedef immutable_string<wchar_t> iwstring ;
 
@@ -1001,16 +923,16 @@ typedef mutable_strbuf<wchar_t>  mwstrbuf ;
 /*******************************************************************************
  Stream output
 *******************************************************************************/
-template<typename C, class Traits, class Storage>
-inline std::basic_ostream<C, Traits> &
-operator<<(std::basic_ostream<C, Traits> &os, const shared_string<C, Traits, Storage> &str)
+template<typename C>
+inline std::basic_ostream<C> &
+operator<<(std::basic_ostream<C> &os, const shared_string<C> &str)
 {
    return os << str.c_str() ;
 }
 
-template<class StreamTraits, class Traits, class Storage>
+template<class StreamTraits>
 inline std::basic_ostream<char, StreamTraits> &
-operator<<(std::basic_ostream<char, StreamTraits> &os, const shared_string<wchar_t, Traits, Storage> &str)
+operator<<(std::basic_ostream<char, StreamTraits> &os, const shared_string<wchar_t> &str)
 {
    const wchar_t *begin = str.c_str() ;
    return narrow_output(os, begin, begin + str.size()) ;
@@ -1019,13 +941,11 @@ operator<<(std::basic_ostream<char, StreamTraits> &os, const shared_string<wchar
 /*******************************************************************************
  String traits for immutable strings
 *******************************************************************************/
-template<typename C, class Traits, class Storage>
-struct string_traits<shared_string<C, Traits, Storage>> :
-   public stdstring_traits<shared_string<C, Traits, Storage>, true> {} ;
+template<typename C>
+struct string_traits<shared_string<C>> : stdstring_traits<shared_string<C>, true> {} ;
 
-template<typename C, class Traits, class Storage>
-struct string_traits<immutable_string<C, Traits, Storage>> :
-   public stdstring_traits<immutable_string<C, Traits, Storage>, true> {} ;
+template<typename C>
+struct string_traits<immutable_string<C>> : stdstring_traits<immutable_string<C>, true> {} ;
 
 /*******************************************************************************
  shared_string comparison
@@ -1038,28 +958,27 @@ DEFINE_RELOP_##type(<=)               \
 DEFINE_RELOP_##type(>)                \
 DEFINE_RELOP_##type(>=)
 
-#define DEFINE_RELOP_STR_STR(op)              \
-template<class C, class Traits>                                   \
-inline bool operator op(const pcomn::shared_string<C, Traits> &lhs,  \
-                        const pcomn::shared_string<C, Traits> &rhs)  \
+#define DEFINE_RELOP_STR_STR(op)                       \
+template<typename C>                                   \
+inline bool operator op(const pcomn::shared_string<C> &x, const pcomn::shared_string<C> &y)  \
 {                                                                 \
-   return lhs.compare(rhs) op 0 ;                                 \
+   return x.compare(y) op 0 ;                                     \
 }
 
 #define DEFINE_RELOP_STR_CSTR(op)                                       \
-template<class Str, class C, class Traits>                  \
-inline typename pcomn::enable_if_other_string<pcomn::shared_string<C, Traits>, Str, \
-bool>::type operator op(const pcomn::shared_string<C, Traits> &lhs, const Str &rhs) \
+template<typename S, typename C>                                        \
+inline pcomn::enable_if_other_string_t<pcomn::shared_string<C>, S, bool> \
+operator op(const pcomn::shared_string<C> &x, const S &y)               \
 {                                                                       \
-   return lhs.compare(pcomn::str::cstr(rhs)) op 0 ;                     \
+   return x.compare(pcomn::str::cstr(y)) op 0 ;                         \
 }
 
 #define DEFINE_RELOP_CSTR_STR(op)                                       \
-template<class Str, class C, class Traits>                  \
-inline typename pcomn::enable_if_other_string<pcomn::shared_string<C, Traits>, Str, \
-bool>::type operator op(const Str &lhs, const pcomn::shared_string<C, Traits> &rhs) \
+template<typename S, typename C>                                        \
+inline pcomn::enable_if_other_string_t<pcomn::shared_string<C>, S, bool> \
+operator op(const S &x, const pcomn::shared_string<C> &y)               \
 {                                                                       \
-   return -rhs.compare(pcomn::str::cstr(lhs)) op 0 ;                    \
+   return -y.compare(pcomn::str::cstr(x)) op 0 ;                        \
 }
 
 STR_DEFINE_RELOPS(STR_STR)
@@ -1074,11 +993,11 @@ STR_DEFINE_RELOPS(CSTR_STR)
 /*******************************************************************************
  Concatenation
 *******************************************************************************/
-template<typename L, class C, class Traits>
-inline typename pcomn::enable_if_other_string<pcomn::shared_string<C, Traits>, L,
-L>::type operator+(const L &lhs, const pcomn::immutable_string<C, Traits> &rhs)
+template<typename L, class C>
+inline enable_if_other_string_t<pcomn::shared_string<C>, L, L>
+operator+(const L &lhs, const pcomn::immutable_string<C> &rhs)
 {
-   typedef pcomn::mutable_strbuf<C, Traits> mbuf_type ;
+   typedef mutable_strbuf<C> mbuf_type ;
    return typename mbuf_type::ref_type(mbuf_type(lhs) += rhs) ;
 }
 
@@ -1130,10 +1049,10 @@ inline immutable_string<C> to_upper(const immutable_string<C> &s)
 namespace io {
 
 /// String writer for mutable_strbuf.
-template<typename C, class Traits>
-struct writer<mutable_strbuf<C, Traits>> : iodevice<mutable_strbuf<C, Traits> &>  {
+template<typename C>
+struct writer<mutable_strbuf<C>> : iodevice<mutable_strbuf<C> &>  {
 
-      static ssize_t write(mutable_strbuf<C, Traits> &buffer, const C *from, const C *to)
+      static ssize_t write(mutable_strbuf<C> &buffer, const C *from, const C *to)
       {
          const ssize_t sz = to - from ;
          NOXCHECK(sz >= 0);

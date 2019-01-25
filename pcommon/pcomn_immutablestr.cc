@@ -16,8 +16,8 @@ namespace pcomn {
 /*******************************************************************************
  refcounted_strdata
 *******************************************************************************/
-template<typename Char>
-const refcounted_strdata<Char> refcounted_strdata<Char>::zero = {} ;
+template<typename C>
+const refcounted_strdata<C> refcounted_strdata<C>::zero = {} ;
 
 /*******************************************************************************
  refcounted_storage
@@ -34,7 +34,7 @@ void *refcounted_storage<C,A>::do_alloc(size_type &char_count) const
 }
 
 template<typename C, class A>
-inline refcounted_storage<C,A>::data_type *
+inline typename refcounted_storage<C,A>::data_type *
 refcounted_storage<C,A>::create_str_data(size_type &char_count) const
 {
     NOXCHECK(char_count) ;
@@ -79,8 +79,8 @@ refcounted_storage<C,A>::refcounted_storage(size_type len, value_type c, const a
 /*******************************************************************************
  mutable_strbuf
 *******************************************************************************/
-template<typename C, class Traits, class Storage>
-void mutable_strbuf<C, Traits, Storage>::recapacitate(size_type requested_capacity)
+template<typename C>
+void mutable_strbuf<C>::recapacitate(size_type requested_capacity)
 {
    NOXCHECK(requested_capacity > _capacity) ;
    // _capacity is always odd (by design, due to alignement + trailing 0)
@@ -103,69 +103,81 @@ void mutable_strbuf<C, Traits, Storage>::recapacitate(size_type requested_capaci
 /*******************************************************************************
  shared_string
 *******************************************************************************/
+template<typename C>
+constexpr typename shared_string<C>::size_type npos ;
 
-      size_type find_first_of(const value_type *s, size_type pos, size_type n) const
-      {
-         return __find_first<identity>(s, pos, n) ;
-      }
+template<typename C>
+template<class Predicate>
+inline typename shared_string<C>::size_type
+shared_string<C>::__find_first(const value_type *s, size_type pos, size_type n) const
+{
+    Predicate predicate ;
+    if (pos > size() || !n)
+        return npos ;
+    const const_iterator start (begin()) ;
+    const const_iterator finish (end()) ;
+    for (const_iterator current (start + pos) ; current != finish ; ++current)
+        if (predicate(traits_type::find(s, n, *current)))
+            return current - start ;
+    return npos ;
+}
 
-      size_type find_last_of(const value_type* s, size_type pos, size_type n) const
-      {
-         return __find_last<identity>(s, pos, n) ;
-      }
+template<typename C>
+template<class Predicate>
+inline typename shared_string<C>::size_type
+shared_string<C>::__find_last(const value_type *s, size_type pos, size_type n) const
+{
+    Predicate predicate ;
+    const size_type sz = size() ;
+    const size_type startpos = std::min(pos, sz) ;
+    if (!startpos || !n)
+        return npos ;
 
-      size_type find_first_not_of(const value_type *s, size_type pos, size_type n) const
-      {
-         return __find_first<std::logical_not<const char_type *>>(s, pos, n) ;
-      }
-
-      size_type find_last_not_of(const value_type* s, size_type pos, size_type n) const
-      {
-         return __find_last<std::logical_not<const char_type *>>(s, pos, n) ;
-      }
-
-      template<class Predicate>
-      size_type __find_first(const value_type *s, size_type pos, size_type n) const
-      {
-         Predicate predicate ;
-         if (pos > size() || !n)
+    const const_iterator finish (begin()) ;
+    const_iterator current (finish + (startpos - 1)) ;
+    while (!predicate(traits_type::find(s, n, *current)))
+    {
+        if (current == finish)
             return npos ;
-         const const_iterator start (begin()) ;
-         const const_iterator finish (end()) ;
-         for (const_iterator current (start + pos) ; current != finish ; ++current)
-            if (predicate(traits_type::find(s, n, *current)))
-               return current - start ;
-         return npos ;
-      }
+        --current ;
+    }
+    return current - finish ;
+}
 
-      template<class Predicate>
-      size_type __find_last(const value_type *s, size_type pos, size_type n) const
-      {
-         Predicate predicate ;
-         const size_type sz = size() ;
-         const size_type startpos = std::min(pos, sz) ;
-         if (!startpos || !n)
-            return npos ;
+template<typename C>
+typename shared_string<C>::size_type
+shared_string<C>::find_first_of(const value_type *s, size_type pos, size_type n) const
+{
+    return __find_first<identity>(s, pos, n) ;
+}
 
-         const const_iterator finish (begin()) ;
-         const_iterator current (finish + (startpos - 1)) ;
-         while (!predicate(traits_type::find(s, n, *current)))
-         {
-            if (current == finish)
-               return npos ;
-            --current ;
-         }
-         return current - finish ;
-      }
+template<typename C>
+typename shared_string<C>::size_type
+shared_string<C>::find_last_of(const value_type* s, size_type pos, size_type n) const
+{
+    return __find_last<identity>(s, pos, n) ;
+}
 
-template<typename Char, class CharTraits, class Storage>
-__noreturn void shared_string<Char, CharTraits, Storage>::bad_pos(size_type pos) const
+template<typename C>
+typename shared_string<C>::size_type
+shared_string<C>::find_first_not_of(const value_type *s, size_type pos, size_type n) const
+{
+    return __find_first<std::logical_not<const char_type *>>(s, pos, n) ;
+}
+
+template<typename C>
+typename shared_string<C>::size_type
+shared_string<C>::find_last_not_of(const value_type* s, size_type pos, size_type n) const
+{
+    return __find_last<std::logical_not<const char_type *>>(s, pos, n) ;
+}
+
+template<typename C>
+__noreturn __cold void shared_string<C>::bad_pos(size_type pos) const
 {
    char buf[96] ;
    sprintf(buf, "Position %u is out of range for shared string of size %u.", pos, size()) ;
    throw std::out_of_range(buf) ;
 }
-
-
 
 } // end of namespace pcomn

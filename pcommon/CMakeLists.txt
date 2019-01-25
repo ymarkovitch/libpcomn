@@ -136,6 +136,7 @@ add_library(pcommon STATIC
   pcomn_fileutils.cpp
   pcomn_fileread.cpp
 
+  pcomn_immutablestr.cpp
   pcomn_mmap.cpp
   pcomn_path.cpp
   pcomn_rawstream.cpp
