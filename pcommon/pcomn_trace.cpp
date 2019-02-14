@@ -582,8 +582,6 @@ static void output_fdlog_msg(void *data, LogLevel level, const char *fmt, ...)
 /*******************************************************************************
  PDiagBase: log handling and trace output
 *******************************************************************************/
-#define UNLOCK_RETURN   do { ctx::UNLOCK() ; return ; } while(false)
-
 void PDiagBase::setlog(int fd)
 {
    setlog(fd, fd != STDERR_FILENO && fd != STDOUT_FILENO) ;
@@ -593,13 +591,19 @@ void PDiagBase::setlog(int fd, bool owned)
 {
    ctx::LOCK() ;
 
+   *ctx::log_name = 0 ;
+   do_setlog(fd, owned) ;
+
+   ctx::UNLOCK() ;
+}
+
+void PDiagBase::do_setlog(int fd, bool owned)
+{
    if (fd == ctx::log_fd)
    {
       ctx::log_owned = owned ;
-      UNLOCK_RETURN ;
+      return ;
    }
-
-   *ctx::log_name = 0 ;
 
    const int  prev_fd = ctx::log_fd ;
    const bool prev_owned = ctx::log_owned ;
@@ -608,16 +612,10 @@ void PDiagBase::setlog(int fd, bool owned)
    ctx::log_owned = false ;
 
    if (prev_fd >= 0 && prev_owned)
-   {
-      if (fd < 0)
-         ctx::UNLOCK() ;
-
       ::close(prev_fd) ;
-      if (fd < 0)
-         return ;
-   }
-   else if (fd < 0)
-      UNLOCK_RETURN ;
+
+   if (fd < 0)
+      return ;
 
    if (check_diag_fd(fd))
    {
@@ -629,8 +627,6 @@ void PDiagBase::setlog(int fd, bool owned)
       else if (ctx::log_fd == STDOUT_FILENO)
          strcpy(ctx::log_name, "stdout") ;
    }
-
-   UNLOCK_RETURN ;
 }
 
 const char *PDiagBase::logname()
@@ -643,14 +639,12 @@ void PDiagBase::setlog(const char *logname)
    ctx::LOCK() ;
 
    if (!logname || !*logname)
-      setlog(-1) ;
+      do_setlog(-1, false) ;
 
    else if (!stricmp(logname, "stdout"))
-      setlog(STDOUT_FILENO) ;
-
+      do_setlog(STDOUT_FILENO, false) ;
    else if (!stricmp(logname, "stderr") || !stricmp(logname, "stdlog"))
-      setlog(STDERR_FILENO) ;
-
+      do_setlog(STDERR_FILENO, false) ;
    else
    {
       const int fd = open(logname,
@@ -662,7 +656,7 @@ void PDiagBase::setlog(const char *logname)
       {
          strncpy(ctx::log_name, logname, sizeof ctx::log_name - 1) ;
          ctx::log_name[sizeof ctx::log_name - 1] = 0 ;
-         setlog(fd) ;
+         do_setlog(fd, true) ;
       }
    }
 
