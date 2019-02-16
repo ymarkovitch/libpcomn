@@ -441,6 +441,13 @@ inline bool eq(const T1 &left, const T2 &right)
 }
 
 template<typename T>
+inline unipair<ptrdiff_t> offsets(const void *base, const T &buffer)
+{
+   const ptrdiff_t baseoffs = pdiff(buf::cdata(buffer), base) ;
+   return {baseoffs, baseoffs + buf::size(buffer)} ;
+}
+
+template<typename T>
 constexpr inline cmemvec_t cmemvec(const T &buffer)
 {
    return cmemvec_t(::pcomn::buf::cdata(buffer), ::pcomn::buf::size(buffer)) ;
