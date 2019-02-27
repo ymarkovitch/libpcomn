@@ -754,6 +754,28 @@ struct binary256_t {
 PCOMN_DEFINE_RELOP_FUNCTIONS(, binary256_t) ;
 
 /***************************************************************************//**
+ SHA256 hash
+*******************************************************************************/
+struct sha256hash_t : binary256_t {
+
+      constexpr sha256hash_t() = default ;
+      explicit constexpr sha256hash_t(const binary256_t &src) : binary256_t(src) {}
+
+      /// Create value from a hex string representation.
+      /// @note @a hexstr need not be null-terminated, the constructor will scan at most
+      /// 64 characters, or until '\0' encountered, whatever comes first.
+      explicit sha256hash_t(const char *hexstr)
+      {
+         if (!hextob(_idata, sizeof _idata, hexstr))
+            *this = {} ;
+      }
+
+      _PCOMNEXP std::string to_string() const ;
+} ;
+
+PCOMN_STATIC_CHECK(sizeof(sha256hash_t) == 32) ;
+
+/***************************************************************************//**
  Backward compatibility typedefs
 *******************************************************************************/
 /**{@*/
@@ -893,6 +915,67 @@ inline sha1hash_t sha1hash_file(int fd, RaiseError raise_error = DONT_RAISE_ERRO
 inline sha1hash_t sha1hash_file(FILE *file, size_t *size = NULL)
 {
    SHA1Hash crypthasher ;
+   crypthasher.append_file(file) ;
+   if (size)
+      *size = crypthasher.size() ;
+   return crypthasher.value() ;
+}
+
+/******************************************************************************/
+/** SHA256 hash accumulator: calculates SHA256 incrementally.
+*******************************************************************************/
+class _PCOMNEXP SHA256Hash {
+   public:
+      SHA256Hash() { memset(&_state, 0, sizeof _state) ; }
+
+      sha256hash_t value() const ;
+      operator sha256hash_t() const { return value() ; }
+
+      /// Data size appended so far
+      size_t size() const { return _state._size ; }
+
+      SHA256Hash &append_data(const void *buf, size_t size) ;
+      SHA256Hash &append_file(const char *filename) ;
+      SHA256Hash &append_file(FILE *file) ;
+
+   private:
+      typedef detail::crypthash_state<28> state ;
+      state _state ;
+} ;
+
+/// Create zero SHA256.
+inline sha256hash_t sha256hash() { return sha256hash_t() ; }
+
+/// Compute SHA256 for a buffer.
+///
+/// @note There are convenient overloading of this function for any object that provides
+/// pcomn::buf::cdata() and pcomn::buf::size() and strslice.
+///
+_PCOMNEXP sha256hash_t sha256hash(const void *buf, size_t size) ;
+/// Compute SHA256 for a file specified by a filename.
+/// @param filename     The name of file to sha256.
+/// @param raise_error  Whether to throw pcomn::system_error exception on I/O error
+/// (e.g., @a filename does not exist), if DONT_RAISE_ERROR then return zero sha256.
+/// @throw std::invalid_argument if @a filename is NULL.
+_PCOMNEXP sha256hash_t sha256hash_file(const char *filename, size_t *size, RaiseError raise_error = DONT_RAISE_ERROR) ;
+/// @overload
+_PCOMNEXP sha256hash_t sha256hash_file(int fd, size_t *size, RaiseError raise_error = DONT_RAISE_ERROR) ;
+/// @overload
+inline sha256hash_t sha256hash_file(const char *filename, RaiseError raise_error = DONT_RAISE_ERROR)
+{
+   return sha256hash_file(filename, NULL, raise_error) ;
+}
+/// @overload
+inline sha256hash_t sha256hash_file(int fd, RaiseError raise_error = DONT_RAISE_ERROR)
+{
+   return sha256hash_file(fd, NULL, raise_error) ;
+}
+
+/// Compute SHA256 for a file opened for reading.
+/// @note Doesn't rewind file before starting calculation.
+inline sha256hash_t sha256hash_file(FILE *file, size_t *size = NULL)
+{
+   SHA256Hash crypthasher ;
    crypthasher.append_file(file) ;
    if (size)
       *size = crypthasher.size() ;
@@ -1070,6 +1153,7 @@ inline size_t hash_sequence(std::initializer_list<T> s) { return hash_sequence(s
 std::ostream &operator<<(std::ostream &, const binary128_t &) ;
 std::ostream &operator<<(std::ostream &, const sha1hash_t &) ;
 std::ostream &operator<<(std::ostream &, const binary256_t &) ;
+std::ostream &operator<<(std::ostream &, const sha256hash_t &) ;
 
 } // end of namespace pcomn
 
@@ -1081,6 +1165,7 @@ template<> struct hash<pcomn::binary128_t>: pcomn::hash_fn_member<pcomn::binary1
 template<> struct hash<pcomn::md5hash_t>  : pcomn::hash_fn_member<pcomn::md5hash_t> {} ;
 template<> struct hash<pcomn::sha1hash_t> : pcomn::hash_fn_member<pcomn::sha1hash_t> {} ;
 template<> struct hash<pcomn::t1ha2hash_t>: pcomn::hash_fn_member<pcomn::t1ha2hash_t> {} ;
+template<> struct hash<pcomn::sha256hash_t> : pcomn::hash_fn_member<pcomn::sha256hash_t> {} ;
 }
 
 #endif /* __cplusplus */
