@@ -202,29 +202,32 @@ sha1hash_t sha1hash_file(int fd, size_t *size, RaiseError raise_error)
 /*******************************************************************************
  binary256_t
 *******************************************************************************/
-//std::string binary256_t::to_string() const { return b2a_hex(data(), size()) ; }
+std::string binary256_t::to_string() const
+{
+   char buf[binary256_t::slen() + 1] ;
+   return to_strbuf(buf) ;
+}
 
 /*******************************************************************************
  sha256hash_t
 *******************************************************************************/
-std::string sha256hash_t::to_string() const { return b2a_hex(data(), size()) ; }
 
 sha256hash_t sha256hash(const void *buf, size_t size)
 {
    sha256hash_t result ;
-   return calc_hash_mem(&SHA256, buf, size, result) ;
+   return calc_hash_mem(&SHA256, buf, size, result).hton_inplace() ;
 }
 
 sha256hash_t sha256hash_file(const char *filename, size_t *size, RaiseError raise_error)
 {
    sha256hash_t result ;
-   return calc_hash_file(&SHA256, filename, size, raise_error, result) ;
+   return calc_hash_file(&SHA256, filename, size, raise_error, result).hton_inplace() ;
 }
 
 sha256hash_t sha256hash_file(int fd, size_t *size, RaiseError raise_error)
 {
    sha256hash_t result ;
-   return calc_hash_file(&SHA256, fd, size, raise_error, result) ;
+   return calc_hash_file(&SHA256, fd, size, raise_error, result).hton_inplace() ;
 }
 
 /*******************************************************************************
@@ -280,7 +283,7 @@ SHA1Hash &SHA1Hash::append_file(const char *filename)
 *******************************************************************************/
 typedef HashCalc<sha256hash_t, SHA256_CTX, &SHA256_Init, &SHA256_Update, &SHA256_Final> sha256calc ;
 
-sha256hash_t SHA256Hash::value() const { return sha256calc::value(_state) ; }
+sha256hash_t SHA256Hash::value() const { return sha256calc::value(_state).hton_inplace() ; }
 
 SHA256Hash &SHA256Hash::append_data(const void *buf, size_t size)
 {
@@ -317,11 +320,6 @@ std::ostream &operator<<(std::ostream &os, const binary256_t &v)
 {
    char buf[binary256_t::slen() + 1] ;
    return os.write(v.to_strbuf(buf), binary256_t::slen()) ;
-}
-
-std::ostream &operator<<(std::ostream &os, const sha256hash_t &v)
-{
-   return os << v.to_string() ;
 }
 
 } // namespace pcomn

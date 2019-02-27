@@ -654,16 +654,7 @@ struct binary256_t {
          if (!hextob(_idata, sizeof _idata, hexstr))
             *this = {} ;
          else
-         {
-            const uint64_t q0 = be(_idata[3]) ;
-            const uint64_t q1 = be(_idata[2]) ;
-            const uint64_t q2 = be(_idata[1]) ;
-            const uint64_t q3 = be(_idata[0]) ;
-            _idata[0] = q0 ;
-            _idata[1] = q1 ;
-            _idata[2] = q2 ;
-            _idata[3] = q3 ;
-         }
+            flip_endianness() ;
       }
 
       /// Check helper
@@ -691,6 +682,7 @@ struct binary256_t {
 
       size_t hash() const { return tuplehash(_idata[0], _idata[1], _idata[3], _idata[4]) ; }
 
+      _PCOMNEXP std::string to_string() const ;
       char *to_strbuf(char *buf) const
       {
          PCOMN_STATIC_CHECK(slen() >= 2*binary128_t::slen()) ;
@@ -698,6 +690,19 @@ struct binary256_t {
          binary128_t(*(idata() + 1), *(idata() + 0)).to_strbuf(buf + binary128_t::slen()) ;
 
          return buf ;
+      }
+
+      binary256_t& flip_endianness()
+      {
+         const uint64_t q0 = be(_idata[3]) ;
+         const uint64_t q1 = be(_idata[2]) ;
+         const uint64_t q2 = be(_idata[1]) ;
+         const uint64_t q3 = be(_idata[0]) ;
+         _idata[0] = q0 ;
+         _idata[1] = q1 ;
+         _idata[2] = q2 ;
+         _idata[3] = q3 ;
+         return *this ;
       }
 
       /*********************************************************************//**
@@ -758,19 +763,17 @@ PCOMN_DEFINE_RELOP_FUNCTIONS(, binary256_t) ;
 *******************************************************************************/
 struct sha256hash_t : binary256_t {
 
-      constexpr sha256hash_t() = default ;
+      using binary256_t::binary256_t ;
+
       explicit constexpr sha256hash_t(const binary256_t &src) : binary256_t(src) {}
 
-      /// Create value from a hex string representation.
-      /// @note @a hexstr need not be null-terminated, the constructor will scan at most
-      /// 64 characters, or until '\0' encountered, whatever comes first.
-      explicit sha256hash_t(const char *hexstr)
-      {
-         if (!hextob(_idata, sizeof _idata, hexstr))
-            *this = {} ;
-      }
+      sha256hash_t hton() const { return sha256hash_t(*this).hton_inplace() ; }
 
-      _PCOMNEXP std::string to_string() const ;
+      sha256hash_t& hton_inplace()
+      {
+         binary256_t::flip_endianness() ;
+         return *this ;
+      }
 } ;
 
 PCOMN_STATIC_CHECK(sizeof(sha256hash_t) == 32) ;
@@ -791,7 +794,7 @@ namespace detail {
 template<size_t n>
 struct crypthash_state {
       size_t   _size ;
-      uint64_t _statebuf[n] ;
+      uint32_t _statebuf[n] ;
 
       bool is_init() const { return *_statebuf || _size ; }
 } ;
@@ -1153,7 +1156,6 @@ inline size_t hash_sequence(std::initializer_list<T> s) { return hash_sequence(s
 std::ostream &operator<<(std::ostream &, const binary128_t &) ;
 std::ostream &operator<<(std::ostream &, const sha1hash_t &) ;
 std::ostream &operator<<(std::ostream &, const binary256_t &) ;
-std::ostream &operator<<(std::ostream &, const sha256hash_t &) ;
 
 } // end of namespace pcomn
 

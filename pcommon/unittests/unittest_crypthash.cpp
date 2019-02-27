@@ -276,23 +276,17 @@ void CryptHashFixture::Test_SHA256Hash()
    CPPUNIT_LOG_EQUAL(sha256hash().to_string(), std::string("0000000000000000000000000000000000000000000000000000000000000000")) ;
    CPPUNIT_LOG_EQUAL(sha256hash(), sha256hash_t("0000000000000000000000000000000000000000000000000000000000000000")) ;
 
-   CPPUNIT_LOG("sha256hash_t vs binary256_t" << std::endl
-               << "\tsha256('', 0)=" << sha256hash("", 0) << std::endl
-               << "\tsha256hash_t(e3bc..)=" << sha256hash_t("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855") << std::endl
-               << "\tbinary256_t(e3bc..)=" << binary256_t("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855") << std::endl
-               << "\tsha256hash_t(binary256_t(e3bc..))="
-                   << sha256hash_t(binary256_t("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")) << std::endl) ;
-   CPPUNIT_LOG_NOT_EQUAL(sha256hash_t("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"),
-                         sha256hash_t(binary256_t("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"))) ;
+   CPPUNIT_LOG_EQUAL(sha256hash_t("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"),
+                     sha256hash_t(binary256_t("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"))) ;
    // SHA256 of empty string
    CPPUNIT_LOG_EQUAL(sha256hash_file(f0.c_str()).to_string(), std::string("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")) ;
    CPPUNIT_LOG_EQUAL(sha256hash_file(f0.c_str()), sha256hash_t("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")) ;
    CPPUNIT_LOG_EQUAL(sha256hash("", 0), sha256hash_t("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")) ;
    CPPUNIT_LOG_EQUAL(sha256hash_t("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"),
-                     sha256hash_t(binary256_t{be(0xe3b0c44298fc1c14ULL),
-                                              be(0x9afbf4c8996fb924ULL),
-                                              be(0x27ae41e4649b934cULL),
-                                              be(0xa495991b7852b855ULL)})) ;
+                     sha256hash_t(binary256_t{0xa495991b7852b855ULL,
+                                              0x27ae41e4649b934cULL,
+                                              0x9afbf4c8996fb924ULL,
+                                              0xe3b0c44298fc1c14ULL})) ;
    CPPUNIT_LOG_NOT_EQUAL(sha256hash_file(f0.c_str()), sha256hash_t()) ;
    CPPUNIT_LOG_NOT_EQUAL(sha256hash_file(f0.c_str()), sha256hash_t("f3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")) ;
 
