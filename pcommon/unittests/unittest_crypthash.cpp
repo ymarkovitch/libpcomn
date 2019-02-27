@@ -172,6 +172,86 @@ void CryptHashFixture::Test_SHA1Hash()
 {
    CPPUNIT_LOG(std::endl) ;
 
+   CPPUNIT_LOG_IS_FALSE(sha1hash_t()) ;
+   CPPUNIT_LOG_IS_FALSE(sha1hash()) ;
+   CPPUNIT_LOG_EQUAL(sha1hash(), sha1hash_t()) ;
+
+   CPPUNIT_LOG_EQUAL(sha1hash().to_string(), std::string("0000000000000000000000000000000000000000")) ;
+   CPPUNIT_LOG_EQUAL(sha1hash(), sha1hash_t("0000000000000000000000000000000000000000")) ;
+
+   // SHA1 of empty string
+   CPPUNIT_LOG_EQUAL(sha1hash_file(f0.c_str()).to_string(), std::string("da39a3ee5e6b4b0d3255bfef95601890afd80709")) ;
+   CPPUNIT_LOG_EQUAL(sha1hash_file(f0.c_str()), sha1hash_t("da39a3ee5e6b4b0d3255bfef95601890afd80709")) ;
+   CPPUNIT_LOG_EQUAL(sha1hash("", 0), sha1hash_t("da39a3ee5e6b4b0d3255bfef95601890afd80709")) ;
+
+   CPPUNIT_LOG_NOT_EQUAL(sha1hash_file(f0.c_str()), sha1hash_t()) ;
+   CPPUNIT_LOG_NOT_EQUAL(sha1hash_file(f0.c_str()), sha1hash_t("Fa39a3ee5e6b4b0d3255bfef95601890afd80709")) ;
+
+   CPPUNIT_LOG_EQUAL(sha1hash("", 0).to_string(), std::string("da39a3ee5e6b4b0d3255bfef95601890afd80709")) ;
+   CPPUNIT_LOG_EXCEPTION(sha1hash(NULL, 1), std::invalid_argument) ;
+   CPPUNIT_LOG_EQUAL(sha1hash(NULL, 0).to_string(), std::string("da39a3ee5e6b4b0d3255bfef95601890afd80709")) ;
+
+   CPPUNIT_LOG_EQUAL(sha1hash_file(f10.c_str()), sha1hash_t("00e2a2560e228d75e5eee5b59ff6459bfe2eb6d2")) ;
+   CPPUNIT_LOG_EQUAL(sha1hash_file(f20.c_str()), sha1hash_t("ed703f7e4b79cae2ad24203a318bdea50ac59b1c")) ;
+   CPPUNIT_LOG_EQUAL(sha1hash_file(f30.c_str()), sha1hash_t("0ee2a7d9fcddf8d5d4b215c90d776b12a8bea3ec")) ;
+   CPPUNIT_LOG_EQUAL(sha1hash_file(f3.c_str()), sha1hash_t("1221df24908920e6c785fc6f3ecc279df4b68811")) ;
+   CPPUNIT_LOG_EQUAL(sha1hash_file(f11.c_str()), sha1hash_t("ba4103c0b87c94cfc6dc3897ede2b5253d7da25a")) ;
+   CPPUNIT_LOG_EQUAL(sha1hash_file(f16.c_str()), sha1hash_t("85d8f4d847f3f79bd5d36f5b7fa327afc43be9e6")) ;
+   CPPUNIT_LOG_EQUAL(sha1hash_file(f8192.c_str()), sha1hash_t("1aa501b8ba9a38ff309a3b506b05021244482431")) ;
+   CPPUNIT_LOG_EQUAL(sha1hash_file(f20000.c_str()), sha1hash_t("592686abc75e68e4121cdbb416f302a5636adc58")) ;
+
+   CPPUNIT_LOG_EQUAL(sha1hash_file(fd_safehandle(open(f10.c_str(), O_RDONLY))),
+                     sha1hash_t("00e2a2560e228d75e5eee5b59ff6459bfe2eb6d2")) ;
+   CPPUNIT_LOG_EQUAL(sha1hash_file(fd_safehandle(open(f20.c_str(), O_RDONLY))),
+                     sha1hash_t("ed703f7e4b79cae2ad24203a318bdea50ac59b1c")) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   SHA1Hash h ;
+   CPPUNIT_LOG_EQUAL(h.size(), (size_t)0) ;
+   CPPUNIT_LOG_IS_FALSE(h.value()) ;
+   CPPUNIT_LOG_EQUAL(h.value(), sha1hash()) ;
+   CPPUNIT_LOG_EXCEPTION(h.append_data(NULL, 1), std::invalid_argument) ;
+   CPPUNIT_LOG_IS_FALSE(h.value()) ;
+   CPPUNIT_LOG_EQUAL(h.value(), sha1hash()) ;
+
+   CPPUNIT_LOG_EQUAL(h.append_data("", 0).size(), (size_t)0) ;
+   CPPUNIT_LOG_ASSERT(h.value()) ;
+   CPPUNIT_LOG_EQUAL(h.value(), sha1hash_t("da39a3ee5e6b4b0d3255bfef95601890afd80709")) ;
+   CPPUNIT_LOG_EQUAL(h.append_file(f10.c_str()).size(), (size_t)80) ;
+   CPPUNIT_LOG_EQUAL(h.value(), sha1hash_t("00e2a2560e228d75e5eee5b59ff6459bfe2eb6d2")) ;
+   CPPUNIT_LOG_EQUAL(h.append_file(f20.c_str()).size(), (size_t)240) ;
+   CPPUNIT_LOG_EQUAL(h.value(), sha1hash_t("0ee2a7d9fcddf8d5d4b215c90d776b12a8bea3ec")) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_RUN(h = SHA1Hash()) ;
+   CPPUNIT_LOG_IS_FALSE(h.value()) ;
+   CPPUNIT_LOG_EQUAL(h.size(), (size_t)0) ;
+   CPPUNIT_LOG_EXCEPTION(h.append_file((FILE*)NULL), std::invalid_argument) ;
+
+   CPPUNIT_LOG_EQUAL(h.append_file(FILE_safehandle(fopen(f3.c_str(), "r"))).size(), (size_t)24) ;
+   CPPUNIT_LOG_EQUAL(h.value(), sha1hash_t("1221df24908920e6c785fc6f3ecc279df4b68811")) ;
+   CPPUNIT_LOG_EQUAL(h.append_file(FILE_safehandle(fopen(f11.c_str(), "r"))).size(), (size_t)112) ;
+   CPPUNIT_LOG_EQUAL(h.append_file(FILE_safehandle(fopen(f16.c_str(), "r"))).size(), (size_t)240) ;
+   CPPUNIT_LOG_EQUAL(h.value(), sha1hash_t("0ee2a7d9fcddf8d5d4b215c90d776b12a8bea3ec")) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   size_t s = 0 ;
+   CPPUNIT_LOG_EQUAL(sha1hash_file(FILE_safehandle(fopen(f10.c_str(), "r")), &s),
+                     sha1hash_t("00e2a2560e228d75e5eee5b59ff6459bfe2eb6d2")) ;
+   CPPUNIT_LOG_EQUAL(s, (size_t)80) ;
+   s = 0 ;
+   CPPUNIT_LOG_EQUAL(sha1hash_file(f10.c_str(), &s),
+                     sha1hash_t("00e2a2560e228d75e5eee5b59ff6459bfe2eb6d2")) ;
+   CPPUNIT_LOG_EQUAL(s, (size_t)80) ;
+
+
+   // Check hashtalble hasher for SHA1 hash objects
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_ASSERT(pcomn::valhash(sha1hash_t("1221df24908920e6c785fc6f3ecc279df4b68811"))) ;
+   CPPUNIT_LOG_ASSERT(pcomn::valhash(sha1hash_t("592686abc75e68e4121cdbb416f302a5636adc58"))) ;
+   CPPUNIT_LOG_NOT_EQUAL(pcomn::valhash(sha1hash_t("1221df24908920e6c785fc6f3ecc279df4b68811")),
+                         pcomn::valhash(sha1hash_t("592686abc75e68e4121cdbb416f302a5636adc58"))) ;
+
    // Check SHA1 POD objects
    CPPUNIT_LOG(std::endl) ;
    union local1 {
