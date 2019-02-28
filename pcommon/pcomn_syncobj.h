@@ -40,13 +40,13 @@
  @param lock_expr       The expression that should return PTScopeGuard<T> value.
 *******************************************************************************/
 #define PCOMN_SCOPE_LOCK(guard_varname, lock_expr, ...)                 \
-   const std::lock_guard<std::remove_reference_t<decltype((lock_expr))>> guard_varname ((lock_expr), ##__VA_ARGS__)
+   const std::lock_guard<std::remove_cvref_t<decltype((lock_expr))>> guard_varname ((lock_expr), ##__VA_ARGS__)
 
 #define PCOMN_SCOPE_XLOCK(guard_varname, lock_expr, ...)                 \
-   std::unique_lock<std::remove_reference_t<decltype((lock_expr))>> guard_varname ((lock_expr), ##__VA_ARGS__)
+   std::unique_lock<std::remove_cvref_t<decltype((lock_expr))>> guard_varname ((lock_expr), ##__VA_ARGS__)
 
 #define PCOMN_SCOPE_R_LOCK(guard_varname, lock_expr, ...)               \
-   pcomn::shared_lock<std::remove_reference_t<decltype((lock_expr))>> guard_varname ((lock_expr), ##__VA_ARGS__)
+   pcomn::shared_lock<std::remove_cvref_t<decltype((lock_expr))>> guard_varname ((lock_expr), ##__VA_ARGS__)
 
 #define PCOMN_SCOPE_W_LOCK(guard_varname, lock_expr, ...)   PCOMN_SCOPE_LOCK(guard_varname, (lock_expr), ##__VA_ARGS__)
 #define PCOMN_SCOPE_W_XLOCK(guard_varname, lock_expr, ...)  PCOMN_SCOPE_XLOCK(guard_varname, (lock_expr), ##__VA_ARGS__)
