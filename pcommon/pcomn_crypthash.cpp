@@ -6,7 +6,7 @@
                   All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
- DESCRIPTION  :   C++ wrappers for OpenSSL MD5 and SHA1 hash calculation
+ DESCRIPTION  :   C++ wrappers for OpenSSL MD5, SHA1, SHA2 hash calculation
 
  CREATION DATE:   30 Jul 2010
 *******************************************************************************/
@@ -200,6 +200,37 @@ sha1hash_t sha1hash_file(int fd, size_t *size, RaiseError raise_error)
 }
 
 /*******************************************************************************
+ binary256_t
+*******************************************************************************/
+std::string binary256_t::to_string() const
+{
+   char buf[binary256_t::slen() + 1] ;
+   return to_strbuf(buf) ;
+}
+
+/*******************************************************************************
+ sha256hash_t
+*******************************************************************************/
+
+sha256hash_t sha256hash(const void *buf, size_t size)
+{
+   sha256hash_t result ;
+   return calc_hash_mem(&SHA256, buf, size, result).hton_inplace() ;
+}
+
+sha256hash_t sha256hash_file(const char *filename, size_t *size, RaiseError raise_error)
+{
+   sha256hash_t result ;
+   return calc_hash_file(&SHA256, filename, size, raise_error, result).hton_inplace() ;
+}
+
+sha256hash_t sha256hash_file(int fd, size_t *size, RaiseError raise_error)
+{
+   sha256hash_t result ;
+   return calc_hash_file(&SHA256, fd, size, raise_error, result).hton_inplace() ;
+}
+
+/*******************************************************************************
  MD5Hash
 *******************************************************************************/
 typedef HashCalc<md5hash_t, MD5_CTX, &MD5_Init, &MD5_Update, &MD5_Final> md5calc ;
@@ -243,6 +274,30 @@ SHA1Hash &SHA1Hash::append_file(FILE *file)
 }
 
 SHA1Hash &SHA1Hash::append_file(const char *filename)
+{
+   return hash_append_file(*this, filename) ;
+}
+
+/*******************************************************************************
+ SHA256Hash
+*******************************************************************************/
+typedef HashCalc<sha256hash_t, SHA256_CTX, &SHA256_Init, &SHA256_Update, &SHA256_Final> sha256calc ;
+
+sha256hash_t SHA256Hash::value() const { return sha256calc::value(_state).hton_inplace() ; }
+
+SHA256Hash &SHA256Hash::append_data(const void *buf, size_t size)
+{
+   sha256calc::append_data(_state, buf, size) ;
+   return *this ;
+}
+
+SHA256Hash &SHA256Hash::append_file(FILE *file)
+{
+   sha256calc::append_file(_state, file) ;
+   return *this ;
+}
+
+SHA256Hash &SHA256Hash::append_file(const char *filename)
 {
    return hash_append_file(*this, filename) ;
 }
