@@ -11,6 +11,20 @@
  PROGRAMMED BY:   Yakov Markovitch
  CREATION DATE:   10 Jun 2003
 *******************************************************************************/
+/** @file
+ Helper classes, functions, types, macros for CppUnit-based unittests.
+
+ class TestFixture<private_dirname>
+
+ @code
+ extern const char FOOBARTEST_FIXTURE[] = "foobar-test" ;
+ class FooBarTests : public pcomn::unit::TestFixture<FOOBARTEST_FIXTURE> {...} ;
+ @endcode
+
+ CppUnit::assertion_traits_sequence<sequence> for any sequence with std::begin(seq),
+ std::end(seq), std::size(seq)
+*******************************************************************************/
+
 #include <pcomn_platform.h>
 GCC_DIAGNOSTIC_PUSH_IGNORE(unused-result)
 #include <pcomn_macros.h>
@@ -424,8 +438,8 @@ class TestRunner : public CppUnit::TextUi::TestRunner {
       TestProgressListener _listener ;
 } ;
 
-/******************************************************************************/
-/** Unique test fixture base class
+/***************************************************************************//**
+ Unique test fixture base class
 
  To get the path to a file in the unittest sources directory:
   @code
@@ -455,7 +469,7 @@ class TestFixture : public CppUnit::TestFixture {
       PCOMN_STATIC_CHECK(private_dirname != nullptr) ;
       #endif
    public:
-      typedef ostream_lock<TestFixture<private_dirname> > locked_out ;
+      typedef ostream_lock<TestFixture<private_dirname>> locked_out ;
 
       const char *testname() const { return TestRunner::testShortName() ; }
 
@@ -785,12 +799,11 @@ struct assertion_traits_sequence {
 } ;
 
 template<typename Seq, char d, char b, char a>
-bool assertion_traits_sequence<Seq, d, b, a>::equal(const Seq &lhs, const Seq &rhs)
+bool assertion_traits_sequence<Seq, d, b, a>::equal(const Seq &x, const Seq &y)
 {
    using namespace std ;
    return
-      lhs.size() == rhs.size() &&
-      std::equal(begin(lhs), end(lhs), begin(rhs), assertion_traits_eq()) ;
+      size(x) == size(y) && std::equal(begin(x), end(x), begin(y), assertion_traits_eq()) ;
 }
 
 template<typename Seq, char d, char b, char a>
@@ -855,16 +868,17 @@ struct assertion_traits<std::multiset<K, C>> : assertion_traits_sequence<std::mu
 
 #define _CPPUNIT_ASSERTION_TRAITS_SEQUENCE(sequence)                    \
    template<typename T>                                                 \
-   struct assertion_traits<sequence<T> > : assertion_traits_sequence<sequence<T>> {}
+   struct assertion_traits<sequence<T>> : assertion_traits_sequence<sequence<T>> {}
 
 #define _CPPUNIT_ASSERTION_TRAITS_MATRIX(matrix)                        \
    template<typename T>                                                 \
-   struct assertion_traits<matrix<T> > : assertion_traits_matrix<matrix<T>> {}
+   struct assertion_traits<matrix<T>> : assertion_traits_matrix<matrix<T>> {}
 
 _CPPUNIT_ASSERTION_TRAITS_SEQUENCE(std::vector) ;
 _CPPUNIT_ASSERTION_TRAITS_SEQUENCE(std::list) ;
 _CPPUNIT_ASSERTION_TRAITS_SEQUENCE(std::deque) ;
 _CPPUNIT_ASSERTION_TRAITS_SEQUENCE(pcomn::simple_vector) ;
+_CPPUNIT_ASSERTION_TRAITS_SEQUENCE(pcomn::simple_slice) ;
 
 _CPPUNIT_ASSERTION_TRAITS_MATRIX(pcomn::matrix_slice) ;
 
@@ -873,8 +887,8 @@ struct assertion_traits<pcomn::static_vector<T, maxsize>> :
          assertion_traits_sequence<pcomn::static_vector<T, maxsize>> {} ;
 
 template<typename T, bool r>
-struct assertion_traits<pcomn::simple_matrix<T, r> > :
-         assertion_traits_matrix<pcomn::simple_matrix<T, r> > {} ;
+struct assertion_traits<pcomn::simple_matrix<T, r>> :
+         assertion_traits_matrix<pcomn::simple_matrix<T, r>> {} ;
 
 #undef _CPPUNIT_ASSERTION_TRAITS_SEQUENCE
 #undef _CPPUNIT_ASSERTION_TRAITS_MATRIX
@@ -898,7 +912,7 @@ std::string assertion_traits<signed char>::toString(const signed char &value)
 }
 
 template<typename T1, typename T2>
-struct assertion_traits<std::pair<T1, T2> > {
+struct assertion_traits<std::pair<T1, T2>> {
       typedef std::pair<T1, T2> type ;
 
       static bool equal(const type &lhs, const type &rhs)
@@ -912,13 +926,13 @@ struct assertion_traits<std::pair<T1, T2> > {
 } ;
 
 template<typename T1, typename T2>
-std::string assertion_traits<std::pair<T1, T2> >::toString(const type &value)
+std::string assertion_traits<std::pair<T1, T2>>::toString(const type &value)
 {
    return std::string(1, '{') + pcomn::unit::to_string(value.first) + ',' + pcomn::unit::to_string(value.second) + '}' ;
 }
 
 template<typename... A>
-struct assertion_traits<std::tuple<A...> > {
+struct assertion_traits<std::tuple<A...>> {
       typedef std::tuple<A...> type ;
 
       static bool equal(const type &lhs, const type &rhs)
@@ -979,16 +993,16 @@ std::string assertion_traits_str<S>::quote(const C *begin, size_t sz)
 }
 
 template<typename C>
-struct assertion_traits<std::basic_string<C> > : assertion_traits_str<std::basic_string<C> > {} ;
+struct assertion_traits<std::basic_string<C>> : assertion_traits_str<std::basic_string<C>> {} ;
 
 template<typename C>
-struct assertion_traits<pcomn::basic_cstrptr<C> > : assertion_traits_str<pcomn::basic_cstrptr<C> > {} ;
+struct assertion_traits<pcomn::basic_cstrptr<C>> : assertion_traits_str<pcomn::basic_cstrptr<C>> {} ;
 
 template<typename C>
-struct assertion_traits<pcomn::basic_strslice<C> > : assertion_traits_str<pcomn::basic_strslice<C> > {
+struct assertion_traits<pcomn::basic_strslice<C>> : assertion_traits_str<pcomn::basic_strslice<C>> {
       static std::string toString(const pcomn::basic_strslice<C> &value)
       {
-         return assertion_traits_str<pcomn::basic_strslice<C> >::quote(value.begin(), value.size()) ;
+         return assertion_traits_str<pcomn::basic_strslice<C>>::quote(value.begin(), value.size()) ;
       }
 } ;
 
