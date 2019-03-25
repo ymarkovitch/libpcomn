@@ -380,9 +380,9 @@ struct make {
 *******************************************************************************/
 template<typename Base, typename Derived>
 struct is_base_of_strict :
-         bool_constant<!(std::is_same<Base, Derived>::value ||
-                         std::is_same<const volatile Base*, const volatile void*>::value) &&
-                         std::is_convertible<const volatile Derived*, const volatile Base*>::value> {} ;
+         bool_constant<!(std::is_same_v<Base, Derived> ||
+                         std::is_same_v<const volatile Base*, const volatile void*>) &&
+                         std::is_convertible_v<const volatile Derived*, const volatile Base*>> {} ;
 
 template<typename T, typename U>
 using is_same_unqualified = std::is_same<std::remove_cv_t<T>, std::remove_cv_t<U> > ;
@@ -400,6 +400,26 @@ struct if_all_convertible : std::enable_if<is_all_convertible<To, From...>::valu
 
 template<typename T, typename To, typename... From>
 using if_all_convertible_t = typename if_all_convertible<T, To, From...>::type ;
+
+template<typename T, typename... Types>
+struct is_one_of : std::true_type {} ;
+
+template<typename T, typename T1, typename... Tn>
+struct is_one_of<T, T1, Tn...> :
+   std::bool_constant<(std::is_same_v<T, T1> && is_one_of<T, Tn...>::value)>
+{} ;
+
+template<typename U, typename T, typename... Types>
+struct if_one_of : std::enable_if<is_one_of<T, Types...>::value, U> {} ;
+
+template<typename U, typename T, typename... Types>
+using if_one_of_t = typename if_one_of<U, T, Types...>::type ;
+
+template<typename To, typename... From>
+constexpr bool is_all_convertible_v = is_all_convertible<To, From...>::value ;
+
+template<typename T, typename... Types>
+constexpr bool is_one_of_v = is_one_of<T, Types...>::value ;
 
 /***************************************************************************//**
  Check if the type can be trivially swapped, i.e. by simply swapping raw memory
