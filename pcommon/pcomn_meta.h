@@ -406,20 +406,17 @@ struct is_one_of : std::true_type {} ;
 
 template<typename T, typename T1, typename... Tn>
 struct is_one_of<T, T1, Tn...> :
-   std::bool_constant<(std::is_same_v<T, T1> && is_one_of<T, Tn...>::value)>
+   std::bool_constant<(std::is_same_v<T, T1> || is_one_of<T, Tn...>::value)>
 {} ;
-
-template<typename U, typename T, typename... Types>
-struct if_one_of : std::enable_if<is_one_of<T, Types...>::value, U> {} ;
-
-template<typename U, typename T, typename... Types>
-using if_one_of_t = typename if_one_of<U, T, Types...>::type ;
-
-template<typename To, typename... From>
-constexpr bool is_all_convertible_v = is_all_convertible<To, From...>::value ;
 
 template<typename T, typename... Types>
 constexpr bool is_one_of_v = is_one_of<T, Types...>::value ;
+
+template<typename T, typename... Types>
+using if_one_of_t = std::enable_if_t<is_one_of_v<T, Types...>> ;
+
+template<typename To, typename... From>
+constexpr bool is_all_convertible_v = is_all_convertible<To, From...>::value ;
 
 /***************************************************************************//**
  Check if the type can be trivially swapped, i.e. by simply swapping raw memory
