@@ -1110,6 +1110,16 @@ struct hash_fn<std::tuple<T1, T...>> {
 } ;
 
 /***************************************************************************//**
+ Generic "implicit" hash function: delegates to pcomn::hash_fn<T>().
+*******************************************************************************/
+template<typename T>
+inline size_t hash_data(const T &data)
+{
+   static constexpr hash_fn<T> hasher ;
+   return hasher(data) ;
+}
+
+/***************************************************************************//**
  Hashing functor for any sequence
 *******************************************************************************/
 template<typename S, typename ItemHasher = hash_fn<decltype(*std::begin(std::declval<S>()))>>
