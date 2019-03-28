@@ -412,9 +412,6 @@ struct is_one_of<T, T1, Tn...> :
 template<typename T, typename... Types>
 constexpr bool is_one_of_v = is_one_of<T, Types...>::value ;
 
-template<typename T, typename... Types>
-using if_one_of_t = std::enable_if_t<is_one_of_v<T, Types...>> ;
-
 template<typename To, typename... From>
 constexpr bool is_all_convertible_v = is_all_convertible<To, From...>::value ;
 
