@@ -3,7 +3,8 @@
 #define __PCOMN_HASH_H
 /*******************************************************************************
  FILE         :   pcomn_hash.h
- COPYRIGHT    :   Yakov Markovitch, 2000-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2000-2019. All rights reserved.
+                  Leonid Yuriev <leo@yuriev.ru>, 2010-2019. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Hash functions & functors.
