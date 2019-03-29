@@ -53,6 +53,76 @@ _PCOMNEXP uint32_t calc_crc32(uint32_t crc, const void *buf, size_t len) ;
 namespace pcomn {
 
 /*******************************************************************************
+ Ported from Leonid Yuriev's t1ha2
+*******************************************************************************/
+namespace detail {
+
+// 'magic' primes
+constexpr uint64_t t1ha2_prime_0 = 0xEC99BF0D8372CAABull ;
+constexpr uint64_t t1ha2_prime_1 = 0x82434FE90EDCEF39ull ;
+constexpr uint64_t t1ha2_prime_2 = 0xD4F06DB99D67BE4Bull ;
+constexpr uint64_t t1ha2_prime_5 = 0xC060724A8424F345ull ;
+constexpr uint64_t t1ha2_prime_6 = 0xCB5AF53AE3AAAC31ull ;
+
+/// Modern compilers convert this to rotr64 assembler instruction.
+__forceinline uint64_t t1ha2_rotr64(uint64_t v, unsigned s)
+{
+   return (v >> s) | (v << (64 - s)) ;
+}
+
+__forceinline uint64_t t1ha2_mul_64x64_128(uint64_t a, uint64_t b, uint64_t * __restrict h)
+{
+   __uint128_t r = (__uint128_t)a * (__uint128_t)b ;
+   // Modern GCC/Clang nicely optimizes this
+   *h = (uint64_t)(r >> 64) ;
+   return (uint64_t)r ;
+}
+
+/// XOR high and low parts of the full 128-bit product
+__forceinline uint64_t t1ha2_mux64(uint64_t v, uint64_t prime)
+{
+   uint64_t l, h ;
+   l = t1ha2_mul_64x64_128(v, prime, &h) ;
+   return l ^ h ;
+}
+
+__forceinline void t1ha2_mixup64(uint64_t *__restrict a,
+                                 uint64_t *__restrict b, uint64_t v,
+                                 uint64_t prime)
+{
+   uint64_t h ;
+   *a ^= t1ha2_mul_64x64_128(*b + v, prime, &h) ;
+   *b += h ;
+}
+
+__forceinline uint64_t t1ha2_final64(uint64_t a, uint64_t b)
+{
+   const uint64_t x = (a + t1ha2_rotr64(b, 41)) * t1ha2_prime_0 ;
+   const uint64_t y = (t1ha2_rotr64(a, 23) + b) * t1ha2_prime_6 ;
+   return t1ha2_mux64(x ^ y, t1ha2_prime_5) ;
+}
+
+} // end of namespace pcomn::detail
+
+/***************************************************************************//**
+ Inlined T1HA2 specialization for 128-bit binary data.
+*******************************************************************************/
+/**@{*/
+inline uint64_t t1ha2_bin128(uint64_t lo, uint64_t hi, uint64_t seed)
+{
+   uint64_t a = seed, b = 16 ;
+   detail::t1ha2_mixup64(&a, &b, lo, detail::t1ha2_prime_2) ;
+   detail::t1ha2_mixup64(&b, &a, hi, detail::t1ha2_prime_1) ;
+   return detail::t1ha2_final64(a, b) ;
+}
+
+inline uint64_t t1ha2_bin128(uint64_t lo, uint64_t hi)
+{
+   return t1ha2_bin128(lo, hi, 0) ;
+}
+/**@}*/
+
+/*******************************************************************************
  Overloaded generic hash algorithms
 *******************************************************************************/
 inline uint32_t calc_crc32(uint32_t prev_crc, const char *str)
@@ -458,7 +528,7 @@ struct binary128_t {
             bitop::bitcount(_idata[1]) ;
       }
 
-      size_t hash() const { return tuplehash(_idata[0], _idata[1]) ; }
+      size_t hash() const { return t1ha2_bin128(lo(), hi()) ; }
 
       _PCOMNEXP std::string to_string() const ;
       _PCOMNEXP char *to_strbuf(char *buf) const ;
