@@ -74,3 +74,4 @@ add_adhoc_executable(test_common_type)
 add_adhoc_executable(test_rm)
 
 add_adhoc_executable(benchmark_mmap)
+add_adhoc_executable(benchmark_bin128hash)
