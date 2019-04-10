@@ -555,6 +555,30 @@
 #define GCC_MAKE_PRAGMA(text)
 #define MS_MAKE_PRAGMA(text)
 
+/*******************************************************************************
+ Macro definitions for extended attribute specifiers, like __noreturn, __noinline, etc.,
+ for various compilers.
+ We must explicitly _undefine_ them first.
+*******************************************************************************/
+#ifdef __noreturn
+#undef __noreturn
+#endif
+#ifdef __may_alias
+#undef __may_alias
+#endif
+#ifdef __noinline
+#undef __noinline
+#endif
+#ifdef __cold
+#undef __cold
+#endif
+#ifdef __forceinline
+#undef __forceinline
+#endif
+#ifdef __restrict
+#undef __restrict
+#endif
+
 #ifdef PCOMN_COMPILER_GNU
 /*******************************************************************************
  GCC
@@ -565,40 +589,12 @@
 #undef GCC_MAKE_PRAGMA
 #define GCC_MAKE_PRAGMA(text) _Pragma(#text)
 
-#ifdef __noreturn
-#undef __noreturn
-#endif
-#define __noreturn   __attribute__((__noreturn__))
-
-#ifdef __may_alias
-#undef __may_alias
-#endif
-#define __may_alias  __attribute__((__may_alias__))
-
-#ifdef __noinline
-#undef __noinline
-#endif
-#define __noinline __attribute__((__noinline__))
-
-#ifdef __noinline
-#undef __noinline
-#endif
-#define __noinline __attribute__((__noinline__))
-
-#ifdef __cold
-#undef __cold
-#endif
-#define __cold __attribute__((__noinline__, __cold__))
-
-#ifdef __forceinline
-#undef __forceinline
-#endif
-#define __forceinline inline __attribute__((__always_inline__))
-
-#ifdef __restrict
-#undef __restrict
-#endif
-#define __restrict __restrict__
+#define __noreturn      __attribute__((__noreturn__))
+#define __noinline      __attribute__((__noinline__))
+#define __cold          __attribute__((__noinline__, __cold__))
+#define __forceinline   inline __attribute__((__always_inline__))
+#define __restrict      __restrict__
+#define __may_alias     __attribute__((__may_alias__))
 
 #ifndef __deprecated
 #define __deprecated(...) __attribute__((deprecated(__VA_ARGS__)))
@@ -614,39 +610,16 @@
 #undef MS_MAKE_PRAGMA
 #define MS_MAKE_PRAGMA(arg, ...) __pragma(arg, ##__VA_ARGS__)
 
-#ifdef __noreturn
-#undef __noreturn
-#endif
-#define __noreturn __declspec(noreturn)
-
-#ifdef __noinline
-#undef __noinline
-#endif
-#define __noinline __declspec(noinline)
-
-#ifdef __cold
-#undef __cold
-#endif
-#define __cold __noinline
-
-#ifdef __forceinline
-#undef __forceinline
-#endif
-#define __forceinline inline __forceinline
+#define __noreturn      __declspec(noreturn)
+#define __noinline      __declspec(noinline)
+#define __cold          __noinline
+#define __forceinline   inline __forceinline
+#define __restrict      __restrict
+#define __may_alias
 
 #ifndef __deprecated
 #define __deprecated(...) __declspec(deprecated(__VA_ARGS__))
 #endif
-
-#ifdef __may_alias
-#undef __may_alias
-#endif
-#define __may_alias
-
-#ifdef __restrict
-#undef __restrict
-#endif
-#define __restrict __restrict
 
 #else
 /*******************************************************************************
@@ -656,17 +629,15 @@
 #define PCOMN_ATTR_PRINTF(format_pos, param_pos)
 #define PCOMN_ALIGNED(a)
 
-#ifndef __noreturn
 #define __noreturn
-#endif
+#define __noinline
+#define __cold
+#define __forceinline inline
+#define __restrict
+#define __may_alias
+
 #ifndef __deprecated
 #define __deprecated(...)
-#endif
-#ifndef __noinline
-#define __noinline
-#endif
-#ifndef __cold
-#define __cold
 #endif
 
 #endif
