@@ -53,6 +53,9 @@ using tsingle = tlist<T> ;
 template<typename T1, typename T2 = T1>
 using tpair = tlist<T1, T2> ;
 
+template<typename... TLists>
+using tlists_cat = std::add_pointer_t<decltype(std::tuple_cat(*std::declval<TLists>()...))> ;
+
 /******************************************************************************/
 /** Visit every item of any object compatible with std::get<n> function (this
  includes at least std::tuple, std::pair, and std::array).
