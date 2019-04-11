@@ -458,30 +458,6 @@
 #ifdef PCOMN_PL_32BIT
 #error Only 64-bit platforms are supported.
 #endif
-
-/***************************************************************************//**
- @def likely
- Provide the compiler with branch prediction information, assering the expression is
- likely to be true.
-
- @param expr Expression that should evaluate to integer.
-
- @def unlikely
- Provide the compiler with branch prediction information, assering the expression is
- likely to be false.
-
- @param expr Expression that should evaluate to integer.
-*******************************************************************************/
-#if !defined(likely) && !defined(unlikely)
-#ifdef PCOMN_COMPILER_GNU
-#define likely(expr)    __builtin_expect((expr), 1)
-#define unlikely(expr)  __builtin_expect((expr), 0)
-#else
-#define likely(expr)    (expr)
-#define unlikely(expr)  (expr)
-#endif
-#endif
-
 /*******************************************************************************
  Microsoft C++ compilers
 *******************************************************************************/
@@ -585,7 +561,6 @@
 *******************************************************************************/
 #define PCOMN_PRETTY_FUNCTION __PRETTY_FUNCTION__
 #define PCOMN_ATTR_PRINTF(format_pos, param_pos) __attribute__((format(printf, format_pos, param_pos)))
-#define PCOMN_ALIGNED(a) __attribute__((aligned (a)))
 #undef GCC_MAKE_PRAGMA
 #define GCC_MAKE_PRAGMA(text) _Pragma(#text)
 
@@ -606,7 +581,6 @@
 *******************************************************************************/
 #define PCOMN_PRETTY_FUNCTION __FUNCTION__
 #define PCOMN_ATTR_PRINTF(format_pos, param_pos)
-#define PCOMN_ALIGNED(a) __declspec(align(a))
 #undef MS_MAKE_PRAGMA
 #define MS_MAKE_PRAGMA(arg, ...) __pragma(arg, ##__VA_ARGS__)
 
@@ -627,7 +601,6 @@
 *******************************************************************************/
 #define PCOMN_PRETTY_FUNCTION __FUNCTION__
 #define PCOMN_ATTR_PRINTF(format_pos, param_pos)
-#define PCOMN_ALIGNED(a)
 
 #define __noreturn
 #define __noinline
@@ -640,6 +613,71 @@
 #define __deprecated(...)
 #endif
 
+#endif
+
+/***************************************************************************//**
+ @def likely
+ Provide the compiler with branch prediction information, assering the expression is
+ likely to be true.
+
+ @param expr Expression that should evaluate to integer.
+
+ @def unlikely
+ Provide the compiler with branch prediction information, assering the expression is
+ likely to be false.
+
+ @param expr Expression that should evaluate to integer.
+*******************************************************************************/
+#if !defined(likely) && !defined(unlikely)
+#ifdef PCOMN_COMPILER_GNU
+#define likely(expr)    __builtin_expect((expr), 1)
+#define unlikely(expr)  __builtin_expect((expr), 0)
+#else
+#define likely(expr)    (expr)
+#define unlikely(expr)  (expr)
+#endif
+#endif
+
+/***************************************************************************//**
+ @def PCOMN_ALIGNED(alignment)
+
+ Alignment declaration for C.
+ C++ has alignas().
+
+ @param alignment Alignment, must be the power of 2.
+*******************************************************************************/
+#ifdef PCOMN_COMPILER_GNU
+#  define PCOMN_ALIGNED(a) __attribute__((aligned (a)))
+
+#elif defined(PCOMN_COMPILER_MS)
+#  define PCOMN_ALIGNED(a) __declspec(align(a))
+
+#else
+#  define PCOMN_ALIGNED(a)
+#endif
+
+/***************************************************************************//**
+ @def PCOMN_ASSUME_ALIGNED(pointer, alignment)
+
+ Return `pointer` and allow the compiler to assume that the returned `pointer` is at
+ least `alignment` bytes aligned.
+
+ @return `pointer`; note that in contrast to GCC's __builtin_assume_aligned the type of
+ returned value matches `pointer` type (i.e. it is not necessarily `void *`).
+
+ @param pointer
+ @param alignment Assumed alignment, must be the power of 2.
+
+ @note No-op for any non-GCC or non-Clang compiler.
+*******************************************************************************/
+#ifdef PCOMN_COMPILER_GNU
+#ifdef __cplusplus
+#  define PCOMN_ASSUME_ALIGNED(pointer, alignment) static_cast<decltype(pointer)>(__builtin_assume_aligned((pointer), alignment))
+#else
+#  define PCOMN_ASSUME_ALIGNED(pointer, alignment) ((typeof(pointer))__builtin_assume_aligned((pointer), alignment))
+#endif
+#else
+#  define PCOMN_ASSUME_ALIGNED(pointer, alignment) (pointer)
 #endif
 
 /*******************************************************************************
