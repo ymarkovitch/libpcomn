@@ -672,7 +672,8 @@
 *******************************************************************************/
 #ifdef PCOMN_COMPILER_GNU
 #ifdef __cplusplus
-#  define PCOMN_ASSUME_ALIGNED(pointer, alignment) static_cast<decltype(pointer)>(__builtin_assume_aligned((pointer), alignment))
+#  define PCOMN_ASSUME_ALIGNED(pointer, alignment) \
+   static_cast<std::remove_reference_t<decltype(pointer)>>(__builtin_assume_aligned((pointer), alignment))
 #else
 #  define PCOMN_ASSUME_ALIGNED(pointer, alignment) ((typeof(pointer))__builtin_assume_aligned((pointer), alignment))
 #endif
