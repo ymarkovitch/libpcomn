@@ -25,4 +25,34 @@ using std::experimental::lcm ;
 
 #endif /* PCOMN_STL_CXX17 */
 
+namespace pcomn {
+
+/***************************************************************************//**
+ XAccumulate: eXtract and Accumulate - compute the sum of the given initial value
+ and the values extracted from the elements in the range [first, last)
+*******************************************************************************/
+/**@{*/
+template<typename InputIterator,
+         typename T, typename UnaryOperation>
+inline T xaccumulate(InputIterator first, InputIterator last, T init, UnaryOperation extract)
+{
+    for (; first != last ; ++first)
+       init = std::move(init) + extract(*first) ;
+
+    return init ;
+}
+
+template<typename InputIterator,
+         typename T, typename UnaryOperation, typename BinaryOperation>
+inline T xaccumulate(InputIterator first, InputIterator last, T init, UnaryOperation extract, BinaryOperation op)
+{
+    for (; first != last ; ++first)
+        init = op(std::move(init), extract(*first)) ;
+
+    return init ;
+}
+/**@}*/
+
+} // end of namespace pcomn
+
 #endif /* __PCOMN_NUMERIC_H */
