@@ -374,7 +374,7 @@ struct function_type<Ret(Class::*)(Args...)>
 } ;
 
 template<typename Callable>
-using function_type_t = typename function_type<decltype(&Callable::operator())>::type ;
+using function_type_t = typename function_type<decltype(&std::remove_cvref_t<Callable>::operator())>::type ;
 
 /// Make std::function from a function pointer.
 template<typename R, typename... Args>
