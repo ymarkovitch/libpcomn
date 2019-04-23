@@ -246,13 +246,12 @@ constexpr __forceinline To bit_cast(const From &from) noexcept
    PCOMN_STATIC_CHECK(alignof(To) <= alignof(From)) ;
    PCOMN_STATIC_CHECK(std::is_trivially_copyable_v<From> && std::is_trivially_copyable_v<To>) ;
 
-   const char * const src = reinterpret_cast<const char *>(&from) ;
-   To result = *reinterpret_cast<const To *>(src) ;
-   return result ;
+   const union { const From *src ; const To *dst ; } result = {&from} ;
+   return *result.dst ;
 }
 
-/******************************************************************************/
-/** Function for getting T value in unevaluated context for e.g. passsing
+/***************************************************************************//**
+ Function for getting T value in unevaluated context for e.g. passsing
  to functions in SFINAE context without the need to go through constructors
 
  Differs from std::declval in that it does not converts T to rvalue reference
@@ -348,6 +347,33 @@ constexpr inline T fold_bitor(T a1, T a2, TN ...aN)
  and pointer to base, etc.)
 *******************************************************************************/
 template<typename T> struct identity_type { typedef T type ; } ;
+
+/***************************************************************************//**
+ Transfer cv-qualifiers of the source type to the target type.
+ So, e.g.
+     - `transfer_cv_t<const int, double>` is `const double`
+     - `transfer_cv_t<const int, volatile double>` is `const volatile double`
+     - `transfer_cv_t<const volatile int, double>` is `const volatile double`
+     - `transfer_cv_t<const volatile int, volatile double>` is `const volatile double`
+
+ @Note `transfer_cv_t<const int, double*>` is `double* const`, _not_ 'const double*'
+*******************************************************************************/
+/**@{*/
+template<typename S, typename T>
+struct transfer_cv { typedef T type ; } ;
+
+template<typename S, typename T>
+struct transfer_cv<const S, T> : transfer_cv<S, const T> {} ;
+
+template<typename S, typename T>
+struct transfer_cv<volatile S, T> : transfer_cv<S, volatile T> {} ;
+
+template<typename S, typename T>
+struct transfer_cv<const volatile S, T> : transfer_cv<S, const volatile T> {} ;
+/**@}*/
+
+template<typename S, typename T>
+using transfer_cv_t = typename transfer_cv<S,T>::type ;
 
 /***************************************************************************//**
  Provides globally placed default-constructed value of its parameter type.
