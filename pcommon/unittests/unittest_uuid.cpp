@@ -249,6 +249,12 @@ void MACFixture::Test_MAC()
    const MAC other_mac_2 (0xE0, 0xCB, 0x4E, 0x8C, 0x4f, 0x5C) ;
    const MAC other_mac_3 (0xE0CB4E8C4f5CULL) ;
 
+   union raw_mac {
+         constexpr raw_mac() : _u64() {}
+         uint64_t _u64 ;
+         MAC      _mac ;
+   } ;
+
    CPPUNIT_LOG_ASSERT(random_mac) ;
    CPPUNIT_LOG_EQ(random_mac.to_string(), "E0:CB:4E:8C:FF:5C") ;
    CPPUNIT_LOG_ASSERT(small_mac) ;
@@ -293,6 +299,18 @@ void MACFixture::Test_MAC()
    CPPUNIT_LOG_IS_FALSE(random_mac < small_mac) ;
    CPPUNIT_LOG_ASSERT(small_mac < random_mac) ;
    CPPUNIT_LOG_ASSERT(MAC() < small_mac) ;
+
+   raw_mac other_raw ;
+   raw_mac random_raw ;
+   raw_mac small_raw ;
+
+   CPPUNIT_LOG_RUN(other_raw._mac = other_mac) ;
+   CPPUNIT_LOG_RUN(random_raw._mac = random_mac) ;
+   CPPUNIT_LOG_RUN(small_raw._mac = small_mac) ;
+
+   CPPUNIT_LOG_ASSERT(other_raw._u64 < random_raw._u64) ;
+   CPPUNIT_LOG_ASSERT(small_raw._u64 < other_raw._u64) ;
+   CPPUNIT_LOG_ASSERT(small_raw._u64 < random_raw._u64) ;
 }
 
 int main(int argc, char *argv[])
