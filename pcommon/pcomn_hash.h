@@ -374,10 +374,7 @@ struct hash_combinator {
       explicit hash_combinator(uint64_t initial_hash) { append(initial_hash) ; }
 
       template<typename InputIterator>
-      hash_combinator(const InputIterator &b, const InputIterator &e) : hash_combinator()
-      {
-         append_data(b, e) ;
-      }
+      hash_combinator(const InputIterator &b, const InputIterator &e) { append_data(b, e) ; }
 
       constexpr uint64_t value() const { return _combined ; }
       constexpr operator uint64_t() const { return value() ; }
@@ -656,15 +653,24 @@ inline std::enable_if_t<is_literal128<T>::value, T &&> cast128(binary128_t &&v)
 }
 
 /***************************************************************************//**
- MD5 hash
+ Base class of 128-bit hashes: allows for the "unspecified hash" return/storage
+ type.
 *******************************************************************************/
-struct md5hash_t : binary128_t {
-
-      constexpr md5hash_t() = default ;
-      explicit constexpr md5hash_t(const binary128_t &src) : binary128_t(src) {}
-      explicit md5hash_t(const char *hexstr) : binary128_t(hexstr) {}
+struct digest128_t : binary128_t {
+      using binary128_t::binary128_t ;
+      explicit constexpr digest128_t(const binary128_t &src) : binary128_t(src) {}
 
       constexpr size_t hash() const { return _idata[0] ; }
+} ;
+
+/***************************************************************************//**
+ MD5 hash
+*******************************************************************************/
+struct md5hash_t : digest128_t {
+
+      constexpr md5hash_t() = default ;
+      explicit constexpr md5hash_t(const binary128_t &src) : digest128_t(src) {}
+      explicit md5hash_t(const char *hexstr) : digest128_t(hexstr) {}
 } ;
 
 /***************************************************************************//**
@@ -723,13 +729,11 @@ PCOMN_DEFINE_RELOP_FUNCTIONS(, sha1hash_t) ;
 /***************************************************************************//**
  t1ha2 128-bit hash
 *******************************************************************************/
-struct t1ha2hash_t : binary128_t {
+struct t1ha2hash_t : digest128_t {
 
       constexpr t1ha2hash_t() = default ;
-      explicit constexpr t1ha2hash_t(const binary128_t &src) : binary128_t(src) {}
-      explicit t1ha2hash_t(const char *hexstr) : binary128_t(hexstr) {}
-
-      constexpr size_t hash() const { return _idata[0] ; }
+      explicit constexpr t1ha2hash_t(const binary128_t &src) : digest128_t(src) {}
+      explicit t1ha2hash_t(const char *hexstr) : digest128_t(hexstr) {}
 } ;
 
 /***************************************************************************//**
@@ -1270,9 +1274,10 @@ namespace std {
  std::hash specializations for cryptohashes
 *******************************************************************************/
 template<> struct hash<pcomn::binary128_t>: pcomn::hash_fn_member<pcomn::binary128_t> {} ;
-template<> struct hash<pcomn::md5hash_t>  : pcomn::hash_fn_member<pcomn::md5hash_t> {} ;
+template<> struct hash<pcomn::digest128_t>: pcomn::hash_fn_member<pcomn::digest128_t> {} ;
+template<> struct hash<pcomn::md5hash_t>  : hash<pcomn::digest128_t> {} ;
+template<> struct hash<pcomn::t1ha2hash_t>: hash<pcomn::digest128_t> {} ;
 template<> struct hash<pcomn::sha1hash_t> : pcomn::hash_fn_member<pcomn::sha1hash_t> {} ;
-template<> struct hash<pcomn::t1ha2hash_t>: pcomn::hash_fn_member<pcomn::t1ha2hash_t> {} ;
 template<> struct hash<pcomn::sha256hash_t> : pcomn::hash_fn_member<pcomn::sha256hash_t> {} ;
 }
 
