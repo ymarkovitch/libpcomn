@@ -354,7 +354,7 @@ CmdArgIntList::operator[](unsigned  index)
    return  val->array[index];
 }
 
-CmdArgIntList::~CmdArgIntList() {}
+CmdArgIntList::~CmdArgIntList() { delete val; }
 
 
           //------------------- Float List -------------------
@@ -404,7 +404,7 @@ CmdArgFloatList::operator[](unsigned  index)
    return  val->array[index];
 }
 
-CmdArgFloatList::~CmdArgFloatList() {}
+CmdArgFloatList::~CmdArgFloatList() { delete val; }
 
           //------------------- String List -------------------
 
@@ -450,7 +450,7 @@ CmdArgStrList::operator[](unsigned  index)
    return  val->array[index];
 }
 
-CmdArgStrList::~CmdArgStrList() {}
+CmdArgStrList::~CmdArgStrList() { delete val; }
 
 //----------------------------------------------------------- Boolean Arguments
 
