@@ -10,58 +10,49 @@
  PROGRAMMED BY:   Yakov Markovitch
  CREATION DATE:   27 May 2000
 *******************************************************************************/
+#include <pcomn_platform.h>
 #include <numeric>
-#include <algorithm>
-#include <functional>
-#include <stdexcept>
 
-#include <stdlib.h>
+#ifndef PCOMN_STL_CXX17
+#include <experimental/numeric>
+
+namespace std {
+
+using std::experimental::gcd ;
+using std::experimental::lcm ;
+
+} // end of namespace std
+
+#endif /* PCOMN_STL_CXX17 */
 
 namespace pcomn {
 
-using std::iota ;
-
-const unsigned UPRIME_MIN = 3u ;
-const unsigned UPRIME_MAX = 4294967291u ;
-
-template<Instantiate = Instantiate{}>
-struct doubling_primes {
-
-      static unsigned lbound(unsigned num)
-      {
-         return
-            *(std::find_if(primes + 1, primes + P_ARRAY_COUNT(primes),
-                           std::bind1st(std::less<unsigned>(), num)) - 1) ;
-      }
-      static unsigned ubound(unsigned num)
-      {
-         return
-            *std::find_if(primes + 0, primes + (P_ARRAY_COUNT(primes) - 1),
-                          std::bind1st(std::less_equal<unsigned>(), num)) ;
-      }
-
-      static const unsigned primes[32] ;
-} ;
-
-template<Instantiate i>
-const unsigned doubling_primes<i>::primes[32] =
+/***************************************************************************//**
+ XAccumulate: eXtract and Accumulate - compute the sum of the given initial value
+ and the values extracted from the elements in the range [first, last)
+*******************************************************************************/
+/**@{*/
+template<typename InputIterator,
+         typename T, typename UnaryOperation>
+inline T xaccumulate(InputIterator first, InputIterator last, T init, UnaryOperation extract)
 {
-   3u,            7u,            17u,           29u,
-   53u,           97u,           193u,          389u,
-   769u,          1543u,         3079u,         6151u,
-   12289u,        24593u,        49157u,        98317u,
-   196613u,       393241u,       786433u,       1572869u,
-   3145739u,      6291469u,      12582917u,     25165843u,
-   50331653u,     100663319u,    201326611u,    402653189u,
-   805306457u,    1610612741u,   3221225473u,   4294967291u
-} ;
+    for (; first != last ; ++first)
+       init = std::move(init) + extract(*first) ;
 
-inline unsigned dprime_lbound(unsigned num) { return doubling_primes<>::lbound(num) ; }
+    return init ;
+}
 
-inline unsigned dprime_ubound(unsigned num) { return doubling_primes<>::ubound(num) ; }
+template<typename InputIterator,
+         typename T, typename UnaryOperation, typename BinaryOperation>
+inline T xaccumulate(InputIterator first, InputIterator last, T init, UnaryOperation extract, BinaryOperation op)
+{
+    for (; first != last ; ++first)
+        init = op(std::move(init), extract(*first)) ;
 
-} ; // end of namespace pcomn
+    return init ;
+}
+/**@}*/
 
-
+} // end of namespace pcomn
 
 #endif /* __PCOMN_NUMERIC_H */

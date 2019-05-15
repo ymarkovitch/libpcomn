@@ -93,6 +93,21 @@ struct binary_affirm : binary_predicate<typename Predicate::first_argument_type,
       Predicate pred ;
 } ;
 
+template<typename T = void>
+struct logical_xor : public std::binary_function<T, T, bool> {
+      constexpr bool operator()(const T &x, const T &y) const { return !x ^ !y ; }
+} ;
+
+template<>
+struct logical_xor<void> {
+      template <typename T, typename U>
+      constexpr auto operator()(T &&x, U &&y) const -> decltype(bool(!std::forward<T>(x) ^ !std::forward<U>(y)))
+      {
+         return !std::forward<T>(x) ^ !std::forward<U>(y) ;
+      }
+      typedef std::logical_or<>::is_transparent is_transparent ;
+} ;
+
 template <class Predicate>
 inline unary_affirm<Predicate> yes1(const Predicate& pred)
 {
@@ -374,7 +389,7 @@ struct function_type<Ret(Class::*)(Args...)>
 } ;
 
 template<typename Callable>
-using function_type_t = typename function_type<decltype(&Callable::operator())>::type ;
+using function_type_t = typename function_type<decltype(&std::remove_cvref_t<Callable>::operator())>::type ;
 
 /// Make std::function from a function pointer.
 template<typename R, typename... Args>

@@ -17,7 +17,7 @@
                   OS identification:
                        PCOMN_PL_WINDOWS (Win32, Win64)
                        PCOMN_PL_WIN64
-                       PCOMN_PL_WIN32   (Win32,Win32 Console,Win32s,DPMI32)
+                       PCOMN_PL_WIN32   (Win32,Win32 Console,Win32s)
                        PCOMN_PL_MS      (Strict MS environment, no GNU)
                        PCOMN_PL_OS2     (IBM OS/2 2.x)
                        PCOMN_PL_AS400   (IBM AS/400)
@@ -33,11 +33,7 @@
 
                        PCOMN_MD_CONSOLE    (Console mode program; makes sense for Windows)
                        PCOMN_MD_GUI        (GUI program, as opposite to console mode. Makes sense for Windows.)
-                       PCOMN_MD_DPMI32     (Borland extender 32 bit)
                        PCOMN_MD_DLL        (The program module is a dynamic-loadable library)
-
-                       PCOMN_MD_SUN
-                       PCOMN_MD_HP
 
                        6) CPU endiannes
 
@@ -55,16 +51,12 @@
                        PCOMN_CHAR_ASCII
                        PCOMN_CHAR_EBCDIC
 
-                       9) Platform standard alignment boundary
-
-                       PCOMN_STD_ALIGNMENT
-
-                       10) Platform standard path delimiters
+                       9) Platform standard path delimiters
 
                        PCOMN_PATH_DELIMS
                        PCOMN_PATH_NATIVE_DELIM
 
-                       11) Function modifiers
+                       10) Function modifiers
                           PCOMN_CFUNC
                           extern "C" in C++ environment
                           empty in C environment
@@ -72,8 +64,26 @@
                           PCOMN_CDECL
                           __cdecl on MS platform
                           empty in all others
+
+   #define PCOMN_NO_STRCASE_CONV   1
+   Defined if strupr/strlwr are not supported by the compiler library
+
+   #define PCOMN_NO_LOCALE_CONV    1
+   Defined if _lstrupr/_lstrlwr are not supported by the compiler library
+
+   #define PCOMN_NONSTD_UNIX_IO    1
+   Defined if the compiler library uses UNIX I/O function with underscores (such as _open, etc.)
+   instead of standard names
 *******************************************************************************/
 #include <pcomn_macros.h>
+
+#include <sys/types.h>
+#include <stdint.h>
+#include <assert.h>
+
+#ifdef __cplusplus
+#include <typeinfo>
+#endif   /* __cplusplus */
 
 /*******************************************************************************
  Take care of some macros taht should be defined _only_ here
@@ -114,9 +124,6 @@
 #undef PCOMN_PL_64BIT
 #endif
 
-#ifdef PCOMN_COMPILER_BORLAND
-#undef PCOMN_COMPILER_BORLAND
-#endif
 #ifdef PCOMN_COMPILER_MS
 #undef PCOMN_COMPILER_MS
 #endif
@@ -263,69 +270,26 @@
 #  define PCOMN_ATOMIC_WIDTH 1
 #endif
 
-/*******************************************************************************
- Warning control
+/***************************************************************************//**
+ GNU C/C++, at least 5.1.
 *******************************************************************************/
-// GCC warning control
-#define GCC_IGNORE_WARNING(warn) GCC_MAKE_PRAGMA(GCC diagnostic ignored "-W"#warn)
-#define GCC_ENABLE_WARNING(warn) GCC_MAKE_PRAGMA(GCC diagnostic warning "-W"#warn)
-#define GCC_SETERR_WARNING(warn) GCC_MAKE_PRAGMA(GCC diagnostic error "-W"#warn)
+#if defined (__GNUC__)
+#  define __GNUC_VER__ (__GNUC__*100+__GNUC_MINOR__*10+__GNUC_PATCHLEVEL__)
+#  define __CLANG_VER__ (__clang_major__*100+__clang_minor__*10+__clang_patchlevel__)
 
-#define GCC_DIAGNOSTIC_PUSH() GCC_MAKE_PRAGMA(GCC diagnostic push)
-#define GCC_DIAGNOSTIC_PUSH_IGNORE(warn) GCC_DIAGNOSTIC_PUSH() GCC_IGNORE_WARNING(warn)
-#define GCC_DIAGNOSTIC_PUSH_ENABLE(warn) GCC_DIAGNOSTIC_PUSH() GCC_ENABLE_WARNING(warn)
-#define GCC_DIAGNOSTIC_PUSH_SETERR(warn) GCC_DIAGNOSTIC_PUSH() GCC_SETERR_WARNING(warn)
-#define GCC_DIAGNOSTIC_POP() GCC_MAKE_PRAGMA(GCC diagnostic pop)
+#  define PCOMN_COMPILER      GNU
+#  define PCOMN_COMPILER_NAME "GCC"
+#  define PCOMN_COMPILER_GNU  1
+#  define PCOMN_COMPILER_C99  1
 
-// MS warning control
-#define MS_IGNORE_WARNING(warnlist) MS_MAKE_PRAGMA(warning(disable : warnlist))
-#define MS_ENABLE_WARNING(warnlist) MS_MAKE_PRAGMA(warning(default : warnlist))
+#  define __EXPORT __attribute__((visibility("default")))
+#  define __IMPORT __attribute__((visibility("default")))
 
-#define MS_DIAGNOSTIC_PUSH() MS_MAKE_PRAGMA(warning(push))
-#define MS_DIAGNOSTIC_POP()  MS_MAKE_PRAGMA(warning(pop))
+#  define thread_local_trivial __thread
+#  define  __inline __inline__
 
-#define MS_PUSH_IGNORE_WARNING(warnlist) MS_DIAGNOSTIC_PUSH() MS_IGNORE_WARNING(warnlist)
-
-/*******************************************************************************
- Borland C++
-*******************************************************************************/
-/** Borland C++ macros.
-*******************************************************************************/
-#ifdef __BORLANDC__
-
-#  ifndef PCOMN_PL_WINDOWS
-#     error Borland C++ is supported only for Windows operating systems family.
-#  endif
-# if __TURBOC__ < 0x591
-#   error "Borland C++ compiler versions less than 5.91 are not supported."
-# endif
-
-#  define PCOMN_COMPILER         BORLAND
-#  define PCOMN_COMPILER_NAME    "Borland C++"
-#  define PCOMN_COMPILER_BORLAND 1
-
-#  if defined(__DPMI32__)
-#     define PCOMN_MD_DPMI32
-#  endif
-
-#  define __EXPORT __declspec(dllexport)
-#  define __IMPORT __declspec(dllimport)
-
-#  define thread_local_trivial __declspec(thread)
-
-#  if defined(__DLL__)
-#     define PCOMN_MD_DLL     1
-#  endif
-
-#  ifndef __CONSOLE__
-#     undef PCOMN_MD_CONSOLE
-#     define PCOMN_MD_GUI     1
-#  endif
-
-/*******************************************************************************
- Microsoft Visual C++
-*******************************************************************************/
-/** Microsoft Visual C++.
+/***************************************************************************//**
+ Microsoft Visual C++ macros
 *******************************************************************************/
 #elif defined (_MSC_VER)
 
@@ -355,29 +319,8 @@
 // ALWAYS IGNORE stupid "forcing value to bool 'true' or 'false' (performance warning)"
 #pragma warning(disable : 4800)
 
-/*******************************************************************************
- GNU compiler collection.
-*******************************************************************************/
-/** GNU C/C++, at least 4.1.
-*******************************************************************************/
-#elif defined (__GNUC__)
-#  define __GNUC_VER__ (__GNUC__*100+__GNUC_MINOR__*10+__GNUC_PATCHLEVEL__)
-#  define __CLANG_VER__ (__clang_major__*100+__clang_minor__*10+__clang_patchlevel__)
-
-#  define PCOMN_COMPILER      GNU
-#  define PCOMN_COMPILER_NAME "GCC"
-#  define PCOMN_COMPILER_GNU  1
-#  define PCOMN_COMPILER_C99  1
-
-#  define __EXPORT __attribute__((visibility("default")))
-#  define __IMPORT __attribute__((visibility("default")))
-
-#  define thread_local_trivial __thread
-
-/*******************************************************************************
- IBM C++ compiler.
-*******************************************************************************/
-/** IBM C++.
+/***************************************************************************//**
+ IBM C++.
 *******************************************************************************/
 #elif defined (__IBMC__) || defined (__IBMCPP__)
 
@@ -515,15 +458,171 @@
 #ifdef PCOMN_PL_32BIT
 #error Only 64-bit platforms are supported.
 #endif
+/*******************************************************************************
+ Microsoft C++ compilers
+*******************************************************************************/
+#if defined(PCOMN_COMPILER_MS)
 
-/******************************************************************************/
-/** @def likely
+#  define PCOMN_NONSTD_UNIX_IO        1
+#  define NOMINMAX                    1
+
+#  pragma warning(disable : 4786 4355 4275 4251 4099)
+
+/*******************************************************************************
+ IBM C++ compilers
+*******************************************************************************/
+#elif defined(PCOMN_COMPILER_IBM)
+
+#  define PCOMN_NO_LOCALE_CONV        1
+
+#  ifdef PCOMN_PL_AS400
+#     define PCOMN_NO_STRCASE_CONV    1
+#  endif
+
+#elif defined(PCOMN_COMPILER_GNU)
+
+#  define PCOMN_NO_STRCASE_CONV       1
+#  pragma GCC diagnostic ignored "-Wparentheses"
+
+#endif
+
+#define PCOMN_USE(var) ((void)(var))
+
+#if defined(PCOMN_PL_MS)
+
+#  define PCOMN_PATH_DELIMS "\\"
+#  define PCOMN_PATH_NATIVE_DELIM '\\'
+#  define PCOMN_PATH_FOREIGN_DELIM '/'
+#  define PCOMN_NULL_FILE_NAME "NUL"
+
+#elif defined(PCOMN_PL_AS400)
+
+#  define PCOMN_PATH_DELIMS "/\\"
+#  define PCOMN_PATH_NATIVE_DELIM '/'
+#  define PCOMN_PATH_FOREIGN_DELIM '\\'
+
+#else // UNIX, etc.
+
+#  define PCOMN_PATH_DELIMS "/"
+#  define PCOMN_PATH_NATIVE_DELIM '/'
+#  define PCOMN_PATH_FOREIGN_DELIM '\\'
+#  define PCOMN_NULL_FILE_NAME "/dev/null"
+
+#endif
+
+#if defined(PCOMN_PL_MS)
+#  define PCOMN_EOL_NATIVE "\r\n"
+#else
+#  define PCOMN_EOL_NATIVE "\n"
+#endif
+
+#ifdef __cplusplus
+#  define PCOMN_CFUNC extern "C"
+#else
+#  define PCOMN_CFUNC
+#endif
+
+#ifdef PCOMN_PL_MS
+#  define PCOMN_CDECL __cdecl
+#else
+#  define PCOMN_CDECL
+#endif
+
+#define GCC_MAKE_PRAGMA(text)
+#define MS_MAKE_PRAGMA(text)
+
+/*******************************************************************************
+ Macro definitions for extended attribute specifiers, like __noreturn, __noinline, etc.,
+ for various compilers.
+ We must explicitly _undefine_ them first.
+*******************************************************************************/
+#ifdef __noreturn
+#undef __noreturn
+#endif
+#ifdef __may_alias
+#undef __may_alias
+#endif
+#ifdef __noinline
+#undef __noinline
+#endif
+#ifdef __cold
+#undef __cold
+#endif
+#ifdef __forceinline
+#undef __forceinline
+#endif
+#ifdef __restrict
+#undef __restrict
+#endif
+
+#ifdef PCOMN_COMPILER_GNU
+/*******************************************************************************
+ GCC
+*******************************************************************************/
+#define PCOMN_PRETTY_FUNCTION __PRETTY_FUNCTION__
+#define PCOMN_ATTR_PRINTF(format_pos, param_pos) __attribute__((format(printf, format_pos, param_pos)))
+#undef GCC_MAKE_PRAGMA
+#define GCC_MAKE_PRAGMA(text) _Pragma(#text)
+
+#define __noreturn      __attribute__((__noreturn__))
+#define __noinline      __attribute__((__noinline__))
+#define __cold          __attribute__((__noinline__, __cold__))
+#define __forceinline   inline __attribute__((__always_inline__))
+#define __restrict      __restrict__
+#define __may_alias     __attribute__((__may_alias__))
+
+#ifndef __deprecated
+#define __deprecated(...) __attribute__((deprecated(__VA_ARGS__)))
+#endif
+
+#elif defined(PCOMN_COMPILER_MS)
+/*******************************************************************************
+ Microsoft
+*******************************************************************************/
+#define PCOMN_PRETTY_FUNCTION __FUNCTION__
+#define PCOMN_ATTR_PRINTF(format_pos, param_pos)
+#undef MS_MAKE_PRAGMA
+#define MS_MAKE_PRAGMA(arg, ...) __pragma(arg, ##__VA_ARGS__)
+
+#define __noreturn      __declspec(noreturn)
+#define __noinline      __declspec(noinline)
+#define __cold          __noinline
+#define __forceinline   inline __forceinline
+#define __restrict      __restrict
+#define __may_alias
+
+#ifndef __deprecated
+#define __deprecated(...) __declspec(deprecated(__VA_ARGS__))
+#endif
+
+#else
+/*******************************************************************************
+ Others
+*******************************************************************************/
+#define PCOMN_PRETTY_FUNCTION __FUNCTION__
+#define PCOMN_ATTR_PRINTF(format_pos, param_pos)
+
+#define __noreturn
+#define __noinline
+#define __cold
+#define __forceinline inline
+#define __restrict
+#define __may_alias
+
+#ifndef __deprecated
+#define __deprecated(...)
+#endif
+
+#endif
+
+/***************************************************************************//**
+ @def likely
  Provide the compiler with branch prediction information, assering the expression is
  likely to be true.
 
  @param expr Expression that should evaluate to integer.
-*******************************************************************************/
-/** @def unlikely
+
+ @def unlikely
  Provide the compiler with branch prediction information, assering the expression is
  likely to be false.
 
@@ -531,23 +630,102 @@
 *******************************************************************************/
 #if !defined(likely) && !defined(unlikely)
 #ifdef PCOMN_COMPILER_GNU
-#define likely(expr)    __builtin_expect((expr), 1)
-#define unlikely(expr)  __builtin_expect((expr), 0)
+#define likely(expr)    __builtin_expect(!!(expr), 1)
+#define unlikely(expr)  __builtin_expect(!!(expr), 0)
 #else
 #define likely(expr)    (expr)
 #define unlikely(expr)  (expr)
 #endif
 #endif
 
-#include <sys/types.h>
-#include <stdint.h>
+/***************************************************************************//**
+ @def PCOMN_ALIGNED(alignment)
 
+ Alignment declaration for C.
+ C++ has alignas().
+
+ @param alignment Alignment, must be the power of 2.
+*******************************************************************************/
+#ifdef PCOMN_COMPILER_GNU
+#  define PCOMN_ALIGNED(a) __attribute__((aligned (a)))
+
+#elif defined(PCOMN_COMPILER_MS)
+#  define PCOMN_ALIGNED(a) __declspec(align(a))
+
+#else
+#  define PCOMN_ALIGNED(a)
+#endif
+
+/***************************************************************************//**
+ @def PCOMN_ASSUME_ALIGNED(pointer, alignment)
+
+ Return `pointer` and allow the compiler to assume that the returned `pointer` is at
+ least `alignment` bytes aligned.
+
+ @return `pointer`; note that in contrast to GCC's __builtin_assume_aligned the type of
+ returned value matches `pointer` type (i.e. it is not necessarily `void *`).
+
+ @param pointer
+ @param alignment Assumed alignment, must be the power of 2.
+
+ @note No-op for any non-GCC or non-Clang compiler.
+*******************************************************************************/
+#ifdef PCOMN_COMPILER_GNU
+#ifdef __cplusplus
+#  define PCOMN_ASSUME_ALIGNED(pointer, alignment) \
+   static_cast<std::remove_reference_t<decltype(pointer)>>(__builtin_assume_aligned((pointer), alignment))
+#else
+#  define PCOMN_ASSUME_ALIGNED(pointer, alignment) ((typeof(pointer))__builtin_assume_aligned((pointer), alignment))
+#endif
+#else
+#  define PCOMN_ASSUME_ALIGNED(pointer, alignment) (pointer)
+#endif
+
+/*******************************************************************************
+ Warning control
+*******************************************************************************/
+// GCC warning control
+#define GCC_IGNORE_WARNING(warn) GCC_MAKE_PRAGMA(GCC diagnostic ignored "-W"#warn)
+#define GCC_ENABLE_WARNING(warn) GCC_MAKE_PRAGMA(GCC diagnostic warning "-W"#warn)
+#define GCC_SETERR_WARNING(warn) GCC_MAKE_PRAGMA(GCC diagnostic error "-W"#warn)
+
+#define GCC_DIAGNOSTIC_PUSH() GCC_MAKE_PRAGMA(GCC diagnostic push)
+#define GCC_DIAGNOSTIC_PUSH_IGNORE(warn) GCC_DIAGNOSTIC_PUSH() GCC_IGNORE_WARNING(warn)
+#define GCC_DIAGNOSTIC_PUSH_ENABLE(warn) GCC_DIAGNOSTIC_PUSH() GCC_ENABLE_WARNING(warn)
+#define GCC_DIAGNOSTIC_PUSH_SETERR(warn) GCC_DIAGNOSTIC_PUSH() GCC_SETERR_WARNING(warn)
+#define GCC_DIAGNOSTIC_POP() GCC_MAKE_PRAGMA(GCC diagnostic pop)
+
+// MS warning control
+#define MS_IGNORE_WARNING(warnlist) MS_MAKE_PRAGMA(warning(disable : warnlist))
+#define MS_ENABLE_WARNING(warnlist) MS_MAKE_PRAGMA(warning(default : warnlist))
+
+#define MS_DIAGNOSTIC_PUSH() MS_MAKE_PRAGMA(warning(push))
+#define MS_DIAGNOSTIC_POP()  MS_MAKE_PRAGMA(warning(pop))
+
+#define MS_PUSH_IGNORE_WARNING(warnlist) MS_DIAGNOSTIC_PUSH() MS_IGNORE_WARNING(warnlist)
+
+/***************************************************************************//**
+ Starting from 2008, MS declares most POSIX functions deprecated: suppress
+ the deprecated warning for the MS completelly.
+*******************************************************************************/
+#if PCOMN_WORKAROUND(_MSC_VER, >= 1400)
+#pragma warning(disable : 4996)
+#endif
+
+#if PCOMN_COMPILER_CXX14
+#ifdef __deprecated
+#undef __deprecated
+#endif
+#define __deprecated(...) [[deprecated(__VA_ARGS__)]]
+#endif
+
+/*******************************************************************************
+ Integer typedefs and constants
+*******************************************************************************/
 #ifdef PCOMN_PL_WIN64
 typedef intptr_t ssize_t ;
 #endif
 
-/** Represents file-offset value.
- */
 typedef ssize_t fileoff_t ;
 typedef size_t  filesize_t ;
 
@@ -565,28 +743,6 @@ typedef uint32_t  uint32_be ;
 typedef int64_t   int64_be ;
 typedef uint64_t  uint64_be ;
 
-/*
- * MS 8.0 declares most POSIX functions deprecated!!!
- */
-#if PCOMN_WORKAROUND(_MSC_VER, >= 1400)
-#pragma warning(disable : 4996)
-#endif
-
-/*
-   #define PCOMN_NO_STRCASE_CONV   1
-   Defined if strupr/strlwr are not supported by the compiler library
-
-   #define PCOMN_NO_LOCALE_CONV    1
-   Defined if _lstrupr/_lstrlwr are not supported by the compiler library
-
-   #define PCOMN_NONSTD_UNIX_IO    1
-   Defined if the compiler library uses UNIX I/O function with underscores (such as _open, etc.)
-   instead of standard names
-*/
-
-#include <pcomn_config.h>
-#include <assert.h>
-
 #ifdef __cplusplus
 namespace pcomn {
 #endif
@@ -598,19 +754,14 @@ typedef unsigned char      byte_t ;
 typedef long long int            longlong_t ;
 typedef unsigned long long int   ulonglong_t ;
 
-/*
- * The data type with maximal alignment boundary
- */
-typedef double pcomn_maxaligned_t ;
-
 #ifdef __cplusplus
 
 const size_t KiB = 1024 ;
 const size_t MiB = 1024*KiB ;
 const size_t GiB = 1024*MiB ;
 
-/******************************************************************************/
-/** A single-value enum for use as a tag for instantiation of static template
+/***************************************************************************//**
+ A single-value enum for use as a tag for instantiation of static template
  data and code.
 *******************************************************************************/
 enum class Instantiate {} ;
@@ -794,11 +945,11 @@ inline void put_byte(T *data, size_t byte_num, uint8_t byte)
 }
 } // end of namespace pcomn
 
-/******************************************************************************/
-/** @var PCOMN_CACHELINE_SIZE
+/***************************************************************************//**
+ @var PCOMN_CACHELINE_SIZE
  Typical L1 cacheline size for the architecture the library is compiled for.
 *******************************************************************************/
-const size_t PCOMN_CACHELINE_SIZE =
+constexpr size_t PCOMN_CACHELINE_SIZE =
 #if !defined(PCOMN_PL_POWER8)
    64
 #else
@@ -808,8 +959,8 @@ const size_t PCOMN_CACHELINE_SIZE =
 
 #endif // __cplusplus
 
-/******************************************************************************/
-/** @def PCOMN_PLATFORM_HEADER(header)
+/***************************************************************************//**
+ @def PCOMN_PLATFORM_HEADER(header)
  A macro to include pcommon headers from platform-dependent subdirectories (unix, win32)
 *******************************************************************************/
 #if defined(PCOMN_PL_POSIX)

@@ -246,13 +246,12 @@ constexpr __forceinline To bit_cast(const From &from) noexcept
    PCOMN_STATIC_CHECK(alignof(To) <= alignof(From)) ;
    PCOMN_STATIC_CHECK(std::is_trivially_copyable_v<From> && std::is_trivially_copyable_v<To>) ;
 
-   const char * const src = reinterpret_cast<const char *>(&from) ;
-   To result = *reinterpret_cast<const To *>(src) ;
-   return result ;
+   const union { const From *src ; const To *dst ; } result = {&from} ;
+   return *result.dst ;
 }
 
-/******************************************************************************/
-/** Function for getting T value in unevaluated context for e.g. passsing
+/***************************************************************************//**
+ Function for getting T value in unevaluated context for e.g. passsing
  to functions in SFINAE context without the need to go through constructors
 
  Differs from std::declval in that it does not converts T to rvalue reference
@@ -350,6 +349,33 @@ constexpr inline T fold_bitor(T a1, T a2, TN ...aN)
 template<typename T> struct identity_type { typedef T type ; } ;
 
 /***************************************************************************//**
+ Transfer cv-qualifiers of the source type to the target type.
+ So, e.g.
+     - `transfer_cv_t<const int, double>` is `const double`
+     - `transfer_cv_t<const int, volatile double>` is `const volatile double`
+     - `transfer_cv_t<const volatile int, double>` is `const volatile double`
+     - `transfer_cv_t<const volatile int, volatile double>` is `const volatile double`
+
+ @Note `transfer_cv_t<const int, double*>` is `double* const`, _not_ 'const double*'
+*******************************************************************************/
+/**@{*/
+template<typename S, typename T>
+struct transfer_cv { typedef T type ; } ;
+
+template<typename S, typename T>
+struct transfer_cv<const S, T> : transfer_cv<S, const T> {} ;
+
+template<typename S, typename T>
+struct transfer_cv<volatile S, T> : transfer_cv<S, volatile T> {} ;
+
+template<typename S, typename T>
+struct transfer_cv<const volatile S, T> : transfer_cv<S, const volatile T> {} ;
+/**@}*/
+
+template<typename S, typename T>
+using transfer_cv_t = typename transfer_cv<S,T>::type ;
+
+/***************************************************************************//**
  Provides globally placed default-constructed value of its parameter type.
 *******************************************************************************/
 template<typename T>
@@ -380,9 +406,9 @@ struct make {
 *******************************************************************************/
 template<typename Base, typename Derived>
 struct is_base_of_strict :
-         bool_constant<!(std::is_same<Base, Derived>::value ||
-                         std::is_same<const volatile Base*, const volatile void*>::value) &&
-                         std::is_convertible<const volatile Derived*, const volatile Base*>::value> {} ;
+         bool_constant<!(std::is_same_v<Base, Derived> ||
+                         std::is_same_v<const volatile Base*, const volatile void*>) &&
+                         std::is_convertible_v<const volatile Derived*, const volatile Base*>> {} ;
 
 template<typename T, typename U>
 using is_same_unqualified = std::is_same<std::remove_cv_t<T>, std::remove_cv_t<U> > ;
@@ -400,6 +426,20 @@ struct if_all_convertible : std::enable_if<is_all_convertible<To, From...>::valu
 
 template<typename T, typename To, typename... From>
 using if_all_convertible_t = typename if_all_convertible<T, To, From...>::type ;
+
+template<typename T, typename... Types>
+struct is_one_of : std::true_type {} ;
+
+template<typename T, typename T1, typename... Tn>
+struct is_one_of<T, T1, Tn...> :
+   std::bool_constant<(std::is_same_v<T, T1> || is_one_of<T, Tn...>::value)>
+{} ;
+
+template<typename T, typename... Types>
+constexpr bool is_one_of_v = is_one_of<T, Types...>::value ;
+
+template<typename To, typename... From>
+constexpr bool is_all_convertible_v = is_all_convertible<To, From...>::value ;
 
 /***************************************************************************//**
  Check if the type can be trivially swapped, i.e. by simply swapping raw memory
@@ -460,7 +500,7 @@ template<typename T>
 using noref_result_of_t = typename noref_result_of<T>::type ;
 
 template<typename T>
-using valtype_t = std::remove_cv_t<std::remove_reference_t<T>> ;
+using valtype_t = std::remove_cvref_t<T> ;
 
 template<typename T, typename... A>
 struct rebind___t {

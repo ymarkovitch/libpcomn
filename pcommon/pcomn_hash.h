@@ -3,7 +3,8 @@
 #define __PCOMN_HASH_H
 /*******************************************************************************
  FILE         :   pcomn_hash.h
- COPYRIGHT    :   Yakov Markovitch, 2000-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2000-2019. All rights reserved.
+                  Leonid Yuriev <leo@yuriev.ru>, 2010-2019. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Hash functions & functors.
@@ -50,6 +51,101 @@ _PCOMNEXP uint32_t calc_crc32(uint32_t crc, const void *buf, size_t len) ;
 #include <initializer_list>
 
 namespace pcomn {
+
+/*******************************************************************************
+ Ported from Leonid Yuriev's t1ha2
+*******************************************************************************/
+namespace detail {
+
+// 'magic' primes
+constexpr uint64_t t1ha_prime_0 = 0xEC99BF0D8372CAABull ;
+constexpr uint64_t t1ha_prime_1 = 0x82434FE90EDCEF39ull ;
+constexpr uint64_t t1ha_prime_2 = 0xD4F06DB99D67BE4Bull ;
+constexpr uint64_t t1ha_prime_4 = 0x9C06FAF4D023E3ABull ;
+constexpr uint64_t t1ha_prime_5 = 0xC060724A8424F345ull ;
+constexpr uint64_t t1ha_prime_6 = 0xCB5AF53AE3AAAC31ull ;
+
+/// Modern compilers convert this to rotr64 assembler instruction.
+__forceinline uint64_t t1ha_rotr64(uint64_t v, unsigned s)
+{
+   return (v >> s) | (v << (64 - s)) ;
+}
+
+__forceinline uint64_t t1ha_mul_64x64_128(uint64_t a, uint64_t b, uint64_t * __restrict h)
+{
+   __uint128_t r = (__uint128_t)a * (__uint128_t)b ;
+   // Modern GCC/Clang nicely optimizes this
+   *h = (uint64_t)(r >> 64) ;
+   return (uint64_t)r ;
+}
+
+/// XOR high and low parts of the full 128-bit product
+__forceinline uint64_t t1ha_mux64(uint64_t v, uint64_t prime)
+{
+   uint64_t l, h ;
+   l = t1ha_mul_64x64_128(v, prime, &h) ;
+   return l ^ h ;
+}
+
+/// xor-mul-xor mixer
+__forceinline uint64_t t1ha_mix64(uint64_t v, uint64_t p)
+{
+   v *= p ;
+   return v ^ t1ha_rotr64(v, 41) ;
+}
+
+__forceinline void t1ha2_mixup64(uint64_t *__restrict a,
+                                 uint64_t *__restrict b, uint64_t v,
+                                 uint64_t prime)
+{
+   uint64_t h ;
+   *a ^= t1ha_mul_64x64_128(*b + v, prime, &h) ;
+   *b += h ;
+}
+
+__forceinline uint64_t t1ha2_final64(uint64_t a, uint64_t b)
+{
+   const uint64_t x = (a + t1ha_rotr64(b, 41)) * t1ha_prime_0 ;
+   const uint64_t y = (t1ha_rotr64(a, 23) + b) * t1ha_prime_6 ;
+   return t1ha_mux64(x ^ y, t1ha_prime_5) ;
+}
+
+} // end of namespace pcomn::detail
+
+/***************************************************************************//**
+ Inlined T1HA2 specialization for 128-bit binary data.
+*******************************************************************************/
+/**@{*/
+inline uint64_t t1ha2_bin128(uint64_t lo, uint64_t hi, uint64_t seed)
+{
+   uint64_t a = seed, b = 16 ;
+   detail::t1ha2_mixup64(&a, &b, lo, detail::t1ha_prime_2) ;
+   detail::t1ha2_mixup64(&b, &a, hi, detail::t1ha_prime_1) ;
+   return detail::t1ha2_final64(a, b) ;
+}
+
+inline uint64_t t1ha2_bin128(uint64_t lo, uint64_t hi)
+{
+   return t1ha2_bin128(lo, hi, 0) ;
+}
+/**@}*/
+
+/***************************************************************************//**
+ Inlined T1HA0 specialization for 128-bit binary data.
+*******************************************************************************/
+/**@{*/
+inline uint64_t t1ha0_bin128(uint64_t lo, uint64_t hi)
+{
+   constexpr uint64_t len = 16 ;
+   constexpr uint64_t seed = 0 ;
+   const uint64_t b = len  + detail::t1ha_mux64(lo, detail::t1ha_prime_2) ;
+   const uint64_t a = seed + detail::t1ha_mux64(hi, detail::t1ha_prime_1) ;
+   // final_weak_avalanche
+   return
+      detail::t1ha_mux64(detail::t1ha_rotr64(a + b, 17), detail::t1ha_prime_4) +
+      detail::t1ha_mix64(a ^ b, detail::t1ha_prime_0) ;
+}
+/**@}*/
 
 /*******************************************************************************
  Overloaded generic hash algorithms
@@ -278,10 +374,7 @@ struct hash_combinator {
       explicit hash_combinator(uint64_t initial_hash) { append(initial_hash) ; }
 
       template<typename InputIterator>
-      hash_combinator(const InputIterator &b, const InputIterator &e) : hash_combinator()
-      {
-         append_data(b, e) ;
-      }
+      hash_combinator(const InputIterator &b, const InputIterator &e) { append_data(b, e) ; }
 
       constexpr uint64_t value() const { return _combined ; }
       constexpr operator uint64_t() const { return value() ; }
@@ -457,7 +550,7 @@ struct binary128_t {
             bitop::bitcount(_idata[1]) ;
       }
 
-      size_t hash() const { return tuplehash(_idata[0], _idata[1]) ; }
+      size_t hash() const { return t1ha0_bin128(_idata[0], _idata[1]) ; }
 
       _PCOMNEXP std::string to_string() const ;
       _PCOMNEXP char *to_strbuf(char *buf) const ;
@@ -560,15 +653,24 @@ inline std::enable_if_t<is_literal128<T>::value, T &&> cast128(binary128_t &&v)
 }
 
 /***************************************************************************//**
- MD5 hash
+ Base class of 128-bit hashes: allows for the "unspecified hash" return/storage
+ type.
 *******************************************************************************/
-struct md5hash_t : binary128_t {
-
-      constexpr md5hash_t() = default ;
-      explicit constexpr md5hash_t(const binary128_t &src) : binary128_t(src) {}
-      explicit md5hash_t(const char *hexstr) : binary128_t(hexstr) {}
+struct digest128_t : binary128_t {
+      using binary128_t::binary128_t ;
+      explicit constexpr digest128_t(const binary128_t &src) : binary128_t(src) {}
 
       constexpr size_t hash() const { return _idata[0] ; }
+} ;
+
+/***************************************************************************//**
+ MD5 hash
+*******************************************************************************/
+struct md5hash_t : digest128_t {
+
+      constexpr md5hash_t() = default ;
+      explicit constexpr md5hash_t(const binary128_t &src) : digest128_t(src) {}
+      explicit md5hash_t(const char *hexstr) : digest128_t(hexstr) {}
 } ;
 
 /***************************************************************************//**
@@ -627,13 +729,11 @@ PCOMN_DEFINE_RELOP_FUNCTIONS(, sha1hash_t) ;
 /***************************************************************************//**
  t1ha2 128-bit hash
 *******************************************************************************/
-struct t1ha2hash_t : binary128_t {
+struct t1ha2hash_t : digest128_t {
 
       constexpr t1ha2hash_t() = default ;
-      explicit constexpr t1ha2hash_t(const binary128_t &src) : binary128_t(src) {}
-      explicit t1ha2hash_t(const char *hexstr) : binary128_t(hexstr) {}
-
-      constexpr size_t hash() const { return _idata[0] ; }
+      explicit constexpr t1ha2hash_t(const binary128_t &src) : digest128_t(src) {}
+      explicit t1ha2hash_t(const char *hexstr) : digest128_t(hexstr) {}
 } ;
 
 /***************************************************************************//**
@@ -1110,6 +1210,16 @@ struct hash_fn<std::tuple<T1, T...>> {
 } ;
 
 /***************************************************************************//**
+ Generic "implicit" hash function: delegates to pcomn::hash_fn<T>().
+*******************************************************************************/
+template<typename T>
+inline size_t hash_data(const T &data)
+{
+   static constexpr hash_fn<T> hasher ;
+   return hasher(data) ;
+}
+
+/***************************************************************************//**
  Hashing functor for any sequence
 *******************************************************************************/
 template<typename S, typename ItemHasher = hash_fn<decltype(*std::begin(std::declval<S>()))>>
@@ -1164,9 +1274,10 @@ namespace std {
  std::hash specializations for cryptohashes
 *******************************************************************************/
 template<> struct hash<pcomn::binary128_t>: pcomn::hash_fn_member<pcomn::binary128_t> {} ;
-template<> struct hash<pcomn::md5hash_t>  : pcomn::hash_fn_member<pcomn::md5hash_t> {} ;
+template<> struct hash<pcomn::digest128_t>: pcomn::hash_fn_member<pcomn::digest128_t> {} ;
+template<> struct hash<pcomn::md5hash_t>  : hash<pcomn::digest128_t> {} ;
+template<> struct hash<pcomn::t1ha2hash_t>: hash<pcomn::digest128_t> {} ;
 template<> struct hash<pcomn::sha1hash_t> : pcomn::hash_fn_member<pcomn::sha1hash_t> {} ;
-template<> struct hash<pcomn::t1ha2hash_t>: pcomn::hash_fn_member<pcomn::t1ha2hash_t> {} ;
 template<> struct hash<pcomn::sha256hash_t> : pcomn::hash_fn_member<pcomn::sha256hash_t> {} ;
 }
 

@@ -214,6 +214,8 @@ class time_point {
 
       char *string(char *buf, size_t size, Zone zone = LOCAL) const
       {
+         GCC_DIAGNOSTIC_PUSH_IGNORE(stringop-overflow) ;
+
          if (!buf || !size)
             return NULL ;
          if (!*this)
@@ -228,6 +230,8 @@ class time_point {
          strncpy(buf, result, std::min(strlen(result) + 1, size - 1)) ;
          buf[size - 1] = 0 ;
          return buf ;
+
+         GCC_DIAGNOSTIC_POP() ;
       }
 
       template<size_t n>

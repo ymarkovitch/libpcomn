@@ -243,11 +243,11 @@ inline size_t native_rzcnt(I v, generic_isa_tag)
 *******************************************************************************/
 #ifdef PCOMN_PL_X86
 #if defined(PCOMN_COMPILER_GNU)
-__always_inline size_t builtin_popcount(unsigned long long v) { return __builtin_popcountll(v) ; }
-__always_inline size_t builtin_popcount(unsigned long v) { return __builtin_popcountl(v) ; }
-__always_inline size_t builtin_popcount(unsigned int v) { return __builtin_popcount(v) ; }
-__always_inline size_t builtin_popcount(unsigned short v) { return __builtin_popcount(v) ; }
-__always_inline size_t builtin_popcount(unsigned char v) { return __builtin_popcount(v) ; }
+__forceinline size_t builtin_popcount(unsigned long long v) { return __builtin_popcountll(v) ; }
+__forceinline size_t builtin_popcount(unsigned long v) { return __builtin_popcountl(v) ; }
+__forceinline size_t builtin_popcount(unsigned int v) { return __builtin_popcount(v) ; }
+__forceinline size_t builtin_popcount(unsigned short v) { return __builtin_popcount(v) ; }
+__forceinline size_t builtin_popcount(unsigned char v) { return __builtin_popcount(v) ; }
 
 template<typename I>
 inline size_t native_bitcount(I v, sse42_isa_tag)

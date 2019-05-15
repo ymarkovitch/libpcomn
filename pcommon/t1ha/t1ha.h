@@ -124,7 +124,7 @@
  *    t1ha library itself:
  *
  *      // To enable use of GNU ELF Indirect functions.
- *      #define T1T1HA_USE_INDIRECT_FUNCTIONS 1
+ *      #define T1HA_USE_INDIRECT_FUNCTIONS 1
  *
  *      // To disable use of GNU ELF Indirect functions. This may be useful
  *      // if the actual toolchain or the system's loader don't support ones.
@@ -524,8 +524,6 @@ T1HA_API void t1ha2_update(t1ha_context_t *__restrict ctx,
  *       different each other, i.e. 64-bit result is NOT any part of 128-bit. */
 T1HA_API uint64_t t1ha2_final(t1ha_context_t *__restrict ctx,
                               uint64_t *__restrict extra_result /* optional */);
-
-T1HA_API uint64_t t1ha2_bin128(uint64_t lo, uint64_t hi);
 
 #endif /* T1HA2_DISABLED */
 

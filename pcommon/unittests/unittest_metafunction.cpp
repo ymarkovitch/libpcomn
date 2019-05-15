@@ -22,12 +22,24 @@
 
 #include <string.h>
 
+using namespace pcomn ;
+
+template<typename T>
+using is_double = std::is_same<T, double> ;
+
+template<typename T, typename U>
+using is_same_valtype = std::is_same<pcomn::valtype_t<T>, pcomn::valtype_t<U> > ;
+
+template<typename T>
+using is_double_val = is_same_valtype<T, double> ;
+
 class MetafunctionTests : public CppUnit::TestFixture {
 
       void Test_Has_Dep_Type() ;
       void Test_Ensure_Arg() ;
       void Test_Count_Types() ;
       void Test_Rebind_Contaner() ;
+      void Test_Transfer_CV() ;
 
       CPPUNIT_TEST_SUITE(MetafunctionTests) ;
 
@@ -35,6 +47,7 @@ class MetafunctionTests : public CppUnit::TestFixture {
       CPPUNIT_TEST(Test_Ensure_Arg) ;
       CPPUNIT_TEST(Test_Count_Types) ;
       CPPUNIT_TEST(Test_Rebind_Contaner) ;
+      CPPUNIT_TEST(Test_Transfer_CV) ;
 
       CPPUNIT_TEST_SUITE_END() ;
 } ;
@@ -66,18 +79,8 @@ void MetafunctionTests::Test_Ensure_Arg()
    CPPUNIT_LOG_IS_FALSE((std::is_const<std::remove_reference<decltype(PCOMN_ENSURE_ARG(uptr_ref))>::type>::value)) ;
 }
 
-template<typename T>
-using is_double = std::is_same<T, double> ;
-
-template<typename T, typename U>
-using is_same_valtype = std::is_same<pcomn::valtype_t<T>, pcomn::valtype_t<U> > ;
-
-template<typename T>
-using is_double_val = is_same_valtype<T, double> ;
-
 void MetafunctionTests::Test_Count_Types()
 {
-   using namespace pcomn ;
    using namespace std ;
    CPPUNIT_LOG_EQ(count_types_if<is_double>::value, 0) ;
    CPPUNIT_LOG_EQ((count_types_if<is_double, int>::value), 0) ;
@@ -91,17 +94,36 @@ void MetafunctionTests::Test_Count_Types()
 
 void MetafunctionTests::Test_Rebind_Contaner()
 {
-   using namespace pcomn ;
    PCOMN_STATIC_CHECK(std::is_same<std::vector<int>, rebind_t<std::vector<double>, int> >::value) ;
    PCOMN_STATIC_CHECK(std::is_same<std::map<std::string, int>, rebind_t<std::map<double, char>, std::string, int> >::value) ;
 }
 
+void MetafunctionTests::Test_Transfer_CV()
+{
+   CPPUNIT_LOG_ASSERT((std::is_same_v<transfer_cv_t<int, double>, double>)) ;
+   CPPUNIT_LOG_ASSERT((std::is_same_v<transfer_cv_t<const int, double>, const double>)) ;
+   CPPUNIT_LOG_IS_FALSE((std::is_same_v<transfer_cv_t<const int, double>, double>)) ;
+   CPPUNIT_LOG_IS_FALSE((std::is_same_v<transfer_cv_t<const int, double>, volatile double>)) ;
+
+   CPPUNIT_LOG_ASSERT((std::is_same_v<transfer_cv_t<volatile int, double>, volatile double>)) ;
+   CPPUNIT_LOG_ASSERT((std::is_same_v<transfer_cv_t<volatile int, volatile double>, volatile double>)) ;
+   CPPUNIT_LOG_ASSERT((std::is_same_v<transfer_cv_t<const int, volatile double>, const volatile double>)) ;
+   CPPUNIT_LOG_ASSERT((std::is_same_v<transfer_cv_t<volatile int, const double>, const volatile double>)) ;
+   CPPUNIT_LOG_ASSERT((std::is_same_v<transfer_cv_t<const volatile int, const double>, const volatile double>)) ;
+   CPPUNIT_LOG_ASSERT((std::is_same_v<transfer_cv_t<const volatile int, double>, const volatile double>)) ;
+
+   CPPUNIT_LOG_IS_FALSE((std::is_same_v<transfer_cv_t<volatile int, double>, double>)) ;
+   CPPUNIT_LOG_IS_FALSE((std::is_same_v<transfer_cv_t<volatile int, double>, const double>)) ;
+}
+
+/*******************************************************************************
+ main
+*******************************************************************************/
 int main(int argc, char *argv[])
 {
-   pcomn::unit::TestRunner runner ;
-   runner.addTest(MetafunctionTests::suite()) ;
-
-   return
-      pcomn::unit::run_tests(runner, argc, argv,
-                             "unittest.diag.ini", "pcomn_metafunction tests") ;
+   return pcomn::unit::run_tests
+       <
+           MetafunctionTests
+       >
+       (argc, argv) ;
 }

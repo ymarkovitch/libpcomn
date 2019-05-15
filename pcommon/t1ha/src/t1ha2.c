@@ -326,11 +326,4 @@ uint64_t t1ha2_final(t1ha_context_t *__restrict ctx,
   T1HA2_TAIL_ABCD(le, aligned, &ctx->state, ctx->buffer.u64, ctx->partial);
 }
 
-uint64_t t1ha2_bin128(uint64_t lo, uint64_t hi)
-{
-  t1ha_context_t ctx ;
-  t1ha2_init(&ctx, hi, lo) ;
-  return t1ha2_final(&ctx, NULL) ;
-}
-
 #endif /* T1HA2_DISABLED */
