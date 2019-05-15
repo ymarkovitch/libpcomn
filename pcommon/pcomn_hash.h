@@ -658,6 +658,8 @@ inline std::enable_if_t<is_literal128<T>::value, T &&> cast128(binary128_t &&v)
 *******************************************************************************/
 struct digest128_t : binary128_t {
       using binary128_t::binary128_t ;
+
+      constexpr digest128_t() = default ;
       explicit constexpr digest128_t(const binary128_t &src) : binary128_t(src) {}
 
       constexpr size_t hash() const { return _idata[0] ; }
@@ -865,6 +867,7 @@ struct sha256hash_t : binary256_t {
 
       using binary256_t::binary256_t ;
 
+      constexpr sha256hash_t() = default ;
       explicit constexpr sha256hash_t(const binary256_t &src) : binary256_t(src) {}
 
       sha256hash_t hton() const { return sha256hash_t(*this).hton_inplace() ; }
