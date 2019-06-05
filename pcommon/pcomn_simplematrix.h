@@ -66,9 +66,17 @@ class simple_slice {
          _finish(vector_end(std::forward<V>(src), is_pointer_t<decltype(src.begin())>()))
       {}
 
+      #if PCOMN_WORKAROUND(__GNUC_VER__, >= 900)
+      GCC_DIAGNOSTIC_PUSH_IGNORE(init-list-lifetime)
+      #endif
+
       constexpr simple_slice(std::initializer_list<std::remove_cv_t<value_type>> init) :
          _start(init.begin()), _finish(init.end())
       {}
+
+      #if PCOMN_WORKAROUND(__GNUC_VER__, >= 900)
+      GCC_DIAGNOSTIC_POP()
+      #endif
 
       /// Get the count of slice elements
       constexpr size_t size() const { return _finish - _start ; }
