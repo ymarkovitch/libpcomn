@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 # FILE         :  CMakeLists.txt
-# COPYRIGHT    :  Yakov Markovitch, 2014-2018
+# COPYRIGHT    :  Yakov Markovitch, 2014-2019
 #                 See LICENSE for information on usage/redistribution.
 #
 # DESCRIPTION  :  pcommon unittests build script
@@ -8,7 +8,7 @@
 # PROGRAMMED BY:  Yakov Markovitch
 # CREATION DATE:  11 Sep 2014
 #------------------------------------------------------------------------------
-cmake_minimum_required(VERSION 3.6)
+cmake_minimum_required(VERSION 3.7.2)
 
 project(pcommn_unittests)
 
@@ -51,6 +51,7 @@ unittest(unittest_integer)
 unittest(unittest_iostream)
 unittest(unittest_iterator)
 unittest(unittest_mmap)
+unittest(unittest_network_address)
 unittest(unittest_omanip)
 unittest(unittest_rawstream)
 unittest(unittest_regex)

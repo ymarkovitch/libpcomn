@@ -13,9 +13,9 @@
 /** @file
     Classes and functions for working with network addresses.
 *******************************************************************************/
-#include <pcomn_net/netexcept.h>
-#include <pcomn_net/netaddr.h>
+#include "netexcept.h"
 
+#include <pcomn_netaddr.h>
 #include <pcomn_handle.h>
 #include <pcomn_safeptr.h>
 #include <pcomn_smartptr.h>

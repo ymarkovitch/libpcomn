@@ -1,14 +1,14 @@
-/*-*- tab-width:4;c-file-style:"stroustrup";c-file-offsets:((innamespace . 0) (inline-open . 0) (case-label . +)) -*-*/
+/*-*- tab-width:4;c-file-style:"stroustrup";c-file-offsets:((innamespace . 0)(inline-open . 0)(case-label . +)) -*-*/
 /*******************************************************************************
  FILE         :   unittest_network_address.cpp
- COPYRIGHT    :   Yakov Markovitch, 2008-2017. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2008-2019. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Internet address classes unit tests.
 
  CREATION DATE:   27 Jan 2008
 *******************************************************************************/
-#include <pcomn_net/netaddr.h>
+#include <pcomn_netaddr.h>
 #include <pcomn_unittest.h>
 
 #include <pcomn_string.h>
@@ -60,16 +60,16 @@ void InetAddressTests::Test_IP_Address()
     CPPUNIT_LOG_EXCEPTION(net::inet_address(""), std::invalid_argument) ;
 
     CPPUNIT_LOG_EQUAL(net::inet_address("", net::inet_address::ALLOW_EMPTY).ipaddr(), (uint32_t)0) ;
-    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address(""), net::invalid_str_repr, "mpty") ;
-    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address("  65.66.67.68  ", net::inet_address::ONLY_DOTDEC).ipaddr(), net::invalid_str_repr, "decimal") ;
-    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address("a5.66.67.68", net::inet_address::ONLY_DOTDEC).ipaddr(), net::invalid_str_repr, "decimal") ;
-    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address("abc", net::inet_address::ONLY_DOTDEC).ipaddr(), net::invalid_str_repr, "decimal") ;
-    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address("65..66.67", net::inet_address::ONLY_DOTDEC).ipaddr(), net::invalid_str_repr, "decimal") ;
-    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address("1.1.1.555", net::inet_address::ONLY_DOTDEC), net::invalid_str_repr, "decimal") ;
-    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address("1.1.555", net::inet_address::ONLY_DOTDEC), net::invalid_str_repr, "decimal") ;
-    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address("1.555", net::inet_address::ONLY_DOTDEC), net::invalid_str_repr, "decimal") ;
-    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address("555", net::inet_address::ONLY_DOTDEC), net::invalid_str_repr, "decimal") ;
-    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address("-0.1.2.3", net::inet_address::ONLY_DOTDEC), net::invalid_str_repr, "decimal") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address(""), invalid_str_repr, "mpty") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address("  65.66.67.68  ", net::inet_address::ONLY_DOTDEC).ipaddr(), invalid_str_repr, "decimal") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address("a5.66.67.68", net::inet_address::ONLY_DOTDEC).ipaddr(), invalid_str_repr, "decimal") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address("abc", net::inet_address::ONLY_DOTDEC).ipaddr(), invalid_str_repr, "decimal") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address("65..66.67", net::inet_address::ONLY_DOTDEC).ipaddr(), invalid_str_repr, "decimal") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address("1.1.1.555", net::inet_address::ONLY_DOTDEC), invalid_str_repr, "decimal") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address("1.1.555", net::inet_address::ONLY_DOTDEC), invalid_str_repr, "decimal") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address("1.555", net::inet_address::ONLY_DOTDEC), invalid_str_repr, "decimal") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address("555", net::inet_address::ONLY_DOTDEC), invalid_str_repr, "decimal") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address("-0.1.2.3", net::inet_address::ONLY_DOTDEC), invalid_str_repr, "decimal") ;
     CPPUNIT_LOG(std::endl) ;
 
     CPPUNIT_LOG_EQUAL(net::inet_address(65, 66, 67, 68).ipaddr(), (uint32_t)0x41424344) ;
@@ -103,7 +103,7 @@ void InetAddressTests::Test_IP_Address()
     CPPUNIT_LOG_EQUAL(net::inet_address("localhost").str(), std::string("127.0.0.1")) ;
     CPPUNIT_LOG_EQUAL(net::inaddr_loopback(), net::inet_address("localhost")) ;
     CPPUNIT_LOG_EQUAL(net::inaddr_broadcast(), net::inet_address(255, 255, 255, 255)) ;
-    CPPUNIT_LOG_EXCEPTION(net::inet_address("Hello, world!"), net::inaddr_error) ;
+    CPPUNIT_LOG_EXCEPTION(net::inet_address("Hello, world!"), system_error) ;
     CPPUNIT_LOG_EQUAL(net::inet_address(1, 2, 3, 4).hostname(), std::string("1.2.3.4")) ;
 }
 
@@ -186,10 +186,10 @@ void InetAddressTests::Test_Iface_Address()
     CPPUNIT_LOG_EQUAL(net::iface_addr("65.66.67.68"), net::inet_address(65, 66, 67, 68)) ;
     CPPUNIT_LOG_EQUAL(net::inet_address("65.66.67.68", net::inet_address::USE_IFACE), net::inet_address(65, 66, 67, 68)) ;
     CPPUNIT_LOG_EQUAL(net::inet_address("localhost", net::inet_address::USE_IFACE), net::inaddr_loopback()) ;
-    CPPUNIT_LOG_EXCEPTION(net::inet_address("lo"), net::inaddr_error) ;
+    CPPUNIT_LOG_EXCEPTION(net::inet_address("lo"), system_error) ;
 
     CPPUNIT_LOG_ASSERT(net::iface_addr("NoSuch").ipaddr() == 0) ;
-    CPPUNIT_LOG_EXCEPTION(net::inet_address("NoSuch", net::inet_address::FROM_IFACE), net::inaddr_error) ;
+    CPPUNIT_LOG_EXCEPTION(net::inet_address("NoSuch", net::inet_address::FROM_IFACE), system_error) ;
 }
 
 void InetAddressTests::Test_Subnet_Address()

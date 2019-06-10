@@ -9,8 +9,8 @@
  PROGRAMMED BY:   Yakov Markovitch
  CREATION DATE:   15 Feb 2000
 *******************************************************************************/
-#include <pcomn_except.h>
-#include <win32/pcomn_w32util.h>
+#include "pcomn_except.h"
+#include "win32/pcomn_w32util.h"
 
 namespace pcomn {
 

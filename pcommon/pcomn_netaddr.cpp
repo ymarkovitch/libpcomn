@@ -1,22 +1,21 @@
 /*-*- tab-width:4;indent-tabs-mode:nil;c-file-style:"stroustrup";c-file-offsets:((innamespace . 0)(inline-open . 0)(case-label . +)) -*-*/
 /*******************************************************************************
- FILE         :   netaddr.cpp
- COPYRIGHT    :   Yakov Markovitch, 2008-2017. All rights reserved.
+ FILE         :   pcomn_netaddr.cpp
+ COPYRIGHT    :   Yakov Markovitch, 2008-2019. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Internet address class(es)/functions.
 
  CREATION DATE:   27 Jan 2008
 *******************************************************************************/
-#include <pcomn_net/netaddr.h>
-
-#include <pcomn_unistd.h>
-#include <pcomn_utils.h>
-#include <pcomn_meta.h>
-#include <pcomn_atomic.h>
-#include <pcomn_string.h>
-#include <pcomn_strslice.h>
-#include <pcomn_range.h>
+#include "pcomn_netaddr.h"
+#include "pcomn_unistd.h"
+#include "pcomn_utils.h"
+#include "pcomn_meta.h"
+#include "pcomn_atomic.h"
+#include "pcomn_string.h"
+#include "pcomn_strslice.h"
+#include "pcomn_range.h"
 
 #ifdef PCOMN_PL_POSIX
 /*******************************************************************************
@@ -103,14 +102,7 @@ uint32_t inet_address::from_string(const strslice &addrstr, unsigned flags)
         #ifdef PCOMN_PL_POSIX
         if (addrstr.size() < IFNAMSIZ)
         {
-            static int sockd = -1 ;
-            if (sockd == -1)
-            {
-                int s = ::socket(PF_INET, SOCK_STREAM, 0) ;
-                PCOMN_THROW_MSG_IF(s == -1, network_error, "Cannot create a socket.") ;
-                if (!atomic_op::cas(&sockd, -1, s))
-                    ::close(s) ;
-            }
+            static int sockd = PCOMN_ENSURE_POSIX(::socket(PF_INET, SOCK_STREAM, 0), "socket") ;
 
             ifreq request ;
             strcpy(request.ifr_name, strbuf) ;
@@ -122,7 +114,7 @@ uint32_t inet_address::from_string(const strslice &addrstr, unsigned flags)
 
         if (flags & IGNORE_HOSTNAME)
         {
-            PCOMN_THROW_MSG_IF(usexc, inaddr_error,
+            PCOMN_THROW_MSG_IF(usexc, system_error,
                                "Cannot retrieve address for network interface '%s'.", strbuf) ;
             return 0 ;
         }
@@ -137,7 +129,7 @@ uint32_t inet_address::from_string(const strslice &addrstr, unsigned flags)
     {
         const long err = h_errno ;
         errno = EINVAL ;
-        PCOMN_THROWF(inaddr_error, "Cannot resolve hostname '%s'. %s", strbuf, str::cstr(hstrerror(err))) ;
+        PCOMN_THROWF(system_error, "Cannot resolve hostname '%s'. %s", strbuf, str::cstr(hstrerror(err))) ;
     }
     return 0 ;
 }
@@ -154,7 +146,7 @@ std::string inet_address::hostname() const
     sock_address sa ;
     sa.as_sockaddr_in()->sin_addr = *this ;
     PCOMN_THROW_MSG_IF(getnameinfo(sa.as_sockaddr(), sa.addrsize(), name, sizeof(name), 0, 0, 0),
-                       inaddr_error, "Failed to resolve domain name for %s.", str().c_str()) ;
+                       system_error, "Failed to resolve domain name for %s.", str().c_str()) ;
     return name ;
 }
 

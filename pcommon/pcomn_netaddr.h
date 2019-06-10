@@ -1,9 +1,9 @@
 /*-*- mode:c++;tab-width:4;indent-tabs-mode:nil;c-file-style:"stroustrup";c-file-offsets:((innamespace . 0)(inline-open . 0)(case-label . +)) -*-*/
-#ifndef __NET_NETADDR_H
-#define __NET_NETADDR_H
+#ifndef __PCOMN_NETADDR_H
+#define __PCOMN_NETADDR_H
 /*******************************************************************************
- FILE         :   netaddr.h
- COPYRIGHT    :   Yakov Markovitch, 2008-2017. All rights reserved.
+ FILE         :   pcomn_netaddr.h
+ COPYRIGHT    :   Yakov Markovitch, 2008-2019. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Internet address class(es)/functions.
@@ -13,7 +13,6 @@
 /** @file
   Classes and functions for working with network addresses.
 *******************************************************************************/
-#include <pcomn_net/netexcept.h>
 #include <pcomn_utils.h>
 #include <pcomn_hash.h>
 #include <pcomn_string.h>
@@ -90,7 +89,7 @@ public:
     /// @param address_string Dot-delimited IP address or interface name, like "eth0", or
     /// host name (tried in that order).
     /// @param flags        ORed ConstructFlags flags.
-    /// @return Resolved IP address. If cannot resolve, throws inaddr_error or constructs
+    /// @return Resolved IP address. If cannot resolve, throws system_error or constructs
     /// an empty inet_address (i.e. ipaddr()==0), depending on NO_EXCEPTION flag.
     inet_address(const strslice &address_string, unsigned flags = 0) :
         _addr(from_string(address_string, flags))
@@ -435,4 +434,4 @@ template<> struct hash<pcomn::net::sock_address> {
 /**@}*/
 } // end of namespace std
 
-#endif /* __NET_NETADDR_H */
+#endif /* __PCOMN_NETADDR_H */

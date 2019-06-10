@@ -10,10 +10,7 @@
 #------------------------------------------------------------------------------
 cmake_minimum_required(VERSION 3.5.0)
 
-add_library(pcomn_net STATIC
-  netaddr.cpp
-  netsockets.cpp
-  )
+add_library(pcomn_net STATIC netsockets.cpp)
 
 target_link_libraries(pcomn_net PUBLIC pcommon)
 target_include_directories(pcomn_net PUBLIC ..)

@@ -138,6 +138,7 @@ add_library(pcommon STATIC
 
   pcomn_immutablestr.cpp
   pcomn_mmap.cpp
+  pcomn_netaddr.cpp
   pcomn_path.cpp
   pcomn_rawstream.cpp
   pcomn_regex.cpp
