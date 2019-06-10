@@ -160,10 +160,9 @@ std::string sock_address::str() const
 }
 
 /*******************************************************************************
- subnet_address
+ ipv4_subnet
 *******************************************************************************/
-subnet_address::subnet_address(const strslice &subnet_string, RaiseError raise_error) :
-    _pfxlen(0)
+ipv4_subnet::ipv4_subnet(const strslice &subnet_string, RaiseError raise_error)
 {
     const auto &s = strsplit(subnet_string, '/') ;
 

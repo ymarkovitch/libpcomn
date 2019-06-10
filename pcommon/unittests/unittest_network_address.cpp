@@ -198,51 +198,51 @@ void InetAddressTests::Test_Iface_Address()
 
 void InetAddressTests::Test_Subnet_Address()
 {
-    CPPUNIT_LOG_EQUAL(subnet_address(), subnet_address()) ;
-    CPPUNIT_LOG_IS_TRUE(subnet_address() == subnet_address()) ;
-    CPPUNIT_LOG_IS_FALSE(subnet_address() != subnet_address()) ;
+    CPPUNIT_LOG_EQUAL(ipv4_subnet(), ipv4_subnet()) ;
+    CPPUNIT_LOG_IS_TRUE(ipv4_subnet() == ipv4_subnet()) ;
+    CPPUNIT_LOG_IS_FALSE(ipv4_subnet() != ipv4_subnet()) ;
 
-    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 68, 32).str(), "65.66.67.68/32") ;
-    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 68, 24).str(), "65.66.67.68/24") ;
-    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 68, 24).str(), "65.66.67.68/24") ;
-    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 68, 24).subnet().str(), "65.66.67.0/24") ;
-    CPPUNIT_LOG_ASSERT(subnet_address(65, 66, 67, 0, 24) < subnet_address(65, 66, 68, 0, 24)) ;
-    CPPUNIT_LOG_ASSERT(subnet_address(65, 66, 67, 0, 24) < subnet_address(65, 66, 67, 0, 25)) ;
+    CPPUNIT_LOG_EQ(ipv4_subnet(65, 66, 67, 68, 32).str(), "65.66.67.68/32") ;
+    CPPUNIT_LOG_EQ(ipv4_subnet(65, 66, 67, 68, 24).str(), "65.66.67.68/24") ;
+    CPPUNIT_LOG_EQ(ipv4_subnet(65, 66, 67, 68, 24).str(), "65.66.67.68/24") ;
+    CPPUNIT_LOG_EQ(ipv4_subnet(65, 66, 67, 68, 24).subnet().str(), "65.66.67.0/24") ;
+    CPPUNIT_LOG_ASSERT(ipv4_subnet(65, 66, 67, 0, 24) < ipv4_subnet(65, 66, 68, 0, 24)) ;
+    CPPUNIT_LOG_ASSERT(ipv4_subnet(65, 66, 67, 0, 24) < ipv4_subnet(65, 66, 67, 0, 25)) ;
 
-    CPPUNIT_LOG_EQUAL(subnet_address(65, 66, 67, 68, 24).addr(), ipv4_addr(65, 66, 67, 68)) ;
-    CPPUNIT_LOG_EQUAL(subnet_address(65, 66, 67, 68, 24).subnet().addr(), ipv4_addr(65, 66, 67, 0)) ;
-    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 68, 24).pfxlen(), 24) ;
-    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 68, 24).netmask(), 0xffffff00) ;
-
-    CPPUNIT_LOG(std::endl) ;
-    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 68, 24).pfxlen(), 24) ;
-    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 68, 0).pfxlen(), 0) ;
-    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 68, 1).pfxlen(), 1) ;
-    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 68, 31).pfxlen(), 31) ;
-    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 68, 32).pfxlen(), 32) ;
-    CPPUNIT_LOG_EXCEPTION(subnet_address(65, 66, 67, 68, 33), std::invalid_argument) ;
-
-    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 68, 24).netmask(), 0xffffff00) ;
-    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 68, 16).netmask(), 0xffff0000) ;
-    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 68, 1).netmask(), 0x80000000) ;
-    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 68, 31).netmask(), 0xfffffffe) ;
-    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 68, 32).netmask(), 0xffffffff) ;
-    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 68, 0).netmask(), 0) ;
+    CPPUNIT_LOG_EQUAL(ipv4_subnet(65, 66, 67, 68, 24).addr(), ipv4_addr(65, 66, 67, 68)) ;
+    CPPUNIT_LOG_EQUAL(ipv4_subnet(65, 66, 67, 68, 24).subnet().addr(), ipv4_addr(65, 66, 67, 0)) ;
+    CPPUNIT_LOG_EQ(ipv4_subnet(65, 66, 67, 68, 24).pfxlen(), 24) ;
+    CPPUNIT_LOG_EQ(ipv4_subnet(65, 66, 67, 68, 24).netmask(), 0xffffff00) ;
 
     CPPUNIT_LOG(std::endl) ;
-    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 68, 24).addr_range(),
+    CPPUNIT_LOG_EQ(ipv4_subnet(65, 66, 67, 68, 24).pfxlen(), 24) ;
+    CPPUNIT_LOG_EQ(ipv4_subnet(65, 66, 67, 68, 0).pfxlen(), 0) ;
+    CPPUNIT_LOG_EQ(ipv4_subnet(65, 66, 67, 68, 1).pfxlen(), 1) ;
+    CPPUNIT_LOG_EQ(ipv4_subnet(65, 66, 67, 68, 31).pfxlen(), 31) ;
+    CPPUNIT_LOG_EQ(ipv4_subnet(65, 66, 67, 68, 32).pfxlen(), 32) ;
+    CPPUNIT_LOG_EXCEPTION(ipv4_subnet(65, 66, 67, 68, 33), std::invalid_argument) ;
+
+    CPPUNIT_LOG_EQ(ipv4_subnet(65, 66, 67, 68, 24).netmask(), 0xffffff00) ;
+    CPPUNIT_LOG_EQ(ipv4_subnet(65, 66, 67, 68, 16).netmask(), 0xffff0000) ;
+    CPPUNIT_LOG_EQ(ipv4_subnet(65, 66, 67, 68, 1).netmask(), 0x80000000) ;
+    CPPUNIT_LOG_EQ(ipv4_subnet(65, 66, 67, 68, 31).netmask(), 0xfffffffe) ;
+    CPPUNIT_LOG_EQ(ipv4_subnet(65, 66, 67, 68, 32).netmask(), 0xffffffff) ;
+    CPPUNIT_LOG_EQ(ipv4_subnet(65, 66, 67, 68, 0).netmask(), 0) ;
+
+    CPPUNIT_LOG(std::endl) ;
+    CPPUNIT_LOG_EQ(ipv4_subnet(65, 66, 67, 68, 24).addr_range(),
                    std::make_pair(ipv4_addr(65, 66, 67, 0), ipv4_addr(65, 66, 67, 255))) ;
-    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 3, 31).addr_range(),
+    CPPUNIT_LOG_EQ(ipv4_subnet(65, 66, 67, 3, 31).addr_range(),
                    std::make_pair(ipv4_addr(65, 66, 67, 2), ipv4_addr(65, 66, 67, 3))) ;
-    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 3, 32).addr_range(),
+    CPPUNIT_LOG_EQ(ipv4_subnet(65, 66, 67, 3, 32).addr_range(),
                    std::make_pair(ipv4_addr(65, 66, 67, 3), ipv4_addr(65, 66, 67, 3))) ;
-    CPPUNIT_LOG_EQ(subnet_address(65, 66, 67, 3, 0).addr_range(),
+    CPPUNIT_LOG_EQ(ipv4_subnet(65, 66, 67, 3, 0).addr_range(),
                    std::make_pair(ipv4_addr(0, 0, 0, 0), ipv4_addr(255, 255, 255, 255))) ;
 
     CPPUNIT_LOG(std::endl) ;
-    CPPUNIT_LOG_EQUAL(subnet_address("10.0.61.5/24"), subnet_address(10, 0, 61, 5, 24)) ;
-    CPPUNIT_LOG_EQUAL(subnet_address("10.0.61.5/24").addr(), ipv4_addr(10, 0, 61, 5)) ;
-    CPPUNIT_LOG_EQ(subnet_address("10.0.61.5/24").pfxlen(), 24) ;
+    CPPUNIT_LOG_EQUAL(ipv4_subnet("10.0.61.5/24"), ipv4_subnet(10, 0, 61, 5, 24)) ;
+    CPPUNIT_LOG_EQUAL(ipv4_subnet("10.0.61.5/24").addr(), ipv4_addr(10, 0, 61, 5)) ;
+    CPPUNIT_LOG_EQ(ipv4_subnet("10.0.61.5/24").pfxlen(), 24) ;
 }
 
 int main(int argc, char *argv[])

@@ -189,6 +189,114 @@ inline bool operator<(const ipv4_addr &x, const ipv4_addr &y)
 PCOMN_DEFINE_RELOP_FUNCTIONS(, ipv4_addr) ;
 
 /***************************************************************************//**
+ Subnetwork address, i.e. IPV4 address + prefix length
+*******************************************************************************/
+class ipv4_subnet {
+public:
+    constexpr ipv4_subnet() = default ;
+
+    ipv4_subnet(uint32_t host_order_inetaddr, unsigned prefix_length) :
+        _pfxlen(ensure_pfxlen<std::invalid_argument>(prefix_length)),
+        _addr(host_order_inetaddr)
+    {}
+
+    ipv4_subnet(const ipv4_addr &address, unsigned prefix_length) :
+        ipv4_subnet(address.ipaddr(), prefix_length)
+    {}
+
+    ipv4_subnet(const in_addr &addr, unsigned prefix_length) :
+        ipv4_subnet(ipv4_addr(addr), prefix_length)
+    {}
+
+    ipv4_subnet(uint8_t a, uint8_t b, uint8_t c, uint8_t d, unsigned prefix_length) :
+        ipv4_subnet(ipv4_addr(a, b, c, d), prefix_length)
+    {}
+
+    /// Create an IP address from its human-readable text representation.
+    /// @param address_string Dotted-decimal subnet mask, like "139.12.0.0/16"
+    ipv4_subnet(const strslice &subnet_string, RaiseError raise_error = RAISE_ERROR) ;
+
+    explicit operator bool() const { return !!raw() ; }
+
+    const ipv4_addr &addr() const { return _addr ; }
+
+    operator ipv4_addr() const { return _addr ; }
+
+    ipv4_subnet subnet() const { return ipv4_subnet(addr().ipaddr() & netmask(), pfxlen()) ; }
+
+    /// Get subnet prefix length
+    constexpr unsigned pfxlen() const { return _pfxlen ; }
+
+    /// Get subnet mask (host order)
+    constexpr uint32_t netmask() const { return (uint32_t)(~0ULL << (32 - _pfxlen)) ; }
+
+    constexpr bool is_host() const { return pfxlen() == 32 ; }
+    constexpr bool is_any() const { return pfxlen() == 0 ; }
+
+    /// Get the closed address interval for this subnetwork
+    ///
+    /// The resulting interval is @em closed, hence includes both its endpoints.
+    /// This is so because it is impossible to specify "past-the-end" for a range
+    /// ending with 255.255.255.255
+    ///
+    unipair<ipv4_addr> addr_range() const
+    {
+        const uint32_t first = addr().ipaddr() & netmask() ;
+        const uint32_t last =  uint32_t(first + (0x100000000ULL >> pfxlen()) - 1) ;
+        return {ipv4_addr(first), ipv4_addr(last)} ;
+    }
+
+    /// "Raw" value: IP address and network mask represented as a single 64-bit integer
+    uint64_t raw() const { return (((uint64_t)addr().ipaddr() << 32) | pfxlen()) ; }
+
+    std::string str() const
+    {
+        char buf[64] ;
+        return std::string(buf + 0, to_str(buf)) ;
+    }
+
+    template<typename OutputIterator>
+    OutputIterator to_str(OutputIterator s) const
+    {
+        s = addr().to_str(s) ;
+        *s = '/' ;
+        return numtoiter(pfxlen(), ++s) ;
+    }
+
+    friend std::ostream &operator<<(std::ostream &os, const ipv4_subnet &addr)
+    {
+        char buf[64] ;
+        return os << strslice(buf + 0, addr.to_str(buf)) ;
+    }
+
+private:
+    uint32_t  _pfxlen = 0 ;  /* Subnetwork prefix length */
+    ipv4_addr _addr ;    /* IP address */
+
+    template<typename X>
+    static uint32_t ensure_pfxlen(unsigned prefix_length)
+    {
+        ensure<X>(prefix_length <= 32, "Subnetwork address prefix length exceeds 32") ;
+        return prefix_length ;
+    }
+} ;
+
+/*******************************************************************************
+ ipv4_subnet comparison operators
+*******************************************************************************/
+inline bool operator==(const ipv4_subnet &x, const ipv4_subnet &y)
+{
+    return x.raw() == y.raw() ;
+}
+
+inline bool operator<(const ipv4_subnet &x, const ipv4_subnet &y)
+{
+    return x.raw() < y.raw() ;
+}
+
+PCOMN_DEFINE_RELOP_FUNCTIONS(, ipv4_subnet) ;
+
+/***************************************************************************//**
  The completely-defined SF_INET socket address; specifies both the inet address
  and the port.
 
@@ -289,114 +397,6 @@ inline bool operator<(const sock_address &x, const sock_address &y)
 // Note that this line defines _all_ remaining operators (!=, <=, etc.)
 PCOMN_DEFINE_RELOP_FUNCTIONS(, sock_address) ;
 
-/***************************************************************************//**
- Subnetwork address, i.e. IPV4 address + prefix length
-*******************************************************************************/
-class subnet_address {
-public:
-    constexpr subnet_address() : _pfxlen(0) {}
-
-    subnet_address(uint32_t host_order_inetaddr, unsigned prefix_length) :
-        _pfxlen(ensure_pfxlen<std::invalid_argument>(prefix_length)),
-        _addr(host_order_inetaddr)
-    {}
-
-    subnet_address(const ipv4_addr &address, unsigned prefix_length) :
-        subnet_address(address.ipaddr(), prefix_length)
-    {}
-
-    subnet_address(const in_addr &addr, unsigned prefix_length) :
-        subnet_address(ipv4_addr(addr), prefix_length)
-    {}
-
-    subnet_address(uint8_t a, uint8_t b, uint8_t c, uint8_t d, unsigned prefix_length) :
-        subnet_address(ipv4_addr(a, b, c, d), prefix_length)
-    {}
-
-    /// Create an IP address from its human-readable text representation.
-    /// @param address_string Dotted-decimal subnet mask, like "139.12.0.0/16"
-    subnet_address(const strslice &subnet_string, RaiseError raise_error = RAISE_ERROR) ;
-
-    explicit operator bool() const { return !!raw() ; }
-
-    const ipv4_addr &addr() const { return _addr ; }
-
-    operator ipv4_addr() const { return _addr ; }
-
-    subnet_address subnet() const { return subnet_address(addr().ipaddr() & netmask(), pfxlen()) ; }
-
-    /// Get subnet prefix length
-    constexpr unsigned pfxlen() const { return _pfxlen ; }
-
-    /// Get subnet mask (host order)
-    constexpr uint32_t netmask() const { return (uint32_t)(~0ULL << (32 - _pfxlen)) ; }
-
-    constexpr bool is_host() const { return pfxlen() == 32 ; }
-    constexpr bool is_any() const { return pfxlen() == 0 ; }
-
-    /// Get the closed address interval for this subnetwork
-    ///
-    /// The resulting interval is @em closed, hence includes both its endpoints.
-    /// This is so because it is impossible to specify "past-the-end" for a range
-    /// ending with 255.255.255.255
-    ///
-    unipair<ipv4_addr> addr_range() const
-    {
-        const uint32_t first = addr().ipaddr() & netmask() ;
-        const uint32_t last =  uint32_t(first + (0x100000000ULL >> pfxlen()) - 1) ;
-        return {ipv4_addr(first), ipv4_addr(last)} ;
-    }
-
-    /// "Raw" value: IP address and network mask represented as a single 64-bit integer
-    uint64_t raw() const { return (((uint64_t)addr().ipaddr() << 32) | pfxlen()) ; }
-
-    std::string str() const
-    {
-        char buf[64] ;
-        return std::string(buf + 0, to_str(buf)) ;
-    }
-
-    template<typename OutputIterator>
-    OutputIterator to_str(OutputIterator s) const
-    {
-        s = addr().to_str(s) ;
-        *s = '/' ;
-        return numtoiter(pfxlen(), ++s) ;
-    }
-
-    friend std::ostream &operator<<(std::ostream &os, const subnet_address &addr)
-    {
-        char buf[64] ;
-        return os << strslice(buf + 0, addr.to_str(buf)) ;
-    }
-
-private:
-    uint32_t     _pfxlen ;  /* Subnetwork prefix length */
-    ipv4_addr _addr ;    /* IP address */
-
-    template<typename X>
-    static uint32_t ensure_pfxlen(unsigned prefix_length)
-    {
-        ensure<X>(prefix_length <= 32, "Subnetwork address prefix length exceeds 32") ;
-        return prefix_length ;
-    }
-} ;
-
-/*******************************************************************************
- subnet_address comparison operators
-*******************************************************************************/
-inline bool operator==(const subnet_address &x, const subnet_address &y)
-{
-    return x.raw() == y.raw() ;
-}
-
-inline bool operator<(const subnet_address &x, const subnet_address &y)
-{
-    return x.raw() < y.raw() ;
-}
-
-PCOMN_DEFINE_RELOP_FUNCTIONS(, subnet_address) ;
-
 /*******************************************************************************
  Ostream output operators
 *******************************************************************************/
@@ -408,7 +408,10 @@ inline std::ostream& operator<<(std::ostream &os, const sock_address &addr)
 /***************************************************************************//**
  Backward compatibility typedef
 *******************************************************************************/
-typedef ipv4_addr inet_address ;
+/**@{*/
+typedef ipv4_addr   inet_address ;
+typedef ipv4_subnet subnet_address ;
+/**@}*/
 
 } // end of namespace pcomn
 
