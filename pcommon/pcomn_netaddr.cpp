@@ -73,9 +73,8 @@ uint32_t inet_address::from_string(const strslice &addrstr, unsigned flags)
     PCOMN_THROW_MSG_IF(addrstr.size() >= maxsz, invalid_str_repr,
                        "The address string '%s' is too long.", strbuf) ;
 
-    PCOMN_THROW_MSG_IF(
-        (flags & (IGNORE_DOTDEC|IGNORE_HOSTNAME|USE_IFACE)) == (IGNORE_DOTDEC|IGNORE_HOSTNAME),
-        std::invalid_argument, "Invalid flags: flags combination completely disables address construction") ;
+    PCOMN_THROW_MSG_IF((flags & (IGNORE_DOTDEC|USE_HOSTNAME|USE_IFACE)) == IGNORE_DOTDEC,
+                       std::invalid_argument, "Invalid flags: flags combination completely disables address construction") ;
 
     const bool usexc = !(flags & NO_EXCEPTION) ;
 
@@ -88,7 +87,7 @@ uint32_t inet_address::from_string(const strslice &addrstr, unsigned flags)
 
             return ntohl(addr.s_addr) ;
 
-        if ((flags & (IGNORE_HOSTNAME|USE_IFACE)) == IGNORE_HOSTNAME)
+        if (!(flags & (USE_HOSTNAME|USE_IFACE)))
         {
             PCOMN_THROW_MSG_IF(usexc, invalid_str_repr, "Invalid dot decimal IP address '%s'.", strbuf) ;
             return 0 ;
@@ -111,7 +110,7 @@ uint32_t inet_address::from_string(const strslice &addrstr, unsigned flags)
         }
         #endif
 
-        if (flags & IGNORE_HOSTNAME)
+        if (!(flags & USE_HOSTNAME))
         {
             PCOMN_THROW_MSG_IF(usexc, system_error,
                                "Cannot retrieve address for network interface '%s'.", strbuf) ;
@@ -171,7 +170,7 @@ subnet_address::subnet_address(const strslice &subnet_string, RaiseError raise_e
     if (s.first && s.second)
         try {
             _pfxlen = ensure_pfxlen<invalid_str_repr>(strtonum<uint8_t>(make_strslice_range(s.second))) ;
-            _addr = inet_address(s.first, inet_address::ONLY_DOTDEC | (-(int)!raise_error & inet_address::NO_EXCEPTION)) ;
+            _addr = inet_address(s.first, inet_address::ONLY_DOTDEC|flags_if(inet_address::NO_EXCEPTION, !raise_error)) ;
             return ;
         }
         catch (const std::exception &)

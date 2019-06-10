@@ -7,11 +7,10 @@
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Internet address class(es)/functions.
-
  CREATION DATE:   27 Jan 2008
 *******************************************************************************/
 /** @file
-  Classes and functions for working with network addresses.
+  Classes and functions for network addresses handling.
 *******************************************************************************/
 #include <pcomn_utils.h>
 #include <pcomn_hash.h>
@@ -36,52 +35,43 @@ typedef uint32_t in_addr_t ;
 
 namespace pcomn {
 
-/******************************************************************************/
-/** IP address.
+/***************************************************************************//**
+ IPv4 address.
 
  @note All comparison/relational operators are defined as free function, providing for
  symmetrical compare with all data types to/from which inet_address defines implicit
  conversions.
 *******************************************************************************/
 class inet_address {
-    union netaddr_init {
-        constexpr explicit netaddr_init(uint32_t horder_addr = 0) : _addr{horder_addr} {}
-        constexpr netaddr_init(uint8_t a, uint8_t b, uint8_t c, uint8_t d) :
-            _addr{((uint32_t)a << 24) | ((uint32_t)b << 16) | ((uint32_t)c << 8) | d}
-        {}
-        uint32_t _addr ;
-        uint8_t  _octets[4] ;
-    } ;
-
 public:
     /// inet_address construction mode flags
-    enum ConstructFlags {
-        IGNORE_HOSTNAME = 0x0001, /**< Don't attempt to interpret address string as
-                                     a hostname */
-        IGNORE_DOTDEC   = 0x0002, /**< Don't attempt to interpret address string as
-                                     a dot-delimited IP address */
-        USE_IFACE       = 0x0004, /**< Attempt to interpret address string as a network
-                                     interace name (e.g. "lo" or "eth0") */
-        ALLOW_EMPTY     = 0x0008, /**< Allow to pass an empty string (the resulting
-                                     address will be 0.0.0.0) */
-        NO_EXCEPTION    = 0x1000, /**< Don't throw exception if construction failed,
+    enum CFlags {
+        NO_EXCEPTION    = 0x0001, /**< Don't throw exception if construction failed,
                                      intialize inet_address to 0 */
+        ALLOW_EMPTY     = 0x0002, /**< Allow to pass an empty string (the resulting
+                                     address will be 0.0.0.0) */
 
-        ONLY_HOSTNAME   = IGNORE_DOTDEC,
-        ONLY_DOTDEC     = IGNORE_HOSTNAME,
-        ONLY_IFACE      = IGNORE_DOTDEC | IGNORE_HOSTNAME | USE_IFACE,
-        FROM_IFACE      = IGNORE_HOSTNAME | USE_IFACE
+        USE_HOSTNAME    = 0x0100, /**< Attempt to interpret address string as a hostname */
+
+        USE_IFACE       = 0x0200, /**< Attempt to interpret address string as a network
+                                     interace name (e.g. "lo" or "eth0") */
+        IGNORE_DOTDEC   = 0x0400, /**< Don't attempt to interpret address string as a
+                                     dot-delimited IP address */
+
+        ONLY_DOTDEC     = 0,
+        ONLY_HOSTNAME   = USE_HOSTNAME|IGNORE_DOTDEC,
+        ONLY_IFACE      = USE_IFACE|IGNORE_DOTDEC
     } ;
 
     /// Create default address (0.0.0.0).
-    constexpr inet_address() : _addr(0) {}
+    constexpr inet_address() = default ;
 
     explicit constexpr inet_address(uint32_t host_order_inetaddr) : _addr(host_order_inetaddr) {}
 
     inet_address(const in_addr &addr) : _addr(ntohl(addr.s_addr)) {}
 
     constexpr inet_address(uint8_t a, uint8_t b, uint8_t c, uint8_t d) :
-        _addr(netaddr_init{a, b, c, d}._addr)
+        _addr(((uint32_t)a << 24) | ((uint32_t)b << 16) | ((uint32_t)c << 8) | d)
     {}
 
     /// Create an IP address from its human-readable text representation.
@@ -90,23 +80,20 @@ public:
     /// @param flags        ORed ConstructFlags flags.
     /// @return Resolved IP address. If cannot resolve, throws system_error or constructs
     /// an empty inet_address (i.e. ipaddr()==0), depending on NO_EXCEPTION flag.
-    inet_address(const strslice &address_string, unsigned flags = 0) :
+    inet_address(const strslice &address_string, CFlags flags = ONLY_DOTDEC) :
         _addr(from_string(address_string, flags))
     {}
 
     explicit constexpr operator bool() const { return !!_addr ; }
 
     /// Get one octet of an IP address by octet index (0-3).
-    constexpr uint8_t octet(unsigned ndx) const
-    {
-        return (_addr >> 8*(3 - ndx)) ;
-    }
+    constexpr uint8_t octet(unsigned ndx) const { return (_addr >> 8*(3 - ndx)) ; }
 
     /// Get all four octets of an IP address.
     std::array<uint8_t, 4> octets() const
     {
         union {
-            in_addr_t addr ;
+            uint32_t addr ;
             std::array<uint8_t, 4> result ;
         } netaddr = { htonl(_addr) } ;
         return netaddr.result ;
@@ -117,9 +104,11 @@ public:
 
     in_addr inaddr() const
     {
-        in_addr result ;
-        *(uint32_t *)&result = htonl(_addr) ;
-        return result ;
+        union {
+            uint32_t addr ;
+            in_addr  result ;
+        } netaddr = { htonl(_addr) } ;
+        return netaddr.result ;
     }
     operator struct in_addr() const { return inaddr() ; }
     /// Get an IP address as a 32-bit unsigned number in the host byte order.
@@ -156,7 +145,7 @@ public:
     }
 
 private:
-    uint32_t _addr ; /* The IP address in host byte order. */
+    uint32_t _addr = 0 ; /* IPv4 address in host byte order. */
 
     static uint32_t from_string(const strslice &address_string, unsigned flags) ;
     char *to_strbuf(char *buf) const
@@ -166,6 +155,8 @@ private:
         return buf ;
     }
 } ;
+
+PCOMN_DEFINE_FLAG_ENUM(inet_address::CFlags) ;
 
 /// Get the loopback address.
 inline inet_address inaddr_loopback() { return inet_address(INADDR_LOOPBACK) ; }
@@ -178,7 +169,7 @@ inline inet_address inaddr_broadcast() { return inet_address(INADDR_BROADCAST) ;
 /// Doesn't throw exception if there is no such interface, returns an empty inet_address
 inline inet_address iface_addr(const strslice &iface_name)
 {
-    return inet_address(iface_name, inet_address::FROM_IFACE|inet_address::NO_EXCEPTION) ;
+    return inet_address(iface_name, inet_address::ONLY_IFACE|inet_address::NO_EXCEPTION) ;
 }
 
 /*******************************************************************************
@@ -196,9 +187,9 @@ inline bool operator<(const inet_address &x, const inet_address &y)
 // Note that this line defines _all_ remaining operators (!=, <=, etc.)
 PCOMN_DEFINE_RELOP_FUNCTIONS(, inet_address) ;
 
-/******************************************************************************/
-/** The completely-defined SF_INET socket address; specifies both the inet address and the
- port.
+/***************************************************************************//**
+ The completely-defined SF_INET socket address; specifies both the inet address
+ and the port.
 
  This is a wrapper around the socaddr_in structure: you can pass a pointer returned by the
  as_sockaddr_in or as_sockaddr to @em both as input @em and as output parameters to socket
@@ -426,7 +417,7 @@ template<> struct hash<pcomn::inet_address> {
 template<> struct hash<pcomn::sock_address> {
     size_t operator()(const pcomn::sock_address &addr) const
     {
-        return pcomn::tuplehash(addr.addr().ipaddr(), addr.port()) ;
+        return pcomn::t1ha0_bin128(addr.port(), addr.addr().ipaddr()) ;
     }
 } ;
 /**@}*/
