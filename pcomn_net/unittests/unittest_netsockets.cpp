@@ -43,7 +43,7 @@ void StreamSocketTests::Test_Client_Socket_Read_Write()
     EchoServerName = CPPUNIT_AT_TESTDIR("echoserver-stream.py ") ;
 
     // Attempt to connect to a nonexistent host fails with a timeout.
-    CPPUNIT_LOG_EXCEPTION(net::client_socket(net::sock_address(net::inet_address(1, 2, 3, 4), 777), 100), net::network_error) ;
+    CPPUNIT_LOG_EXCEPTION(net::client_socket(net::sock_address(ipv4_addr(1, 2, 3, 4), 777), 100), net::network_error) ;
     // Host exists but theree is no service on the port; in _no_ case there
     // should be timeout_error, only connection_error!
     CPPUNIT_LOG_EXCEPTION(net::client_socket(net::sock_address(777)), net::connection_error) ;

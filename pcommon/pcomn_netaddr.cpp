@@ -49,9 +49,9 @@ MS_IGNORE_WARNING(4267)
 namespace pcomn {
 
 /*******************************************************************************
- inet_address
+ ipv4_addr
 *******************************************************************************/
-uint32_t inet_address::from_string(const strslice &addrstr, unsigned flags)
+uint32_t ipv4_addr::from_string(const strslice &addrstr, CFlags flags)
 {
     const unsigned maxdot = 16 ;
     const unsigned maxsz =
@@ -59,7 +59,7 @@ uint32_t inet_address::from_string(const strslice &addrstr, unsigned flags)
 
     if (addrstr.empty())
     {
-        PCOMN_THROW_MSG_IF(!(flags & ALLOW_EMPTY), invalid_str_repr, "Empty network address string") ;
+        PCOMN_THROW_MSG_IF(!(flags & ALLOW_EMPTY), invalid_str_repr, "Empty network address string.") ;
         return 0 ;
     }
 
@@ -74,7 +74,7 @@ uint32_t inet_address::from_string(const strslice &addrstr, unsigned flags)
                        "The address string '%s' is too long.", strbuf) ;
 
     PCOMN_THROW_MSG_IF((flags & (IGNORE_DOTDEC|USE_HOSTNAME|USE_IFACE)) == IGNORE_DOTDEC,
-                       std::invalid_argument, "Invalid flags: flags combination completely disables address construction") ;
+                       std::invalid_argument, "Invalid flags: flags combination completely disables address construction.") ;
 
     const bool usexc = !(flags & NO_EXCEPTION) ;
 
@@ -113,7 +113,7 @@ uint32_t inet_address::from_string(const strslice &addrstr, unsigned flags)
         if (!(flags & USE_HOSTNAME))
         {
             PCOMN_THROW_MSG_IF(usexc, system_error,
-                               "Cannot retrieve address for network interface '%s'.", strbuf) ;
+                               "Cannot retrieve address for network interface '%s'", strbuf) ;
             return 0 ;
         }
     }
@@ -132,19 +132,19 @@ uint32_t inet_address::from_string(const strslice &addrstr, unsigned flags)
     return 0 ;
 }
 
-std::string inet_address::dotted_decimal() const
+std::string ipv4_addr::dotted_decimal() const
 {
     char buf[64] ;
     return std::string(to_strbuf(buf)) ;
 }
 
-std::string inet_address::hostname() const
+std::string ipv4_addr::hostname() const
 {
     char name[NI_MAXHOST] ;
     sock_address sa ;
     sa.as_sockaddr_in()->sin_addr = *this ;
     PCOMN_THROW_MSG_IF(getnameinfo(sa.as_sockaddr(), sa.addrsize(), name, sizeof(name), 0, 0, 0),
-                       system_error, "Failed to resolve domain name for %s.", str().c_str()) ;
+                       system_error, "Failed to resolve domain name for %s", str().c_str()) ;
     return name ;
 }
 
@@ -170,7 +170,7 @@ subnet_address::subnet_address(const strslice &subnet_string, RaiseError raise_e
     if (s.first && s.second)
         try {
             _pfxlen = ensure_pfxlen<invalid_str_repr>(strtonum<uint8_t>(make_strslice_range(s.second))) ;
-            _addr = inet_address(s.first, inet_address::ONLY_DOTDEC|flags_if(inet_address::NO_EXCEPTION, !raise_error)) ;
+            _addr = ipv4_addr(s.first, ipv4_addr::ONLY_DOTDEC|flags_if(ipv4_addr::NO_EXCEPTION, !raise_error)) ;
             return ;
         }
         catch (const std::exception &)

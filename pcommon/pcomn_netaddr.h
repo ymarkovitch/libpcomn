@@ -39,15 +39,15 @@ namespace pcomn {
  IPv4 address.
 
  @note All comparison/relational operators are defined as free function, providing for
- symmetrical compare with all data types to/from which inet_address defines implicit
+ symmetrical compare with all data types to/from which ipv4_addr defines implicit
  conversions.
 *******************************************************************************/
-class inet_address {
+class ipv4_addr {
 public:
-    /// inet_address construction mode flags
+    /// ipv4_addr construction mode flags
     enum CFlags {
         NO_EXCEPTION    = 0x0001, /**< Don't throw exception if construction failed,
-                                     intialize inet_address to 0 */
+                                     intialize ipv4_addr to 0 */
         ALLOW_EMPTY     = 0x0002, /**< Allow to pass an empty string (the resulting
                                      address will be 0.0.0.0) */
 
@@ -64,13 +64,13 @@ public:
     } ;
 
     /// Create default address (0.0.0.0).
-    constexpr inet_address() = default ;
+    constexpr ipv4_addr() = default ;
 
-    explicit constexpr inet_address(uint32_t host_order_inetaddr) : _addr(host_order_inetaddr) {}
+    explicit constexpr ipv4_addr(uint32_t host_order_inetaddr) : _addr(host_order_inetaddr) {}
 
-    inet_address(const in_addr &addr) : _addr(ntohl(addr.s_addr)) {}
+    ipv4_addr(const in_addr &addr) : _addr(ntohl(addr.s_addr)) {}
 
-    constexpr inet_address(uint8_t a, uint8_t b, uint8_t c, uint8_t d) :
+    constexpr ipv4_addr(uint8_t a, uint8_t b, uint8_t c, uint8_t d) :
         _addr(((uint32_t)a << 24) | ((uint32_t)b << 16) | ((uint32_t)c << 8) | d)
     {}
 
@@ -79,8 +79,8 @@ public:
     /// host name (tried in that order).
     /// @param flags        ORed ConstructFlags flags.
     /// @return Resolved IP address. If cannot resolve, throws system_error or constructs
-    /// an empty inet_address (i.e. ipaddr()==0), depending on NO_EXCEPTION flag.
-    inet_address(const strslice &address_string, CFlags flags = ONLY_DOTDEC) :
+    /// an empty ipv4_addr (i.e. ipaddr()==0), depending on NO_EXCEPTION flag.
+    ipv4_addr(const strslice &address_string, CFlags flags = ONLY_DOTDEC) :
         _addr(from_string(address_string, flags))
     {}
 
@@ -114,9 +114,9 @@ public:
     /// Get an IP address as a 32-bit unsigned number in the host byte order.
     explicit constexpr operator uint32_t() const { return ipaddr() ; }
 
-    constexpr inet_address next() const { return inet_address(ipaddr() + 1) ; }
-    constexpr inet_address prev() const { return inet_address(ipaddr() - 1) ; }
-    static constexpr inet_address last() { return inet_address((uint32_t)~0) ; }
+    constexpr ipv4_addr next() const { return ipv4_addr(ipaddr() + 1) ; }
+    constexpr ipv4_addr prev() const { return ipv4_addr(ipaddr() - 1) ; }
+    static constexpr ipv4_addr last() { return ipv4_addr((uint32_t)~0) ; }
 
     /// Get a hostname for the address.
     /// @throw nothing
@@ -138,7 +138,7 @@ public:
         return std::copy(buf + 0, buf + strlen(to_strbuf(buf)), s) ;
     }
 
-    friend std::ostream &operator<<(std::ostream &os, const inet_address &addr)
+    friend std::ostream &operator<<(std::ostream &os, const ipv4_addr &addr)
     {
         char buf[64] ;
         return os << addr.to_strbuf(buf) ;
@@ -147,7 +147,8 @@ public:
 private:
     uint32_t _addr = 0 ; /* IPv4 address in host byte order. */
 
-    static uint32_t from_string(const strslice &address_string, unsigned flags) ;
+    static uint32_t from_string(const strslice &address_string, CFlags flags) ;
+
     char *to_strbuf(char *buf) const
     {
         // Alas! inet_ntoa isn't thread-safe on Linux!
@@ -156,36 +157,36 @@ private:
     }
 } ;
 
-PCOMN_DEFINE_FLAG_ENUM(inet_address::CFlags) ;
+PCOMN_DEFINE_FLAG_ENUM(ipv4_addr::CFlags) ;
 
 /// Get the loopback address.
-inline inet_address inaddr_loopback() { return inet_address(INADDR_LOOPBACK) ; }
+inline ipv4_addr inaddr_loopback() { return ipv4_addr(INADDR_LOOPBACK) ; }
 
 /// Get the broadcast address.
-inline inet_address inaddr_broadcast() { return inet_address(INADDR_BROADCAST) ; }
+inline ipv4_addr inaddr_broadcast() { return ipv4_addr(INADDR_BROADCAST) ; }
 
 /// Get the address of a network interface ("lo", "eth0", etc.).
 ///
-/// Doesn't throw exception if there is no such interface, returns an empty inet_address
-inline inet_address iface_addr(const strslice &iface_name)
+/// Doesn't throw exception if there is no such interface, returns an empty ipv4_addr
+inline ipv4_addr iface_addr(const strslice &iface_name)
 {
-    return inet_address(iface_name, inet_address::ONLY_IFACE|inet_address::NO_EXCEPTION) ;
+    return ipv4_addr(iface_name, ipv4_addr::ONLY_IFACE|ipv4_addr::NO_EXCEPTION) ;
 }
 
 /*******************************************************************************
- inet_address comparison operators
+ ipv4_addr comparison operators
 *******************************************************************************/
-inline bool operator==(const inet_address &x, const inet_address &y)
+inline bool operator==(const ipv4_addr &x, const ipv4_addr &y)
 {
     return x.ipaddr() == y.ipaddr() ;
 }
-inline bool operator<(const inet_address &x, const inet_address &y)
+inline bool operator<(const ipv4_addr &x, const ipv4_addr &y)
 {
     return x.ipaddr() < y.ipaddr() ;
 }
 
 // Note that this line defines _all_ remaining operators (!=, <=, etc.)
-PCOMN_DEFINE_RELOP_FUNCTIONS(, inet_address) ;
+PCOMN_DEFINE_RELOP_FUNCTIONS(, ipv4_addr) ;
 
 /***************************************************************************//**
  The completely-defined SF_INET socket address; specifies both the inet address
@@ -204,12 +205,15 @@ public:
     /// Create a socket address with specified inet address and port.
     /// @param addr Inet address.
     /// @param port Port number.
-    sock_address(const strslice &addr, uint16_t port = 0) { init(inet_address(addr), port) ; }
+    sock_address(const strslice &addr, uint16_t port = 0)
+    {
+        init(ipv4_addr(addr, ipv4_addr::USE_HOSTNAME), port) ;
+    }
 
     /// Create a socket address with specified inet address and port.
     /// @param addr Inet address.
     /// @param port Port number.
-    sock_address(const inet_address &addr, uint16_t port = 0) { init(addr, port) ; }
+    sock_address(const ipv4_addr &addr, uint16_t port = 0) { init(addr, port) ; }
 
     /// Create a socket address on a loopback interface with specified port.
     /// @param port Port number.
@@ -225,7 +229,7 @@ public:
     /// @throw std::invalid_argument Invalid address family.
     sock_address(const sockaddr_in &sin) : _sockaddr(ensure_family((const sockaddr *)&sin)) {}
 
-    inet_address addr() const { return inet_address(_sockaddr.sin_addr) ; }
+    ipv4_addr addr() const { return ipv4_addr(_sockaddr.sin_addr) ; }
 
     uint16_t port() const { return ntohs(_sockaddr.sin_port) ; }
 
@@ -285,8 +289,8 @@ inline bool operator<(const sock_address &x, const sock_address &y)
 // Note that this line defines _all_ remaining operators (!=, <=, etc.)
 PCOMN_DEFINE_RELOP_FUNCTIONS(, sock_address) ;
 
-/******************************************************************************/
-/** Subnetwork address, i.e. IPV4 address + prefix length
+/***************************************************************************//**
+ Subnetwork address, i.e. IPV4 address + prefix length
 *******************************************************************************/
 class subnet_address {
 public:
@@ -297,16 +301,16 @@ public:
         _addr(host_order_inetaddr)
     {}
 
-    subnet_address(const inet_address &address, unsigned prefix_length) :
+    subnet_address(const ipv4_addr &address, unsigned prefix_length) :
         subnet_address(address.ipaddr(), prefix_length)
     {}
 
     subnet_address(const in_addr &addr, unsigned prefix_length) :
-        subnet_address(inet_address(addr), prefix_length)
+        subnet_address(ipv4_addr(addr), prefix_length)
     {}
 
     subnet_address(uint8_t a, uint8_t b, uint8_t c, uint8_t d, unsigned prefix_length) :
-        subnet_address(inet_address(a, b, c, d), prefix_length)
+        subnet_address(ipv4_addr(a, b, c, d), prefix_length)
     {}
 
     /// Create an IP address from its human-readable text representation.
@@ -315,9 +319,9 @@ public:
 
     explicit operator bool() const { return !!raw() ; }
 
-    const inet_address &addr() const { return _addr ; }
+    const ipv4_addr &addr() const { return _addr ; }
 
-    operator inet_address() const { return _addr ; }
+    operator ipv4_addr() const { return _addr ; }
 
     subnet_address subnet() const { return subnet_address(addr().ipaddr() & netmask(), pfxlen()) ; }
 
@@ -336,11 +340,11 @@ public:
     /// This is so because it is impossible to specify "past-the-end" for a range
     /// ending with 255.255.255.255
     ///
-    unipair<inet_address> addr_range() const
+    unipair<ipv4_addr> addr_range() const
     {
         const uint32_t first = addr().ipaddr() & netmask() ;
         const uint32_t last =  uint32_t(first + (0x100000000ULL >> pfxlen()) - 1) ;
-        return {inet_address(first), inet_address(last)} ;
+        return {ipv4_addr(first), ipv4_addr(last)} ;
     }
 
     /// "Raw" value: IP address and network mask represented as a single 64-bit integer
@@ -368,7 +372,7 @@ public:
 
 private:
     uint32_t     _pfxlen ;  /* Subnetwork prefix length */
-    inet_address _addr ;    /* IP address */
+    ipv4_addr _addr ;    /* IP address */
 
     template<typename X>
     static uint32_t ensure_pfxlen(unsigned prefix_length)
@@ -401,6 +405,11 @@ inline std::ostream& operator<<(std::ostream &os, const sock_address &addr)
     return os << addr.str() ;
 }
 
+/***************************************************************************//**
+ Backward compatibility typedef
+*******************************************************************************/
+typedef ipv4_addr inet_address ;
+
 } // end of namespace pcomn
 
 namespace std {
@@ -408,8 +417,8 @@ namespace std {
  Network address hashing
 *******************************************************************************/
 /**@{*/
-template<> struct hash<pcomn::inet_address> {
-    size_t operator()(const pcomn::inet_address &addr) const
+template<> struct hash<pcomn::ipv4_addr> {
+    size_t operator()(const pcomn::ipv4_addr &addr) const
     {
         return pcomn::valhash(addr.ipaddr()) ;
     }
