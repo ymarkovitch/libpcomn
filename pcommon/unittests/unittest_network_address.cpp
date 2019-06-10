@@ -50,107 +50,107 @@ static union {
 
 void InetAddressTests::Test_IP_Address()
 {
-    CPPUNIT_LOG_EQUAL(net::inet_address(), net::inet_address()) ;
-    CPPUNIT_LOG_IS_TRUE(net::inet_address() == net::inet_address()) ;
-    CPPUNIT_LOG_IS_FALSE(net::inet_address() != net::inet_address()) ;
-    CPPUNIT_LOG_IS_FALSE(net::inet_address() < net::inet_address()) ;
-    CPPUNIT_LOG_EQ(net::inet_address().ipaddr(), 0) ;
-    CPPUNIT_LOG_EQ(net::inet_address().inaddr().s_addr, 0) ;
-    CPPUNIT_LOG_EQUAL(net::inet_address().str(), std::string("0.0.0.0")) ;
-    CPPUNIT_LOG_EXCEPTION(net::inet_address(""), std::invalid_argument) ;
+    CPPUNIT_LOG_EQUAL(inet_address(), inet_address()) ;
+    CPPUNIT_LOG_IS_TRUE(inet_address() == inet_address()) ;
+    CPPUNIT_LOG_IS_FALSE(inet_address() != inet_address()) ;
+    CPPUNIT_LOG_IS_FALSE(inet_address() < inet_address()) ;
+    CPPUNIT_LOG_EQ(inet_address().ipaddr(), 0) ;
+    CPPUNIT_LOG_EQ(inet_address().inaddr().s_addr, 0) ;
+    CPPUNIT_LOG_EQUAL(inet_address().str(), std::string("0.0.0.0")) ;
+    CPPUNIT_LOG_EXCEPTION(inet_address(""), std::invalid_argument) ;
 
-    CPPUNIT_LOG_EQUAL(net::inet_address("", net::inet_address::ALLOW_EMPTY).ipaddr(), (uint32_t)0) ;
-    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address(""), invalid_str_repr, "mpty") ;
-    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address("  65.66.67.68  ", net::inet_address::ONLY_DOTDEC).ipaddr(), invalid_str_repr, "decimal") ;
-    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address("a5.66.67.68", net::inet_address::ONLY_DOTDEC).ipaddr(), invalid_str_repr, "decimal") ;
-    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address("abc", net::inet_address::ONLY_DOTDEC).ipaddr(), invalid_str_repr, "decimal") ;
-    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address("65..66.67", net::inet_address::ONLY_DOTDEC).ipaddr(), invalid_str_repr, "decimal") ;
-    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address("1.1.1.555", net::inet_address::ONLY_DOTDEC), invalid_str_repr, "decimal") ;
-    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address("1.1.555", net::inet_address::ONLY_DOTDEC), invalid_str_repr, "decimal") ;
-    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address("1.555", net::inet_address::ONLY_DOTDEC), invalid_str_repr, "decimal") ;
-    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address("555", net::inet_address::ONLY_DOTDEC), invalid_str_repr, "decimal") ;
-    CPPUNIT_LOG_EXCEPTION_MSG(net::inet_address("-0.1.2.3", net::inet_address::ONLY_DOTDEC), invalid_str_repr, "decimal") ;
+    CPPUNIT_LOG_EQUAL(inet_address("", inet_address::ALLOW_EMPTY).ipaddr(), (uint32_t)0) ;
+    CPPUNIT_LOG_EXCEPTION_MSG(inet_address(""), invalid_str_repr, "mpty") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(inet_address("  65.66.67.68  ", inet_address::ONLY_DOTDEC).ipaddr(), invalid_str_repr, "decimal") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(inet_address("a5.66.67.68", inet_address::ONLY_DOTDEC).ipaddr(), invalid_str_repr, "decimal") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(inet_address("abc", inet_address::ONLY_DOTDEC).ipaddr(), invalid_str_repr, "decimal") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(inet_address("65..66.67", inet_address::ONLY_DOTDEC).ipaddr(), invalid_str_repr, "decimal") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(inet_address("1.1.1.555", inet_address::ONLY_DOTDEC), invalid_str_repr, "decimal") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(inet_address("1.1.555", inet_address::ONLY_DOTDEC), invalid_str_repr, "decimal") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(inet_address("1.555", inet_address::ONLY_DOTDEC), invalid_str_repr, "decimal") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(inet_address("555", inet_address::ONLY_DOTDEC), invalid_str_repr, "decimal") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(inet_address("-0.1.2.3", inet_address::ONLY_DOTDEC), invalid_str_repr, "decimal") ;
     CPPUNIT_LOG(std::endl) ;
 
-    CPPUNIT_LOG_EQUAL(net::inet_address(65, 66, 67, 68).ipaddr(), (uint32_t)0x41424344) ;
-    CPPUNIT_LOG_EQUAL((uint32_t)net::inet_address(65, 66, 67, 68).ipaddr(), (uint32_t)0x41424344) ;
-    CPPUNIT_LOG_EQUAL(net::inet_address((uint32_t)net::inet_address(65, 66, 67, 68)), net::inet_address(65, 66, 67, 68)) ;
-    CPPUNIT_LOG_EQ(net::inet_address(65, 66, 67, 68).octet(0), 65) ;
-    CPPUNIT_LOG_EQ(net::inet_address(65, 66, 67, 68).octet(1), 66) ;
-    CPPUNIT_LOG_EQ(net::inet_address(65, 66, 67, 68).octet(2), 67) ;
-    CPPUNIT_LOG_EQ(net::inet_address(65, 66, 67, 68).octet(3), 68) ;
-    CPPUNIT_LOG_EQUAL(net::inet_address(65, 66, 67, 68).str(), std::string("65.66.67.68")) ;
-    CPPUNIT_LOG_EQUAL(net::inet_address("65.66.67.68").ipaddr(), (uint32_t)0x41424344) ;
-    CPPUNIT_LOG_EQ(((in_addr)net::inet_address(65, 66, 67, 68)).s_addr, (uint32_t)(endianness.is_little() ? 0x44434241 : 0x41424344)) ;
-    CPPUNIT_LOG_EQUAL(net::inet_address(0x41424344).ipaddr(), (uint32_t)0x41424344) ;
+    CPPUNIT_LOG_EQUAL(inet_address(65, 66, 67, 68).ipaddr(), (uint32_t)0x41424344) ;
+    CPPUNIT_LOG_EQUAL((uint32_t)inet_address(65, 66, 67, 68).ipaddr(), (uint32_t)0x41424344) ;
+    CPPUNIT_LOG_EQUAL(inet_address((uint32_t)inet_address(65, 66, 67, 68)), inet_address(65, 66, 67, 68)) ;
+    CPPUNIT_LOG_EQ(inet_address(65, 66, 67, 68).octet(0), 65) ;
+    CPPUNIT_LOG_EQ(inet_address(65, 66, 67, 68).octet(1), 66) ;
+    CPPUNIT_LOG_EQ(inet_address(65, 66, 67, 68).octet(2), 67) ;
+    CPPUNIT_LOG_EQ(inet_address(65, 66, 67, 68).octet(3), 68) ;
+    CPPUNIT_LOG_EQUAL(inet_address(65, 66, 67, 68).str(), std::string("65.66.67.68")) ;
+    CPPUNIT_LOG_EQUAL(inet_address("65.66.67.68").ipaddr(), (uint32_t)0x41424344) ;
+    CPPUNIT_LOG_EQ(((in_addr)inet_address(65, 66, 67, 68)).s_addr, (uint32_t)(endianness.is_little() ? 0x44434241 : 0x41424344)) ;
+    CPPUNIT_LOG_EQUAL(inet_address(0x41424344).ipaddr(), (uint32_t)0x41424344) ;
     in_addr InAddr ;
     CPPUNIT_LOG_RUN(InAddr.s_addr = htonl(0x41424344)) ;
-    CPPUNIT_LOG_EQUAL(net::inet_address(InAddr).ipaddr(), (uint32_t)0x41424344) ;
-    CPPUNIT_LOG_EQUAL(net::inet_address(InAddr).str(), std::string("65.66.67.68")) ;
+    CPPUNIT_LOG_EQUAL(inet_address(InAddr).ipaddr(), (uint32_t)0x41424344) ;
+    CPPUNIT_LOG_EQUAL(inet_address(InAddr).str(), std::string("65.66.67.68")) ;
 
-    CPPUNIT_LOG_EQUAL(net::inet_address(1, 2, 3, 4).str(), std::string("1.2.3.4")) ;
-    CPPUNIT_LOG_EQUAL(net::inet_address(1, 2, 3, 4).octet(0), (uint8_t)1) ;
-    CPPUNIT_LOG_EQUAL(net::inet_address(1, 2, 3, 4).octet(2), (uint8_t)3) ;
-    CPPUNIT_LOG_EQUAL(net::inet_address("127.0.0.2"), net::inet_address(127, 0, 0, 2)) ;
-    CPPUNIT_LOG_EQUAL(net::inet_address("127.0.0.2").octets()[0], (uint8_t)127) ;
-    CPPUNIT_LOG_EQUAL(net::inet_address("127.0.0.2").octets()[3], (uint8_t)2) ;
+    CPPUNIT_LOG_EQUAL(inet_address(1, 2, 3, 4).str(), std::string("1.2.3.4")) ;
+    CPPUNIT_LOG_EQUAL(inet_address(1, 2, 3, 4).octet(0), (uint8_t)1) ;
+    CPPUNIT_LOG_EQUAL(inet_address(1, 2, 3, 4).octet(2), (uint8_t)3) ;
+    CPPUNIT_LOG_EQUAL(inet_address("127.0.0.2"), inet_address(127, 0, 0, 2)) ;
+    CPPUNIT_LOG_EQUAL(inet_address("127.0.0.2").octets()[0], (uint8_t)127) ;
+    CPPUNIT_LOG_EQUAL(inet_address("127.0.0.2").octets()[3], (uint8_t)2) ;
     CPPUNIT_LOG(std::endl) ;
 
     // Use root nameserver address for testing: I _dearly_ hope it will not change!
-    CPPUNIT_LOG_EQUAL(net::inet_address("j.root-servers.net"), net::inet_address(192, 58, 128, 30)) ;
-    CPPUNIT_LOG_EQUAL(net::inet_address(192, 58, 128, 30).hostname(), std::string("j.root-servers.net")) ;
+    CPPUNIT_LOG_EQUAL(inet_address("j.root-servers.net"), inet_address(192, 58, 128, 30)) ;
+    CPPUNIT_LOG_EQUAL(inet_address(192, 58, 128, 30).hostname(), std::string("j.root-servers.net")) ;
 
-    CPPUNIT_LOG_EQUAL(net::inet_address("localhost").str(), std::string("127.0.0.1")) ;
-    CPPUNIT_LOG_EQUAL(net::inaddr_loopback(), net::inet_address("localhost")) ;
-    CPPUNIT_LOG_EQUAL(net::inaddr_broadcast(), net::inet_address(255, 255, 255, 255)) ;
-    CPPUNIT_LOG_EXCEPTION(net::inet_address("Hello, world!"), system_error) ;
-    CPPUNIT_LOG_EQUAL(net::inet_address(1, 2, 3, 4).hostname(), std::string("1.2.3.4")) ;
+    CPPUNIT_LOG_EQUAL(inet_address("localhost").str(), std::string("127.0.0.1")) ;
+    CPPUNIT_LOG_EQUAL(inaddr_loopback(), inet_address("localhost")) ;
+    CPPUNIT_LOG_EQUAL(inaddr_broadcast(), inet_address(255, 255, 255, 255)) ;
+    CPPUNIT_LOG_EXCEPTION(inet_address("Hello, world!"), system_error) ;
+    CPPUNIT_LOG_EQUAL(inet_address(1, 2, 3, 4).hostname(), std::string("1.2.3.4")) ;
 }
 
 void InetAddressTests::Test_Sock_Address()
 {
-    CPPUNIT_LOG_EQUAL(net::sock_address(), net::sock_address()) ;
-    CPPUNIT_LOG_IS_TRUE(net::sock_address().is_null()) ;
-    CPPUNIT_LOG_IS_TRUE(net::sock_address() == net::sock_address()) ;
-    CPPUNIT_LOG_IS_FALSE(net::sock_address() != net::sock_address()) ;
-    CPPUNIT_LOG_IS_FALSE(net::sock_address() < net::sock_address()) ;
-    CPPUNIT_LOG_IS_TRUE(!net::sock_address().addr().ipaddr()) ;
-    CPPUNIT_LOG_EQUAL(net::sock_address().port(), (uint16_t)0) ;
+    CPPUNIT_LOG_EQUAL(sock_address(), sock_address()) ;
+    CPPUNIT_LOG_IS_TRUE(sock_address().is_null()) ;
+    CPPUNIT_LOG_IS_TRUE(sock_address() == sock_address()) ;
+    CPPUNIT_LOG_IS_FALSE(sock_address() != sock_address()) ;
+    CPPUNIT_LOG_IS_FALSE(sock_address() < sock_address()) ;
+    CPPUNIT_LOG_IS_TRUE(!sock_address().addr().ipaddr()) ;
+    CPPUNIT_LOG_EQUAL(sock_address().port(), (uint16_t)0) ;
     CPPUNIT_LOG(std::endl) ;
 
-    CPPUNIT_LOG_EQUAL(net::sock_address(50000).str(), std::string("127.0.0.1:50000")) ;
-    CPPUNIT_LOG_EQUAL(net::sock_address("localhost", 50000).port(), (uint16_t)50000) ;
-    CPPUNIT_LOG_EQUAL(net::sock_address("localhost", 50000).addr(), net::inaddr_loopback()) ;
-    CPPUNIT_LOG_EQUAL(net::sock_address(50001).addr(), net::inaddr_loopback()) ;
-    CPPUNIT_LOG_EQUAL(net::sock_address(50001).port(), (uint16_t)50001) ;
-    CPPUNIT_LOG_EQUAL(net::sock_address(50000), net::sock_address(50000)) ;
+    CPPUNIT_LOG_EQUAL(sock_address(50000).str(), std::string("127.0.0.1:50000")) ;
+    CPPUNIT_LOG_EQUAL(sock_address("localhost", 50000).port(), (uint16_t)50000) ;
+    CPPUNIT_LOG_EQUAL(sock_address("localhost", 50000).addr(), inaddr_loopback()) ;
+    CPPUNIT_LOG_EQUAL(sock_address(50001).addr(), inaddr_loopback()) ;
+    CPPUNIT_LOG_EQUAL(sock_address(50001).port(), (uint16_t)50001) ;
+    CPPUNIT_LOG_EQUAL(sock_address(50000), sock_address(50000)) ;
     CPPUNIT_LOG(std::endl) ;
 
-    CPPUNIT_LOG_IS_TRUE(net::sock_address(50000) != net::sock_address(50001)) ;
-    CPPUNIT_LOG_IS_TRUE(net::sock_address(50000) < net::sock_address(50001)) ;
-    CPPUNIT_LOG_IS_TRUE(net::sock_address(50001) > net::sock_address(50000)) ;
-    CPPUNIT_LOG_IS_TRUE(net::sock_address(50001) >= net::sock_address(50000)) ;
-    CPPUNIT_LOG_IS_TRUE(net::sock_address(50000) >= net::sock_address(50000)) ;
-    CPPUNIT_LOG_IS_FALSE(net::sock_address(49999) >= net::sock_address(50000)) ;
-    CPPUNIT_LOG_IS_TRUE(net::sock_address(49999) <= net::sock_address(50000)) ;
-    CPPUNIT_LOG_IS_TRUE(net::sock_address(50000) <= net::sock_address(50000)) ;
-    CPPUNIT_LOG_IS_FALSE(net::sock_address(50000) <= net::sock_address(49999)) ;
-    CPPUNIT_LOG_EQUAL(net::sock_address(net::inet_address(1, 2, 3, 4), 50000),
-                      net::sock_address(net::inet_address(1, 2, 3, 4), 50000)) ;
-    CPPUNIT_LOG_IS_TRUE(net::sock_address(net::inet_address(2, 2, 3, 4), 50000) > net::sock_address(net::inet_address(1, 2, 3, 4), 50000)) ;
-    CPPUNIT_LOG_IS_TRUE(net::sock_address(net::inet_address(1, 2, 3, 3), 50000) < net::sock_address(net::inet_address(1, 2, 3, 4), 50000)) ;
-    CPPUNIT_LOG_IS_TRUE(net::sock_address(net::inet_address(1, 2, 3, 3), 50001) < net::sock_address(net::inet_address(1, 2, 3, 4), 50000)) ;
+    CPPUNIT_LOG_IS_TRUE(sock_address(50000) != sock_address(50001)) ;
+    CPPUNIT_LOG_IS_TRUE(sock_address(50000) < sock_address(50001)) ;
+    CPPUNIT_LOG_IS_TRUE(sock_address(50001) > sock_address(50000)) ;
+    CPPUNIT_LOG_IS_TRUE(sock_address(50001) >= sock_address(50000)) ;
+    CPPUNIT_LOG_IS_TRUE(sock_address(50000) >= sock_address(50000)) ;
+    CPPUNIT_LOG_IS_FALSE(sock_address(49999) >= sock_address(50000)) ;
+    CPPUNIT_LOG_IS_TRUE(sock_address(49999) <= sock_address(50000)) ;
+    CPPUNIT_LOG_IS_TRUE(sock_address(50000) <= sock_address(50000)) ;
+    CPPUNIT_LOG_IS_FALSE(sock_address(50000) <= sock_address(49999)) ;
+    CPPUNIT_LOG_EQUAL(sock_address(inet_address(1, 2, 3, 4), 50000),
+                      sock_address(inet_address(1, 2, 3, 4), 50000)) ;
+    CPPUNIT_LOG_IS_TRUE(sock_address(inet_address(2, 2, 3, 4), 50000) > sock_address(inet_address(1, 2, 3, 4), 50000)) ;
+    CPPUNIT_LOG_IS_TRUE(sock_address(inet_address(1, 2, 3, 3), 50000) < sock_address(inet_address(1, 2, 3, 4), 50000)) ;
+    CPPUNIT_LOG_IS_TRUE(sock_address(inet_address(1, 2, 3, 3), 50001) < sock_address(inet_address(1, 2, 3, 4), 50000)) ;
     CPPUNIT_LOG(std::endl) ;
 
     sockaddr_in sa ;
 
     CPPUNIT_LOG_RUN(memset(&sa, 0, sizeof sa)) ;
     CPPUNIT_LOG_RUN((sa.sin_family = AF_INET, sa.sin_port = htons(50002), sa.sin_addr.s_addr = htonl(INADDR_LOOPBACK))) ;
-    CPPUNIT_LOG_EQUAL(net::sock_address(sa), net::sock_address(net::inet_address(127, 0, 0, 1), 50002)) ;
+    CPPUNIT_LOG_EQUAL(sock_address(sa), sock_address(inet_address(127, 0, 0, 1), 50002)) ;
     CPPUNIT_LOG_RUN(memset(&sa, 0, sizeof sa)) ;
 
-    net::sock_address SockAddr ;
-    CPPUNIT_LOG_RUN(SockAddr = net::sock_address(net::inet_address(127, 0, 0, 2), 49999)) ;
+    sock_address SockAddr ;
+    CPPUNIT_LOG_RUN(SockAddr = sock_address(inet_address(127, 0, 0, 2), 49999)) ;
     CPPUNIT_LOG_EQUAL((int)SockAddr.as_sockaddr_in()->sin_family, (int)AF_INET) ;
     CPPUNIT_LOG_EQUAL(SockAddr.as_sockaddr_in()->sin_port, htons(49999)) ;
     CPPUNIT_LOG_EQUAL(SockAddr.as_sockaddr_in()->sin_addr.s_addr, htonl(0x7f000002)) ;
@@ -176,26 +176,24 @@ void InetAddressTests::Test_Iface_Address()
     else
     {
         CPPUNIT_LOG("ifname: " << ifname << ", ifaddr: " << ifaddr << std::endl) ;
-        CPPUNIT_LOG_EQUAL(net::inet_address(ifname, net::inet_address::FROM_IFACE), net::inet_address(ifaddr)) ;
+        CPPUNIT_LOG_EQUAL(inet_address(ifname, inet_address::FROM_IFACE), inet_address(ifaddr)) ;
     }
 
-    CPPUNIT_LOG_EQUAL(net::iface_addr("lo"), net::inaddr_loopback()) ;
-    CPPUNIT_LOG_EQUAL(net::inet_address("lo", net::inet_address::USE_IFACE), net::inaddr_loopback()) ;
+    CPPUNIT_LOG_EQUAL(iface_addr("lo"), inaddr_loopback()) ;
+    CPPUNIT_LOG_EQUAL(inet_address("lo", inet_address::USE_IFACE), inaddr_loopback()) ;
 #endif
 
-    CPPUNIT_LOG_EQUAL(net::iface_addr("65.66.67.68"), net::inet_address(65, 66, 67, 68)) ;
-    CPPUNIT_LOG_EQUAL(net::inet_address("65.66.67.68", net::inet_address::USE_IFACE), net::inet_address(65, 66, 67, 68)) ;
-    CPPUNIT_LOG_EQUAL(net::inet_address("localhost", net::inet_address::USE_IFACE), net::inaddr_loopback()) ;
-    CPPUNIT_LOG_EXCEPTION(net::inet_address("lo"), system_error) ;
+    CPPUNIT_LOG_EQUAL(iface_addr("65.66.67.68"), inet_address(65, 66, 67, 68)) ;
+    CPPUNIT_LOG_EQUAL(inet_address("65.66.67.68", inet_address::USE_IFACE), inet_address(65, 66, 67, 68)) ;
+    CPPUNIT_LOG_EQUAL(inet_address("localhost", inet_address::USE_IFACE), inaddr_loopback()) ;
+    CPPUNIT_LOG_EXCEPTION(inet_address("lo"), system_error) ;
 
-    CPPUNIT_LOG_ASSERT(net::iface_addr("NoSuch").ipaddr() == 0) ;
-    CPPUNIT_LOG_EXCEPTION(net::inet_address("NoSuch", net::inet_address::FROM_IFACE), system_error) ;
+    CPPUNIT_LOG_ASSERT(iface_addr("NoSuch").ipaddr() == 0) ;
+    CPPUNIT_LOG_EXCEPTION(inet_address("NoSuch", inet_address::FROM_IFACE), system_error) ;
 }
 
 void InetAddressTests::Test_Subnet_Address()
 {
-    using namespace net ;
-
     CPPUNIT_LOG_EQUAL(subnet_address(), subnet_address()) ;
     CPPUNIT_LOG_IS_TRUE(subnet_address() == subnet_address()) ;
     CPPUNIT_LOG_IS_FALSE(subnet_address() != subnet_address()) ;

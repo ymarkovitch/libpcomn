@@ -35,7 +35,6 @@ typedef uint32_t in_addr_t ;
 #include <array>
 
 namespace pcomn {
-namespace net {
 
 /******************************************************************************/
 /** IP address.
@@ -179,7 +178,7 @@ inline inet_address inaddr_broadcast() { return inet_address(INADDR_BROADCAST) ;
 /// Doesn't throw exception if there is no such interface, returns an empty inet_address
 inline inet_address iface_addr(const strslice &iface_name)
 {
-    return inet_address(iface_name, inet_address::FROM_IFACE|net::inet_address::NO_EXCEPTION) ;
+    return inet_address(iface_name, inet_address::FROM_IFACE|inet_address::NO_EXCEPTION) ;
 }
 
 /*******************************************************************************
@@ -411,7 +410,6 @@ inline std::ostream& operator<<(std::ostream &os, const sock_address &addr)
     return os << addr.str() ;
 }
 
-} // end of namespace pcomn::net
 } // end of namespace pcomn
 
 namespace std {
@@ -419,14 +417,14 @@ namespace std {
  Network address hashing
 *******************************************************************************/
 /**@{*/
-template<> struct hash<pcomn::net::inet_address> {
-    size_t operator()(const pcomn::net::inet_address &addr) const
+template<> struct hash<pcomn::inet_address> {
+    size_t operator()(const pcomn::inet_address &addr) const
     {
         return pcomn::valhash(addr.ipaddr()) ;
     }
 } ;
-template<> struct hash<pcomn::net::sock_address> {
-    size_t operator()(const pcomn::net::sock_address &addr) const
+template<> struct hash<pcomn::sock_address> {
+    size_t operator()(const pcomn::sock_address &addr) const
     {
         return pcomn::tuplehash(addr.addr().ipaddr(), addr.port()) ;
     }

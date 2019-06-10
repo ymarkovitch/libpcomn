@@ -47,7 +47,6 @@ MS_IGNORE_WARNING(4267)
 #endif
 
 namespace pcomn {
-namespace net {
 
 /*******************************************************************************
  inet_address
@@ -182,5 +181,4 @@ subnet_address::subnet_address(const strslice &subnet_string, RaiseError raise_e
                        "Invalid subnet specification: " P_STRSLICEQF, P_STRSLICEV(subnet_string)) ;
 }
 
-} // end of namespace pcomn::net
 } // end of namespace pcomn
