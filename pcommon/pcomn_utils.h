@@ -522,6 +522,9 @@ struct auto_buffer final {
 
       char *get() const { return _data ; }
 
+      void *data() { return _data ; }
+      const void *data() const { return _data ; }
+
    private:
       char * const _data ;
       std::aligned_storage_t<threshold, ct_max<size_t, alignment, alignof(char *)>::value> _buf ;
