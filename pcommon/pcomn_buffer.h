@@ -488,7 +488,7 @@ inline std::ostream &operator<<(std::ostream &os, const pcomn::iovec_t &v)
 namespace std {
 
 constexpr inline size_t size(const pcomn::iovec_t &v) { return pcomn::buf::size(v) ; }
-constexpr inline const void *data(const pcomn::iovec_t &v) { return pcomn::buf::cdata(v) ; }
+constexpr inline void *data(const pcomn::iovec_t &v) { return pcomn::buf::data(v) ; }
 
 constexpr inline size_t size(const pcomn::cmemvec_t &v) { return pcomn::buf::size(v) ; }
 constexpr inline const void *data(const pcomn::cmemvec_t &v) { return pcomn::buf::cdata(v) ; }
