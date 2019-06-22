@@ -588,7 +588,7 @@ struct binary128_t {
 
       friend constexpr bool operator<(const binary128_t &l, const binary128_t &r)
       {
-         return l.hi() < r.hi() || l._idata[0] == r._idata[0] && l.lo() < r.lo() ;
+         return (l.hi() < r.hi()) | (l._idata[0] == r._idata[0]) & (l.lo() < r.lo()) ;
       }
 
    protected:
