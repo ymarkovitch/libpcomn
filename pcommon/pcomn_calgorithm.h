@@ -500,6 +500,49 @@ inline bool equal_seq(S1 &&x, S2 &&y, BinaryPredicate &&pred)
 }
 /**@}*/
 
+/*******************************************************************************
+ Permutations
+*******************************************************************************/
+/// Copy the source sequence `src` into the destination sequence `dest` according to the
+/// permutation `p` so that @em p[i]-th item of `src` is copied into i-th item of `dest`.
+///
+/// The algorithm gathers items of the source sequence according to indices in
+/// the specified permutation into the sequential items of the destination.
+///
+template<typename Container, typename Permutation>
+inline const Container &gather_by_permutation(Container &dest, const Container &src, const Permutation &p)
+{
+    using namespace std ;
+    std::copy(mapped_iter(src, begin(p)), mapped_iter(src, end(p)), begin(dest)) ;
+    return dest ;
+}
+
+/// Copy the source sequence `src` into the destination sequence `dest` according to the
+/// permutation `p` so that i-th item of `src` is copied into the p[i]-th item of `dest`.
+///
+/// The algorithm sequentially reads the source sequence and scatters its items into the
+/// destination according to indices in the specified permutation.
+///
+template<typename Container, typename Permutation>
+inline Container &scatter_by_permutation(Container &dest, const Container &src, const Permutation &p)
+{
+    using namespace std ;
+    std::copy(begin(src), end(src), mapped_iter(dest, begin(p))) ;
+    return dest ;
+}
+
+/// Invert the permutation, for 'src -> dest' permutation make 'dest -> src'.
+/// E.g. {4,2,0,1,3} -> {2,3,1,4,0}
+template<typename InputIterator, typename RandomIterator>
+inline void invert_permutation(InputIterator src_begin, InputIterator src_end, RandomIterator dst)
+{
+    typedef pcomn::valtype_t<decltype(*dst)> dst_type ;
+    PCOMN_STATIC_CHECK(pcomn::is_integer<dst_type>::value) ;
+
+    for (dst_type i = 0 ; src_begin != src_end ; ++src_begin)
+        *(dst + *src_begin) = i++ ;
+}
+
 } // end of namespace pcomn
 
 #endif /* __PCOMN_CALGORITHM_H */
