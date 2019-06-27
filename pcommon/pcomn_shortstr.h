@@ -131,6 +131,7 @@ class short_string {
       short_string &operator=(const short_string &src)
       {
          memcpy(_buf, src._buf, sizeof _buf) ;
+         return *this ;
       }
 
       short_string &operator=(char_type c)
