@@ -756,6 +756,40 @@ inline void *hextob(void *buf, size_t bufsz, const char *hexstr)
    return buf ;
 }
 
+/***************************************************************************//**
+ ASCII-only fast character class test functions.
+ Branchless, ILP-friendly, 1-2 cycles per test.
+
+ @note Handle utf8 correctly, simply return false for any non-ascii characters.
+*******************************************************************************/
+/**@{*/
+constexpr inline bool isxdigit_ascii(int c)
+{
+   const unsigned v = c ;
+   return (v - (unsigned)'0' < 10) | (v - (unsigned)'a' < 6) | (v - (unsigned)'A' < 6) ;
+}
+
+constexpr inline bool islower_ascii(int c)
+{
+   return (unsigned)c - (unsigned)'a' < 26 ;
+}
+
+constexpr inline bool isupper_ascii(int c)
+{
+   return (unsigned)c - (unsigned)'A' < 26 ;
+}
+
+constexpr inline bool isalpha_ascii(int c)
+{
+   return isupper_ascii(c) | islower_ascii(c) ;
+}
+
+constexpr inline bool isalnum_ascii(int c)
+{
+   return ((unsigned)c - (unsigned)'0' < 10) | isalpha_ascii(c) ;
+}
+/**@}*/
+
 /*******************************************************************************
 
 *******************************************************************************/
