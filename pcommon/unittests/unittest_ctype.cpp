@@ -20,10 +20,12 @@
 class CharacterHandlingTests : public CppUnit::TestFixture {
 
     void Test_ASCII_CharTypes() ;
+    void Test_Hex_Conversions() ;
 
     CPPUNIT_TEST_SUITE(CharacterHandlingTests) ;
 
     CPPUNIT_TEST(Test_ASCII_CharTypes) ;
+    CPPUNIT_TEST(Test_Hex_Conversions) ;
 
     CPPUNIT_TEST_SUITE_END() ;
 } ;
@@ -58,6 +60,28 @@ void CharacterHandlingTests::Test_ASCII_CharTypes()
 
     CPPUNIT_LOG_IS_FALSE(isalnum_ascii(0)) ;
     CPPUNIT_LOG_EQ(charclass([](int c) { return isalnum_ascii(c) ; }), "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz") ;
+}
+
+void CharacterHandlingTests::Test_Hex_Conversions()
+{
+    std::vector<int> hexsample (256, -1) ;
+
+    for (int c = 0 ; c < 0xA ; ++c)
+        hexsample['0' + c] = c ;
+
+    for (int c = 0 ; c < 6 ; ++c)
+        hexsample['a' + c] = hexsample['A' + c] = 0xA + c ;
+
+    std::vector<int> hexint ;
+    for (int c = 0 ; c < 256 ; ++c)
+        hexint.push_back(hextoi(c)) ;
+
+    CPPUNIT_LOG_EQUAL(hexint, hexsample) ;
+    CPPUNIT_LOG_EQUAL(hextoi(256), -1) ;
+    CPPUNIT_LOG_EQUAL(hextoi(-1), -1) ;
+    CPPUNIT_LOG_EQUAL(hextoi(-2), -1) ;
+    CPPUNIT_LOG_EQUAL(hextoi(std::numeric_limits<int>::min()), -1) ;
+    CPPUNIT_LOG_EQUAL(hextoi(std::numeric_limits<int>::max()), -1) ;
 }
 
 int main(int argc, char *argv[])
