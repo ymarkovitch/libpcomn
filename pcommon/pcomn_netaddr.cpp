@@ -134,7 +134,7 @@ uint32_t ipv4_addr::from_string(const strslice &addrstr, CFlags flags)
 
 std::string ipv4_addr::dotted_decimal() const
 {
-    char buf[64] ;
+    addr_strbuf buf ;
     return std::string(to_strbuf(buf)) ;
 }
 
