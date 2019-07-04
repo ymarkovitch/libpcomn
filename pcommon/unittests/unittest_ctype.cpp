@@ -74,14 +74,14 @@ void CharacterHandlingTests::Test_Hex_Conversions()
 
     std::vector<int> hexint ;
     for (int c = 0 ; c < 256 ; ++c)
-        hexint.push_back(hextoi(c)) ;
+        hexint.push_back(hexchartoi(c)) ;
 
     CPPUNIT_LOG_EQUAL(hexint, hexsample) ;
-    CPPUNIT_LOG_EQUAL(hextoi(256), -1) ;
-    CPPUNIT_LOG_EQUAL(hextoi(-1), -1) ;
-    CPPUNIT_LOG_EQUAL(hextoi(-2), -1) ;
-    CPPUNIT_LOG_EQUAL(hextoi(std::numeric_limits<int>::min()), -1) ;
-    CPPUNIT_LOG_EQUAL(hextoi(std::numeric_limits<int>::max()), -1) ;
+    CPPUNIT_LOG_EQUAL(hexchartoi(256), -1) ;
+    CPPUNIT_LOG_EQUAL(hexchartoi(-1), -1) ;
+    CPPUNIT_LOG_EQUAL(hexchartoi(-2), -1) ;
+    CPPUNIT_LOG_EQUAL(hexchartoi(std::numeric_limits<int>::min()), -1) ;
+    CPPUNIT_LOG_EQUAL(hexchartoi(std::numeric_limits<int>::max()), -1) ;
 }
 
 int main(int argc, char *argv[])

@@ -182,6 +182,103 @@ ipv4_subnet::ipv4_subnet(const strslice &subnet_string, RaiseError raise_error)
 /*******************************************************************************
  ipv6_addr
 *******************************************************************************/
+binary128_t ipv6_addr::from_string(const strslice &address_string, CFlags flags)
+{
+    if (std::size(address_string) < 2)
+        return {} ;
+
+    const char *src = address_string.begin() ;
+    const char * const endsrc = address_string.end() ;
+
+    // Leading :: requires some special handling.
+    if (*src == ':' && *++src != ':')
+        return {} ;
+
+    ipv6_addr result ;
+
+    uint32_t current_hextet = 0 ;
+    uint16_t *hextet_destp = result._hdata ;
+    const uint16_t * const dest_endp = hextet_destp + std::size(result._hdata) ;
+    uint16_t *zero_run = nullptr ;
+
+    const char *token_start = address_string.begin() ;
+    bool last_char_is_xdigit = false ;
+
+    do
+    {
+        const char c = *src++ ;
+        const int num = hexchartoi(c) ;
+
+        if (num != -1)
+        {
+            current_hextet <<= 4 ;
+            current_hextet |= num ;
+            if (current_hextet > 0xffffu)
+                return {} ;
+
+            last_char_is_xdigit = true ;
+            continue ;
+        }
+
+        switch (c)
+        {
+            case ':':
+                token_start = src ;
+                if (!last_char_is_xdigit)
+                {
+                    if (zero_run)
+                        return {} ;
+
+                    zero_run = hextet_destp ;
+                    continue ;
+                }
+
+                if (hextet_destp == dest_endp)
+                    return {} ;
+
+                *hextet_destp++ = value_to_big_endian(current_hextet) ;
+                last_char_is_xdigit = false ;
+                current_hextet = 0 ;
+
+                continue ;
+
+            case '.':
+                if (dest_endp - hextet_destp < 2)
+                    return {} ;
+                {
+                    uint32_t * const ipv4_destp = reinterpret_cast<uint32_t *>(hextet_destp) ;
+
+                    const ipv4_addr ipv4 (strslice(token_start, address_string.end())) ;
+                    *ipv4_destp = value_to_big_endian(ipv4.ipaddr()) ;
+                }
+                hextet_destp += 2 ;
+                last_char_is_xdigit = false ;
+                src = endsrc ;
+
+                break ;
+
+            default: return {} ;
+        }
+    }
+    while (src != endsrc) ;
+
+    if (last_char_is_xdigit)
+    {
+        if (hextet_destp == dest_endp)
+            return {} ;
+        *hextet_destp++ = value_to_big_endian(current_hextet) ;
+    }
+
+    const size_t zero_run_lenth = dest_endp - hextet_destp ;
+    if (!zero_run_lenth)
+        return result ;
+
+    if (!zero_run)
+        return {} ;
+
+    return result ;
+}
+
 inline
 ipv6_addr::zero_run ipv6_addr::find_longest_zero_run() const
 {
@@ -240,7 +337,7 @@ const char *ipv6_addr::to_strbuf(addr_strbuf output) const
 
         uint16_t hx = hextet(i) ;
         hx <<= ((hx <= 0x0fffu) + (hx <= 0x00ffu) + (hx <= 0x000fu)) * 4 ;
-        do { *dest++ = itohex((unsigned)hx >> 12) ; }
+        do { *dest++ = itohexchar((unsigned)hx >> 12) ; }
         while (hx <<= 4) ;
     }
 
