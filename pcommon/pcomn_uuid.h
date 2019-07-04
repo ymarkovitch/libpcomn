@@ -64,9 +64,6 @@ struct uuid : binary128_t {
       /// @overload
       unsigned char *data() { return _cdata ; }
 
-      /// Get the nth octet of the UUID (RFC states "MSB-first order")
-      constexpr unsigned octet(size_t n) const { return _cdata[n] ; }
-
       constexpr unsigned version() const { return (octet(12) & 0xf0U) >> 4 ; }
 
       /// Get the length of canonical string representation of UUID (36 chars)
