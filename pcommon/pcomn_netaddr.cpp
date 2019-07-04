@@ -48,6 +48,48 @@ MS_IGNORE_WARNING(4267)
 
 namespace pcomn {
 
+static inline std::pair<ipv4_addr, bool> ipv4_from_dotdec(const strslice &addrstr)
+{
+    enum State { Dot, Digit } ;
+
+    size_t dotcount = 0 ;
+    State state = Dot ;
+    unsigned last_octet ;
+    uint8_t octets[3] ;
+
+    for (const char c: addrstr)
+    {
+        switch (state)
+        {
+            case Dot:
+                if (!std::isdigit(c)) return {} ;
+                last_octet = c - '0' ;
+                state = Digit ;
+                break ;
+
+            case Digit:
+                if (std::isdigit(c))
+                {
+                    last_octet = last_octet * 10 + (c - '0') ;
+                    if (last_octet > 255) return {} ;
+                }
+                else if (c == '.')
+                {
+                    if (dotcount > 2) return {} ;
+                    octets[dotcount] = last_octet ;
+                    last_octet = 0 ;
+                    ++dotcount ;
+                }
+                else
+                    return {} ;
+        }
+    }
+    if (dotcount != 3)
+        return {} ;
+
+    return {ipv4_addr(octets[0], octets[1], octets[2], last_octet), true} ;
+}
+
 /*******************************************************************************
  ipv4_addr
 *******************************************************************************/
@@ -184,97 +226,146 @@ ipv4_subnet::ipv4_subnet(const strslice &subnet_string, RaiseError raise_error)
 *******************************************************************************/
 binary128_t ipv6_addr::from_string(const strslice &address_string, CFlags flags)
 {
-    if (std::size(address_string) < 2)
-        return {} ;
+    #define IPV6_STRING_ERROR() do { if (raise_error) invalid_address_string(address_string) ; return {} ; } while(false)
+    #define IPV6_STRING_ENSURE(cond) while (unlikely(!(cond))) { IPV6_STRING_ERROR() ; }
 
-    const char *src = address_string.begin() ;
-    const char * const endsrc = address_string.end() ;
+    enum State {
+        Begin,
+        HeadColon,
+        DelimColon,
+        Hextet
+    } ;
 
-    // Leading :: requires some special handling.
-    if (*src == ':' && *++src != ':')
-        return {} ;
+    union result_ptr { uint16_t *phextet ; uint32_t *pv4 ; } ;
+
+    const bool raise_error = !(flags & NO_EXCEPTION) ;
 
     ipv6_addr result ;
+    result_ptr dest = {result._hdata} ;
 
+    // Start of the run of 0x00s
+    result_ptr zrun_begin = {nullptr} ;
+    // The buffer to use after the run of 0x00s
+    uint16_t after_zrun[8] ;
+
+    size_t hextet_count = 0 ;
     uint32_t current_hextet = 0 ;
-    uint16_t *hextet_destp = result._hdata ;
-    const uint16_t * const dest_endp = hextet_destp + std::size(result._hdata) ;
-    uint16_t *zero_run = nullptr ;
 
-    const char *token_start = address_string.begin() ;
-    bool last_char_is_xdigit = false ;
+    State state = Begin ;
 
-    do
+    size_t string_pos = 0 ;
+    size_t begin_hextet_pos ;
+
+    const auto start_hextet = [&](char c)
     {
-        const char c = *src++ ;
-        const int num = hexchartoi(c) ;
+        const int digit = hexchartoi(c) ;
+        if (digit < 0)
+            return false ;
+        current_hextet = digit ;
+        begin_hextet_pos = string_pos ;
 
-        if (num != -1)
+        state = Hextet ;
+        return true ;
+    } ;
+
+    for (const char c: address_string)
+    {
+        switch (state)
         {
-            current_hextet <<= 4 ;
-            current_hextet |= num ;
-            if (current_hextet > 0xffffu)
-                return {} ;
-
-            last_char_is_xdigit = true ;
-            continue ;
-        }
-
-        switch (c)
-        {
-            case ':':
-                token_start = src ;
-                if (!last_char_is_xdigit)
+            case Begin:
+                if (c == ':')
                 {
-                    if (zero_run)
+                    // Shortcut for "unspecified address" (AKA "::", all-zeros)
+                    if (std::size(address_string) == 2)
+                    {
+                        IPV6_STRING_ENSURE(address_string.back() == ':') ;
                         return {} ;
-
-                    zero_run = hextet_destp ;
-                    continue ;
+                    }
+                    state = HeadColon ;
                 }
-
-                if (hextet_destp == dest_endp)
-                    return {} ;
-
-                *hextet_destp++ = value_to_big_endian(current_hextet) ;
-                last_char_is_xdigit = false ;
-                current_hextet = 0 ;
-
-                continue ;
-
-            case '.':
-                if (dest_endp - hextet_destp < 2)
-                    return {} ;
-                {
-                    uint32_t * const ipv4_destp = reinterpret_cast<uint32_t *>(hextet_destp) ;
-
-                    const ipv4_addr ipv4 (strslice(token_start, address_string.end())) ;
-                    *ipv4_destp = value_to_big_endian(ipv4.ipaddr()) ;
-                }
-                hextet_destp += 2 ;
-                last_char_is_xdigit = false ;
-                src = endsrc ;
-
+                else
+                    IPV6_STRING_ENSURE(start_hextet(c)) ;
                 break ;
 
-            default: return {} ;
-        }
-    }
-    while (src != endsrc) ;
+            case DelimColon:
+                // There can be only a digit or ':' after the ':'
+                if (start_hextet(c))
+                {
+                    state = Hextet ;
+                    break ;
+                }
 
-    if (last_char_is_xdigit)
+                // '::' inside the address may occur at most once
+                IPV6_STRING_ENSURE(!zrun_begin.phextet & ++hextet_count < 8) ;
+
+                // Fall through
+            case HeadColon:
+                IPV6_STRING_ENSURE(c == ':') ;
+                ++hextet_count ;
+                zrun_begin = dest ;
+                // Write hextets into the temporary buffer from now
+                dest.phextet = after_zrun ;
+
+                state = DelimColon ;
+                break ;
+
+            case Hextet:
+            {
+                const int digit = hexchartoi(c) ;
+                if (digit >= 0)
+                {
+                    current_hextet = (current_hextet << 4) | digit ;
+                    IPV6_STRING_ENSURE(current_hextet <= 0xffffu) ;
+                    // Keep the Hextet state.
+                    break ;
+                }
+
+                IPV6_STRING_ENSURE(((c == ':') | (c == '.')) & ++hextet_count < 8) ;
+
+                if (c == ':')
+                {
+                    *dest.phextet++ = value_to_big_endian(current_hextet) ;
+                    current_hextet = 0 ;
+                    state = DelimColon ;
+                    break ;
+                }
+                // '.', must be dot-decimal IPv4 at the end of the string
+                const auto ipv4_opt = ipv4_from_dotdec(address_string(begin_hextet_pos)) ;
+
+                IPV6_STRING_ENSURE(ipv4_opt.second) ;
+                *dest.pv4++ = value_to_big_endian(ipv4_opt.first.ipaddr()) ;
+
+                goto end ;
+            }
+
+        } /* End of switch(c) */
+
+        ++string_pos ;
+
+    } /* End of for(c) */
+
+    switch (state)
     {
-        if (hextet_destp == dest_endp)
-            return {} ;
-        *hextet_destp++ = value_to_big_endian(current_hextet) ;
+        case Begin:      IPV6_STRING_ENSURE(flags & ALLOW_EMPTY) ; return {} ;
+
+        case DelimColon: IPV6_STRING_ENSURE(*(address_string.end() - 2) == ':') ; break ;
+        case Hextet:     *dest.phextet++ = value_to_big_endian(current_hextet) ; break ;
+        default: break ;
     }
 
-    const size_t zero_run_lenth = dest_endp - hextet_destp ;
-    if (!zero_run_lenth)
-        return result ;
+end:
+    if (zrun_begin.phextet)
+    {
+        // We've encountered '::', fixup sequence of zeros
+        NOXCHECK(pcomn::xinrange(zrun_begin.phextet, std::begin(result._hdata), std::end(result._hdata))) ;
+        NOXCHECK(pcomn::xinrange(dest.phextet, std::begin(after_zrun), std::end(after_zrun))) ;
 
-    if (!zero_run)
-        return {} ;
+        const size_t after_zrun_hextets_count = dest.phextet - after_zrun ;
+        NOXCHECK((zrun_begin.phextet - result._hdata) + after_zrun_hextets_count < 8) ;
+
+        std::copy(std::begin(after_zrun), dest.phextet,
+                  std::end(result._hdata) - after_zrun_hextets_count) ;
+    }
 
     return result ;
 }
@@ -289,6 +380,7 @@ ipv6_addr::zero_run ipv6_addr::find_longest_zero_run() const
     {
         if (!hextet(i))
         {
+
             if (current.start == -1)
                 current = {i, 1} ;
             else
@@ -348,6 +440,14 @@ const char *ipv6_addr::to_strbuf(addr_strbuf output) const
     *dest++ = '\0' ;
 
     return output ;
+}
+
+__noreturn __cold void ipv6_addr::invalid_address_string(const strslice &address_string)
+{
+    PCOMN_THROW_MSG_IF(!address_string, invalid_str_repr,
+                       "Empty IPv6 address string.") ;
+    PCOMN_THROW_MSGF(invalid_str_repr,
+                     "Invalid IPv6 address string " P_STRSLICEQF ".", P_STRSLICEV(address_string)) ;
 }
 
 } // end of namespace pcomn

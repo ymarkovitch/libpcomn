@@ -522,6 +522,8 @@ private:
     struct zero_run { short start = -1 ; short len = 0 ; } ;
     // Find the longest run of zeros in the address for :: shorthanding
     zero_run find_longest_zero_run() const ;
+
+    static __noreturn __cold void invalid_address_string(const strslice &address_string) ;
 } ;
 
 /*******************************************************************************
