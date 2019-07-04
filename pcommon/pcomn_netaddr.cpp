@@ -179,4 +179,78 @@ ipv4_subnet::ipv4_subnet(const strslice &subnet_string, RaiseError raise_error)
                        "Invalid subnet specification: " P_STRSLICEQF, P_STRSLICEV(subnet_string)) ;
 }
 
+/*******************************************************************************
+ ipv6_addr
+*******************************************************************************/
+inline
+ipv6_addr::zero_run ipv6_addr::find_longest_zero_run() const
+{
+    zero_run current ;
+    zero_run longest ;
+
+    for (short i = 0 ; i < 8 ; ++i)
+    {
+        if (!hextet(i))
+        {
+            if (current.start == -1)
+                current = {i, 1} ;
+            else
+                ++current.len ;
+            continue ;
+        }
+
+        if (current.len > longest.len)
+            longest = current ;
+        current.start = -1 ;
+    }
+
+    if (current.len > longest.len)
+        longest = current ;
+
+    return longest.len >= 2 ? longest : zero_run() ;
+}
+
+// Heavily modified code from inet_ntop6 from Apache ASF library
+const char *ipv6_addr::to_strbuf(addr_strbuf output) const
+{
+    // Is this an encapsulated IPv4 address?
+    if (is_mapped_ipv4())
+    {
+        ipv4_addr(value_from_big_endian(_wdata[3])).to_strbuf(output) ;
+        return output ;
+    }
+
+    const zero_run longest_zero_run = find_longest_zero_run() ;
+    const int longest_end = longest_zero_run.start + longest_zero_run.len ;
+
+    char *dest = output ;
+    for (int i = 0 ; i < 8 ; ++i)
+    {
+        // Are we inside the best run of 0x00's?
+        if (i < longest_end && i >= longest_zero_run.start)
+        {
+            *dest++ = ':' ;
+            i = longest_end ;
+            continue ;
+        }
+
+        // Are we following the initial run of 0x00s or any real hextet?
+        if (i)
+            *dest++ = ':' ;
+
+        uint16_t hx = hextet(i) ;
+        hx <<= ((hx <= 0x0fffu) + (hx <= 0x00ffu) + (hx <= 0x000fu)) * 4 ;
+        do { *dest++ = itohex((unsigned)hx >> 12) ; }
+        while (hx <<= 4) ;
+    }
+
+    // Was it a trailing run of 0x00's?
+    if (longest_end == 8)
+        *dest++ = ':' ;
+
+    *dest++ = '\0' ;
+
+    return output ;
+}
+
 } // end of namespace pcomn

@@ -36,6 +36,12 @@ typedef uint32_t in_addr_t ;
 
 namespace pcomn {
 
+class ipv4_addr ;
+class ipv4_subnet ;
+class ipv6_addr ;
+class ipv6_subnet ;
+class sock_address ;
+
 /***************************************************************************//**
  IPv4 address.
 
@@ -44,6 +50,7 @@ namespace pcomn {
  conversions.
 *******************************************************************************/
 class ipv4_addr {
+    friend ipv6_addr ;
 public:
     /// ipv4_addr construction mode flags
     enum CFlags {
@@ -125,7 +132,7 @@ public:
 
     /// Get the maximum length of dotted-decimal string representation of IPv4 address
     /// (non including terminating zero).
-    static constexpr size_t slen() { return 15 ; }
+    static constexpr size_t slen() { return INET_ADDRSTRLEN - 1 ; }
 
     /// Get dotted-decimal representation of IP address.
     std::string dotted_decimal() const ;
@@ -136,7 +143,9 @@ public:
     OutputIterator to_str(OutputIterator s) const
     {
         addr_strbuf buf ;
-        return std::copy(buf + 0, buf + strlen(to_strbuf(buf)), s) ;
+        to_strbuf(buf) ;
+        for (const char *p = buf ; *p ; ++p, ++s) *s = *p ;
+        return s ;
     }
 
     friend std::ostream &operator<<(std::ostream &os, const ipv4_addr &addr)
@@ -299,131 +308,6 @@ inline bool operator<(const ipv4_subnet &x, const ipv4_subnet &y)
 
 PCOMN_DEFINE_RELOP_FUNCTIONS(, ipv4_subnet) ;
 
-#if 0
-/***************************************************************************//**
- IPv4 address.
-
- @note All comparison/relational operators are defined as free function, providing for
- symmetrical compare with all data types to/from which ipv6_addr defines implicit
- conversions.
-*******************************************************************************/
-class ipv6_addr {
-public:
-    /// ipv6_addr construction mode flags
-    enum CFlags {
-        NO_EXCEPTION    = 0x0001, /**< Don't throw exception if construction failed,
-                                     intialize ipv6_addr to :: */
-        ALLOW_EMPTY     = 0x0002  /**< Allow to pass an empty string (the resulting
-                                     address will be ::) */
-    } ;
-
-    /// Create default address (::).
-    constexpr ipv6_addr() = default ;
-
-    explicit constexpr ipv6_addr(uint32_t host_order_inetaddr) : _addr(host_order_inetaddr) {}
-
-    ipv6_addr(const in_addr &addr) : _addr(ntohl(addr.s_addr)) {}
-
-    constexpr ipv6_addr(uint8_t a, uint8_t b, uint8_t c, uint8_t d) :
-        _addr(((uint32_t)a << 24) | ((uint32_t)b << 16) | ((uint32_t)c << 8) | d)
-    {}
-
-    /// Create an IP address from its human-readable text representation.
-    /// @param address_string Dot-delimited IP address or interface name, like "eth0", or
-    /// host name (tried in that order).
-    /// @param flags        ORed ConstructFlags flags.
-    /// @return Resolved IP address. If cannot resolve, throws system_error or constructs
-    /// an empty ipv6_addr (i.e. ipaddr()==0), depending on NO_EXCEPTION flag.
-    ipv6_addr(const strslice &address_string, CFlags flags = ONLY_DOTDEC) :
-        _addr(from_string(address_string, flags))
-    {}
-
-    explicit constexpr operator bool() const { return !!_addr ; }
-
-    /// Get one octet of an IP address by octet index (0-3).
-    constexpr uint8_t octet(unsigned ndx) const { return (_addr >> 8*(3 - ndx)) ; }
-
-    /// Get all four octets of an IP address.
-    std::array<uint8_t, 4> octets() const
-    {
-        union {
-            uint32_t addr ;
-            std::array<uint8_t, 4> result ;
-        } netaddr = { htonl(_addr) } ;
-        return netaddr.result ;
-    }
-
-    /// Get an IP address as a 32-bit unsigned number in the host byte order.
-    constexpr uint32_t ipaddr() const { return _addr ; }
-
-    in_addr inaddr() const
-    {
-        union {
-            uint32_t addr ;
-            in_addr  result ;
-        } netaddr = { htonl(_addr) } ;
-        return netaddr.result ;
-    }
-    operator struct in_addr() const { return inaddr() ; }
-    /// Get an IP address as a 32-bit unsigned number in the host byte order.
-    explicit constexpr operator uint32_t() const { return ipaddr() ; }
-
-    constexpr ipv6_addr next() const { return ipv6_addr(ipaddr() + 1) ; }
-    constexpr ipv6_addr prev() const { return ipv6_addr(ipaddr() - 1) ; }
-    static constexpr ipv6_addr last() { return ipv6_addr((uint32_t)~0) ; }
-
-    /// Get the maximum length of string representation of IPv6 address
-    /// (non including terminating zero).
-    static constexpr size_t slen() { return INET6_ADDRSTRLEN - 1 ; }
-
-    /// Get dotted-decimal representation of IP address.
-    std::string dotted_decimal() const ;
-
-    std::string str() const { return dotted_decimal() ; }
-
-    template<typename OutputIterator>
-    OutputIterator to_str(OutputIterator s) const
-    {
-        char buf[64] ;
-        return std::copy(buf + 0, buf + strlen(to_strbuf(buf)), s) ;
-    }
-
-    friend std::ostream &operator<<(std::ostream &os, const ipv6_addr &addr)
-    {
-        char buf[64] ;
-        return os << addr.to_strbuf(buf) ;
-    }
-
-private:
-    binary128_t _addr ; /* IPv6 address in network byte order. */
-
-    static uint32_t from_string(const strslice &address_string, CFlags flags) ;
-
-    char *to_strbuf(char *buf) const
-    {
-        // Alas! inet_ntoa isn't thread-safe on Linux!
-        sprintf(buf, "%d.%d.%d.%d", int(octet(0)), int(octet(1)), int(octet(2)), int(octet(3))) ;
-        return buf ;
-    }
-} ;
-
-/*******************************************************************************
- ipv6_addr comparison operators
-*******************************************************************************/
-constexpr inline bool operator==(const ipv6_addr &x, const ipv6_addr &y)
-{
-    return x.ipaddr() == y.ipaddr() ;
-}
-constexpr inline bool operator<(const ipv6_addr &x, const ipv6_addr &y)
-{
-    return x.ipaddr() < y.ipaddr() ;
-}
-
-// Note that this line defines _all_ remaining operators (!=, <=, etc.)
-PCOMN_DEFINE_RELOP_FUNCTIONS(constexpr, ipv6_addr) ;
-
-#endif
-
 /***************************************************************************//**
  The completely-defined SF_INET socket address; specifies both the inet address
  and the port.
@@ -524,6 +408,127 @@ inline bool operator<(const sock_address &x, const sock_address &y)
 
 // Note that this line defines _all_ remaining operators (!=, <=, etc.)
 PCOMN_DEFINE_RELOP_FUNCTIONS(, sock_address) ;
+
+/***************************************************************************//**
+ IPv6 address in network byte order.
+*******************************************************************************/
+class ipv6_addr : private binary128_t {
+    typedef binary128_t ancestor ;
+public:
+    /// ipv6_addr construction mode flags
+    enum CFlags {
+        NO_EXCEPTION    = 0x0001, /**< Don't throw exception if construction failed,
+                                     intialize ipv6_addr to :: */
+        ALLOW_EMPTY     = 0x0002  /**< Allow to pass an empty string (the resulting
+                                     address will be ::) */
+    } ;
+
+    /// Create default address (::).
+    constexpr ipv6_addr() = default ;
+
+    explicit constexpr ipv6_addr(const binary128_t &net_order_inetaddr) :
+        ancestor(net_order_inetaddr)
+    {}
+
+    constexpr ipv6_addr(uint8_t c0, uint8_t c1, uint8_t c2, uint8_t c3,
+                        uint8_t c4, uint8_t c5, uint8_t c6, uint8_t c7,
+                        uint8_t c8, uint8_t c9, uint8_t ca, uint8_t cb,
+                        uint8_t cc, uint8_t cd, uint8_t ce, uint8_t cf) :
+        ancestor{c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, ca, cb, cc, cd, ce, cf}
+    {}
+
+    /// Create an IP address from its human-readable text representation.
+    /// @param address_string Dot-delimited IP address or interface name, like "eth0", or
+    /// host name (tried in that order).
+    /// @param flags        ORed ConstructFlags flags.
+    /// @return Resolved IP address. If cannot resolve, throws system_error or constructs
+    /// an empty ipv6_addr (i.e. ipaddr()==0), depending on NO_EXCEPTION flag.
+    ipv6_addr(const strslice &address_string, CFlags flags = {}) :
+        ancestor(from_string(address_string, flags))
+    {}
+
+
+    explicit constexpr operator bool() const { return static_cast<bool>(data()) ; }
+
+    /// Get the nth hextet of the address.
+    /// The hextet is returned as host-order word.
+    using ancestor::hextet ;
+    using ancestor::octet ;
+
+    /// Get all the eight hextets of an IPv6 address.
+    constexpr std::array<uint16_t, 8> hextets() const
+    {
+        return
+            {hextet(0), hextet(1), hextet(2), hextet(3),
+             hextet(4), hextet(5), hextet(6), hextet(7)} ;
+    }
+
+    constexpr in6_addr inaddr() const
+    {
+        union {
+            binary128_t addr ;
+            in6_addr    result ;
+        } _ = { data() } ;
+        return _.result ;
+    }
+    operator struct in6_addr() const { return inaddr() ; }
+
+    /// Get an IPv6 address as 128-bit binary in the network (BE) byte order.
+    explicit constexpr operator binary128_t() const { return data() ; }
+
+    constexpr bool is_mapped_ipv4() const
+    {
+        return !(_idata[0] | (_wdata[2] ^ value_to_big_endian(0xffffu))) ;
+    }
+
+    /// Get the maximum length of string representation of IPv6 address
+    /// (non including terminating zero).
+    static constexpr size_t slen() { return INET6_ADDRSTRLEN - 1 ; }
+
+    template<typename OutputIterator>
+    OutputIterator to_str(OutputIterator s) const
+    {
+        addr_strbuf buf ;
+        to_strbuf(buf) ;
+        for (const char *p = buf ; *p ; ++p, ++s) *s = *p ;
+        return s ;
+    }
+
+    friend constexpr bool operator==(const ipv6_addr &x, const ipv6_addr &y)
+    {
+        return x.data() == y.data() ;
+    }
+
+    friend constexpr bool operator<(const ipv6_addr &x, const ipv6_addr &y)
+    {
+        return x.data() < y.data() ;
+    }
+
+    friend std::ostream &operator<<(std::ostream &os, const ipv6_addr &addr)
+    {
+        char buf[64] ;
+        return os << addr.to_strbuf(buf) ;
+    }
+
+private:
+    typedef char addr_strbuf[INET6_ADDRSTRLEN] ;
+
+    constexpr const binary128_t &data() const { return *this ; }
+
+    static binary128_t from_string(const strslice &address_string, CFlags flags) ;
+
+    const char *to_strbuf(addr_strbuf) const ;
+
+    struct zero_run { short start = -1 ; short len = 0 ; } ;
+    // Find the longest run of zeros in the address for :: shorthanding
+    zero_run find_longest_zero_run() const ;
+} ;
+
+/*******************************************************************************
+ ipv6_addr comparison operators
+*******************************************************************************/
+// Note that this line defines _all_ remaining operators (!=, <=, etc.)
+PCOMN_DEFINE_RELOP_FUNCTIONS(constexpr, ipv6_addr) ;
 
 /*******************************************************************************
  Ostream output operators
