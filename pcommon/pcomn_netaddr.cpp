@@ -79,6 +79,7 @@ static inline std::pair<ipv4_addr, bool> ipv4_from_dotdec(const strslice &addrst
                     octets[dotcount] = last_octet ;
                     last_octet = 0 ;
                     ++dotcount ;
+                    state = Dot ;
                 }
                 else
                     return {} ;
@@ -105,7 +106,6 @@ uint32_t ipv4_addr::from_string(const strslice &addrstr, CFlags flags)
         return 0 ;
     }
 
-    struct in_addr addr ;
     char strbuf[maxsz + 16] ;
 
     const unsigned len = std::min<size_t>(addrstr.size(), sizeof strbuf - 1) ;
@@ -123,11 +123,9 @@ uint32_t ipv4_addr::from_string(const strslice &addrstr, CFlags flags)
     // First try to interpret the address as dot-decimal.
     if (!(flags & IGNORE_DOTDEC))
     {
-        if (addrstr.size() < maxdot
-            && std::count(addrstr.begin(), addrstr.end(), '.') == 3
-            && inet_pton(AF_INET, strbuf, &addr) > 0)
-
-            return ntohl(addr.s_addr) ;
+        const auto from_dotdec = ipv4_from_dotdec(addrstr) ;
+        if (from_dotdec.second)
+            return from_dotdec.first.ipaddr() ;
 
         if (!(flags & (USE_HOSTNAME|USE_IFACE)))
         {
@@ -148,7 +146,7 @@ uint32_t ipv4_addr::from_string(const strslice &addrstr, CFlags flags)
             strcpy(request.ifr_name, strbuf) ;
 
             if (ioctl(sockd, SIOCGIFADDR, &request) != -1)
-                return ntohl(reinterpret_cast<sockaddr_in *>(&request.ifr_addr)->sin_addr.s_addr) ;
+                return value_from_big_endian(reinterpret_cast<sockaddr_in *>(&request.ifr_addr)->sin_addr.s_addr) ;
         }
         #endif
 
@@ -163,7 +161,7 @@ uint32_t ipv4_addr::from_string(const strslice &addrstr, CFlags flags)
     // OK, maybe it's a host name?
     // gethostbyname is thread-safe at least in glibc (when libpthreads is used)
     if (const struct hostent * const host = gethostbyname(strbuf))
-        return ntohl(*(const uint32_t *)host->h_addr_list[0]) ;
+        return value_from_big_endian(*(const uint32_t *)host->h_addr_list[0]) ;
 
     if (usexc)
     {
@@ -324,7 +322,7 @@ binary128_t ipv6_addr::from_string(const strslice &address_string, CFlags flags)
 
                 if (c == ':')
                 {
-                    *dest.phextet++ = value_to_big_endian(current_hextet) ;
+                    *dest.phextet++ = value_to_big_endian((uint16_t)current_hextet) ;
                     current_hextet = 0 ;
                     state = DelimColon ;
                     break ;
@@ -333,6 +331,10 @@ binary128_t ipv6_addr::from_string(const strslice &address_string, CFlags flags)
                 const auto ipv4_opt = ipv4_from_dotdec(address_string(begin_hextet_pos)) ;
 
                 IPV6_STRING_ENSURE(ipv4_opt.second) ;
+
+                if (!begin_hextet_pos)
+                    return ipv6_addr(ipv4_opt.first) ;
+
                 *dest.pv4++ = value_to_big_endian(ipv4_opt.first.ipaddr()) ;
 
                 goto end ;
@@ -349,7 +351,7 @@ binary128_t ipv6_addr::from_string(const strslice &address_string, CFlags flags)
         case Begin:      IPV6_STRING_ENSURE(flags & ALLOW_EMPTY) ; return {} ;
 
         case DelimColon: IPV6_STRING_ENSURE(*(address_string.end() - 2) == ':') ; break ;
-        case Hextet:     *dest.phextet++ = value_to_big_endian(current_hextet) ; break ;
+        case Hextet:     *dest.phextet++ = value_to_big_endian((uint16_t)current_hextet) ; break ;
         default: break ;
     }
 
@@ -405,7 +407,14 @@ const char *ipv6_addr::to_strbuf(addr_strbuf output) const
     // Is this an encapsulated IPv4 address?
     if (is_mapped_ipv4())
     {
-        ipv4_addr(value_from_big_endian(_wdata[3])).to_strbuf(output) ;
+        // Make a distinction between
+        //  - "universal unspecified address", AKA DENIL, which is equal by its binary
+        //    representation for _both_ the ipv4 and v6 and is all-zeros 128-bit binary,
+        //  - and ipv4 unspecified address, which is ::ffff:0.0.0.0
+        //
+        _wdata[3]
+            ? ipv4_addr(value_from_big_endian(_wdata[3])).to_strbuf(output)
+            : strcpy(output, "::ffff:0.0.0.0") ;
         return output ;
     }
 
@@ -419,7 +428,8 @@ const char *ipv6_addr::to_strbuf(addr_strbuf output) const
         if (i < longest_end && i >= longest_zero_run.start)
         {
             *dest++ = ':' ;
-            i = longest_end ;
+            // Will be incremented at the loop header
+            i = longest_end - 1 ;
             continue ;
         }
 
@@ -427,10 +437,11 @@ const char *ipv6_addr::to_strbuf(addr_strbuf output) const
         if (i)
             *dest++ = ':' ;
 
-        uint16_t hx = hextet(i) ;
-        hx <<= ((hx <= 0x0fffu) + (hx <= 0x00ffu) + (hx <= 0x000fu)) * 4 ;
-        do { *dest++ = itohexchar((unsigned)hx >> 12) ; }
-        while (hx <<= 4) ;
+        const uint16_t hx = hextet(i) ;
+        // Suppress hextet's leading zeros
+        unsigned digicount = 3 - ((hx <= 0x0fffu) + (hx <= 0x00ffu) + (hx <= 0x000fu)) ;
+        do { *dest++ = itohexchar((hx >> 4*digicount) & 0xf) ; }
+        while (digicount--) ;
     }
 
     // Was it a trailing run of 0x00's?

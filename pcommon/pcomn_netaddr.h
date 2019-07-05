@@ -411,8 +411,10 @@ PCOMN_DEFINE_RELOP_FUNCTIONS(, sock_address) ;
 
 /***************************************************************************//**
  IPv6 address in network byte order.
+
+ @note Implicitly castable to binary128_t in the network (BE) byte order.
 *******************************************************************************/
-class ipv6_addr : private binary128_t {
+class ipv6_addr : public binary128_t {
     typedef binary128_t ancestor ;
 public:
     /// ipv6_addr construction mode flags
@@ -423,18 +425,22 @@ public:
                                      address will be ::) */
     } ;
 
-    /// Create default address (::).
+    /// Create the default address (::).
     constexpr ipv6_addr() = default ;
 
     explicit constexpr ipv6_addr(const binary128_t &net_order_inetaddr) :
         ancestor(net_order_inetaddr)
     {}
 
-    constexpr ipv6_addr(uint8_t c0, uint8_t c1, uint8_t c2, uint8_t c3,
-                        uint8_t c4, uint8_t c5, uint8_t c6, uint8_t c7,
-                        uint8_t c8, uint8_t c9, uint8_t ca, uint8_t cb,
-                        uint8_t cc, uint8_t cd, uint8_t ce, uint8_t cf) :
-        ancestor{c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, ca, cb, cc, cd, ce, cf}
+    /// Create IPv6 address from explicitly specified hextets.
+    constexpr ipv6_addr(uint16_t h1, uint16_t h2, uint16_t h3, uint16_t h4,
+                        uint16_t h5, uint16_t h6, uint16_t h7, uint16_t h8) :
+        ancestor(h1, h2, h3, h4, h5, h6, h7, h8)
+    {}
+
+    /// Implicit conversion ipv4->ipv6
+    constexpr ipv6_addr(const ipv4_addr &ipv4) :
+        ancestor(0, 0, 0, 0, 0, 0xffffu, ipv4.ipaddr() >> 16, uint16_t(ipv4.ipaddr()))
     {}
 
     /// Create an IP address from its human-readable text representation.
@@ -454,6 +460,7 @@ public:
     /// The hextet is returned as host-order word.
     using ancestor::hextet ;
     using ancestor::octet ;
+    using ancestor::operator bool ;
 
     /// Get all the eight hextets of an IPv6 address.
     constexpr std::array<uint16_t, 8> hextets() const
@@ -473,9 +480,6 @@ public:
     }
     operator struct in6_addr() const { return inaddr() ; }
 
-    /// Get an IPv6 address as 128-bit binary in the network (BE) byte order.
-    explicit constexpr operator binary128_t() const { return data() ; }
-
     constexpr bool is_mapped_ipv4() const
     {
         return !(_idata[0] | (_wdata[2] ^ value_to_big_endian(0xffffu))) ;
@@ -492,6 +496,12 @@ public:
         to_strbuf(buf) ;
         for (const char *p = buf ; *p ; ++p, ++s) *s = *p ;
         return s ;
+    }
+
+    std::string str() const
+    {
+        addr_strbuf buf ;
+        return std::string(to_strbuf(buf)) ;
     }
 
     friend constexpr bool operator==(const ipv6_addr &x, const ipv6_addr &y)
