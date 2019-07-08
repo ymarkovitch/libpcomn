@@ -333,7 +333,7 @@ binary128_t ipv6_addr::from_string(const strslice &address_string, CFlags flags)
                 IPV6_STRING_ENSURE(ipv4_opt.second) ;
 
                 if (!begin_hextet_pos)
-                    return ipv6_addr(ipv4_opt.first) ;
+                    return ipv4_opt.first ? ipv6_addr(ipv4_opt.first) : ipv6_addr() ;
 
                 *dest.pv4++ = value_to_big_endian(ipv4_opt.first.ipaddr()) ;
 

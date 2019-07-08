@@ -233,6 +233,8 @@ void InetAddressTests::Test_IPv6_Address_Parser()
 
     CPPUNIT_LOG_EQUAL(ipv6_addr("172.16.9.100"),
                       ipv6_addr(0, 0, 0, 0, 0, 0xffff, 0xac10, 0x964)) ;
+
+    CPPUNIT_LOG_EQUAL(ipv6_addr("0.0.0.0"), ipv6_addr()) ;
 }
 
 void InetAddressTests::Test_Sock_Address()
