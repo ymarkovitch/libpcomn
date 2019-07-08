@@ -719,20 +719,24 @@ inline void pcomn_swap(T &a, T &b)
  @note Handle utf8 correctly, simply return false for any non-ascii characters.
 *******************************************************************************/
 /**@{*/
+constexpr inline bool isdigit_ascii(int c)
+{
+   return (unsigned)c - (unsigned)'0' < 10U ;
+}
+
 constexpr inline bool isxdigit_ascii(int c)
 {
-   const unsigned v = c ;
-   return (v - (unsigned)'0' < 10) | (v - (unsigned)'a' < 6) | (v - (unsigned)'A' < 6) ;
+   return isdigit_ascii(c) | ((unsigned)c - (unsigned)'a' < 6U) | ((unsigned)c - (unsigned)'A' < 6U) ;
 }
 
 constexpr inline bool islower_ascii(int c)
 {
-   return (unsigned)c - (unsigned)'a' < 26 ;
+   return (unsigned)c - (unsigned)'a' < 26U ;
 }
 
 constexpr inline bool isupper_ascii(int c)
 {
-   return (unsigned)c - (unsigned)'A' < 26 ;
+   return (unsigned)c - (unsigned)'A' < 26U ;
 }
 
 constexpr inline bool isalpha_ascii(int c)
