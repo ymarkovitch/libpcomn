@@ -220,6 +220,9 @@ struct basic_strslice {
       ///
       template<int(isproperty)(int)>
       bool all() const { return std::all_of(begin(), end(), isproperty) ; }
+      /// @overload
+      template<bool(isproperty)(int)>
+      bool all() const { return std::all_of(begin(), end(), isproperty) ; }
 
       /// Check if none of the characters in the slice satisfy the property.
       ///
@@ -227,6 +230,9 @@ struct basic_strslice {
       /// the slice is empty.
       ///
       template<int(isproperty)(int)>
+      bool none() const { return std::none_of(begin(), end(), isproperty) ; }
+      /// @overload
+      template<bool(isproperty)(int)>
       bool none() const { return std::none_of(begin(), end(), isproperty) ; }
 
       /// Check if there is at least one characters in the slice satisfying
@@ -236,6 +242,9 @@ struct basic_strslice {
       /// and false if not @em or the slice is empty.
       ///
       template<int(isproperty)(int)>
+      bool any() const { return std::any_of(begin(), end(), isproperty) ; }
+      /// @overload
+      template<bool(isproperty)(int)>
       bool any() const { return std::any_of(begin(), end(), isproperty) ; }
 
       /// Compare slices lexicografically, like strcmp.
