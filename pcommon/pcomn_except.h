@@ -53,7 +53,7 @@ do {                                                                    \
 /// @hideinitializer @ingroup ExceptionMacros
 #define PCOMN_THROW_MSG_IF(condition, exception, format, ...)  \
 do {                                                           \
-   if (condition)                                              \
+   if (unlikely(condition))                                    \
       PCOMN_THROW_MSGF(exception, format, ##__VA_ARGS__) ;     \
 } while(false)
 
