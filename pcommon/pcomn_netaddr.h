@@ -94,6 +94,8 @@ public:
 
     explicit constexpr operator bool() const { return !!_addr ; }
 
+    static constexpr ipv4_addr localhost() { return {127, 0, 0, 1} ; }
+
     /// Get one octet of an IP address by octet index (0-3).
     constexpr uint8_t octet(unsigned ndx) const { return (_addr >> 8*(3 - ndx)) ; }
 
@@ -453,8 +455,9 @@ public:
         ancestor(from_string(address_string, flags))
     {}
 
-
     explicit constexpr operator bool() const { return static_cast<bool>(data()) ; }
+
+    static constexpr ipv6_addr localhost() { return {0, 0, 0, 0, 0, 0, 0, 1} ; }
 
     /// Get the nth hextet of the address.
     /// The hextet is returned as host-order word.

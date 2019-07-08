@@ -100,6 +100,9 @@ void InetAddressTests::Test_IPv4_Address()
     CPPUNIT_LOG_EQUAL(ipv4_addr("127.0.0.2").octets()[3], (uint8_t)2) ;
     CPPUNIT_LOG(std::endl) ;
 
+    CPPUNIT_LOG_EQUAL(ipv4_addr::localhost(), ipv4_addr(127, 0, 0, 1)) ;
+    CPPUNIT_LOG(std::endl) ;
+
     // Use root nameserver address for testing: I _dearly_ hope it will not change!
     CPPUNIT_LOG_EQUAL(ipv4_addr("j.root-servers.net", ipv4_addr::USE_HOSTNAME),
                       ipv4_addr(192, 58, 128, 30)) ;
@@ -128,6 +131,8 @@ void InetAddressTests::Test_IPv6_Address()
     CPPUNIT_LOG_EQUAL((binary128_t)ipv6_addr(), binary128_t()) ;
     CPPUNIT_LOG(std::endl) ;
 
+    CPPUNIT_LOG_EQUAL(ipv6_addr::localhost(), ipv6_addr(0, 0, 0, 0, 0, 0, 0, 1)) ;
+    CPPUNIT_LOG(std::endl) ;
 
     CPPUNIT_LOG_EQ(ipv6_addr(0x2001, 0x0DB8, 0xAC10, 0xFE01, 0xFEED, 0xBABE, 0xCAFE, 0xF00D).str(),
                    "2001:db8:ac10:fe01:feed:babe:cafe:f00d") ;
