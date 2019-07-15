@@ -85,7 +85,7 @@ static inline std::pair<ipv4_addr, bool> ipv4_from_dotdec(const strslice &addrst
                     return {} ;
         }
     }
-    if (dotcount != 3)
+    if (state != Digit || dotcount != 3)
         return {} ;
 
     return {ipv4_addr(octets[0], octets[1], octets[2], last_octet), true} ;

@@ -74,7 +74,7 @@ void InetAddressTests::Test_IPv4_Address()
     CPPUNIT_LOG_EXCEPTION_MSG(ipv4_addr("1.555", ipv4_addr::ONLY_DOTDEC), invalid_str_repr, "decimal") ;
     CPPUNIT_LOG_EXCEPTION_MSG(ipv4_addr("555", ipv4_addr::ONLY_DOTDEC), invalid_str_repr, "decimal") ;
     CPPUNIT_LOG_EXCEPTION_MSG(ipv4_addr("-0.1.2.3", ipv4_addr::ONLY_DOTDEC), invalid_str_repr, "decimal") ;
-    CPPUNIT_LOG_EXCEPTION_MSG(ipv4_addr("127.0.0.", ipv4_addr::ONLY_DOTDEC), invalid_str_repr, "nable to convert") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(ipv4_addr("127.0.0.", ipv4_addr::ONLY_DOTDEC), invalid_str_repr, "decimal") ;
     CPPUNIT_LOG(std::endl) ;
 
     CPPUNIT_LOG_EQUAL(ipv4_addr(65, 66, 67, 68).ipaddr(), (uint32_t)0x41424344) ;
