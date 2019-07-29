@@ -704,6 +704,16 @@
 
 #define MS_PUSH_IGNORE_WARNING(warnlist) MS_DIAGNOSTIC_PUSH() MS_IGNORE_WARNING(warnlist)
 
+/*******************************************************************************
+ GCC options control
+*******************************************************************************/
+#define GCC_OPTIONS_PUSH() GCC_MAKE_PRAGMA(GCC push_options)
+#define GCC_OPTIONS_POP()  GCC_MAKE_PRAGMA(GCC pop_options)
+
+#define GCC_OPTIMIZE_PUSH(mode)                 \
+   GCC_OPTIONS_PUSH()                           \
+   GCC_MAKE_PRAGMA(GCC optimize #mode)
+
 /***************************************************************************//**
  Starting from 2008, MS declares most POSIX functions deprecated: suppress
  the deprecated warning for the MS completelly.
