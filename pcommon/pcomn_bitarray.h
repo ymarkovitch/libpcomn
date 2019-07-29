@@ -3,7 +3,7 @@
 #define __PCOMN_BITARRAY_H
 /*******************************************************************************
  FILE         :   pcomn_bitarray.h
- COPYRIGHT    :   Yakov Markovitch, 2000-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2000-2019. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Bit array. A kind of combination of std::bitset and std::vector<bool>

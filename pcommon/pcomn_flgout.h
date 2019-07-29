@@ -3,7 +3,7 @@
 #define __PCOMN_FLGOUT_H
 /*******************************************************************************
  FILE         :   pcomn_flgout.h
- COPYRIGHT    :   Yakov Markovitch, 1999-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1999-2019. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Manipulators and traits for human-readable stream output of enum values

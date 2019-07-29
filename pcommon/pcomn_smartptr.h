@@ -3,7 +3,7 @@
 #define __PCOMN_SMARTPTR_H
 /*******************************************************************************
  FILE         :   pcomn_smartptr.h
- COPYRIGHT    :   Yakov Markovitch, 1994-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1994-2019. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Templates of "smart pointers", i.e. pointers with

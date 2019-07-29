@@ -3,7 +3,7 @@
 #define __PCOMN_CALGORITHM_H
 /*******************************************************************************
  FILE         :   pcomn_calgorithm.h
- COPYRIGHT    :   Yakov Markovitch, 2008-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2008-2019. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Algorithms defined on containers (instead of interators)

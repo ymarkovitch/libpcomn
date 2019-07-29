@@ -3,7 +3,7 @@
 #define __PCOMN_TERNARY_H
 /*******************************************************************************
  FILE         :   pcomn_ternary.h
- COPYRIGHT    :   Yakov Markovitch, 2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2017-2019. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Ternary logic.
