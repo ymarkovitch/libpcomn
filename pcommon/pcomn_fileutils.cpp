@@ -26,7 +26,7 @@ ssize_t readfile(int fd, void *buf, size_t size, void **allocbuf)
    if (unlikely(!size))
       return 0 ;
 
-   if (size > std::numeric_limits<long>::max())
+   if (size > (size_t)std::numeric_limits<long>::max())
    {
       errno = E2BIG ;
       return -1 ;
