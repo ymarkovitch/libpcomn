@@ -99,7 +99,7 @@ template<> struct bit_traits<64> {
 
    static constexpr int log2floor(utype value)
    {
-      #if defined(PCOMN_COMPILER_GNU)
+      #if defined(PCOMN_COMPILER_GNU) && defined(__BMI2__)
       return 63 - __builtin_clzll(value) ;
       #else
 
@@ -142,7 +142,7 @@ template<> struct bit_traits<32> {
 
    static constexpr int log2floor(utype value)
    {
-      #if defined(PCOMN_COMPILER_GNU)
+      #if defined(PCOMN_COMPILER_GNU) && defined(__BMI2__)
       return 31 - __builtin_clz(value) ;
       #else
 
@@ -183,7 +183,7 @@ template<> struct bit_traits<16> {
 
    static constexpr int log2floor(utype value)
    {
-      #if defined(PCOMN_COMPILER_GNU)
+      #if defined(PCOMN_COMPILER_GNU) && defined(__BMI2__)
       return 31 - __builtin_clz(value) ;
       #else
 
@@ -222,7 +222,7 @@ template<> struct bit_traits<8> {
 
    static constexpr int log2floor(utype value)
    {
-      #if defined(PCOMN_COMPILER_GNU)
+      #if defined(PCOMN_COMPILER_GNU) && defined(__BMI2__)
       return 31 - __builtin_clz(value) ;
       #else
 
