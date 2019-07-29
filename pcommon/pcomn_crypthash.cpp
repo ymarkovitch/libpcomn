@@ -1,7 +1,7 @@
 /*-*- tab-width: 3; indent-tabs-mode: nil; c-file-style: "ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   pcomn_crypthash.cpp
- COPYRIGHT    :   Yakov Markovitch, Maxim Dementiev, 2010-2011. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, Maxim Dementiev, 2010-2019. All rights reserved.
                   Yakov Markovitch, 2012-2017. All rights reserved.
                   All rights reserved.
                   See LICENSE for information on usage/redistribution.

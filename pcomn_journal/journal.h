@@ -3,7 +3,7 @@
 #define __PCOMN_JOURNAL_H
 /*******************************************************************************
  FILE         :   journal.h
- COPYRIGHT    :   Yakov Markovitch, 2008-2017. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2008-2019. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Abstract journalling engine. Provides a framework for implementation of
