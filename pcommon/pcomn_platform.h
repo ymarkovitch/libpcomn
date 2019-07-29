@@ -394,8 +394,8 @@
 #  error Microsoft C/C++ _MSC_VER detected. Versions of MSVC below 19.00 (Visual Studio 2015) are not supported.
 #endif
 
-#if defined(__cplusplus) && !defined(PCOMN_STL_CXX14)
-#  error A compiler supporting C++14 standard is required to compile
+#if defined(__cplusplus) && !(defined(PCOMN_STL_CXX14) || defined(PCOMN_STL_CXX17))
+#  error A compiler supporting at least C++14 standard is required to compile
 #endif
 
 /*******************************************************************************
