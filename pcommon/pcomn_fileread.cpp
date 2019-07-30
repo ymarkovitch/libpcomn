@@ -1,7 +1,7 @@
 /*-*- tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   pcomn_fileread.cpp
- COPYRIGHT    :   Yakov Markovitch, 2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2018-2019. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Read the whole file into the string.

@@ -1,7 +1,7 @@
 #------------------------------------------------------------------------------
 # FILE         :  CMakeLists.txt
 #
-# COPYRIGHT    :  Yakov Markovitch, 2014-2018
+# COPYRIGHT    :  Yakov Markovitch, 2014-2019
 #                 See LICENSE for information on usage/redistribution.
 #
 # DESCRIPTION  :  CMake script for building pcommon library
@@ -22,8 +22,8 @@ include(pcommon)
 
 set(ENABLE_PCOMN_UNITTESTS  ON  CACHE BOOL "Enable unittests building. Requires CPPUntit.")
 set(ENABLE_PCOMN_STACKTRACE OFF CACHE BOOL "Enable stacktrace classes. Linux-only. Requires libunwind and libdw.")
-set(ENABLE_PCOMN_AVX        NO  CACHE BOOL "Enable use of AVX instruction set. Substantially accelerates e.g. hashing and pcomn::bitarray.")
-set(ENABLE_PCOMN_AVX2       NO  CACHE BOOL "Enable use of AVX2 instruction set. Substantially accelerates e.g. hashing and pcomn::bitarray.")
+set(ENABLE_PCOMN_AVX        NO  CACHE BOOL "Enable use of AVX and BMI1 instruction sets. Substantially accelerates e.g. hashing, pcomn::bitarray.")
+set(ENABLE_PCOMN_AVX2       NO  CACHE BOOL "Enable use of AVX2 and BMI2 instruction sets. Substantially accelerates e.g. hashing, pcomn::bitarray, pcomn::bitops.")
 
 message("***** Processing ${PROJECT_NAME} *****")
 
@@ -138,6 +138,7 @@ add_library(pcommon STATIC
 
   pcomn_immutablestr.cpp
   pcomn_mmap.cpp
+  pcomn_netaddr.cpp
   pcomn_path.cpp
   pcomn_rawstream.cpp
   pcomn_regex.cpp
@@ -200,7 +201,7 @@ target_compile_options(pcommon
   $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>:-pthread>
   $<$<CXX_COMPILER_ID:GNU>:-frecord-gcc-switches>
   $<$<AND:${COMPILER_GCCLIKE},$<BOOL:${DISABLE_PCOMN_AVX}>>:-march=westmere>
-  $<$<AND:${COMPILER_GCCLIKE},$<BOOL:${ENABLE_PCOMN_AVX}>>:-march=corei7-avx>
+  $<$<AND:${COMPILER_GCCLIKE},$<BOOL:${ENABLE_PCOMN_AVX}>>:-march=corei7-avx -mbmi>
   $<$<AND:${COMPILER_GCCLIKE},$<BOOL:${ENABLE_PCOMN_AVX2}>>:-march=haswell>
 
   PRIVATE
@@ -228,6 +229,10 @@ target_link_libraries(pcommon
 
 set_source_files_properties(${T1HA_SOURCEFILES} PROPERTIES
     COMPILE_OPTIONS $<$<BOOL:${CMAKE_OPTIMIZED_BUILD}>:-O3>)
+
+set_source_files_properties(${T1HA_SOURCEDIR}/t1ha0_ia32aes_noavx.c PROPERTIES COMPILE_OPTIONS -maes)
+set_source_files_properties(${T1HA_SOURCEDIR}/t1ha0_ia32aes_avx.c   PROPERTIES COMPILE_OPTIONS "-maes;-mavx")
+set_source_files_properties(${T1HA_SOURCEDIR}/t1ha0_ia32aes_avx2.c  PROPERTIES COMPILE_OPTIONS "-maes;-mavx;-mavx2")
 
 if (ENABLE_PCOMN_UNITTESTS)
   enable_testing()

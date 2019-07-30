@@ -1,7 +1,7 @@
 /*-*- tab-width:4;indent-tabs-mode:nil;c-file-style:"ellemtel";c-basic-offset:4;c-file-offsets:((innamespace . 0)(inlambda . 0)) -*-*/
 /*******************************************************************************
  FILE         :   unittest_mmap.cpp
- COPYRIGHT    :   Yakov Markovitch, 2007-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2007-2019. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Test for memory-mapping classes.

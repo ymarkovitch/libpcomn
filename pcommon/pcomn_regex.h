@@ -3,7 +3,7 @@
 #define __PCOMN_REGEX_H
 /*******************************************************************************
  FILE         :   pcomn_regex.h
- COPYRIGHT    :   Yakov Markovitch, 1997-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1997-2019. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Class implementing regular expression search.

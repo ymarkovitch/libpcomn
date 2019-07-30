@@ -3,7 +3,7 @@
 #define __PCOMN_CDSBASE_H
 /*******************************************************************************
  FILE         :   pcomn_cdsbase.h
- COPYRIGHT    :   Yakov Markovitch, 2018
+ COPYRIGHT    :   Yakov Markovitch, 2018-2019. All rights reserved.
 
  DESCRIPTION  :   Base definintions and helpers for implementing concurrent data
                   structures.

@@ -3,7 +3,7 @@
 #define __PCOMN_UTILS_H
 /*******************************************************************************
  FILE         :   pcomn_utils.h
- COPYRIGHT    :   Yakov Markovitch, 1994-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1994-2019. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Various supplemental functions & templates
@@ -521,6 +521,9 @@ struct auto_buffer final {
       }
 
       char *get() const { return _data ; }
+
+      void *data() { return _data ; }
+      const void *data() const { return _data ; }
 
    private:
       char * const _data ;

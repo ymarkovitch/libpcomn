@@ -543,6 +543,16 @@ struct binary128_t {
       constexpr uint64_t hi() const { return value_from_big_endian(_idata[0]) ; }
       constexpr uint64_t lo() const { return value_from_big_endian(_idata[1]) ; }
 
+      /// Get the nth octet MSB-first order.
+      constexpr unsigned octet(size_t n) const { return _cdata[n] ; }
+
+      /// Get the nth hextet, MSW-first order.
+      /// Every hextet is returned as host-order word.
+      constexpr uint16_t hextet(size_t n) const
+      {
+         return value_from_big_endian(_hdata[n]) ;
+      }
+
       unsigned bitcount() const
       {
          return
@@ -588,7 +598,7 @@ struct binary128_t {
 
       friend constexpr bool operator<(const binary128_t &l, const binary128_t &r)
       {
-         return l.hi() < r.hi() || l._idata[0] == r._idata[0] && l.lo() < r.lo() ;
+         return (l.hi() < r.hi()) | (l._idata[0] == r._idata[0]) & (l.lo() < r.lo()) ;
       }
 
    protected:

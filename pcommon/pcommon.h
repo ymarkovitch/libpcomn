@@ -3,7 +3,7 @@
 #define __PCOMMON_H
 /*******************************************************************************
  FILE         :   pcommon.h
- COPYRIGHT    :   Yakov Markovitch, 1996-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1996-2019. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Common definitions for PCOMMON library
@@ -712,25 +712,74 @@ inline void pcomn_swap(T &a, T &b)
    swap(a, b) ;
 }
 
+/***************************************************************************//**
+ ASCII-only fast character class test functions.
+ Branchless, ILP-friendly, 1-2 cycles per test.
+
+ @note Handle utf8 correctly, simply return false for any non-ascii characters.
+*******************************************************************************/
+/**@{*/
+constexpr inline bool isdigit_ascii(int c)
+{
+   return (unsigned)c - (unsigned)'0' < 10U ;
+}
+
+constexpr inline bool isxdigit_ascii(int c)
+{
+   return isdigit_ascii(c) | ((unsigned)c - (unsigned)'a' < 6U) | ((unsigned)c - (unsigned)'A' < 6U) ;
+}
+
+constexpr inline bool islower_ascii(int c)
+{
+   return (unsigned)c - (unsigned)'a' < 26U ;
+}
+
+constexpr inline bool isupper_ascii(int c)
+{
+   return (unsigned)c - (unsigned)'A' < 26U ;
+}
+
+constexpr inline bool isalpha_ascii(int c)
+{
+   return isupper_ascii(c) | islower_ascii(c) ;
+}
+
+constexpr inline bool isalnum_ascii(int c)
+{
+   return ((unsigned)c - (unsigned)'0' < 10) | isalpha_ascii(c) ;
+}
+/**@}*/
+
 /*******************************************************************************
  Hex digit to number and number to hex digit
 *******************************************************************************/
-inline int hextoi(char hexdigit)
+inline int hexchartoi(int hexdigit)
 {
-  switch (hexdigit)
-  {
-    case '0': return 0 ; case '1': return 1 ; case '2': return 2 ; case '3': return 3 ;
-    case '4': return 4 ; case '5': return 5 ; case '6': return 6 ; case '7': return 7 ;
-    case '8': return 8 ; case '9': return 9 ;
+   constexpr static int8_t v[] =
+   {
+      // 10 items (decimal digits)
+      0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+      // 7 items
+      -1,-1,-1,-1,-1,-1,-1,
+      // 6 items ('A'-'F')
+      10, 11, 12, 13, 14, 15,
+      // 26 items
+      -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+      // 6 items ('a'-'f')
+      10, 11, 12, 13, 14, 15,
 
-    case 'a': case 'A': return 10 ; case 'b': case 'B': return 11 ;
-    case 'c': case 'C': return 12 ; case 'd': case 'D': return 13 ;
-    case 'e': case 'E': return 14 ; case 'f': case 'F': return 15 ;
-  }
-  return -1 ;
+      // There are 73 items below
+      -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+      -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
+   } ;
+
+   static_assert(sizeof v == 128) ;
+
+   const int32_t offs = (int8_t)hexdigit - '0' ;
+   return v[offs & 0x7f] | (offs >> 31) ;
 }
 
-inline int itohex(unsigned num)
+inline int itohexchar(unsigned num)
 {
    static constexpr const char xc[16] =
       { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' } ;
@@ -745,10 +794,10 @@ inline void *hextob(void *buf, size_t bufsz, const char *hexstr)
    uint8_t *data = static_cast<uint8_t *>(buf) ;
    for (const char *c = hexstr, *e = c + 2 * bufsz ; c != e ; c += 2, ++data)
    {
-      const int d1 = hextoi(c[0]) ;
+      const int d1 = hexchartoi(c[0]) ;
       if (d1 < 0)
          return nullptr ;
-      const int d2 = hextoi(c[1]) ;
+      const int d2 = hexchartoi(c[1]) ;
       if (d2 < 0)
          return nullptr ;
       *data = (d1 << 4) | d2 ;

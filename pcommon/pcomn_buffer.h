@@ -3,7 +3,7 @@
 #define __PCOMN_BUFFER_H
 /*******************************************************************************
  FILE         :   pcomn_buffer.h
- COPYRIGHT    :   Yakov Markovitch, 1996-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1996-2019. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Raw memory buffers (copy-on-write buffer and always shared
@@ -488,7 +488,7 @@ inline std::ostream &operator<<(std::ostream &os, const pcomn::iovec_t &v)
 namespace std {
 
 constexpr inline size_t size(const pcomn::iovec_t &v) { return pcomn::buf::size(v) ; }
-constexpr inline const void *data(const pcomn::iovec_t &v) { return pcomn::buf::cdata(v) ; }
+constexpr inline void *data(const pcomn::iovec_t &v) { return pcomn::buf::data(v) ; }
 
 constexpr inline size_t size(const pcomn::cmemvec_t &v) { return pcomn::buf::size(v) ; }
 constexpr inline const void *data(const pcomn::cmemvec_t &v) { return pcomn::buf::cdata(v) ; }

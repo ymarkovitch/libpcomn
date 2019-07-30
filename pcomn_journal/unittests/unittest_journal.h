@@ -3,7 +3,7 @@
 #define __UNITTEST_JOURNAL_H
 /*******************************************************************************
  FILE         :   unittest_journal.h
- COPYRIGHT    :   Yakov Markovitch, 2008-2017. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2008-2019. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Test fixture for testing pcomn::jrn classes.

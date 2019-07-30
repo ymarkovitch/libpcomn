@@ -1,7 +1,7 @@
 /*-*- tab-width:3;indent-tabs-mode:nil;c-file-style:"ellemtel";c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   makejrn.cpp
- COPYRIGHT    :   Yakov Markovitch, 2010-2017. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2010-2019. All rights reserved.
 
  DESCRIPTION  :   Command-line utility for creating journal checkpoints from data read
                   from stdin

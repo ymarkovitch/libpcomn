@@ -3,7 +3,7 @@
 #define __PCOMN_BITOPS_H
 /*******************************************************************************
  FILE         :   pcomn_bitops.h
- COPYRIGHT    :   Yakov Markovitch, 2016-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2016-2019. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Basic bit operations, both using common C integer ariphmetic
@@ -99,6 +99,10 @@ template<> struct bit_traits<64> {
 
    static constexpr int log2floor(utype value)
    {
+      #if defined(PCOMN_COMPILER_GNU) && defined(__BMI2__)
+      return 63 - __builtin_clzll(value) ;
+      #else
+
       utype x = value ;
       x |= (x >> 1) ;
       x |= (x >> 2) ;
@@ -107,6 +111,8 @@ template<> struct bit_traits<64> {
       x |= (x >> 16) ;
       x |= (x >> 32) ;
       return (int)bitcount(x) - 1 ;
+
+      #endif
    }
 
    static constexpr int log2ceil(utype value)
@@ -136,6 +142,10 @@ template<> struct bit_traits<32> {
 
    static constexpr int log2floor(utype value)
    {
+      #if defined(PCOMN_COMPILER_GNU) && defined(__BMI2__)
+      return 31 - __builtin_clz(value) ;
+      #else
+
       unsigned x = value ;
       x |= (x >> 1) ;
       x |= (x >> 2) ;
@@ -143,6 +153,8 @@ template<> struct bit_traits<32> {
       x |= (x >> 8) ;
       x |= (x >> 16) ;
       return (int)bitcount((utype)x) - 1 ;
+
+      #endif
    }
 
    static constexpr int log2ceil(utype value)
@@ -171,12 +183,18 @@ template<> struct bit_traits<16> {
 
    static constexpr int log2floor(utype value)
    {
+      #if defined(PCOMN_COMPILER_GNU) && defined(__BMI2__)
+      return 31 - __builtin_clz(value) ;
+      #else
+
       unsigned x = static_cast<utype>(value) ;
       x |= (x >> 1) ;
       x |= (x >> 2) ;
       x |= (x >> 4) ;
       x |= (x >> 8) ;
       return (int)bitcount((utype)x) - 1 ;
+
+      #endif
    }
 
    static constexpr int log2ceil(utype value)
@@ -204,12 +222,18 @@ template<> struct bit_traits<8> {
 
    static constexpr int log2floor(utype value)
    {
+      #if defined(PCOMN_COMPILER_GNU) && defined(__BMI2__)
+      return 31 - __builtin_clz(value) ;
+      #else
+
       // At the end, x will have the same most significant 1 as value and all '1's below
       unsigned x = value ;
       x |= (x >> 1) ;
       x |= (x >> 2) ;
       x |= (x >> 4) ;
       return (int)bitcount((utype)x) - 1 ;
+
+      #endif
    }
 
    static constexpr int log2ceil(utype value)

@@ -3,7 +3,7 @@
 #define __PCOMN_EXCEPT_H
 /*******************************************************************************
  FILE         :   pcomn_except.h
- COPYRIGHT    :   Yakov Markovitch, 2000-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2000-2019. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Base PCOMMON exception classes
@@ -53,7 +53,7 @@ do {                                                                    \
 /// @hideinitializer @ingroup ExceptionMacros
 #define PCOMN_THROW_MSG_IF(condition, exception, format, ...)  \
 do {                                                           \
-   if (condition)                                              \
+   if (unlikely(condition))                                    \
       PCOMN_THROW_MSGF(exception, format, ##__VA_ARGS__) ;     \
 } while(false)
 
@@ -268,25 +268,24 @@ class _PCOMNEXP timeout_error : public virtual environment_error {
  Tag exception classes
 *******************************************************************************/
 struct _PCOMNEXP object_closed : public std::runtime_error {
-      object_closed() :
-         std::runtime_error("The object is already closed")
-      {}
+      object_closed() : std::runtime_error("The object is already closed") {}
 
-      object_closed(const std::string &object) :
-         std::runtime_error(object + ": the object is already closed")
-      {}
+      object_closed(const std::string &object) : std::runtime_error(object + ": the object is already closed") {}
 } ;
 
 /******************************************************************************/
 /** Exception that indicates that a sequence is already closed and cannot be read/written.
 *******************************************************************************/
 struct _PCOMNEXP sequence_closed : public object_closed {
+      using object_closed::object_closed ;
+} ;
 
-      sequence_closed() {}
-
-      sequence_closed(const std::string &object) :
-         object_closed(object)
-      {}
+/***************************************************************************//**
+ Indicates invalid format of text representation some object, (like, e.g.,
+ "345.12.0.1" for IP address).
+*******************************************************************************/
+struct _PCOMNEXP invalid_str_repr : std::invalid_argument {
+    explicit invalid_str_repr(const std::string &message) : std::invalid_argument(message) {}
 } ;
 
 /*******************************************************************************

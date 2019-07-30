@@ -3,7 +3,7 @@
 #define __PCOMN_ZIOWRAP_H
 /*******************************************************************************
  FILE         :   pcomn_ziowrap.h
- COPYRIGHT    :   Yakov Markovitch. 2004-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch. 2004-2019. All rights reserved.
                   See LICENSE for information on usage/redistribution.
                   The original software is copyright (C) 1995-2003 Jean-Loup Gailly and Mark Adler.
 

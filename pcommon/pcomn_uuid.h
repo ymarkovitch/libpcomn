@@ -3,7 +3,7 @@
 #define __PCOMN_UUID_H
 /*******************************************************************************
  FILE         :   pcomn_uuid.h
- COPYRIGHT    :   Yakov Markovitch, 2014-2018
+ COPYRIGHT    :   Yakov Markovitch, 2014-2019
 
  DESCRIPTION  :   UUID data type
 
@@ -63,9 +63,6 @@ struct uuid : binary128_t {
       constexpr const unsigned char *data() const { return _cdata ; }
       /// @overload
       unsigned char *data() { return _cdata ; }
-
-      /// Get the nth octet of the UUID (RFC states "MSB-first order")
-      constexpr unsigned octet(size_t n) const { return _cdata[n] ; }
 
       constexpr unsigned version() const { return (octet(12) & 0xf0U) >> 4 ; }
 

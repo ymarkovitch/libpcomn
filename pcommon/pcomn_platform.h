@@ -3,7 +3,7 @@
 #define __PCOMN_PLATFORM_H
 /*******************************************************************************
  FILE         :   pcomn_platform.h
- COPYRIGHT    :   Yakov Markovitch, 1996-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1996-2019. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Platform identification macros
@@ -394,8 +394,8 @@
 #  error Microsoft C/C++ _MSC_VER detected. Versions of MSVC below 19.00 (Visual Studio 2015) are not supported.
 #endif
 
-#if defined(__cplusplus) && !defined(PCOMN_STL_CXX14)
-#  error A compiler supporting C++14 standard is required to compile
+#if defined(__cplusplus) && !(defined(PCOMN_STL_CXX14) || defined(PCOMN_STL_CXX17))
+#  error A compiler supporting at least C++14 standard is required to compile
 #endif
 
 /*******************************************************************************
@@ -703,6 +703,20 @@
 #define MS_DIAGNOSTIC_POP()  MS_MAKE_PRAGMA(warning(pop))
 
 #define MS_PUSH_IGNORE_WARNING(warnlist) MS_DIAGNOSTIC_PUSH() MS_IGNORE_WARNING(warnlist)
+
+/*******************************************************************************
+ GCC options control
+*******************************************************************************/
+#define GCC_OPTIONS_PUSH() GCC_MAKE_PRAGMA(GCC push_options)
+#define GCC_OPTIONS_POP()  GCC_MAKE_PRAGMA(GCC pop_options)
+
+#ifdef __OPTIMIZE__
+#  define GCC_OPTIMIZE_PUSH(mode)                  \
+      GCC_OPTIONS_PUSH()                           \
+      GCC_MAKE_PRAGMA(GCC optimize #mode)
+#else
+#  define GCC_OPTIMIZE_PUSH(mode) GCC_OPTIONS_PUSH()
+#endif
 
 /***************************************************************************//**
  Starting from 2008, MS declares most POSIX functions deprecated: suppress

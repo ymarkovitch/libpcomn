@@ -1,7 +1,7 @@
 /*-*- tab-width: 3; indent-tabs-mode: nil; c-file-style: "ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   pcomn_uuid.cpp
- COPYRIGHT    :   Yakov Markovitch, 2014-2018
+ COPYRIGHT    :   Yakov Markovitch, 2014-2019
 
  DESCRIPTION  :   UUID and network MAC data types implementation
 
@@ -39,7 +39,7 @@ uuid::uuid(const strslice &str, RaiseError raise_error)
 
        || !cvt(buf, buf + 18, _idata[0]) || !cvt(buf + 19, std::end(buf), _idata[1]))
    {
-      PCOMN_THROW_IF(raise_error, std::invalid_argument, "Invalid UUID format " P_STRSLICEQF, P_STRSLICEV(str)) ;
+      PCOMN_THROW_IF(raise_error, invalid_str_repr, "Invalid UUID format " P_STRSLICEQF, P_STRSLICEV(str)) ;
       _idata[1] = _idata[0] = 0 ;
    }
    else
@@ -84,7 +84,7 @@ MAC::MAC(const strslice &str, RaiseError raise_error)
        || strslicecpy(buf, str)[2] != ':' || buf[5] != ':' || buf[8] != ':' || buf[11] != ':' || buf[14] != ':'
        || (result = cvt(std::begin(buf), std::end(buf))) < 0)
    {
-      PCOMN_THROW_IF(raise_error, std::invalid_argument, "Invalid MAC format " P_STRSLICEQF, P_STRSLICEV(str)) ;
+      PCOMN_THROW_IF(raise_error, invalid_str_repr, "Invalid MAC format " P_STRSLICEQF, P_STRSLICEV(str)) ;
       _idata = 0 ;
    }
    else

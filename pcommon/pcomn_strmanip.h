@@ -3,7 +3,7 @@
 #define __PCOMN_STRMANIP_H
 /*******************************************************************************
  FILE         :   pcomn_strmanip.h
- COPYRIGHT    :   Yakov Markovitch, 2007-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2007-2019. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Advanced string functions, working though string traits thus

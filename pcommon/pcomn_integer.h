@@ -3,7 +3,7 @@
 #define __PCOMN_INTEGER_H
 /*******************************************************************************
  FILE         :   pcomn_integer.h
- COPYRIGHT    :   Yakov Markovitch, 2006-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2006-2019. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Integral types traits.
@@ -525,7 +525,7 @@ struct one_of {
       static_assert(fold_bitor(v1, vN...) < 64, "Some values to test against exceed allowed maximum (63)") ;
       static constexpr bool is(unsigned long long value)
       {
-         return !!(fold_bitor((1ULL << v1), (1ULL << vN)...) & flags_if((1ULL << value), !(value & (-1ULL << 6)))) ;
+         return !!(fold_bitor((1ULL << v1), (1ULL << vN)...) & (1ULL << value) & -(value < 64)) ;
       }
 } ;
 

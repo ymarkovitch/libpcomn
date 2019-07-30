@@ -3,7 +3,7 @@
 #define __NETEXCEPT_H
 /*******************************************************************************
  FILE         :   netexcept.h
- COPYRIGHT    :   Yakov Markovitch, 2008-2017. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2008-2019. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Network exception classes.
@@ -31,11 +31,6 @@ public:                                                                 \
 /** Exception class: general network error.
 *******************************************************************************/
 NET_DEFINE_EXCEPTION(network_error, system_error) ;
-
-/******************************************************************************/
-/** Exception class: address error.
-*******************************************************************************/
-NET_DEFINE_EXCEPTION(inaddr_error, network_error) ;
 
 /******************************************************************************/
 /** Exception class: socket error.
@@ -87,14 +82,6 @@ NET_DEFINE_EXCEPTION(transmit_error, socket_error) ;
  shutdown of reading: either ECONNRESET or EPIPE.
 *******************************************************************************/
 NET_DEFINE_EXCEPTION(receiver_closed, transmit_error) ;
-
-/******************************************************************************/
-/** Indicates invalid format of text representation of a network object
- (like, e.g., "345.12.0.1" for IP address)
-*******************************************************************************/
-struct invalid_str_repr : std::invalid_argument {
-    explicit invalid_str_repr(const std::string &message) : std::invalid_argument(message) {}
-} ;
 
 } // end of namespace pcomn::net
 } // end of namespace pcomn
