@@ -773,7 +773,7 @@ inline int hexchartoi(int hexdigit)
       -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
    } ;
 
-   static_assert(sizeof v == 128) ;
+   static_assert(sizeof v == 128, "Invalid array v size") ;
 
    const int32_t offs = (int8_t)hexdigit - '0' ;
    return v[offs & 0x7f] | (offs >> 31) ;
