@@ -695,6 +695,15 @@
 #define GCC_DIAGNOSTIC_PUSH_SETERR(warn) GCC_DIAGNOSTIC_PUSH() GCC_SETERR_WARNING(warn)
 #define GCC_DIAGNOSTIC_POP() GCC_MAKE_PRAGMA(GCC diagnostic pop)
 
+// kludge for warnings that was introduced in gcc v7 and unknown for smaller versions
+#if __GNUC__ >= 7
+#define GCC_DIAGNOSTIC_PUSH_IGNORE_v7(warn) GCC_DIAGNOSTIC_PUSH_IGNORE(warn)
+#else
+// no diagnostic for unsuppported warnings
+//  but we should make push as latter will be pop
+#define GCC_DIAGNOSTIC_PUSH_IGNORE_v7(warn) GCC_DIAGNOSTIC_PUSH()
+#endif
+
 // MS warning control
 #define MS_IGNORE_WARNING(warnlist) MS_MAKE_PRAGMA(warning(disable : warnlist))
 #define MS_ENABLE_WARNING(warnlist) MS_MAKE_PRAGMA(warning(default : warnlist))

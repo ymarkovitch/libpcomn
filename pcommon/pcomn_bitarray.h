@@ -85,7 +85,7 @@ struct bitarray_base {
       bool all() const
       {
          const element_type * const b = cbits() ;
-         GCC_DIAGNOSTIC_PUSH_IGNORE(implicit-fallthrough)
+         GCC_DIAGNOSTIC_PUSH_IGNORE_v7(implicit-fallthrough)
          switch (const size_t n = nelements())
          {
             default:
