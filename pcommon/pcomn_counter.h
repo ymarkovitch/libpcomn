@@ -81,7 +81,7 @@ class active_counter : public active_counter_base<C> {
       /// call inc_action.
       /// @param  threshold Threshold value to call threshold action.
       /// @return Threshold value given as @a threshold.
-      count_type inc(count_type threshold = 0)
+      count_type inc(count_type threshold = 0) noexcept
       {
          const count_type result = this->inc_passive() ;
          return result == threshold ?
@@ -93,7 +93,7 @@ class active_counter : public active_counter_base<C> {
       /// calls dec_action().
       /// @param threshold Threshold value to call threshold action.
       /// @return @a threshold parameter value.
-      count_type dec(count_type threshold = 0)
+      count_type dec(count_type threshold = 0) noexcept
       {
          const count_type result = this->dec_passive() ;
          return result == threshold ?
@@ -101,8 +101,8 @@ class active_counter : public active_counter_base<C> {
       }
 
    protected:
-      virtual count_type inc_action(count_type threshold) = 0 ;
-      virtual count_type dec_action(count_type threshold) = 0 ;
+      virtual count_type inc_action(count_type threshold) noexcept = 0 ;
+      virtual count_type dec_action(count_type threshold) noexcept = 0 ;
 } ;
 
 /******************************************************************************/
