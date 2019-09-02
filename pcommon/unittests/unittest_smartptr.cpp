@@ -48,15 +48,15 @@ struct LifetimeRegister {
 } ;
 
 /*******************************************************************************
-                     class DirectSmartPtrTests
+                     class IntrusiveSmartPtrTests
 *******************************************************************************/
-class DirectSmartPtrTests : public CppUnit::TestFixture {
+class IntrusiveSmartPtrTests : public CppUnit::TestFixture {
 
       void Test_Constructors() ;
       void Test_Wrapper() ;
       void Test_Bind_ThisPtr() ;
 
-      CPPUNIT_TEST_SUITE(DirectSmartPtrTests) ;
+      CPPUNIT_TEST_SUITE(IntrusiveSmartPtrTests) ;
 
       CPPUNIT_TEST(Test_Constructors) ;
       CPPUNIT_TEST(Test_Wrapper) ;
@@ -114,14 +114,14 @@ class DirectSmartPtrTests : public CppUnit::TestFixture {
 } ;
 
 /*******************************************************************************
-                     class PlainSmartPtrTests
+                     class CustomPolicySmartPtrTests
 *******************************************************************************/
-class PlainSmartPtrTests : public CppUnit::TestFixture {
+class CustomPolicySmartPtrTests : public CppUnit::TestFixture {
 
       void Test_Constructors() ;
       void Test_Bind_ThisPtr() ;
 
-      CPPUNIT_TEST_SUITE(PlainSmartPtrTests) ;
+      CPPUNIT_TEST_SUITE(CustomPolicySmartPtrTests) ;
 
       CPPUNIT_TEST(Test_Constructors) ;
       CPPUNIT_TEST(Test_Bind_ThisPtr) ;
@@ -161,13 +161,13 @@ class PlainSmartPtrTests : public CppUnit::TestFixture {
 } ;
 
 namespace pcomn {
-template<> struct refcount_policy<PlainSmartPtrTests::Foo> : PlainSmartPtrTests::Foo::refcount_policy {} ;
+template<> struct refcount_policy<CustomPolicySmartPtrTests::Foo> : CustomPolicySmartPtrTests::Foo::refcount_policy {} ;
 } // end of namespace pcomn
 
 /*******************************************************************************
- DirectSmartPtrTests
+ IntrusiveSmartPtrTests
 *******************************************************************************/
-void DirectSmartPtrTests::Test_Constructors()
+void IntrusiveSmartPtrTests::Test_Constructors()
 {
    LifetimeRegister foo_reg ;
    LifetimeRegister bar_reg ;
@@ -175,8 +175,12 @@ void DirectSmartPtrTests::Test_Constructors()
 
    pcomn::shared_intrusive_ptr<Foo> foo (new Foo(foo_reg)) ;
    pcomn::shared_intrusive_ptr<Foo> bar (new Bar(bar_reg)) ;
-   pcomn::shared_intrusive_ptr<Quux> quux (new Quux(quux_reg)) ;
+
+   auto quux (sptr_cast(new Quux(quux_reg))) ;
    pcomn::shared_intrusive_ptr<Foo> quux1 (quux) ;
+
+   CPPUNIT_LOG_EQUAL(typeid(quux), typeid(pcomn::shared_intrusive_ptr<Quux>)) ;
+   CPPUNIT_LOG_ASSERT(quux.get()) ;
 
    CPPUNIT_LOG_IS_TRUE(foo_reg.constructed) ;
    CPPUNIT_LOG_IS_FALSE(foo_reg.destructed) ;
@@ -230,7 +234,7 @@ void DirectSmartPtrTests::Test_Constructors()
    CPPUNIT_LOG_IS_TRUE(constfoo_reg.destructed) ;
 }
 
-void DirectSmartPtrTests::Test_Wrapper()
+void IntrusiveSmartPtrTests::Test_Wrapper()
 {
    using namespace std::placeholders ;
    static const int initdata[] = { 3, 11, 16 } ;
@@ -261,7 +265,7 @@ void DirectSmartPtrTests::Test_Wrapper()
    }
 }
 
-void DirectSmartPtrTests::Test_Bind_ThisPtr()
+void IntrusiveSmartPtrTests::Test_Bind_ThisPtr()
 {
    {
       LifetimeRegister lifereg ;
@@ -296,9 +300,9 @@ void DirectSmartPtrTests::Test_Bind_ThisPtr()
 }
 
 /*******************************************************************************
- PlainSmartPtrTests
+ CustomPolicySmartPtrTests
 *******************************************************************************/
-void PlainSmartPtrTests::Test_Constructors()
+void CustomPolicySmartPtrTests::Test_Constructors()
 {
    LifetimeRegister foo_reg ;
    LifetimeRegister bar_reg ;
@@ -361,7 +365,7 @@ void PlainSmartPtrTests::Test_Constructors()
    CPPUNIT_LOG_IS_TRUE(constfoo_reg.destructed) ;
 }
 
-void PlainSmartPtrTests::Test_Bind_ThisPtr()
+void CustomPolicySmartPtrTests::Test_Bind_ThisPtr()
 {
    {
       LifetimeRegister lifereg ;
@@ -513,8 +517,8 @@ void SmartRefTests::Test_Constructors()
 int main(int argc, char *argv[])
 {
    pcomn::unit::TestRunner runner ;
-   runner.addTest(DirectSmartPtrTests::suite()) ;
-   runner.addTest(PlainSmartPtrTests::suite()) ;
+   runner.addTest(IntrusiveSmartPtrTests::suite()) ;
+   runner.addTest(CustomPolicySmartPtrTests::suite()) ;
    runner.addTest(SmartRefTests::suite()) ;
 
    return

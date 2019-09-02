@@ -116,7 +116,7 @@ class PTRefCounter : public PRefBase, public active_counter<C> {
       using typename ancestor::count_type ;
       typedef refcount_policy<PTRefCounter<C>> refcount_policy_type ;
 
-      /// Alias for instances(), added to match std::shared_ptr insterface
+      /// Alias for instances(), added to match std::shared_ptr interface
       count_type use_count() const { return instances() ; }
 
       /// Get current instance counter value.
@@ -204,21 +204,22 @@ class shared_intrusive_ptr {
       // If refcount_policy<T> is a complete type, use it;
       // otherwise, use T::refcount_policy_type
       template<typename U>
-      static refcount_policy<typename std::remove_cv<U>::type> *
-      policy(U *, std::is_convertible<decltype((void)refcount_policy<typename std::remove_cv<U>::type>::inc_ref(nullptr)), void> * = nullptr) ;
+      static refcount_policy<std::remove_cv_t<U>> *
+      policy(U *, std::is_convertible<decltype((void)refcount_policy<std::remove_cv_t<U>>::inc_ref(nullptr)), void> * = nullptr) ;
       static T *policy(...) ;
    public:
       typedef T element_type ;
-      typedef typename detail::refcount_policy_<std::remove_pointer_t<decltype(policy(autoval<T *>()))> >::type refcount_policy_type ;
+      typedef typename detail::refcount_policy_<std::remove_pointer_t<decltype(policy(autoval<T *>()))>>::type refcount_policy_type ;
 
       template<typename U>
       friend class shared_intrusive_ptr ;
 
-      constexpr shared_intrusive_ptr() : _object() {}
-      constexpr shared_intrusive_ptr(nullptr_t) : shared_intrusive_ptr() {}
+      constexpr shared_intrusive_ptr() = default ;
+      constexpr shared_intrusive_ptr(nullptr_t) {}
 
       shared_intrusive_ptr(element_type *object) :
-         _object(object) { inc_ref() ; }
+         _object(object)
+      { inc_ref() ; }
 
       shared_intrusive_ptr(const shared_intrusive_ptr &src) :
          shared_intrusive_ptr(src.get())
@@ -265,8 +266,9 @@ class shared_intrusive_ptr {
          return *this ;
       }
 
-      template<typename U, typename = instance_if_t<std::is_convertible<U*, element_type*>::value>>
-      shared_intrusive_ptr &operator=(const shared_intrusive_ptr<U> &other)
+      template<typename U>
+      auto operator=(const shared_intrusive_ptr<U> &other)
+         ->decltype(shared_intrusive_ptr(other.get())) &
       {
          assign_element(other.get()) ;
          return *this ;
@@ -308,8 +310,7 @@ class shared_intrusive_ptr {
       }
 
    private:
-      element_type *_object ;
-
+      element_type *_object = nullptr ;
 } ;
 
 /// Allows to cast smartpointer to a base class to a smartpointer to derived the same way
@@ -319,6 +320,18 @@ template<class T, class U>
 inline shared_intrusive_ptr<T> sptr_cast(const shared_intrusive_ptr<U> &src)
 {
    return shared_intrusive_ptr<T>(static_cast<T *>(src.get())) ;
+}
+
+template<class T>
+inline shared_intrusive_ptr<T> sptr_cast(T *plain_ptr)
+{
+   return shared_intrusive_ptr<T>(plain_ptr) ;
+}
+
+template<class T, class U>
+inline shared_intrusive_ptr<T> sptr_dynamic_cast(const shared_intrusive_ptr<U> &src)
+{
+   return shared_intrusive_ptr<T>(dynamic_cast<T *>(src.get())) ;
 }
 
 /*******************************************************************************
@@ -349,42 +362,42 @@ struct ref_lease  {
 /*******************************************************************************
  Operators ==, !=, <
 *******************************************************************************/
-#define PCOMN_SPTR_RELOP(Template, op)                                  \
-   template<typename T>                                                 \
-   inline bool operator op(const typename Template<T>::element_type *lhs, \
-                           const Template<T> &rhs)                      \
+#define PCOMN_SPTR_RELOP(OP)                                            \
+   template<typename T, typename U>                                     \
+   inline auto operator OP(const U *x, const shared_intrusive_ptr<T> &y) \
+      ->decltype(x OP y.get())                                          \
    {                                                                    \
-      return lhs op rhs.get() ;                                         \
-   }                                                                    \
-                                                                        \
-   template<typename T>                                                 \
-   inline bool operator op(const Template<T> &lhs,                      \
-                           const typename Template<T>::element_type *rhs) \
-   {                                                                    \
-      return lhs.get() op rhs ;                                         \
-   }                                                                    \
-   template<typename T>                                                 \
-   inline bool operator op(nullptr_t, const Template<T> &rhs)           \
-   {                                                                    \
-      return nullptr op rhs.get() ;                                     \
-   }                                                                    \
-                                                                        \
-   template<typename T>                                                 \
-   inline bool operator op(const Template<T> &lhs, nullptr_t)           \
-   {                                                                    \
-      return lhs.get() op nullptr ;                                     \
+      return x OP y.get() ;                                             \
    }                                                                    \
                                                                         \
    template<typename T, typename U>                                     \
-   inline decltype((T *)nullptr == (U *)nullptr)                        \
-   operator op(const Template<T> &lhs, const Template<U> &rhs)          \
+   inline auto operator OP(const shared_intrusive_ptr<T> &x, const U *y) \
+      ->decltype(x.get() OP y)                                          \
    {                                                                    \
-      return lhs.get() op rhs.get() ;                                   \
+      return x.get() OP y ;                                             \
+   }                                                                    \
+   template<typename T>                                                 \
+   inline bool operator OP(nullptr_t, const shared_intrusive_ptr<T> &y) \
+   {                                                                    \
+      return nullptr OP y.get() ;                                       \
+   }                                                                    \
+                                                                        \
+   template<typename T>                                                 \
+   inline bool operator OP(const shared_intrusive_ptr<T> &x, nullptr_t) \
+   {                                                                    \
+      return x.get() OP nullptr ;                                       \
+   }                                                                    \
+                                                                        \
+   template<typename T, typename U>                                     \
+   inline auto operator OP(const shared_intrusive_ptr<T> &x, const shared_intrusive_ptr<U> &y) \
+      ->decltype(x.get() OP y.get())                                    \
+   {                                                                    \
+      return x.get() OP y.get() ;                                       \
    }
 
-PCOMN_SPTR_RELOP(shared_intrusive_ptr, ==) ;
-PCOMN_SPTR_RELOP(shared_intrusive_ptr, !=) ;
-PCOMN_SPTR_RELOP(shared_intrusive_ptr, <) ;
+PCOMN_SPTR_RELOP(==) ;
+PCOMN_SPTR_RELOP(!=) ;
+PCOMN_SPTR_RELOP(<) ;
 
 
 /******************************************************************************/
@@ -393,7 +406,7 @@ PCOMN_SPTR_RELOP(shared_intrusive_ptr, <) ;
 *******************************************************************************/
 template<typename T>
 class shared_ref {
-      typedef typename std::remove_cv<T>::type mutable_type ;
+      typedef typename std::remove_cv_t<T> mutable_type ;
 
       template<typename... Args, typename = decltype(new mutable_type(std::declval<Args>()...))>
       static std::true_type test_constructible(int) ;

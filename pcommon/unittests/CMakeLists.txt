@@ -30,7 +30,7 @@ unittest(unittest_utils)
 # Test the library
 #
 unittest(unittest_immutablestr)
-#unittest(unittest_smartptr)
+unittest(unittest_smartptr)
 unittest(unittest_strshims)
 unittest(unittest_strslice)
 
