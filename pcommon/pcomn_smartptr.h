@@ -74,20 +74,21 @@ template<typename T> struct refcount_policy ;
 template<typename T, typename C, C (T::*counter)>
 struct refcount_basic_policy {
 
-      static void threshold_action(T *ptr) { delete ptr ; }
+      static void threshold_action(T *ptr) noexcept { delete ptr ; }
 
-      static C instances(const T *ptr)
+      static C instances(const T *ptr) noexcept
       {
          NOXCHECK(ptr) ;
          return atomic_op::load(&(ptr->*counter), std::memory_order_consume) ;
       }
 
-      static C inc_ref(T *ptr)
+      static C inc_ref(T *ptr) noexcept
       {
          NOXCHECK(ptr) ;
          return atomic_op::preinc(&(ptr->*counter)) ;
       }
-      static C dec_ref(T *ptr)
+
+      static C dec_ref(T *ptr) noexcept
       {
          NOXCHECK(ptr) ;
          const C result = atomic_op::predec(&(ptr->*counter)) ;
@@ -103,7 +104,7 @@ struct refcount_basic_policy {
 class PRefBase {
    protected:
       virtual ~PRefBase() {}
-      static void self_destroy(PRefBase *object) { delete object ; }
+      static void self_destroy(PRefBase *object) noexcept { delete object ; }
 } ;
 
 /******************************************************************************/
@@ -135,7 +136,7 @@ class PTRefCounter : public PRefBase, public active_counter<C> {
       ~PTRefCounter() = default ;
 
       /// Deletes "this" (itself); overrides pure virtual active_counter::dec_action().
-      count_type dec_action(count_type threshold) override
+      count_type dec_action(count_type threshold) noexcept override
       {
          self_destroy(this) ;
          return threshold ;
@@ -143,7 +144,7 @@ class PTRefCounter : public PRefBase, public active_counter<C> {
 
       /// Does nothing, provided in order to implement pure virtual function of
       /// active_counter.
-      count_type inc_action(count_type threshold) override
+      count_type inc_action(count_type threshold) noexcept override
       {
          return threshold ;
       }
@@ -180,13 +181,22 @@ struct refcount_policy<PTRefCounter<C>> {
 
 *******************************************************************************/
 namespace detail {
-template<typename T> struct refcount_policy_ {
-      typedef typename T::refcount_policy_type type ;
-} ;
-template<typename U> struct refcount_policy_<refcount_policy<U> > {
-      typedef refcount_policy<U> type ;
-} ;
+template<typename T, typename>
+struct refcount_policy_ { typedef typename std::remove_pointer_t<T>::refcount_policy_type type ; } ;
+template<typename T, typename U>
+struct refcount_policy_<T, refcount_policy<U> *> { typedef refcount_policy<U> type ; } ;
+
+// SFINAE selector for refcount policy
+// If refcount_policy<T> is a complete type, use it;
+// otherwise, use T::refcount_policy_type
+template<typename U>
+refcount_policy<std::remove_cv_t<U>> *
+eval_refcount_policy(U *, std::void_t<decltype(refcount_policy<std::remove_cv_t<U>>::inc_ref(nullptr))>* = {}) ;
+void *eval_refcount_policy(...) ;
 }
+
+template<typename U>
+using refcount_policy_t = typename detail::refcount_policy_<U, decltype(detail::eval_refcount_policy(autoval<U *>()))>::type ;
 
 /******************************************************************************/
 /** Intrusive reference-counted shared pointer.
@@ -200,16 +210,8 @@ template<typename U> struct refcount_policy_<refcount_policy<U> > {
 *******************************************************************************/
 template<typename T>
 class shared_intrusive_ptr {
-      // SFINAE selector for refcount policy
-      // If refcount_policy<T> is a complete type, use it;
-      // otherwise, use T::refcount_policy_type
-      template<typename U>
-      static refcount_policy<std::remove_cv_t<U>> *
-      policy(U *, std::is_convertible<decltype((void)refcount_policy<std::remove_cv_t<U>>::inc_ref(nullptr)), void> * = nullptr) ;
-      static T *policy(...) ;
    public:
       typedef T element_type ;
-      typedef typename detail::refcount_policy_<std::remove_pointer_t<decltype(policy(autoval<T *>()))>>::type refcount_policy_type ;
 
       template<typename U>
       friend class shared_intrusive_ptr ;
@@ -217,24 +219,26 @@ class shared_intrusive_ptr {
       constexpr shared_intrusive_ptr() = default ;
       constexpr shared_intrusive_ptr(nullptr_t) {}
 
-      shared_intrusive_ptr(element_type *object) :
+      explicit shared_intrusive_ptr(element_type *object) noexcept :
          _object(object)
       { inc_ref() ; }
 
-      shared_intrusive_ptr(const shared_intrusive_ptr &src) :
+      shared_intrusive_ptr(const shared_intrusive_ptr &src) noexcept :
          shared_intrusive_ptr(src.get())
       {}
 
-      shared_intrusive_ptr(shared_intrusive_ptr &&src) : _object(src._object)
+      shared_intrusive_ptr(shared_intrusive_ptr &&src) noexcept :
+         _object(src._object)
       { src._object = nullptr ; }
 
       template<typename U, typename = instance_if_t<std::is_convertible<U*, element_type*>::value> >
-      shared_intrusive_ptr(const shared_intrusive_ptr<U> &src) :
+      shared_intrusive_ptr(const shared_intrusive_ptr<U> &src) noexcept :
          shared_intrusive_ptr(src.get())
       {}
 
       template<typename U, typename = instance_if_t<std::is_convertible<U*, element_type*>::value> >
-      shared_intrusive_ptr(shared_intrusive_ptr<U> &&src) : _object(src._object)
+      shared_intrusive_ptr(shared_intrusive_ptr<U> &&src) noexcept :
+         _object(src._object)
       { src._object = nullptr ; }
 
       ~shared_intrusive_ptr() { dec_ref() ; }
@@ -248,7 +252,7 @@ class shared_intrusive_ptr {
       /// Get the number of different intrusive_sptr instances (this included) managing
       /// the current object
       ///
-      intptr_t instances() const { return _object ? refcount_policy_type::instances(_object) : 0 ; }
+      intptr_t instances() const { return _object ? refcount_policy_t<T>::instances(_object) : 0 ; }
 
       /// Alias for instances(), added to match std::shared_ptr insterface
       intptr_t use_count() const { return instances() ; }
@@ -260,21 +264,21 @@ class shared_intrusive_ptr {
          std::swap(_object, other._object) ;
       }
 
-      shared_intrusive_ptr &operator=(const shared_intrusive_ptr &other)
+      shared_intrusive_ptr &operator=(const shared_intrusive_ptr &other) noexcept
       {
          assign_element(other.get()) ;
          return *this ;
       }
 
       template<typename U>
-      auto operator=(const shared_intrusive_ptr<U> &other)
+      auto operator=(const shared_intrusive_ptr<U> &other) noexcept
          ->decltype(shared_intrusive_ptr(other.get())) &
       {
          assign_element(other.get()) ;
          return *this ;
       }
 
-      shared_intrusive_ptr &operator=(element_type *other)
+      shared_intrusive_ptr &operator=(element_type *other) noexcept
       {
          assign_element(other) ;
          return *this ;
@@ -286,14 +290,14 @@ class shared_intrusive_ptr {
          return const_cast<std::remove_const_t<element_type> *>(_object) ;
       }
 
-      void inc_ref() const { if (_object) refcount_policy_type::inc_ref(mutable_object()) ; }
-      void dec_ref() { if (_object) refcount_policy_type::dec_ref(mutable_object()) ; }
+      void inc_ref() const { if (_object) refcount_policy_t<T>::inc_ref(mutable_object()) ; }
+      void dec_ref() { if (_object) refcount_policy_t<T>::dec_ref(mutable_object()) ; }
 
       template<class E>
       void assign_element(E *other_element)
       {
-         typedef typename shared_intrusive_ptr<E>::refcount_policy_type other_policy_type ;
-         typedef std::remove_const_t<E>                                 other_mutable_element ;
+         typedef refcount_policy_t<E>   other_policy_type ;
+         typedef std::remove_const_t<E> other_mutable_element ;
 
          other_mutable_element *other_object = const_cast<other_mutable_element *>(other_element) ;
 
@@ -317,21 +321,23 @@ class shared_intrusive_ptr {
 /// static_cast allows for plain pointers.
 /// Casting derived -> base happens automatically.
 template<class T, class U>
-inline shared_intrusive_ptr<T> sptr_cast(const shared_intrusive_ptr<U> &src)
+inline shared_intrusive_ptr<transfer_cv_t<U, T>> sptr_cast(const shared_intrusive_ptr<U> &src) noexcept
 {
-   return shared_intrusive_ptr<T>(static_cast<T *>(src.get())) ;
+   typedef transfer_cv_t<U, T> result_element ;
+   return shared_intrusive_ptr<result_element>(static_cast<result_element *>(src.get())) ;
 }
 
 template<class T>
-inline shared_intrusive_ptr<T> sptr_cast(T *plain_ptr)
+inline shared_intrusive_ptr<T> sptr_cast(T *plain_ptr) noexcept
 {
    return shared_intrusive_ptr<T>(plain_ptr) ;
 }
 
 template<class T, class U>
-inline shared_intrusive_ptr<T> sptr_dynamic_cast(const shared_intrusive_ptr<U> &src)
+inline shared_intrusive_ptr<transfer_cv_t<U, T>> sptr_dynamic_cast(const shared_intrusive_ptr<U> &src) noexcept
 {
-   return shared_intrusive_ptr<T>(dynamic_cast<T *>(src.get())) ;
+   typedef transfer_cv_t<U, T> result_element ;
+   return shared_intrusive_ptr<result_element>(dynamic_cast<result_element *>(src.get())) ;
 }
 
 /*******************************************************************************
