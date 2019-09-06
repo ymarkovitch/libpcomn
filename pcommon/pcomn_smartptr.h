@@ -223,6 +223,35 @@ class shared_intrusive_ptr {
          _object(object)
       { inc_ref() ; }
 
+      /// Constructor to allow copy-list initialization of a shared pointer from the
+      /// plain pointer.
+      ///
+      /// The constructor from element_type* is intentionally made explicit to avoid
+      /// unintended automatic conversions from the plain pointer to a shared pointer.
+      /// This however hinders copy-list initialization on e.g. returning
+      /// shared_intrusive_ptr from functions. For example:
+      /// @code
+      ///   class Foo { public: virtual ~Foo() ; ... } ;
+      ///   class Bar: public Foo { ... } ;
+      ///   typedef pcomn::shared_intrusive_ptr<Foo> FooPtr ;
+      ///   typedef pcomn::shared_intrusive_ptr<Bar> BarPtr ;
+      ///
+      ///   FooPtr bar()
+      ///   {
+      ///      // Cannot `return {new Bar}`, the constructor is explicit.
+      ///      // Must either explicitly mention FooPtr or use sptr_cast(new Bar).
+      ///      // But sptr_cast(new Bar) prevents RVO, because returns BarPtr,
+      ///      // so move constructor will be called.
+      ///      // But this will do:
+      ///
+      ///      return {pcomn::instantiate, new Bar} ;
+      ///   }
+      /// @endcode
+      ///
+      shared_intrusive_ptr(Instantiate, element_type *object) noexcept :
+         shared_intrusive_ptr(object)
+      {}
+
       shared_intrusive_ptr(const shared_intrusive_ptr &src) noexcept :
          shared_intrusive_ptr(src.get())
       {}
