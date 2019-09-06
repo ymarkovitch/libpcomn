@@ -33,8 +33,8 @@ struct active_counter_base {
          return std::move(old) ;
       }
 
-      count_type inc_passive() { return ++_counter ; }
-      count_type dec_passive() { return --_counter ; }
+      count_type inc_passive() noexcept { return ++_counter ; }
+      count_type dec_passive() noexcept { return --_counter ; }
 
    private:
       count_type _counter ;

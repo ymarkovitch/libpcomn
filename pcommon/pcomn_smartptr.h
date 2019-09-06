@@ -30,14 +30,14 @@ namespace pcomn {
 /// does nothing.
 /// @return Value of @a counted.
 template<typename C, intptr_t init>
-inline active_counter<C, init> *inc_ref(active_counter<C, init> *counted)
+inline active_counter<C, init> *inc_ref(active_counter<C, init> * __restrict counted)
 {
    counted && counted->inc() ;
    return counted ;
 }
 
 template<typename C, intptr_t init>
-inline active_counter<C, init> *dec_ref(active_counter<C, init> *counted)
+inline active_counter<C, init> *dec_ref(active_counter<C, init> * __restrict counted)
 {
    counted && counted->dec() ;
    return counted ;
@@ -67,6 +67,7 @@ inline void clear_ref(Refcounted *&target)
 }
 
 template<typename T> struct refcount_policy ;
+template<typename T> class shared_intrusive_ptr ;
 
 /******************************************************************************/
 /** Basic policy for intrusive reference-counted pointers
@@ -98,20 +99,11 @@ struct refcount_basic_policy {
       }
 } ;
 
-/*******************************************************************************
-                     class PRefBase
-*******************************************************************************/
-class PRefBase {
-   protected:
-      virtual ~PRefBase() {}
-      static void self_destroy(PRefBase *object) noexcept { delete object ; }
-} ;
-
 /******************************************************************************/
 /** Reference counter: the base class for reference counted objects.
 *******************************************************************************/
 template<typename C = std::atomic<intptr_t>>
-class PTRefCounter : public PRefBase, public active_counter<C> {
+class PTRefCounter : public active_counter<C> {
       typedef active_counter<C> ancestor ;
    public:
       using typename ancestor::count_type ;
@@ -133,7 +125,7 @@ class PTRefCounter : public PRefBase, public active_counter<C> {
       PTRefCounter (const PTRefCounter &) : ancestor() {}
 
       /// Destructor does nothing, declared for inheritance protection and debugging purposes.
-      ~PTRefCounter() = default ;
+      ~PTRefCounter() override = default ;
 
       /// Deletes "this" (itself); overrides pure virtual active_counter::dec_action().
       count_type dec_action(count_type threshold) noexcept override
@@ -148,6 +140,9 @@ class PTRefCounter : public PRefBase, public active_counter<C> {
       {
          return threshold ;
       }
+
+   private:
+      static void self_destroy(PTRefCounter *object) noexcept { delete object ; }
 } ;
 
 typedef PTRefCounter<> PRefCount ;
@@ -168,7 +163,7 @@ struct refcount_policy<PTRefCounter<C>> {
       static count_type inc_ref(PTRefCounter<C> *counted)
       {
          NOXCHECK(counted) ;
-         return counted->inc() ;
+         return counted->inc_passive() ;
       }
       static count_type dec_ref(PTRefCounter<C> *counted)
       {
@@ -313,6 +308,16 @@ class shared_intrusive_ptr {
          return *this ;
       }
 
+      template<class U>
+      shared_intrusive_ptr<transfer_cv_t<element_type, U>> cast_move() noexcept
+      {
+         typedef transfer_cv_t<U, T> result_element ;
+         shared_intrusive_ptr<result_element> result ;
+         result._object = _object ;
+         _object = nullptr ;
+         return result ;
+      }
+
    private:
       std::remove_const_t<element_type> * mutable_object() const
       {
@@ -447,16 +452,17 @@ class shared_ref {
       static std::true_type test_constructible(int) ;
       template<typename...>
       static std::false_type test_constructible(...) ;
-   public:
 
+      template<typename C>
+      static type_t<shared_intrusive_ptr<T>, typename C::refcount_policy_type> smartptr_mode(C *) ;
+      static std::shared_ptr<T> smartptr_mode(...) ;
+
+   public:
       typedef T type ;
       typedef T element_type ;
       typedef element_type &reference ;
 
-      typedef std::conditional_t<std::is_base_of<PRefBase, T>::value,
-                                 shared_intrusive_ptr<type>,
-                                 std::shared_ptr<type> >
-      smartptr_type ;
+      typedef decltype(smartptr_mode((type *)nullptr)) smartptr_type ;
 
       shared_ref(const shared_ref &other) = default ;
 
