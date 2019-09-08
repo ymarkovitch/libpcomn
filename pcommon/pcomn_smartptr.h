@@ -102,7 +102,7 @@ struct refcount_basic_policy {
 /******************************************************************************/
 /** Reference counter: the base class for reference counted objects.
 *******************************************************************************/
-template<typename C = std::atomic<intptr_t>>
+template<typename C = std::atomic<intptr_t> >
 class PTRefCounter : public active_counter<C> {
       typedef active_counter<C> ancestor ;
    public:
@@ -308,12 +308,16 @@ class shared_intrusive_ptr {
          return *this ;
       }
 
+      /// Create an instance of shared_intrusive_ptr whose stored pointer is _moved_ from
+      /// this's stored pointer with static_cast'ing.
+      /// This is used to imlement the "moving" sptr_cast.
+      ///
       template<class U>
       shared_intrusive_ptr<transfer_cv_t<element_type, U>> cast_move() noexcept
       {
-         typedef transfer_cv_t<U, T> result_element ;
+         typedef transfer_cv_t<element_type, U> result_element ;
          shared_intrusive_ptr<result_element> result ;
-         result._object = _object ;
+         result._object = static_cast<result_element *>(_object) ;
          _object = nullptr ;
          return result ;
       }
@@ -351,14 +355,28 @@ class shared_intrusive_ptr {
       element_type *_object = nullptr ;
 } ;
 
-/// Allows to cast smartpointer to a base class to a smartpointer to derived the same way
-/// static_cast allows for plain pointers.
-/// Casting derived -> base happens automatically.
+/// Create a new instance of shared_intrusive_ptr whose stored pointer is obtained from
+/// src's stored pointer using a static_cast expression.
+///
+/// The result is a copy of the source, so the source remains intact and the reference
+/// count is incremented.
 template<class T, class U>
 inline shared_intrusive_ptr<transfer_cv_t<U, T>> sptr_cast(const shared_intrusive_ptr<U> &src) noexcept
 {
    typedef transfer_cv_t<U, T> result_element ;
    return shared_intrusive_ptr<result_element>(static_cast<result_element *>(src.get())) ;
+}
+
+/// Create an instance of shared_intrusive_ptr whose stored pointer is _moved_ from
+/// src's stored pointer with static_cast'ing.
+///
+/// This is a "moving" variant of sptr_cast(): the source is zeroed, so no reference
+/// counters incremented or decremented.
+///
+template<class T, class U>
+inline shared_intrusive_ptr<transfer_cv_t<U, T>> sptr_cast(shared_intrusive_ptr<U> &&src) noexcept
+{
+   return src.template cast_move<T>() ;
 }
 
 template<class T>
@@ -440,8 +458,8 @@ PCOMN_SPTR_RELOP(!=) ;
 PCOMN_SPTR_RELOP(<) ;
 
 
-/******************************************************************************/
-/** Smart reference: template class like a smartpointer that constructs its pointee
+/***************************************************************************//**
+ Smart reference: template class like a smartpointer that constructs its pointee
  object and thus is never NULL.
 *******************************************************************************/
 template<typename T>
@@ -541,8 +559,8 @@ class shared_ref {
 
 template<class T> class sptr_wrapper_tag ;
 
-/******************************************************************************/
-/** sptr_wrapper<T> is a wrapper around a smartpointer of type T
+/***************************************************************************//**
+ sptr_wrapper<T> is a wrapper around a smartpointer of type T
 
  sptr_wrapper<T> is implicitly convertible to (T::element_type *) and designed for
  use as a bound plain pointer argument in closures and std::bind
