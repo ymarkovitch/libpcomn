@@ -260,7 +260,7 @@ inline T &set_flags_masked(T &target, T flagset, T mask)
 template<typename T, typename U>
 inline T &set_flags(T &target, bool value, U mask)
 {
-   return set_flags_masked<T>(target, (T() - (T)value), mask) ;
+   return set_flags_masked<T>(target, (T)(T() - (T)value), mask) ;
 }
 
 template<typename T>
