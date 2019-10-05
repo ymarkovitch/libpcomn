@@ -4,7 +4,7 @@
  COPYRIGHT    :   Yakov Markovitch, 2007-2019. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
- DESCRIPTION  :   Unittest for pcomn_metafunction
+ DESCRIPTION  :   Unittest for pcomn_meta
 
  PROGRAMMED BY:   Yakov Markovitch
  CREATION DATE:   28 Nov 2006
@@ -40,6 +40,8 @@ class MetafunctionTests : public CppUnit::TestFixture {
       void Test_Count_Types() ;
       void Test_Rebind_Contaner() ;
       void Test_Transfer_CV() ;
+      void Test_Pointer_Rank() ;
+      void Test_Pointer_CVV() ;
 
       CPPUNIT_TEST_SUITE(MetafunctionTests) ;
 
@@ -48,6 +50,8 @@ class MetafunctionTests : public CppUnit::TestFixture {
       CPPUNIT_TEST(Test_Count_Types) ;
       CPPUNIT_TEST(Test_Rebind_Contaner) ;
       CPPUNIT_TEST(Test_Transfer_CV) ;
+      CPPUNIT_TEST(Test_Pointer_Rank) ;
+      CPPUNIT_TEST(Test_Pointer_CVV) ;
 
       CPPUNIT_TEST_SUITE_END() ;
 } ;
@@ -114,6 +118,75 @@ void MetafunctionTests::Test_Transfer_CV()
 
    CPPUNIT_LOG_IS_FALSE((std::is_same_v<transfer_cv_t<volatile int, double>, double>)) ;
    CPPUNIT_LOG_IS_FALSE((std::is_same_v<transfer_cv_t<volatile int, double>, const double>)) ;
+}
+
+template<typename>
+struct pointer_rank : std::integral_constant<size_t,0> {} ;
+
+template<typename T>
+struct pointer_rank<T const> : pointer_rank<T> {} ;
+template<typename T>
+struct pointer_rank<T volatile> : pointer_rank<T> {} ;
+template<typename T>
+struct pointer_rank<T const volatile> : pointer_rank<T> {} ;
+
+template<typename T>
+struct pointer_rank<T*> : std::integral_constant<size_t,pointer_rank<T>::value+1> {} ;
+
+template<typename T>
+constexpr size_t pointer_rank_v = pointer_rank<T>::value ;
+
+template<typename T>
+struct pointer_cvv { static constexpr unsigned _() { return 0 ; } } ;
+
+template<typename T>
+struct pointer_cvv<T*const> : pointer_cvv<T*> {} ;
+template<typename T>
+struct pointer_cvv<T*volatile> : pointer_cvv<T*> {} ;
+template<typename T>
+struct pointer_cvv<T*const volatile> : pointer_cvv<T*> {} ;
+
+template<typename T>
+struct pointer_cvv<T*> :
+   std::integral_constant<unsigned, (std::is_const_v<T> << 1U)|std::is_volatile_v<T>|(pointer_cvv<T>::_() << 2U)>
+{
+      static constexpr unsigned _() { return pointer_cvv::value ; }
+} ;
+
+template<typename T>
+constexpr auto pointer_cvv_v = pointer_cvv<T>::value ;
+
+void MetafunctionTests::Test_Pointer_Rank()
+{
+   CPPUNIT_LOG_EQ(pointer_rank_v<int>, 0) ;
+   CPPUNIT_LOG_EQ(pointer_rank_v<int*>, 1) ;
+   CPPUNIT_LOG_EQ(pointer_rank_v<const int**>, 2) ;
+   CPPUNIT_LOG_EQ(pointer_rank_v<int* const *>, 2) ;
+   CPPUNIT_LOG_EQ(pointer_rank_v<int* const volatile *>, 2) ;
+   CPPUNIT_LOG_EQ(pointer_rank_v<const int* volatile *>, 2) ;
+   CPPUNIT_LOG_EQ(pointer_rank_v<void***>, 3) ;
+   CPPUNIT_LOG_EQ(pointer_rank_v<void>, 0) ;
+}
+
+void MetafunctionTests::Test_Pointer_CVV()
+{
+   CPPUNIT_LOG_EQUAL(pointer_cvv_v<int*>, 0b00u) ;
+   CPPUNIT_LOG_EQUAL(pointer_cvv_v<const int*>, 0b10u) ;
+   CPPUNIT_LOG_EQUAL(pointer_cvv_v<volatile int*>, 0b01u) ;
+   CPPUNIT_LOG_EQUAL(pointer_cvv_v<const volatile int*>, 0b11u) ;
+
+   CPPUNIT_LOG_EQUAL(pointer_cvv_v<void**>, 0U) ;
+   CPPUNIT_LOG_EQUAL(pointer_cvv_v<void**const>, 0U) ;
+   CPPUNIT_LOG_EQUAL(pointer_cvv_v<const void**const>, 0b1000u) ;
+
+   CPPUNIT_LOG_EQUAL(pointer_cvv_v<void***>, 0U) ;
+   CPPUNIT_LOG_EQUAL(pointer_cvv_v<const void***>, 0b100000u) ;
+   CPPUNIT_LOG_EQUAL(pointer_cvv_v<void* const**>, 0b001000u) ;
+   CPPUNIT_LOG_EQUAL(pointer_cvv_v<void**const*>, 0b000010u) ;
+
+   CPPUNIT_LOG_EQUAL(pointer_cvv_v<const volatile double***>, 0b110000u) ;
+   CPPUNIT_LOG_EQUAL(pointer_cvv_v<volatile void* const**>, 0b011000u) ;
+   CPPUNIT_LOG_EQUAL(pointer_cvv_v<volatile void* const volatile* const*>, 0b011110u) ;
 }
 
 /*******************************************************************************
