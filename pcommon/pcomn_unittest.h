@@ -32,9 +32,9 @@ GCC_DIAGNOSTIC_PUSH_IGNORE(unused-result)
 #include <pcomn_tuple.h>
 #include <pcomn_meta.h>
 #include <pcomn_except.h>
-#include <pcomn_simplematrix.h>
 #include <pcomn_string.h>
 #include <pcomn_strslice.h>
+#include <pcomn_vector.h>
 #include <pcomn_cstrptr.h>
 #include <pcomn_path.h>
 #include <pcomn_function.h>
@@ -816,24 +816,6 @@ std::string assertion_traits_sequence<Seq, d, b, a>::toString(const Seq &value)
    return result.append(1, a) ;
 }
 
-template<typename M>
-struct assertion_traits_matrix : assertion_traits_sequence<M, '\n', '\n', '\n'> {
-      typedef assertion_traits_sequence<M, '\n', '\n', '\n'> ancestor ;
-
-      static bool equal(const M &x, const M &y)
-      {
-         return x.columns() == y.columns() && ancestor::equal(x, y) ;
-      }
-      static std::string toString(const M &m)
-      {
-         std::string desc
-            (pcomn::strprintf("%lux%lu", (unsigned long)m.rows(), (unsigned long)m.columns())) ;
-         return m.empty()
-            ? std::move(desc)
-            : std::move(desc) + "\n========" + ancestor::toString(m) + "========\n" ;
-      }
-} ;
-
 template<typename Unordered>
 struct assertion_traits_unordered {
 
@@ -871,28 +853,54 @@ struct assertion_traits<std::multiset<K, C>> : assertion_traits_sequence<std::mu
    template<typename T>                                                 \
    struct assertion_traits<sequence<T>> : assertion_traits_sequence<sequence<T>> {}
 
-#define _CPPUNIT_ASSERTION_TRAITS_MATRIX(matrix)                        \
-   template<typename T>                                                 \
-   struct assertion_traits<matrix<T>> : assertion_traits_matrix<matrix<T>> {}
-
 _CPPUNIT_ASSERTION_TRAITS_SEQUENCE(std::vector) ;
 _CPPUNIT_ASSERTION_TRAITS_SEQUENCE(std::list) ;
 _CPPUNIT_ASSERTION_TRAITS_SEQUENCE(std::deque) ;
 _CPPUNIT_ASSERTION_TRAITS_SEQUENCE(pcomn::simple_vector) ;
 _CPPUNIT_ASSERTION_TRAITS_SEQUENCE(pcomn::simple_slice) ;
 
-_CPPUNIT_ASSERTION_TRAITS_MATRIX(pcomn::matrix_slice) ;
-
 template<typename T, size_t maxsize>
 struct assertion_traits<pcomn::static_vector<T, maxsize>> :
          assertion_traits_sequence<pcomn::static_vector<T, maxsize>> {} ;
+
+#undef _CPPUNIT_ASSERTION_TRAITS_SEQUENCE
+
+/*******************************************************************************
+ matrix_slice
+ simple_matrix
+*******************************************************************************/
+#ifdef __PCOMN_SIMPLEMATRIX_H
+
+template<typename M>
+struct assertion_traits_matrix : assertion_traits_sequence<M, '\n', '\n', '\n'> {
+      typedef assertion_traits_sequence<M, '\n', '\n', '\n'> ancestor ;
+
+      static bool equal(const M &x, const M &y)
+      {
+         return x.columns() == y.columns() && ancestor::equal(x, y) ;
+      }
+      static std::string toString(const M &m)
+      {
+         std::string desc
+            (pcomn::strprintf("%lux%lu", (unsigned long)m.rows(), (unsigned long)m.columns())) ;
+         return m.empty()
+            ? std::move(desc)
+            : std::move(desc) + "\n========" + ancestor::toString(m) + "========\n" ;
+      }
+} ;
+
+#define _CPPUNIT_ASSERTION_TRAITS_MATRIX(matrix)                        \
+   template<typename T>                                                 \
+   struct assertion_traits<matrix<T>> : assertion_traits_matrix<matrix<T>> {}
+
+_CPPUNIT_ASSERTION_TRAITS_MATRIX(pcomn::matrix_slice) ;
 
 template<typename T, bool r>
 struct assertion_traits<pcomn::simple_matrix<T, r>> :
          assertion_traits_matrix<pcomn::simple_matrix<T, r>> {} ;
 
-#undef _CPPUNIT_ASSERTION_TRAITS_SEQUENCE
 #undef _CPPUNIT_ASSERTION_TRAITS_MATRIX
+#endif /* __PCOMN_SIMPLEMATRIX_H */
 
 template<>
 inline std::string assertion_traits<std::type_info>::toString(const std::type_info &x)
