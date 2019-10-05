@@ -32,6 +32,7 @@ GCC_DIAGNOSTIC_PUSH_IGNORE(unused-result)
 #include <pcomn_tuple.h>
 #include <pcomn_meta.h>
 #include <pcomn_except.h>
+#include <pcomn_simplematrix.h>
 #include <pcomn_string.h>
 #include <pcomn_strslice.h>
 #include <pcomn_cstrptr.h>

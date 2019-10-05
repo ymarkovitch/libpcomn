@@ -1,8 +1,8 @@
 /*-*- mode: c++; tab-width: 3; indent-tabs-mode: nil; c-file-style: "ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
-#ifndef __PCOMN_SIMPLEVECTOR_H
-#define __PCOMN_SIMPLEVECTOR_H
+#ifndef __PCOMN_VECTOR_H
+#define __PCOMN_VECTOR_H
 /*******************************************************************************
- FILE         :   pcomn_simplevector.h
+ FILE         :   pcomn_vector.h
  COPYRIGHT    :   Yakov Markovitch, 2000-2019. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
@@ -890,4 +890,4 @@ PCOMN_DEFINE_PRANGE(static_vector<P_PASS(T, maxsize)>, template<typename T, size
 
 } // end of namespace pcomn
 
-#endif /* __SIMPLEVECTOR_H */
+#endif /* __PCOMN_VECTOR_H */

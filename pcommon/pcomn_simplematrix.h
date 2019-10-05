@@ -11,7 +11,7 @@
  PROGRAMMED BY:   Yakov Markovitch
  CREATION DATE:   4 May 2000
 *******************************************************************************/
-#include "pcomn_simplevector.h"
+#include "pcomn_vector.h"
 
 namespace pcomn {
 
