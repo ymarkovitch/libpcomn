@@ -67,6 +67,7 @@ unittest(unittest_textio)
 unittest(unittest_timespec)
 unittest(unittest_uri)
 unittest(unittest_uuid)
+unittest(unittest_vector)
 unittest(unittest_zstream)
 
 add_adhoc_executable(test_readfile)
