@@ -28,16 +28,21 @@
 
 namespace pcomn {
 
-/******************************************************************************/
-/** Non-owning reference to a part (range) of a contiguous memory array,
+/***************************************************************************//**
+ Non-owning reference to a part (range) of a contiguous memory array,
  "unowning subvector"
 *******************************************************************************/
 template<typename T>
 class simple_slice {
-      template<typename P, typename U=P>
-      using enable_if_ptr =
-         std::enable_if_t<(std::is_same<P, T *>::value || std::is_same<P, std::remove_cv_t<T> *>::value) &&
-                          (std::is_same<U, T *>::value || std::is_same<U, std::remove_cv_t<T> *>::value)> ;
+      template<typename P, typename U=P> struct enable_if_ptr_compat ;
+
+      template<typename P, typename U>
+      struct enable_if_ptr_compat<P*,U*> :
+         std::enable_if<(std::is_convertible_v<P*,T*> &&
+                         (std::is_same_v<std::remove_cv_t<P>, std::remove_cv_t<T>> ||
+                          std::is_pointer_v<P> && std::is_pointer_v<T>))>
+      {} ;
+
    public:
       typedef T value_type ;
 
@@ -59,8 +64,9 @@ class simple_slice {
       constexpr simple_slice(value_type (&data)[n]) :
          _start(data), _finish(data + n) {}
 
-      template<typename V, typename = enable_if_ptr<decltype(std::declval<V>().data()),
-                                                    decltype(&*std::declval<V>().begin())>>
+      template<typename V,
+               typename = typename enable_if_ptr_compat<decltype(std::declval<V>().data()),
+                                                        decltype(&*std::declval<V>().end())>::type>
       constexpr simple_slice(V &&src) :
          _start(std::forward<V>(src).data()),
          _finish(vector_end(std::forward<V>(src), is_pointer_t<decltype(src.begin())>()))

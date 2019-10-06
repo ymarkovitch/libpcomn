@@ -109,6 +109,29 @@ void SimpleVectorTests::Test_Simple_Slice_Construct()
 
    CPPUNIT_LOG_RUN(cint_slice().swap(CIntVectorSlice1)) ;
    CPPUNIT_LOG_EQUAL(CIntVectorSlice1.size(), (size_t)0) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   // Check multilevel pointers
+   std::vector<int*> ppIvector (3) ;
+   const simple_cslice<const int *> cpIslice {ppIvector} ;
+
+   CPPUNIT_LOG_EQ(cpIslice.size(), 3) ;
+   CPPUNIT_LOG_EQ(cpIslice.begin(), ppIvector.data()) ;
+
+   std::vector<const int*> cppIvector (7) ;
+   simple_cslice<const int*> cpIslice1 {cppIvector} ;
+
+   CPPUNIT_LOG_EQ(cpIslice1.size(), 7) ;
+   CPPUNIT_LOG_EQ(cpIslice1.begin(), cppIvector.data()) ;
+
+   simple_slice<int*> pIslice {ppIvector} ;
+   simple_cslice<const int*> cpIslice2 = pIslice ;
+
+   CPPUNIT_LOG_EQUAL(cpIslice2.size(), ppIvector.size()) ;
+   CPPUNIT_LOG_EQ(cpIslice2.begin(), ppIvector.data()) ;
+
+   cpIslice1 = pIslice ;
 }
 
 void SimpleVectorTests::Test_Simple_Vector_Construct()
