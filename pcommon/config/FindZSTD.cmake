@@ -1,7 +1,7 @@
-#   This module is a place holder for an official FindZSTD.cmake from 
-#   kitware, when it arrives.  As of June 2019, there is not yet a good 
-#   find module that can reliably create a properly namespaced target for 
-#   use in target_link_libraries.  We'll write on here, and maybe it'll 
+#   This module is a place holder for an official FindZSTD.cmake from
+#   kitware, when it arrives.  As of June 2019, there is not yet a good
+#   find module that can reliably create a properly namespaced target for
+#   use in target_link_libraries.  We'll write on here, and maybe it'll
 #   become the standard, maybe not.  If this one gets replaced, so be it.
 #
 #   Kyle Bentley
@@ -102,6 +102,10 @@ list(APPEND _ZSTD_INCLUDE_SEARCH_DIRS
   ${ZSTD_INCLUDEDIR}
   ${_ZSTD_ROOT_SEARCH_DIR}
   ${PC_ZSTD_INCLUDE_DIRS}
+  /usr/include
+  /usr/local/include
+  /opt/include
+  /opt/local/include
   ${SYSTEM_LIBRARY_PATHS}
 )
 
@@ -113,13 +117,13 @@ find_path(ZSTD_INCLUDE_DIR zstd.h
 )
 
 if(EXISTS "${ZSTD_INCLUDE_DIR}/zstd.h")
-  file(STRINGS "${ZSTD_INCLUDE_DIR}/zstd.h" 
+  file(STRINGS "${ZSTD_INCLUDE_DIR}/zstd.h"
     _ZSTD_VERSION_MAJOR REGEX "^#define ZSTD_VERSION_MAJOR")
   string(REGEX MATCH "[0-9]+" ZSTD_VERSION_MAJOR ${_ZSTD_VERSION_MAJOR})
-  file(STRINGS "${ZSTD_INCLUDE_DIR}/zstd.h" 
+  file(STRINGS "${ZSTD_INCLUDE_DIR}/zstd.h"
     _ZSTD_VERSION_MINOR REGEX "^#define ZSTD_VERSION_MINOR")
   string(REGEX MATCH "[0-9]+" ZSTD_VERSION_MINOR ${_ZSTD_VERSION_MINOR} )
-  file(STRINGS "${ZSTD_INCLUDE_DIR}/zstd.h" 
+  file(STRINGS "${ZSTD_INCLUDE_DIR}/zstd.h"
     _ZSTD_VERSION_RELEASE REGEX "^#define ZSTD_VERSION_RELEASE")
   string(REGEX MATCH "[0-9]+" ZSTD_VERSION_RELEASE ${_ZSTD_VERSION_RELEASE} )
   set(ZSTD_VERSION ${ZSTD_VERSION_MAJOR}.${ZSTD_VERSION_MINOR}.${ZSTD_VERSION_RELEASE})
@@ -134,6 +138,10 @@ list(APPEND _ZSTD_LIBRARYDIR_SEARCH_DIRS
   ${ZSTD_LIBRARYDIR}
   ${_ZSTD_ROOT_SEARCH_DIR}
   ${PC_ZSTD_LIBRARY_DIRS}
+  /usr/lib
+  /usr/local
+  /opt
+  /opt/local
   ${SYSTEM_LIBRARY_PATHS}
 )
 
@@ -179,9 +187,10 @@ if(ZSTD_FOUND)
 
   get_filename_component(ZSTD_LIBRARY_DIRS ${ZSTD_LIBRARY} DIRECTORY)
 
-  if(NOT TARGET ZSTD::zstd)
-    add_library(ZSTD::zstd UNKNOWN IMPORTED)
-    set_target_properties(ZSTD::zstd PROPERTIES
+  if(NOT TARGET zstd)
+    add_library(zstd UNKNOWN IMPORTED)
+    set_target_properties(zstd PROPERTIES
+      IMPORTED_LINK_INTERFACE_LANGUAGES "C"
       IMPORTED_LOCATION "${ZSTD_LIBRARIES}"
       INTERFACE_COMPILE_DEFINITIONS "${ZSTD_DEFINITIONS}"
       INTERFACE_INCLUDE_DIRECTORIES "${ZSTD_INCLUDE_DIRS}"
