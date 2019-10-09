@@ -8,7 +8,7 @@
  PROGRAMMED BY:   Yakov Markovitch
  CREATION DATE:   8 Oct 2019
 *******************************************************************************/
-#include <zdict.h>
+#include <pcomn_zstd.h>
 #include <pcomn_string.h>
 #include <pcomn_unittest.h>
 

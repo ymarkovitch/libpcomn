@@ -31,6 +31,7 @@
 
    vsaver
    bitsaver
+   finalizer
    auto_buffer
    imemstream
    omemstream
