@@ -73,7 +73,7 @@ class zdict {
 public:
     /// Create a dictionary object from the memory containing an already trained
     /// dictionary.
-    explicit zdict(const pcomn::iovec_t &trained_dict) :
+    explicit zdict(const iovec_t &trained_dict) :
         _trained_dict(trained_dict),
 
         _id(ensure_nonzero<zdict_error>
@@ -90,8 +90,13 @@ public:
         _owned(true)
     {}
 
-    explicit zdict(const simple_cslice<std::string> &) ;
-    explicit zdict(const simple_cslice<strslice> &) ;
+    zdict(const simple_cslice<std::string> &strings, size_t capacity) :
+        zdict(train_from_strvector(strings, capacity), true, instantiate)
+    {}
+
+    zdict(const simple_cslice<strslice> &strings, size_t capacity) :
+        zdict(train_from_strvector(strings, capacity), true, instantiate)
+    {}
 
     ~zdict()
     {
@@ -103,14 +108,23 @@ public:
     unsigned id() const { return _id ; }
 
 private:
-    const pcomn::iovec_t _trained_dict ;
-    const unsigned       _id ;
-    const bool           _owned ; /* Is destruction needed */
+    const iovec_t  _trained_dict ;
+    const unsigned _id ;
+    const bool     _owned ; /* Is destruction needed */
 
 private:
-    static __noinline pcomn::iovec_t train(const void *sample_buffer,
-                                           const simple_cslice<size_t> &sample_sizes,
-                                           size_t capacity)
+    /// Use a knowinly valid dictionary.
+    zdict(const iovec_t &trained_dict, bool owned, Instantiate) :
+        _trained_dict(trained_dict),
+        _id(ZDICT_getDictID(buf::cdata(_trained_dict), buf::size(_trained_dict))),
+        _owned(owned)
+    {
+        NOXCHECK(_id) ;
+    }
+
+    static __noinline iovec_t train(const void *sample_buffer,
+                                    const simple_cslice<size_t> &sample_sizes,
+                                    size_t capacity)
     {
         PCOMN_ENSURE_ARG(sample_buffer) ;
 
@@ -122,7 +136,41 @@ private:
 
         return make_iovec(dict_buf.get(), dict_size) ;
     }
+
+    template<typename T>
+    static iovec_t train_from_strvector(const T &strings, size_t capacity) ;
 } ;
+
+/*******************************************************************************
+ zdict
+*******************************************************************************/
+template<typename T>
+iovec_t zdict::train_from_strvector(const T &strings, size_t capacity)
+{
+    size_t total_size = 0 ;
+    const size_t nempty_count = std::count_if(std::begin(strings), std::end(strings), [&](const auto &s)
+    {
+        const size_t sz = std::size(s) ;
+        total_size += sz ;
+        return sz ;
+    }) ;
+    if (!total_size)
+        return {} ;
+
+    const std::unique_ptr<size_t> buf (new size_t[nempty_count + (total_size+sizeof(size_t)-1)/sizeof(size_t)]) ;
+    size_t *sample_sz = buf.get() ;
+    char *sample_data = (char *)(sample_sz + nempty_count) ;
+
+    for (const auto &s: strings)
+        if (const size_t ssz = std::size(s))
+        {
+            memcpy(sample_data, std::data(s), ssz) ;
+            sample_data += ssz ;
+            *sample_sz++ = ssz ;
+        }
+
+    return train(sample_sz, {buf.get(), sample_sz}, capacity) ;
+}
 
 } // end of namespace pcomn
 
