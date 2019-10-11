@@ -19,11 +19,18 @@
 #include <pcomn_except.h>
 #include <pcomn_buffer.h>
 #include <pcomn_safeptr.h>
+#include <pcomn_handle.h>
 
 #include <memory>
 
+#define ZSTD_STATIC_LINKING_ONLY
 #include <zdict.h>
 #include <zstd.h>
+
+namespace std {
+template<> struct default_delete<ZSTD_CCtx>  { void operator()(ZSTD_CCtx *x) const { ZSTD_freeCCtx(x) ; } } ;
+template<> struct default_delete<ZSTD_CDict> { void operator()(ZSTD_CDict *x) const { ZSTD_freeCDict(x) ; } } ;
+} // end of namespace std
 
 namespace pcomn {
 
@@ -107,6 +114,9 @@ public:
     /// Get the dictionary ID
     unsigned id() const { return _id ; }
 
+    const void *data() const { return buf::cdata(_trained_dict) ; }
+    size_t size() const { return buf::size(_trained_dict) ; }
+
 private:
     const iovec_t  _trained_dict ;
     const unsigned _id ;
@@ -139,6 +149,40 @@ private:
 
     template<typename T>
     static iovec_t train_from_strvector(const T &strings, size_t capacity) ;
+} ;
+
+/***************************************************************************//**
+ ZStandard compression context for dictionary compression.
+*******************************************************************************/
+class zdict_cctx {
+    PCOMN_NONCOPYABLE(zdict_cctx) ;
+    PCOMN_NONASSIGNABLE(zdict_cctx) ;
+public:
+    __noinline
+    zdict_cctx(const zdict &trained_dict, int clevel = 3) :
+        _id(trained_dict.id()),
+        _clevel(clevel),
+        _ctx(ensure_nonzero<std::bad_alloc>(ZSTD_createCCtx())),
+        _dict(ZSTD_createCDict(trained_dict.data(), trained_dict.size(), clevel))
+    {
+        zstd_ensure(ZSTD_compressBegin_usingCDict(ctx(), dict())) ;
+    }
+
+    /// Get the dictionary ID
+    unsigned id() const { return _id ; }
+
+    int compression_level() const { return _clevel ; }
+
+private:
+    const unsigned     _id ;
+    const int          _clevel ;
+
+    const std::unique_ptr<ZSTD_CCtx>  _ctx ;
+    const std::unique_ptr<ZSTD_CDict> _dict ;
+
+private:
+    ZSTD_CCtx *ctx() const { return _ctx.get() ; }
+    ZSTD_CDict *dict() const { return _dict.get() ; }
 } ;
 
 /*******************************************************************************
