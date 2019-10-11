@@ -134,7 +134,7 @@ private:
                                                sample_buffer,
                                                sample_sizes.begin(), sample_sizes.size())) ;
 
-        return make_iovec(dict_buf.get(), dict_size) ;
+        return make_iovec(dict_buf.release(), dict_size) ;
     }
 
     template<typename T>
