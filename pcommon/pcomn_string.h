@@ -479,47 +479,55 @@ template<> struct ws<char> { static const char *spaces() { return " \n\r\t\f\v" 
 template<> struct ws<wchar_t> { static const wchar_t *spaces() { return L" \n\r\t\f\v" ; } } ;
 template<> struct ws<const char> : ws<char> {} ;
 template<> struct ws<const wchar_t> : ws<wchar_t> {} ;
+
+template<typename T, typename U>
+struct enable_if_mutable_stdstr :
+         std::enable_if<(!std::is_const<std::remove_reference_t<T>>() && string_traits<T>::has_std_write), U> {} ;
+
+template<typename T, typename U>
+using enable_if_mutable_stdstr_t = typename enable_if_mutable_stdstr<T,U>::type ;
 } ;
 /// @endcond
 
 template<class S>
-inline std::enable_if_t<string_traits<S>::has_std_write, S &>
-lstrip_inplace(S &s, const typename string_traits<S>::char_type *chrs)
+inline detail::enable_if_mutable_stdstr_t<S, S&&>
+lstrip_inplace(S &&s, const string_char_t<S> *chrs)
 {
-   return s.erase(0, s.find_first_not_of(chrs)) ;
+   return std::forward<S>(s.erase(0, s.find_first_not_of(chrs))) ;
 }
 
 template<class S>
-inline std::enable_if_t<string_traits<S>::has_std_write, S &>
-lstrip_inplace(S &s)
+inline detail::enable_if_mutable_stdstr_t<S, S&&>
+lstrip_inplace(S &&s)
 {
-   return lstrip_inplace(s, detail::ws<typename string_traits<S>::char_type>::spaces()) ;
+   return lstrip_inplace(std::forward<S>(s), detail::ws<string_char_t<S>>::spaces()) ;
 }
 
 template<class S>
-inline std::enable_if_t<string_traits<S>::has_std_write, S &>
-rstrip_inplace(S &s, const typename string_traits<S>::char_type *chrs)
+inline detail::enable_if_mutable_stdstr_t<S, S&&>
+rstrip_inplace(S &&s, const string_char_t<S> *chrs)
 {
-   typename S::size_type last = s.find_last_not_of(chrs) ;
-   if (last == S::npos)
+   auto last = std::forward<S>(s).find_last_not_of(chrs) ;
+   if (last == std::remove_cvref_t<S>::npos)
       last = 0 ;
    else
       ++last ;
-   return s.erase(last) ;
+
+   return std::forward<S>(std::forward<S>(s).erase(last)) ;
 }
 
 template<class S>
-inline std::enable_if_t<string_traits<S>::has_std_write, S &>
-rstrip_inplace(S &s)
+inline detail::enable_if_mutable_stdstr_t<S, S&&>
+rstrip_inplace(S &&s)
 {
-   return rstrip_inplace(s, detail::ws<typename string_traits<S>::char_type>::spaces()) ;
+   return rstrip_inplace(std::forward<S>(s), detail::ws<string_char_t<S>>::spaces()) ;
 }
 
 template<class S>
-inline std::enable_if_t<string_traits<S>::has_std_write, S &>
-strip_inplace(S &s)
+inline detail::enable_if_mutable_stdstr_t<S, S&&>
+strip_inplace(S &&s)
 {
-   return lstrip_inplace(rstrip_inplace(s)) ;
+   return lstrip_inplace(rstrip_inplace(std::forward<S>(s))) ;
 }
 
 /*******************************************************************************

@@ -248,6 +248,17 @@ void StringFunctionTests::Test_Strip_Inplace()
 
    T local_empty ;
 
+   CPPUNIT_LOG_EQUAL(typeid(pcomn::str::lstrip_inplace(local_whitespaces_1)), typeid(T&)) ;
+   CPPUNIT_LOG_EQUAL(typeid(pcomn::str::lstrip_inplace(T(local_whitespaces_1))), typeid(T&&)) ;
+
+   CPPUNIT_LOG_EQUAL(typeid(pcomn::str::rstrip_inplace(local_whitespaces_1)), typeid(T&)) ;
+   CPPUNIT_LOG_EQUAL(typeid(pcomn::str::rstrip_inplace(T(local_whitespaces_1))), typeid(T&&)) ;
+
+   CPPUNIT_LOG_EQUAL(typeid(pcomn::str::strip_inplace(local_whitespaces_1)), typeid(T&)) ;
+   CPPUNIT_LOG_EQUAL(typeid(pcomn::str::strip_inplace(T(local_whitespaces_1))), typeid(T&&)) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
    CPPUNIT_LOG_EQUAL(pcomn::str::lstrip_inplace(local_whitespaces_1),
                      TestData<T>::empty_string) ;
    CPPUNIT_LOG_EQUAL(pcomn::str::rstrip_inplace(local_whitespaces_2),
