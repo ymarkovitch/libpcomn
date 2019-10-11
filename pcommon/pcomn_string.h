@@ -96,16 +96,25 @@ typedef std::vector<std::string> string_vector ;
 template<typename>
 struct string_traits ;
 
+template<typename S>
+using string_char_t = typename string_traits<S>::char_type ;
+
+template<typename S>
+using string_uchar_t = typename string_traits<S>::uchar_type ;
+
+template<typename S>
+using string_size_t = typename string_traits<S>::size_type ;
+
 namespace str {
 
 template<typename S>
-inline constexpr const typename string_traits<S>::char_type *cstr(const S &str)
+inline constexpr const string_char_t<S> *cstr(const S &str)
 {
    return string_traits<S>::cstr(str) ;
 }
 
 template<typename S>
-inline typename string_traits<S>::size_type len(const S &str)
+inline string_size_t<S> len(const S &str)
 {
    return string_traits<S>::len(str) ;
 }
@@ -209,7 +218,6 @@ struct stdstring_traits {
       static const char_type *cstr(const type &s) { return s.c_str() ; }
 } ;
 
-
 /****************************************************************************//**
  String traits for any string with c_str() member.
 
@@ -298,16 +306,14 @@ template<typename S>
 static typename string_traits<S>::type *_is_string(S**) ;
 
 template<typename S, typename C, bool IsStrng> struct
-_is_strchar : public std::false_type {} ;
+_is_strchar : std::false_type {} ;
 template<typename S, typename C> struct
-_is_strchar<S, C, true> : public std::is_same<typename string_traits<S>::char_type, C> {} ;
+_is_strchar<S, C, true> : std::is_same<string_char_t<S>, C> {} ;
 
 template<typename S1, typename S2, bool bothStrings> struct
-_is_compatible_str : public std::false_type {} ;
+_is_compatible_str : std::false_type {} ;
 template<typename S1, typename S2> struct
-_is_compatible_str<S1, S2, true> :
-         public std::is_same<typename string_traits<S1>::char_type,
-                             typename string_traits<S2>::char_type> {} ;
+_is_compatible_str<S1, S2, true> : std::is_same<string_char_t<S1>, string_char_t<S2>> {} ;
 
 } // end of namespace pcomn::detail
 /// @endcond
@@ -363,9 +369,6 @@ using enable_if_other_string_t = typename enable_if_other_string<S, O, T>::type 
 template<typename S1, typename S2, typename T = void>
 using enable_if_compatible_strings_t = typename enable_if_compatible_strings<S1, S2, T>::type ;
 
-template<typename S>
-using string_char_type_t = typename string_traits<S>::char_type ;
-
 /*******************************************************************************
  Specialization of trivially_swappable for std::string, std::vector, std::array
 *******************************************************************************/
@@ -393,26 +396,26 @@ inline std::basic_string<C> stdstr_(const S &str, ::pcomn::string_traits<std::ba
    return std::basic_string<C>(str) ;
 }
 template<typename S>
-inline std::basic_string<typename ::pcomn::string_traits<S>::char_type>
+inline std::basic_string<::pcomn::string_char_t<S>>
 stdstr_(const S &str, void *)
 {
-   return std::basic_string<typename ::pcomn::string_traits<S>::char_type>(cstr(str), len(str)) ;
+   return std::basic_string<::pcomn::string_char_t<S>>(cstr(str), len(str)) ;
 }
 }
 /// @endcond
 
 template<typename S>
-inline std::basic_string<typename ::pcomn::string_traits<S>::char_type>
+inline std::basic_string<::pcomn::string_char_t<S>>
 stdstr(const S &str)
 {
    return detail::stdstr_(str, (::pcomn::string_traits<S> *)NULL) ;
 }
 
 template<typename S>
-inline typename ::pcomn::string_traits<S>::char_type *
+inline ::pcomn::string_char_t<S> *
 strnew(const S &str)
 {
-   typedef typename ::pcomn::string_traits<S>::char_type char_type ;
+   typedef ::pcomn::string_char_t<S> char_type ;
    const char_type *src = cstr(str) ;
    if (!src)
       return NULL ;
@@ -424,7 +427,7 @@ strnew(const S &str)
 }
 
 template<typename S>
-inline typename ::pcomn::enable_if_string<S, bool>::type is_empty(const S &str)
+inline typename ::pcomn::enable_if_string_t<S, bool> is_empty(const S &str)
 {
    return !len(str) ;
 }
@@ -433,7 +436,7 @@ template<typename T, typename U>
 inline std::enable_if_t<pcomn::is_compatible_strings<T, U>::value, bool>
 is_equal(const T &lhs, const U &rhs)
 {
-   typedef typename pcomn::string_traits<T>::char_type char_type ;
+   typedef pcomn::string_char_t<T> char_type ;
    const char_type * const lc = pcomn::str::cstr(lhs) ;
    const char_type * const rc = pcomn::str::cstr(rhs) ;
    size_t length ;
@@ -449,7 +452,7 @@ startswith(const T &lhs, const U &rhs)
    const size_t rsz = len(rhs) ;
    if (len(lhs) < rsz)
       return false ;
-   const typename pcomn::string_traits<U>::char_type * const rc = pcomn::str::cstr(rhs) ;
+   const pcomn::string_char_t<U> * const rc = pcomn::str::cstr(rhs) ;
    return std::equal(rc, rc + rsz, cstr(lhs)) ;
 }
 
@@ -461,7 +464,7 @@ endswith(const T &lhs, const U &rhs)
    const size_t rsz = len(rhs) ;
    if (lsz < rsz)
       return false ;
-   const typename pcomn::string_traits<U>::char_type * const rc = pcomn::str::cstr(rhs) ;
+   const pcomn::string_char_t<U> * const rc = pcomn::str::cstr(rhs) ;
    return std::equal(rc, rc + rsz, cstr(lhs) + (lsz - rsz)) ;
 }
 
@@ -564,7 +567,7 @@ template<typename S>
 inline S &&to_lower_inplace(S &&s, size_t offs = 0,
                             enable_if_string_t<std::remove_reference_t<S>, size_t> size = std::string::npos)
 {
-   convert_inplace(std::forward<S>(s), ctype_traits<typename string_traits<S>::char_type>::tolower, offs, size) ;
+   convert_inplace(std::forward<S>(s), ctype_traits<string_char_t<S>>::tolower, offs, size) ;
    return std::forward<S>(s) ;
 }
 
@@ -579,7 +582,7 @@ template<typename S>
 inline S &&to_upper_inplace(S &&s, size_t offs = 0,
                             enable_if_string_t<std::remove_reference_t<S>, size_t> size = std::string::npos)
 {
-   convert_inplace(std::forward<S>(s), ctype_traits<typename string_traits<S>::char_type>::toupper, offs, size) ;
+   convert_inplace(std::forward<S>(s), ctype_traits<string_char_t<S>>::toupper, offs, size) ;
    return std::forward<S>(s) ;
 }
 
@@ -657,25 +660,19 @@ template<size_t n> const wchar_t emptystr<wchar_t[n]>::value[n] = L"" ;
 /// @param c         The character to find
 /// @param from_pos  The position in @a s to start search
 template<typename S>
-inline typename std::enable_if
-<string_traits<S>::has_std_read,
- ssize_t>::type stringchr(const S &s,
-                          typename string_traits<S>::char_type c,
-                          typename string_traits<S>::size_type from_pos = 0)
+inline std::enable_if_t<string_traits<S>::has_std_read, ssize_t>
+stringchr(const S &s, string_char_t<S> c, string_size_t<S> from_pos = 0)
 {
    return s.find(c, from_pos) ;
 }
 
 template<typename S>
-inline typename disable_if
-<string_traits<S>::has_std_read,
- ssize_t>::type stringchr(const S &s,
-                          typename string_traits<S>::char_type c,
-                          typename string_traits<S>::size_type from_pos = 0)
+inline disable_if_t<string_traits<S>::has_std_read, ssize_t>
+stringchr(const S &s, string_char_t<S> c, string_size_t<S> from_pos = 0)
 {
-   typedef typename string_traits<S>::size_type size_type ;
-   typedef typename string_traits<S>::char_type char_type ;
-   const size_type length = str::len(s) ;
+   typedef string_char_t<S> char_type ;
+
+   const string_size_t<S> length = str::len(s) ;
    if (from_pos >= length) return -1 ;
    const char_type * const begin = str::cstr(s) ;
    const char_type * const cptr =
