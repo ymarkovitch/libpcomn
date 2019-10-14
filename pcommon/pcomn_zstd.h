@@ -12,18 +12,15 @@
 *******************************************************************************/
 /** @file
 *******************************************************************************/
-#include <pcomn_utils.h>
 #include <pcomn_strslice.h>
 #include <pcomn_vector.h>
 #include <pcomn_meta.h>
 #include <pcomn_except.h>
 #include <pcomn_buffer.h>
 #include <pcomn_safeptr.h>
-#include <pcomn_handle.h>
 
 #include <memory>
 
-#define ZSTD_STATIC_LINKING_ONLY
 #include <zdict.h>
 #include <zstd.h>
 
@@ -97,13 +94,8 @@ public:
         _owned(true)
     {}
 
-    zdict(const simple_cslice<std::string> &strings, size_t capacity) :
-        zdict(train_from_strvector(strings, capacity), true, instantiate)
-    {}
-
-    zdict(const simple_cslice<strslice> &strings, size_t capacity) :
-        zdict(train_from_strvector(strings, capacity), true, instantiate)
-    {}
+    zdict(const simple_cslice<std::string> &strings, size_t capacity) ;
+    zdict(const simple_cslice<strslice> &strings, size_t capacity) ;
 
     ~zdict()
     {
@@ -132,20 +124,9 @@ private:
         NOXCHECK(_id) ;
     }
 
-    static __noinline iovec_t train(const void *sample_buffer,
-                                    const simple_cslice<size_t> &sample_sizes,
-                                    size_t capacity)
-    {
-        PCOMN_ENSURE_ARG(sample_buffer) ;
-
-        std::unique_ptr<char[]> dict_buf (new char[capacity]) ;
-        const size_t dict_size =
-            zdict_ensure(ZDICT_trainFromBuffer(dict_buf.get(), capacity,
-                                               sample_buffer,
-                                               sample_sizes.begin(), sample_sizes.size())) ;
-
-        return make_iovec(dict_buf.release(), dict_size) ;
-    }
+    static iovec_t train(const void *sample_buffer,
+                         const simple_cslice<size_t> &sample_sizes,
+                         size_t capacity) ;
 
     template<typename T>
     static iovec_t train_from_strvector(const T &strings, size_t capacity) ;
@@ -158,15 +139,7 @@ class zdict_cctx {
     PCOMN_NONCOPYABLE(zdict_cctx) ;
     PCOMN_NONASSIGNABLE(zdict_cctx) ;
 public:
-    __noinline
-    zdict_cctx(const zdict &trained_dict, int clevel = 3) :
-        _id(trained_dict.id()),
-        _clevel(clevel),
-        _ctx(ensure_nonzero<std::bad_alloc>(ZSTD_createCCtx())),
-        _dict(ZSTD_createCDict(trained_dict.data(), trained_dict.size(), clevel))
-    {
-        zstd_ensure(ZSTD_compressBegin_usingCDict(ctx(), dict())) ;
-    }
+    zdict_cctx(const zdict &trained_dict, int clevel) ;
 
     /// Get the dictionary ID
     unsigned id() const { return _id ; }
@@ -184,37 +157,6 @@ private:
     ZSTD_CCtx *ctx() const { return _ctx.get() ; }
     ZSTD_CDict *dict() const { return _dict.get() ; }
 } ;
-
-/*******************************************************************************
- zdict
-*******************************************************************************/
-template<typename T>
-iovec_t zdict::train_from_strvector(const T &strings, size_t capacity)
-{
-    size_t total_size = 0 ;
-    const size_t nempty_count = std::count_if(std::begin(strings), std::end(strings), [&](const auto &s)
-    {
-        const size_t sz = std::size(s) ;
-        total_size += sz ;
-        return sz ;
-    }) ;
-    if (!total_size)
-        return {} ;
-
-    const std::unique_ptr<size_t> buf (new size_t[nempty_count + (total_size+sizeof(size_t)-1)/sizeof(size_t)]) ;
-    size_t *sample_sz = buf.get() ;
-    char *sample_data = (char *)(sample_sz + nempty_count) ;
-
-    for (const auto &s: strings)
-        if (const size_t ssz = std::size(s))
-        {
-            memcpy(sample_data, std::data(s), ssz) ;
-            sample_data += ssz ;
-            *sample_sz++ = ssz ;
-        }
-
-    return train(sample_sz, {buf.get(), sample_sz}, capacity) ;
-}
 
 } // end of namespace pcomn
 

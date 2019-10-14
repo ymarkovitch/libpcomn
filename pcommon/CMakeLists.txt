@@ -47,6 +47,8 @@ else()
     set(COMPILER_GCCLIKE 0)
 endif()
 
+set(ZSTD_USE_STATIC_LIBS YES)
+
 find_dependency(ZSTD 1.4.3)
 find_dependency(ZLIB REQUIRED)
 if (UNIX)
@@ -147,6 +149,7 @@ add_library(pcommon STATIC
 
   $<$<NOT:$<PLATFORM_ID:Windows>>:
   pcomn_crypthash
+  $<$<BOOL:${ZSTD_FOUND}>:pcomn_zstd.cpp>
   unix/pcomn_posix_exec.cpp
   unix/pcomn_shutil.cpp
   unix/pcomn_sys.cpp
