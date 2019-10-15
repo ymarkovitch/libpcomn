@@ -41,7 +41,7 @@ typedef pcomn::simple_vector<std::string> str_vec ;
 typedef std::vector<int> int_vector ;
 
 /*******************************************************************************
- DirectSmartPtrTests
+ SimpleVectorTests
 *******************************************************************************/
 void SimpleVectorTests::Test_Simple_Slice_Construct()
 {
