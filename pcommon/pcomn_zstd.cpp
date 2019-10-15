@@ -31,7 +31,7 @@ iovec_t zdict::train(const void *sample_buffer, const simple_cslice<size_t> &sam
 
     std::unique_ptr<char[]> dict_buf (new char[capacity]) ;
     const size_t dict_size =
-        zdict_ensure(ZDICT_trainFromBuffer(dict_buf.get(), capacity,
+        ensure_zdict(ZDICT_trainFromBuffer(dict_buf.get(), capacity,
                                            sample_buffer,
                                            sample_sizes.begin(), sample_sizes.size())) ;
 
@@ -75,7 +75,14 @@ zdict_cctx::zdict_cctx(const zdict &trained_dict, int clevel) :
     _ctx(ensure_nonzero<std::bad_alloc>(ZSTD_createCCtx())),
     _dict(ZSTD_createCDict(trained_dict.data(), trained_dict.size(), clevel))
 {
-    zstd_ensure(ZSTD_compressBegin_usingCDict(ctx(), dict())) ;
+    ensure_zstd(ZSTD_compressBegin_usingCDict(ctx(), dict())) ;
+}
+
+size_t zdict_cctx::compress_raw_block(void *dst, size_t dstsize,
+                                      const void *src, size_t srcsize) const
+{
+    return ensure_zstd
+        (ZSTD_compressBlock(ctx(), dst, dstsize, src, srcsize)) ;
 }
 
 } // end of namespace pcomn

@@ -17,19 +17,23 @@
 #include <pcomn_meta.h>
 #include <pcomn_except.h>
 #include <pcomn_buffer.h>
-#include <pcomn_safeptr.h>
 
 #include <memory>
 
 #include <zdict.h>
 #include <zstd.h>
 
-namespace std {
-template<> struct default_delete<ZSTD_CCtx>  { void operator()(ZSTD_CCtx *x) const { ZSTD_freeCCtx(x) ; } } ;
-template<> struct default_delete<ZSTD_CDict> { void operator()(ZSTD_CDict *x) const { ZSTD_freeCDict(x) ; } } ;
-} // end of namespace std
-
 namespace pcomn {
+
+template<typename T> struct zstd_free ;
+
+template<typename T>
+using zstd_handle = std::unique_ptr<T, zstd_free<T>> ;
+
+template<> struct zstd_free<ZSTD_CCtx>  { void operator()(ZSTD_CCtx *x) const { ZSTD_freeCCtx(x) ; } } ;
+template<> struct zstd_free<ZSTD_DCtx>  { void operator()(ZSTD_DCtx *x) const { ZSTD_freeDCtx(x) ; } } ;
+template<> struct zstd_free<ZSTD_CDict> { void operator()(ZSTD_CDict *x) const { ZSTD_freeCDict(x) ; } } ;
+template<> struct zstd_free<ZSTD_DDict> { void operator()(ZSTD_DDict *x) const { ZSTD_freeDDict(x) ; } } ;
 
 /***************************************************************************//**
   Base ZSTD exception to indicate ZSTD API errors.
@@ -54,7 +58,7 @@ public:
 *******************************************************************************/
 /// Ensure the result of ZSTD compression/decompression API is not an error.
 /// If @a retval is an error code, throw zstd_error, otherwise return it unchanged.
-inline size_t zstd_ensure(size_t retval)
+inline size_t ensure_zstd(size_t retval)
 {
     PCOMN_THROW_IF(ZSTD_isError(retval), zstd_error, "%s", ZSTD_getErrorName(retval)) ;
     return retval ;
@@ -62,7 +66,7 @@ inline size_t zstd_ensure(size_t retval)
 
 /// Ensure the result of ZDICT dictionary API is not an error.
 /// If @a retval is an error code, throw zdict_error, otherwise return it unchanged.
-inline size_t zdict_ensure(size_t retval)
+inline size_t ensure_zdict(size_t retval)
 {
     PCOMN_THROW_IF(ZDICT_isError(retval), zdict_error, "%s", ZDICT_getErrorName(retval)) ;
     return retval ;
@@ -139,23 +143,59 @@ class zdict_cctx {
     PCOMN_NONCOPYABLE(zdict_cctx) ;
     PCOMN_NONASSIGNABLE(zdict_cctx) ;
 public:
-    zdict_cctx(const zdict &trained_dict, int clevel) ;
+    zdict_cctx(const zdict &trained_dict, int clevel = 3) ;
 
     /// Get the dictionary ID
     unsigned id() const { return _id ; }
 
     int compression_level() const { return _clevel ; }
 
-private:
-    const unsigned     _id ;
-    const int          _clevel ;
+    template<typename T>
+    auto compress_frame(T &&src_data, const iovec_t &dest_buf) const
+        -> type_t<decltype(buf::size(src_data)),
+                  decltype(std::data(std::forward<T>(src_data)))>
+    {
+        return ensure_zstd
+            (ZSTD_compress_usingCDict(ctx(),
+                                      std::data(dest_buf), buf::size(dest_buf),
+                                      std::data(std::forward<T>(src_data)), buf::size(std::forward<T>(src_data)),
+                                      dict())) ;
+    }
 
-    const std::unique_ptr<ZSTD_CCtx>  _ctx ;
-    const std::unique_ptr<ZSTD_CDict> _dict ;
+    template<typename T>
+    auto compress_frame_nodict(T &&src_data, const iovec_t &dest_buf) const
+        -> type_t<decltype(buf::size(src_data)),
+                  decltype(std::data(std::forward<T>(src_data)))>
+    {
+        return ensure_zstd
+            (ZSTD_compressCCtx(ctx(),
+                               std::data(dest_buf), buf::size(dest_buf),
+                               std::data(std::forward<T>(src_data)), buf::size(std::forward<T>(src_data)),
+                               _clevel)) ;
+    }
+
+    template<typename T>
+    auto compress_block(T &&src_data, const iovec_t &dest_buf) const
+        -> type_t<decltype(buf::size(src_data)),
+                  decltype(std::data(std::forward<T>(src_data)))>
+    {
+        return compress_raw_block(std::data(dest_buf), buf::size(dest_buf),
+                                  std::data(std::forward<T>(src_data)), buf::size(std::forward<T>(src_data))) ;
+    }
+
+private:
+    const unsigned  _id ;
+    const int       _clevel ;
+
+    const zstd_handle<ZSTD_CCtx>  _ctx ;
+    const zstd_handle<ZSTD_CDict> _dict ;
 
 private:
     ZSTD_CCtx *ctx() const { return _ctx.get() ; }
     ZSTD_CDict *dict() const { return _dict.get() ; }
+
+    size_t compress_raw_block(void *dst, size_t dstsize,
+                              const void *src, size_t srcsize) const ;
 } ;
 
 } // end of namespace pcomn
