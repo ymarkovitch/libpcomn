@@ -73,7 +73,7 @@ zdict_cctx::zdict_cctx(const zdict &trained_dict, int clevel) :
     _id(trained_dict.id()),
     _clevel(clevel),
     _ctx(ensure_nonzero<std::bad_alloc>(ZSTD_createCCtx())),
-    _dict(ZSTD_createCDict(trained_dict.data(), trained_dict.size(), clevel))
+    _dict(trained_dict.cdict(clevel))
 {
     ensure_zstd(ZSTD_compressBegin_usingCDict(ctx(), dict())) ;
 }

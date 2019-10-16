@@ -113,6 +113,16 @@ public:
     const void *data() const { return buf::cdata(_trained_dict) ; }
     size_t size() const { return buf::size(_trained_dict) ; }
 
+    zstd_handle<ZSTD_CDict> cdict(int clevel = 3) const
+    {
+        return {ZSTD_createCDict(data(), size(), clevel), {}} ;
+    }
+
+    zstd_handle<ZSTD_DDict> ddict() const
+    {
+        return {ZSTD_createDDict(data(), size()), {}} ;
+    }
+
 private:
     const iovec_t  _trained_dict ;
     const unsigned _id ;
