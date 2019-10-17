@@ -74,13 +74,12 @@ zdict_cctx::zdict_cctx(const zdict &trained_dict, int clevel) :
     _clevel(clevel),
     _ctx(ensure_nonzero<std::bad_alloc>(ZSTD_createCCtx())),
     _dict(trained_dict.cdict(clevel))
-{
-    ensure_zstd(ZSTD_compressBegin_usingCDict(ctx(), dict())) ;
-}
+{}
 
 size_t zdict_cctx::compress_raw_block(void *dst, size_t dstsize,
                                       const void *src, size_t srcsize) const
 {
+    ensure_zstd(ZSTD_compressBegin_usingCDict(ctx(), dict())) ;
     return ensure_zstd
         (ZSTD_compressBlock(ctx(), dst, dstsize, src, srcsize)) ;
 }
