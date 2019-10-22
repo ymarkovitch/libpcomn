@@ -128,6 +128,8 @@ public:
     constexpr ipv4_addr prev() const { return ipv4_addr(ipaddr() - 1) ; }
     static constexpr ipv4_addr last() { return ipv4_addr((uint32_t)~0) ; }
 
+    constexpr ipv4_addr operator&(uint32_t mask) const { return ipv4_addr(ipaddr() & mask) ; }
+
     /// Get a hostname for the address.
     /// @throw nothing
     std::string hostname() const;
@@ -236,7 +238,8 @@ public:
 
     operator ipv4_addr() const { return _addr ; }
 
-    ipv4_subnet subnet() const { return ipv4_subnet(addr().ipaddr() & netmask(), pfxlen()) ; }
+    ipv4_addr subnet_addr() const { return addr() & netmask() ; }
+    ipv4_subnet subnet() const { return ipv4_subnet(subnet_addr(), pfxlen()) ; }
 
     /// Get subnet prefix length
     constexpr unsigned pfxlen() const { return _pfxlen ; }
@@ -255,7 +258,7 @@ public:
     ///
     unipair<ipv4_addr> addr_range() const
     {
-        const uint32_t first = addr().ipaddr() & netmask() ;
+        const uint32_t first = subnet_addr().ipaddr() ;
         const uint32_t last =  uint32_t(first + (0x100000000ULL >> pfxlen()) - 1) ;
         return {ipv4_addr(first), ipv4_addr(last)} ;
     }
