@@ -56,7 +56,7 @@ private:
 
     static const node_type *child(const node_type *node, size_t n)
     {
-        NOXCHECK(n < bitop::bitcount(children_bits(*n))) ;
+        NOXCHECK(n < bitop::bitcount(children_bits(*node))) ;
         return node + uint32_t(std::get<2>(*node)) + n ;
     }
 
@@ -109,12 +109,15 @@ unsigned bittuple<6,binary128_t>(binary128_t v, unsigned basepos, unsigned ndx)
 {
     const unsigned startpos = basepos + 6U*ndx ;
     NOXCHECK(startpos <= 127) ;
-    const uint8_t msb = startpos/8 ;
-    const uint8_t lsb = (startpos + 5)/8 ;
+    const uint8_t msb_ndx = startpos/8 ;
+    const uint8_t lsb_ndx = (startpos + 5)/8 ;
 
-    if (lsb >= sizeof(v))
-        return ((v.octet(msb) << (startpos - 120)) & 0xfc) >> 2U ;
-    return {} ;
+    if (lsb_ndx >= sizeof(v))
+        return ((v.octet(msb_ndx) << (startpos - 120)) & 0xfc) >> 2U ;
+
+    const uint16_t word = (v.octet(msb_ndx) << 8) | v.octet(lsb_ndx) ;
+
+    return word >> (8*msb_ndx + 16 - 6 - startpos) ;
 }
 /**}@*/
 
