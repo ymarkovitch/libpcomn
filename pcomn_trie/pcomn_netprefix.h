@@ -42,23 +42,34 @@ public:
     unsigned count(ipv4_addr addr) const { return is_member(addr) ; }
 
 private:
-    // {descendant_array,leaf_array}
-    typedef triple<uint64_t> node_type ;
+    // {{descendant_array,leaves_array}, {subnodes_begin,}}
+    struct node_type : std::pair<std::array<uint64_t,2>, unipair<uint32_t>> {
 
-    static constexpr uint64_t children_bits(const node_type &node)
-    {
-        return std::get<0>(node) ;
-    }
-    static constexpr uint64_t leaves_bits(const node_type &node)
-    {
-        return std::get<1>(node) ;
-    }
+        constexpr uint64_t children_bits() const { return _children[0] ; }
+        constexpr uint64_t leaves_bits() const { return _children[1] ; }
 
-    static const node_type *child(const node_type *node, size_t n)
-    {
-        NOXCHECK(n < bitop::bitcount(children_bits(*node))) ;
-        return node + uint32_t(std::get<2>(*node)) + n ;
-    }
+        const node_type *child(size_t n) const
+        {
+            NOXCHECK(n < bitop::bitcount(children_bits())) ;
+            NOXCHECK(_first_child_offs) ;
+
+            return this + _first_child_offs + n ;
+        }
+
+        node_type *child_at_compilation_stage(size_t n)
+        {
+            node_type *head = const_cast<node_type *>(child(0)) ;
+            while(n--)
+                head += head->_next_node_offs ;
+            return head ;
+        }
+
+        void set_leaves(uint64_t bits) { _children[1] = bits ; }
+
+        uint64_t _children[2] ;      /* Bitarrays for child nodes and leaves */
+        uint32_t _first_child_offs ;
+        uint32_t _next_node_offs ;   /* Relevant only to compilation stage */
+    } ;
 
 private:
     std::vector<node_type> _nodes ;
@@ -67,9 +78,10 @@ private:
     shortest_netprefix_set(std::true_type, std::vector<ipv4_subnet> &&data) ;
 
     std::vector<ipv4_subnet> &prepare_source_data(std::vector<ipv4_subnet> &) ;
-    std::vector<node_type> compile_nodes(const simple_slice<ipv4_subnet> &) ;
-    std::vector<node_type> pack_nodes(const simple_slice<node_type> &) ;
+    void compile_nodes(const simple_slice<ipv4_subnet> &) ;
+    void pack_nodes() ;
 
+    node_type *append_node(node_type *current_node, uint8_t hexad, bool is_leaf) ;
 } ;
 
 /*******************************************************************************

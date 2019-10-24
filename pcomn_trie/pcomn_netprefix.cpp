@@ -16,12 +16,10 @@ namespace pcomn {
 /*******************************************************************************
  shortest_netprefix_set
 *******************************************************************************/
-typedef triple<uint64_t> shortest_netprefix_node ;
-
-shortest_netprefix_set::shortest_netprefix_set(std::true_type, std::vector<ipv4_subnet> &&data) :
-    _nodes(pack_nodes(compile_nodes(prepare_source_data(data))))
+shortest_netprefix_set::shortest_netprefix_set(std::true_type, std::vector<ipv4_subnet> &&data)
 {
-    PCOMN_STATIC_CHECK((std::is_same_v<node_type, shortest_netprefix_node>)) ;
+    compile_nodes(prepare_source_data(data)) ;
+    pack_nodes() ;
 }
 
 std::vector<ipv4_subnet> &shortest_netprefix_set::prepare_source_data(std::vector<ipv4_subnet> &v)
@@ -39,34 +37,67 @@ std::vector<ipv4_subnet> &shortest_netprefix_set::prepare_source_data(std::vecto
     return v ;
 }
 
-static inline const shortest_netprefix_node *unpacked_next(const shortest_netprefix_node *node)
+shortest_netprefix_set::node_type *
+shortest_netprefix_set::append_node(node_type *current_node, uint8_t hexad, bool is_leaf)
 {
-    const uint32_t v = std::get<2>(*node) >> 32 ;
-    NOXCHECK(v) ;
-    return node + (v - 1) ;
+    NOXCHECK(hexad < 64) ;
+    const uint64_t node_bit = 1ULL << hexad ;
+
+    // The bit must be unset
+    NOXCHECK((current_node->children_bits()|current_node->leaves_bits()) < node_bit) ;
+
+    current_node->_children[is_leaf] |= node_bit ;
+
+    if (is_leaf)
+        return current_node ;
+
+    NOXCHECK(inrange(current_node, pbegin(_nodes), pend(_nodes))) ;
+
+    const unsigned current_node_ndx = current_node - pbegin(_nodes) ;
+
+    node_type *new_node = &extend_container(_nodes, 1).back() ;
+    current_node = _nodes.data() + current_node_ndx ;
+
+    const unsigned new_node_offs = new_node - current_node ;
+
+    if (!current_node->_first_child_offs)
+        current_node
+            ->_first_child_offs = new_node_offs ;
+    else
+        current_node
+            ->child_at_compilation_stage(bitop::bitcount(current_node->children_bits()))
+            ->_next_node_offs = new_node_offs ;
+
+    return new_node ;
 }
 
-static inline shortest_netprefix_node *append_child_bit(shortest_netprefix_node *node, unsigned n)
-{
-    NOXCHECK(n < 64) ;
-
-    const uint64_t child_bit = 1ULL << n ;
-    uint64_t &cbits = std::get<0>(*node) ;
-
-    NOXCHECK(!(cbits & (-child_bit & child_bit))) ;
-
-    cbits |= child_bit ;
-    return node ;
-}
-
-std::vector<shortest_netprefix_set::node_type>
-shortest_netprefix_set::compile_nodes(const simple_slice<ipv4_subnet> &source)
+void shortest_netprefix_set::compile_nodes(const simple_slice<ipv4_subnet> &source)
 {
     if (source.empty())
-        return {} ;
+        return ;
 
-    std::vector<node_type> result ;
-    return result ;
+    _nodes.resize(1) ;
+    if (!source.front().pfxlen())
+    {
+        // "Star" or "any" subnet: all the leaves are set to 1 at the zero level (all the
+        // addresses will match).
+        _nodes.front().set_leaves(~uint64_t()) ;
+        return ;
+    }
+
+    node_type *node = _nodes.data() ;
+    for (const ipv4_subnet &v: source)
+    {
+        NOXCHECK(v.pfxlen()) ;
+
+        const unsigned leaf_level = (v.pfxlen() - 1)/6 ;
+        const auto addr = v.subnet_addr().ipaddr() ;
+
+        for (unsigned level = 0 ; level <= leaf_level ; ++level)
+        {
+            node = append_node(node, bittuple<6>(addr, level), level == leaf_level) ;
+        }
+    }
 }
 
 } // end of namespace pcomn
