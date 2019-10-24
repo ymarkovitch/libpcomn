@@ -75,49 +75,71 @@ private:
 /*******************************************************************************
  Global functions
 *******************************************************************************/
+namespace detail {
+template<typename T, unsigned count>
+struct bittuple_extract {
+    static constexpr unsigned bitsize() { return sizeof(T)*8 ; }
+    PCOMN_STATIC_CHECK(is_integer<T>::value && count && count < bitsize()) ;
+
+    typedef unsigned type ;
+
+    static unsigned extract(T v, unsigned ndx, unsigned basepos)
+    {
+        typedef std::make_unsigned_t<T> mask_type ;
+
+        static constexpr unsigned rbitsize = (bitsize() - count) ;
+        static constexpr mask_type mask = ~(uint64_t(-1LL) << count) << rbitsize ;
+
+        const unsigned startpos = basepos + count*ndx ;
+        NOXCHECK(startpos < bitsize()) ;
+        return mask_type((v << startpos) & mask) >> rbitsize ;
+    }
+} ;
+
+template<unsigned count>
+struct bittuple_extract<binary128_t, count> {
+    PCOMN_STATIC_CHECK(count && count < 8) ;
+
+    typedef unsigned type ;
+
+    static unsigned extract(const binary128_t &v, unsigned ndx, unsigned basepos)
+    {
+        static constexpr unsigned rbitsize = 8 - count ;
+        static constexpr unsigned mask = 0xffu >> rbitsize ;
+
+        const unsigned startpos = basepos + count*ndx ;
+        NOXCHECK(startpos <= 127) ;
+        const uint8_t msb_ndx = startpos/8 ;
+        const uint8_t lsb_ndx = (startpos + (count - 1))/8 ;
+
+        if (lsb_ndx >= sizeof(v))
+            return uint8_t(v.octet(msb_ndx) << (startpos - (126 - count))) >> rbitsize ;
+
+        const uint16_t word = (v.octet(msb_ndx) << 8) | v.octet(lsb_ndx) ;
+
+        return (word >> (8*msb_ndx + (16 - count) - startpos)) & mask ;
+    }
+} ;
+
+template<typename T, unsigned count>
+using bittuple_extract_t = typename bittuple_extract<T, count>::type ;
+
+} // end of namespace pcomn::detail
+
 /// The family of functions to extract n-bit chunks from 32-bit, 64-bit, and 128-bit
 /// values.
 /// Facilitate implementation of various tries (prefix trees): critbit, poptrie, qp-trie.
 /**{@*/
 template<unsigned count, typename T>
-unsigned bittuple(T value, unsigned basepos, unsigned ndx) ;
+inline detail::bittuple_extract_t<T, count> bittuple(T value, unsigned ndx, unsigned basepos)
+{
+    return detail::bittuple_extract<T, count>::extract(value, ndx, basepos) ;
+}
 
 template<unsigned count, typename T>
-inline unsigned bittuple(T value, unsigned ndx)
+inline detail::bittuple_extract_t<T, count> bittuple(T value, unsigned ndx)
 {
-    return bittuple<count,T>(value, 0, ndx) ;
-}
-
-template<> inline
-unsigned bittuple<6,uint32_t>(uint32_t v, unsigned basepos, unsigned ndx)
-{
-    const unsigned startpos = basepos + 6U*ndx ;
-    NOXCHECK(startpos <= 31) ;
-    return ((v << startpos) & 0xfc000000U) >> 26U ;
-}
-
-template<> inline
-unsigned bittuple<6,uint64_t>(uint64_t v, unsigned basepos, unsigned ndx)
-{
-    const unsigned startpos = basepos + 6U*ndx ;
-    NOXCHECK(startpos <= 63) ;
-    return ((v << startpos) & 0xfc00000000000000ULL) >> 58U ;
-}
-
-template<> inline
-unsigned bittuple<6,binary128_t>(binary128_t v, unsigned basepos, unsigned ndx)
-{
-    const unsigned startpos = basepos + 6U*ndx ;
-    NOXCHECK(startpos <= 127) ;
-    const uint8_t msb_ndx = startpos/8 ;
-    const uint8_t lsb_ndx = (startpos + 5)/8 ;
-
-    if (lsb_ndx >= sizeof(v))
-        return ((v.octet(msb_ndx) << (startpos - 120)) & 0xfc) >> 2U ;
-
-    const uint16_t word = (v.octet(msb_ndx) << 8) | v.octet(lsb_ndx) ;
-
-    return word >> (8*msb_ndx + 16 - 6 - startpos) ;
+    return bittuple<count>(value, ndx, 0) ;
 }
 /**}@*/
 
