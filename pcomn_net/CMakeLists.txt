@@ -8,7 +8,7 @@
 # PROGRAMMED BY:  Yakov Markovitch
 # CREATION DATE:  8 Sep 2014
 #------------------------------------------------------------------------------
-cmake_minimum_required(VERSION 3.5.0)
+cmake_minimum_required(VERSION 3.12)
 
 add_library(pcomn_net STATIC netsockets.cpp)
 

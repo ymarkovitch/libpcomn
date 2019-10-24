@@ -8,7 +8,7 @@
 # PROGRAMMED BY:  Yakov Markovitch
 # CREATION DATE:  21 Oct 2019
 #------------------------------------------------------------------------------
-cmake_minimum_required(VERSION 3.12.0)
+cmake_minimum_required(VERSION 3.12)
 
 project(libpcomn_trie)
 
