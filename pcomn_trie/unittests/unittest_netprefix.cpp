@@ -114,6 +114,37 @@ void ShortestNetPrefixSetTests::Test_BitTupleSelect()
 
 void ShortestNetPrefixSetTests::Test_ShortestNetPrefixSet_Build()
 {
+    shortest_netprefix_set empty_set ;
+    CPPUNIT_LOG_EQ(empty_set.depth(), 0) ;
+    CPPUNIT_LOG_EQ(empty_set.nodes_count(), 0) ;
+
+    shortest_netprefix_set any_set ({{ipv4_addr::localhost(), 0}}) ;
+    CPPUNIT_LOG_EQ(any_set.depth(), 1) ;
+    CPPUNIT_LOG_EQ(any_set.nodes_count(), 1) ;
+
+    shortest_netprefix_set one_set ({{"8.0.0.1/6"}}) ;
+    CPPUNIT_LOG_EQ(one_set.depth(), 1) ;
+    CPPUNIT_LOG_EQ(one_set.nodes_count(), 1) ;
+
+    shortest_netprefix_set two_set ({{"128.0.0.1/4"}, {"8.0.0.1/6"}}) ;
+    CPPUNIT_LOG_EQ(two_set.depth(), 1) ;
+    CPPUNIT_LOG_EQ(two_set.nodes_count(), 1) ;
+
+    shortest_netprefix_set localhost_set ({{ipv4_addr::localhost(), 24}}) ;
+    CPPUNIT_LOG_EQ(localhost_set.depth(), 4) ;
+    CPPUNIT_LOG_EQ(localhost_set.nodes_count(), 4) ;
+
+    shortest_netprefix_set one_child_set ({{"128.0.0.1/4"}, {"10.0.0.1/8"}}) ;
+    CPPUNIT_LOG_EQ(one_child_set.depth(), 2) ;
+    CPPUNIT_LOG_EQ(one_child_set.nodes_count(), 2) ;
+
+    shortest_netprefix_set private_set({{"127.0.0.1/24"},
+                                        {"10.0.0.1/8"},
+                                        {"172.16.0.1/12"},
+                                        {"192.168.0.0/16"}}) ;
+
+    CPPUNIT_LOG_EQ(private_set.depth(), 4) ;
+    CPPUNIT_LOG_EQ(private_set.nodes_count(), 8) ;
 }
 
 int main(int argc, char *argv[])

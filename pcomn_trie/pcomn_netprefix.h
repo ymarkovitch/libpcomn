@@ -29,7 +29,7 @@ namespace pcomn {
 *******************************************************************************/
 class shortest_netprefix_set {
 public:
-    shortest_netprefix_set(const ipv4_subnet *begin, const ipv4_subnet *end) ;
+    explicit shortest_netprefix_set(const simple_cslice<ipv4_subnet> &subnets) ;
 
     shortest_netprefix_set() = default ;
 
@@ -46,6 +46,15 @@ public:
 
     /// STL set<> interface.
     unsigned count(ipv4_addr addr) const { return is_member(addr) ; }
+
+    /// Get nodes count
+    size_t nodes_count() const
+    {
+        return _nodes.size() + (_root == &_anymatch_root) ;
+    }
+
+    /// Get trie depth.
+    size_t depth() const { return _depth ; }
 
 private:
     // {{descendant_array,leaves_array}, {subnodes_begin,}}

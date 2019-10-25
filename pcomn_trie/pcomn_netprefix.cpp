@@ -23,6 +23,10 @@ static constexpr size_t trie_maxdepth = (256+5)/6 ;
 const shortest_netprefix_set::node_type shortest_netprefix_set::_nomatch_root ;
 const shortest_netprefix_set::node_type shortest_netprefix_set::_anymatch_root (~uint64_t()) ;
 
+shortest_netprefix_set::shortest_netprefix_set(const simple_cslice<ipv4_subnet> &subnets) :
+    shortest_netprefix_set(std::true_type(), std::vector<ipv4_subnet>(subnets.begin(), subnets.end()))
+{}
+
 shortest_netprefix_set::shortest_netprefix_set(std::true_type, std::vector<ipv4_subnet> &&data) :
     _depth(pack_nodes(compile_nodes(prepare_source_data(data), std::array<unsigned,trie_maxdepth>().data()))),
 
@@ -75,18 +79,19 @@ shortest_netprefix_set::append_node(node_type *current_node, uint8_t hexad, bool
 
     const unsigned current_node_ndx = current_node - pbegin(_nodes) ;
 
-    node_type *new_node = &extend_container(_nodes, 1).back() ;
+    node_type * const new_node = &extend_container(_nodes, 1).back() ;
     current_node = _nodes.data() + current_node_ndx ;
 
-    const unsigned new_node_offs = new_node - current_node ;
-
     if (!current_node->_first_child_offs)
-        current_node
-            ->_first_child_offs = new_node_offs ;
+    {
+        current_node->_first_child_offs = new_node - current_node ;
+    }
     else
-        current_node
-            ->child_at_compilation_stage(current_node->children_count())
-            ->_next_node_offs = new_node_offs ;
+    {
+        node_type * const last_child =
+            current_node->child_at_compilation_stage(current_node->children_count()) ;
+        last_child->_next_node_offs = new_node - last_child ;
+    }
 
     return new_node ;
 }
@@ -108,14 +113,16 @@ unsigned *shortest_netprefix_set::compile_nodes(const simple_slice<ipv4_subnet> 
         return count_per_level ;
     }
 
+    // Insert the empty root, we'll add all the nodes to it.
     _nodes.resize(1) ;
-
-    node_type *node = _nodes.data() ;
-    unsigned *current_level_count = count_per_level ;
 
     for (const ipv4_subnet &v: source)
     {
         NOXCHECK(v.pfxlen()) ;
+
+        // Start from the root.
+        node_type *node = _nodes.data() ;
+        unsigned *current_level_count = count_per_level ;
 
         const unsigned leaf_level = (v.pfxlen() - 1)/6 ;
         const auto addr = v.subnet_addr().ipaddr() ;
@@ -157,15 +164,19 @@ size_t shortest_netprefix_set::pack_nodes(const unsigned *count_per_level)
     struct {
         void put_node(node_type *srcnode, unsigned *level_offs) const
         {
-            node_type &packed_node = nodes[*level_offs] ;
+            const unsigned this_ndx = *level_offs ;
+            ++*level_offs ;
+
+            node_type &packed_node = nodes[this_ndx] ;
             packed_node = *srcnode ;
             packed_node._next_node_offs = 0 ;
-            ++*level_offs ;
 
             if (srcnode->children_bits())
             {
                 node_type *child = srcnode->child_at_compilation_stage(0) ;
-                packed_node._first_child_offs = *++level_offs ;
+
+                const unsigned packed_child_ndx = *++level_offs ;
+                packed_node._first_child_offs = packed_child_ndx - this_ndx ;
 
                 do put_node(child, level_offs) ;
                 while(child = child->sibling_at_compilation_stage()) ;
