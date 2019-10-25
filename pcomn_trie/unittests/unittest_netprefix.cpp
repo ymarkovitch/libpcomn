@@ -19,10 +19,12 @@ using namespace pcomn ;
 class ShortestNetPrefixSetTests : public CppUnit::TestFixture {
 
       void Test_BitTupleSelect() ;
+      void Test_ShortestNetPrefixSet_Build() ;
 
       CPPUNIT_TEST_SUITE(ShortestNetPrefixSetTests) ;
 
       CPPUNIT_TEST(Test_BitTupleSelect) ;
+      CPPUNIT_TEST(Test_ShortestNetPrefixSet_Build) ;
 
       CPPUNIT_TEST_SUITE_END() ;
 } ;
@@ -108,6 +110,10 @@ void ShortestNetPrefixSetTests::Test_BitTupleSelect()
 
     CPPUNIT_LOG_EQ(bittuple<6>(v128_1, 12), 0b111101) ;
     CPPUNIT_LOG_EQ(bittuple<6>(v128_1, 13), 0b000010) ;
+}
+
+void ShortestNetPrefixSetTests::Test_ShortestNetPrefixSet_Build()
+{
 }
 
 int main(int argc, char *argv[])

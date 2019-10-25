@@ -32,8 +32,14 @@ public:
     shortest_netprefix_set(const ipv4_subnet *begin, const ipv4_subnet *end) ;
 
     shortest_netprefix_set() = default ;
-    shortest_netprefix_set(shortest_netprefix_set&&) = default ;
-    shortest_netprefix_set &operator=(shortest_netprefix_set&&) = default ;
+
+    shortest_netprefix_set(shortest_netprefix_set &&) ;
+
+    shortest_netprefix_set &operator=(shortest_netprefix_set &&other)
+    {
+        std::swap(as_mutable(shortest_netprefix_set()), other) ;
+        return *this ;
+    }
 
     /// Check is an addr starts with any of the prefixes in the set.
     bool is_member(ipv4_addr addr) const ;
@@ -43,10 +49,17 @@ public:
 
 private:
     // {{descendant_array,leaves_array}, {subnodes_begin,}}
-    struct node_type : std::pair<std::array<uint64_t,2>, unipair<uint32_t>> {
+    struct node_type {
+
+        constexpr node_type() = default ;
+        explicit constexpr node_type(uint64_t leavebits) :
+            _children{0, leavebits}
+        {}
 
         constexpr uint64_t children_bits() const { return _children[0] ; }
         constexpr uint64_t leaves_bits() const { return _children[1] ; }
+
+        uint64_t children_count() const { return bitop::bitcount(children_bits()) ; }
 
         const node_type *child(size_t n) const
         {
@@ -64,22 +77,34 @@ private:
             return head ;
         }
 
+        node_type *sibling_at_compilation_stage()
+        {
+            node_type * const next = this + _next_node_offs ;
+            return _next_node_offs ? next : nullptr ;
+        }
+
         void set_leaves(uint64_t bits) { _children[1] = bits ; }
 
-        uint64_t _children[2] ;      /* Bitarrays for child nodes and leaves */
-        uint32_t _first_child_offs ;
-        uint32_t _next_node_offs ;   /* Relevant only to compilation stage */
+        uint64_t _children[2] = {} ;      /* Bitarrays for child nodes and leaves */
+        uint32_t _first_child_offs = 0 ;
+        uint32_t _next_node_offs = 0 ;   /* Relevant only to compilation stage */
     } ;
+
+    static const node_type _nomatch_root ;
+    static const node_type _anymatch_root ;
 
 private:
     std::vector<node_type> _nodes ;
+    size_t                 _depth = 0 ;
+    const node_type *      _root = &_nomatch_root ;
 
 private:
     shortest_netprefix_set(std::true_type, std::vector<ipv4_subnet> &&data) ;
 
     std::vector<ipv4_subnet> &prepare_source_data(std::vector<ipv4_subnet> &) ;
-    void compile_nodes(const simple_slice<ipv4_subnet> &) ;
-    void pack_nodes() ;
+    unsigned *compile_nodes(const simple_slice<ipv4_subnet> &, unsigned *count_per_level) ;
+    // Returns trie depth
+    size_t pack_nodes(const unsigned *count_per_level) ;
 
     node_type *append_node(node_type *current_node, uint8_t hexad, bool is_leaf) ;
 } ;

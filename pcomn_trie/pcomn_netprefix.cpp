@@ -11,15 +11,35 @@
 #include "pcomn_netprefix.h"
 #include "pcomn_calgorithm.h"
 
+#include <numeric>
+
 namespace pcomn {
 
 /*******************************************************************************
  shortest_netprefix_set
 *******************************************************************************/
-shortest_netprefix_set::shortest_netprefix_set(std::true_type, std::vector<ipv4_subnet> &&data)
+static constexpr size_t trie_maxdepth = (256+5)/6 ;
+
+const shortest_netprefix_set::node_type shortest_netprefix_set::_nomatch_root ;
+const shortest_netprefix_set::node_type shortest_netprefix_set::_anymatch_root (~uint64_t()) ;
+
+shortest_netprefix_set::shortest_netprefix_set(std::true_type, std::vector<ipv4_subnet> &&data) :
+    _depth(pack_nodes(compile_nodes(prepare_source_data(data), std::array<unsigned,trie_maxdepth>().data()))),
+
+    _root(_nodes.size() ? _nodes.data() :
+          _depth        ? &_anymatch_root :
+                          &_nomatch_root)
 {
-    compile_nodes(prepare_source_data(data)) ;
-    pack_nodes() ;
+    NOXCHECK(_root != &_anymatch_root || _depth == 1) ;
+}
+
+shortest_netprefix_set::shortest_netprefix_set(shortest_netprefix_set &&other) :
+    _nodes(std::move(other._nodes)),
+    _depth(other._depth),
+    _root(other._root)
+{
+    other._root = &_nomatch_root ;
+    other._depth = 0 ;
 }
 
 std::vector<ipv4_subnet> &shortest_netprefix_set::prepare_source_data(std::vector<ipv4_subnet> &v)
@@ -65,27 +85,34 @@ shortest_netprefix_set::append_node(node_type *current_node, uint8_t hexad, bool
             ->_first_child_offs = new_node_offs ;
     else
         current_node
-            ->child_at_compilation_stage(bitop::bitcount(current_node->children_bits()))
+            ->child_at_compilation_stage(current_node->children_count())
             ->_next_node_offs = new_node_offs ;
 
     return new_node ;
 }
 
-void shortest_netprefix_set::compile_nodes(const simple_slice<ipv4_subnet> &source)
+unsigned *shortest_netprefix_set::compile_nodes(const simple_slice<ipv4_subnet> &source, unsigned *count_per_level)
 {
-    if (source.empty())
-        return ;
+    memset(count_per_level, 0, trie_maxdepth*sizeof(*count_per_level)) ;
 
-    _nodes.resize(1) ;
+    if (source.empty())
+        return count_per_level ;
+
+    // There is always 1 at the zero level.
+    *count_per_level = 1 ;
+
     if (!source.front().pfxlen())
     {
         // "Star" or "any" subnet: all the leaves are set to 1 at the zero level (all the
         // addresses will match).
-        _nodes.front().set_leaves(~uint64_t()) ;
-        return ;
+        return count_per_level ;
     }
 
+    _nodes.resize(1) ;
+
     node_type *node = _nodes.data() ;
+    unsigned *current_level_count = count_per_level ;
+
     for (const ipv4_subnet &v: source)
     {
         NOXCHECK(v.pfxlen()) ;
@@ -95,9 +122,64 @@ void shortest_netprefix_set::compile_nodes(const simple_slice<ipv4_subnet> &sour
 
         for (unsigned level = 0 ; level <= leaf_level ; ++level)
         {
-            node = append_node(node, bittuple<6>(addr, level), level == leaf_level) ;
+            const bool is_leaf = level == leaf_level ;
+            node = append_node(node, bittuple<6>(addr, level), is_leaf) ;
+
+            *++current_level_count += !is_leaf ;
         }
     }
+    return count_per_level ;
+}
+
+size_t shortest_netprefix_set::pack_nodes(const unsigned *count_per_level)
+{
+    NOXCHECK(count_per_level[0] <= 1) ;
+
+    const size_t depth =
+        std::find(count_per_level, count_per_level + trie_maxdepth, 0) - count_per_level ;
+
+    if (depth < 2)
+        // At most one node (the root), no need to pack
+        return depth ;
+
+    std::vector<node_type> packed_nodes (_nodes.size()) ;
+    unsigned offs_per_level[trie_maxdepth + 1] ;
+
+    std::partial_sum(count_per_level, count_per_level + depth, offs_per_level + 1) ;
+    offs_per_level[0] = 0 ;
+
+    NOXCHECK(offs_per_level[depth] == _nodes.size()) ;
+
+    packed_nodes[0] = _nodes[0] ;
+
+    NOXCHECK(packed_nodes.front()._next_node_offs == 0) ;
+
+    struct {
+        void put_node(node_type *srcnode, unsigned *level_offs) const
+        {
+            node_type &packed_node = nodes[*level_offs] ;
+            packed_node = *srcnode ;
+            packed_node._next_node_offs = 0 ;
+            ++*level_offs ;
+
+            if (srcnode->children_bits())
+            {
+                node_type *child = srcnode->child_at_compilation_stage(0) ;
+                packed_node._first_child_offs = *++level_offs ;
+
+                do put_node(child, level_offs) ;
+                while(child = child->sibling_at_compilation_stage()) ;
+            }
+        }
+        node_type *nodes ;
+
+    } local = {packed_nodes.data()} ;
+
+    local.put_node(_nodes.data(), offs_per_level) ;
+
+    std::swap(_nodes, packed_nodes) ;
+
+    return depth ;
 }
 
 } // end of namespace pcomn
