@@ -193,4 +193,25 @@ size_t shortest_netprefix_set::pack_nodes(const unsigned *count_per_level)
     return depth ;
 }
 
+bool shortest_netprefix_set::is_member(ipv4_addr addr) const
+{
+    constexpr unsigned maxlevels = (8*sizeof(addr)+5)/6 ;
+
+    // Start from the root.
+    const node_type *node = _root ;
+    unsigned level = 0 ;
+
+    do {
+        const uint64_t level_bit = 1ULL << bittuple<6>(addr.ipaddr(), level) ;
+
+        if (!(node->children_bits() & level_bit))
+            return node->leaves_bits() & level_bit ;
+
+        node = node->child(bitop::bitcount(node->children_bits() & (level_bit-1))) ;
+    }
+    while(level < maxlevels) ;
+
+    PCOMN_DEBUG_FAIL("must never be here") ;
+}
+
 } // end of namespace pcomn
