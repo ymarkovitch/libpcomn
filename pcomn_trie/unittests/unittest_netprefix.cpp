@@ -20,11 +20,13 @@ class ShortestNetPrefixSetTests : public CppUnit::TestFixture {
 
       void Test_BitTupleSelect() ;
       void Test_ShortestNetPrefixSet_Build() ;
+      void Test_ShortestNetPrefixSet_MemberTest() ;
 
       CPPUNIT_TEST_SUITE(ShortestNetPrefixSetTests) ;
 
       CPPUNIT_TEST(Test_BitTupleSelect) ;
       CPPUNIT_TEST(Test_ShortestNetPrefixSet_Build) ;
+      CPPUNIT_TEST(Test_ShortestNetPrefixSet_MemberTest) ;
 
       CPPUNIT_TEST_SUITE_END() ;
 } ;
@@ -149,6 +151,37 @@ void ShortestNetPrefixSetTests::Test_ShortestNetPrefixSet_Build()
 
     CPPUNIT_LOG_EQ(private_set.depth(), 4) ;
     CPPUNIT_LOG_EQ(private_set.nodes_count(), 8) ;
+}
+
+void ShortestNetPrefixSetTests::Test_ShortestNetPrefixSet_MemberTest()
+{
+    shortest_netprefix_set empty_set ;
+    shortest_netprefix_set any_set ({{ipv4_addr(1, 0, 0, 0), 0}}) ;
+    shortest_netprefix_set one_set ({{"8.0.0.1/6"}}) ;
+
+    CPPUNIT_LOG_IS_FALSE(empty_set.is_member({127, 0, 0, 1})) ;
+    CPPUNIT_LOG_ASSERT(any_set.is_member({127, 0, 0, 1})) ;
+
+    CPPUNIT_LOG_IS_FALSE(one_set.is_member({127, 0, 0, 1})) ;
+    CPPUNIT_LOG_ASSERT(one_set.is_member({8, 0, 0, 1})) ;
+    CPPUNIT_LOG_ASSERT(one_set.is_member({8, 0, 155, 1})) ;
+    CPPUNIT_LOG_ASSERT(one_set.is_member({9, 0, 155, 1})) ;
+    CPPUNIT_LOG_IS_FALSE(one_set.is_member({12, 0, 0, 1})) ;
+
+    CPPUNIT_LOG(std::endl) ;
+
+    shortest_netprefix_set private_set({{"127.0.0.1/24"},
+                                        {"10.0.0.1/8"},
+                                        {"172.16.0.1/12"},
+                                        {"192.168.0.0/16"}}) ;
+
+    CPPUNIT_LOG_ASSERT(private_set.is_member({127, 0, 0, 255})) ;
+    CPPUNIT_LOG_IS_FALSE(private_set.is_member({127, 1, 0, 255})) ;
+
+    CPPUNIT_LOG_ASSERT(private_set.is_member({172, 20, 0, 255})) ;
+    CPPUNIT_LOG_IS_FALSE(private_set.is_member({172, 15, 0, 1})) ;
+
+    CPPUNIT_LOG_IS_FALSE(private_set.is_member({8, 8, 8, 8})) ;
 }
 
 int main(int argc, char *argv[])

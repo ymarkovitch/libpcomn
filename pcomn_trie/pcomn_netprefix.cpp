@@ -222,7 +222,7 @@ bool shortest_netprefix_set::is_member(ipv4_addr addr) const
 
         node = node->child(bitop::bitcount(node->children_bits() & (level_bit-1))) ;
     }
-    while(level < maxlevels) ;
+    while(++level < maxlevels) ;
 
     PCOMN_DEBUG_FAIL("must never be here") ;
 }
