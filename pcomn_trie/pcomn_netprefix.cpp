@@ -62,20 +62,29 @@ std::vector<ipv4_subnet> &shortest_netprefix_set::prepare_source_data(std::vecto
 }
 
 shortest_netprefix_set::node_type *
-shortest_netprefix_set::append_node(node_type *current_node, uint8_t hexad, bool is_leaf)
+shortest_netprefix_set::append_node(node_type *current_node, uint8_t hexad, uint16_t prefix_bitcount)
 {
     NOXCHECK(hexad < 64) ;
+    NOXCHECK(prefix_bitcount) ;
+
     const uint64_t node_bit = 1ULL << hexad ;
 
-    // The bit must be unset
+    // The bit must be unset in both children and leaves.
     NOXCHECK((current_node->children_bits()|current_node->leaves_bits()) < node_bit) ;
 
-    current_node->_children[is_leaf] |= node_bit ;
+    if (prefix_bitcount <= 6)
+    {
+        // Leaf node
+        const uint8_t children_bitcount = 1ULL << (6 - prefix_bitcount) ;
+        NOXCHECK(hexad + children_bitcount <= 64) ;
 
-    if (is_leaf)
+        current_node->_children[true] |= ((1ULL << children_bitcount) - 1) << hexad ;
         return current_node ;
+    }
 
     NOXCHECK(inrange(current_node, pbegin(_nodes), pend(_nodes))) ;
+
+    current_node->_children[false] |= node_bit ;
 
     const unsigned current_node_ndx = current_node - pbegin(_nodes) ;
 
@@ -120,20 +129,24 @@ unsigned *shortest_netprefix_set::compile_nodes(const simple_slice<ipv4_subnet> 
     {
         NOXCHECK(v.pfxlen()) ;
 
+        const auto addr = v.subnet_addr().ipaddr() ;
+
         // Start from the root.
         node_type *node = _nodes.data() ;
         unsigned *current_level_count = count_per_level ;
+        unsigned level = 0 ;
+        int prefix_tail = v.pfxlen() ;
 
-        const unsigned leaf_level = (v.pfxlen() - 1)/6 ;
-        const auto addr = v.subnet_addr().ipaddr() ;
-
-        for (unsigned level = 0 ; level <= leaf_level ; ++level)
+        do
         {
-            const bool is_leaf = level == leaf_level ;
-            node = append_node(node, bittuple<6>(addr, level), is_leaf) ;
+            node = append_node(node, bittuple<6>(addr, level), prefix_tail) ;
+            prefix_tail -= 6 ;
 
-            *++current_level_count += !is_leaf ;
+            const bool not_leaf = prefix_tail > 0 ;
+            *++current_level_count += not_leaf ;
+            ++level ;
         }
+        while(prefix_tail > 0) ;
     }
     return count_per_level ;
 }

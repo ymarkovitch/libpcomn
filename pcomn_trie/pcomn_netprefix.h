@@ -115,7 +115,7 @@ private:
     // Returns trie depth
     size_t pack_nodes(const unsigned *count_per_level) ;
 
-    node_type *append_node(node_type *current_node, uint8_t hexad, bool is_leaf) ;
+    node_type *append_node(node_type *current_node, uint8_t hexad, uint16_t tail_length) ;
 } ;
 
 /*******************************************************************************

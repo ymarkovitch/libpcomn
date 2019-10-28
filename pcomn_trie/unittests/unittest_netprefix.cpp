@@ -130,6 +130,10 @@ void ShortestNetPrefixSetTests::Test_ShortestNetPrefixSet_Build()
     CPPUNIT_LOG_EQ(two_set.depth(), 1) ;
     CPPUNIT_LOG_EQ(two_set.nodes_count(), 1) ;
 
+    shortest_netprefix_set three_set ({{"128.0.0.1/4"}, {"12.0.0.1/6"}, {"160.0.0.1/5"}}) ;
+    CPPUNIT_LOG_EQ(three_set.depth(), 1) ;
+    CPPUNIT_LOG_EQ(three_set.nodes_count(), 1) ;
+
     shortest_netprefix_set localhost_set ({{ipv4_addr::localhost(), 24}}) ;
     CPPUNIT_LOG_EQ(localhost_set.depth(), 4) ;
     CPPUNIT_LOG_EQ(localhost_set.nodes_count(), 4) ;
