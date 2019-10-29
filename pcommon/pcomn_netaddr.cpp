@@ -461,4 +461,24 @@ __noreturn __cold void ipv6_addr::invalid_address_string(const strslice &address
                      "Invalid IPv6 address string " P_STRSLICEQF ".", P_STRSLICEV(address_string)) ;
 }
 
+/*******************************************************************************
+ ipv6_subnet
+*******************************************************************************/
+ipv6_subnet::ipv6_subnet(const strslice &subnet_string, RaiseError raise_error)
+{
+    const auto &s = strsplit(subnet_string, '/') ;
+
+    if (s.first && s.second)
+        try {
+            _pfxlen = ensure_pfxlen<invalid_str_repr>(strtonum<uint8_t>(make_strslice_range(s.second))) ;
+            *static_cast<ancestor*>(this) = ipv6_addr(s.first, flags_if(ipv6_addr::NO_EXCEPTION, !raise_error)) ;
+            return ;
+        }
+        catch (const std::exception &)
+        { _pfxlen = 0 ; }
+
+    PCOMN_THROW_MSG_IF(raise_error, invalid_str_repr,
+                       "Invalid subnet specification: " P_STRSLICEQF, P_STRSLICEV(subnet_string)) ;
+}
+
 } // end of namespace pcomn

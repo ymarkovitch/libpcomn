@@ -205,15 +205,26 @@ constexpr inline bool operator<(const ipv4_addr &x, const ipv4_addr &y)
 PCOMN_DEFINE_RELOP_FUNCTIONS(constexpr, ipv4_addr) ;
 
 /***************************************************************************//**
- Subnetwork address, i.e. IPV4 address + prefix length
+ Subnetwork address, i.e. IPV4 address + prefix length.
+
+ ipv4_subnet object stores the address part exactly as passed to a constructor,
+ it does not strip the "postfix" part; e.g. `ipv4_subnet("10.0.0.1/8").addr()`
+ is `10.0.0.1`, _not_ 10.0.0.0. This allows to use ipv4_subnet to keep both the
+ exact address _and_ the subnet.
+
+ To get "normalized" address, use subnet_addr() member function, or, to get
+ the "normalised" subnet, use subnet():
+ e.g. `ipv4_subnet("10.0.0.1/8").subnet_addr()` is `10.0.0.0`,
+ `ipv4_subnet("10.0.0.1/8").subnet()` is `10.0.0.0/8`.
 *******************************************************************************/
 class ipv4_subnet {
 public:
+    /// Create 0/0 prefix.
     constexpr ipv4_subnet() = default ;
 
     ipv4_subnet(uint32_t host_order_inetaddr, unsigned prefix_length) :
-        _pfxlen(ensure_pfxlen<std::invalid_argument>(prefix_length)),
-        _addr(host_order_inetaddr)
+        _addr(host_order_inetaddr),
+        _pfxlen(ensure_pfxlen<std::invalid_argument>(prefix_length))
     {}
 
     ipv4_subnet(const ipv4_addr &address, unsigned prefix_length) :
@@ -228,8 +239,12 @@ public:
         ipv4_subnet(ipv4_addr(a, b, c, d), prefix_length)
     {}
 
-    /// Create an IP address from its human-readable text representation.
-    /// @param address_string Dotted-decimal subnet mask, like "139.12.0.0/16"
+    /// Create IPv4 subnet address from its human-readable text representation
+    /// in prefix length notation (AKA "slash" notation).
+    ///
+    /// @param subnet_string Dotted-decimal subnet address in prefix length notation,
+    /// like "139.12.0.0/16".
+    ///
     ipv4_subnet(const strslice &subnet_string, RaiseError raise_error = RAISE_ERROR) ;
 
     explicit operator bool() const { return !!raw() ; }
@@ -287,13 +302,13 @@ public:
     }
 
 private:
-    uint32_t  _pfxlen = 0 ;  /* Subnetwork prefix length */
-    ipv4_addr _addr ;    /* IP address */
+    ipv4_addr _addr ;       /* IP address */
+    uint32_t  _pfxlen = 0 ; /* Subnetwork prefix length */
 
     template<typename X>
     static uint32_t ensure_pfxlen(unsigned prefix_length)
     {
-        ensure<X>(prefix_length <= 32, "Subnetwork address prefix length exceeds 32") ;
+        ensure<X>(prefix_length <= 32, "IPv4 subnetwork prefix length exceeds 32") ;
         return prefix_length ;
     }
 } ;
@@ -449,11 +464,11 @@ public:
     {}
 
     /// Create an IP address from its human-readable text representation.
-    /// @param address_string Dot-delimited IP address or interface name, like "eth0", or
-    /// host name (tried in that order).
+    ///
+    /// @param address_string Any valid IPv6 address string, abbreviated or
+    /// non-abbreviated form.
     /// @param flags        ORed ConstructFlags flags.
-    /// @return Resolved IP address. If cannot resolve, throws system_error or constructs
-    /// an empty ipv6_addr (i.e. ipaddr()==0), depending on NO_EXCEPTION flag.
+    ///
     ipv6_addr(const strslice &address_string, CFlags flags = {}) :
         ancestor(from_string(address_string, flags))
     {}
@@ -466,7 +481,6 @@ public:
     /// The hextet is returned as host-order word.
     using ancestor::hextet ;
     using ancestor::octet ;
-    using ancestor::operator bool ;
 
     /// Get all the eight hextets of an IPv6 address.
     constexpr std::array<uint16_t, 8> hextets() const
@@ -542,6 +556,89 @@ private:
     static __noreturn __cold void invalid_address_string(const strslice &address_string) ;
 } ;
 
+/***************************************************************************//**
+ IPv6 subnetwork address, i.e. IPv6 address + prefix length.
+*******************************************************************************/
+class ipv6_subnet : private ipv6_addr {
+    typedef ipv6_addr ancestor ;
+public:
+    /// Create 0/0 prefix.
+    constexpr ipv6_subnet() = default ;
+
+    ipv6_subnet(const ipv6_addr &address, unsigned prefix_length) :
+        ancestor(address),
+        _pfxlen(ensure_pfxlen<std::invalid_argument>(prefix_length))
+    {}
+
+    ipv6_subnet(uint16_t h1, uint16_t h2, uint16_t h3, uint16_t h4,
+                uint16_t h5, uint16_t h6, uint16_t h7, uint16_t h8,
+                unsigned prefix_length) :
+        ipv6_subnet(ipv6_addr(h1, h2, h3, h4, h5, h6, h7, h8), prefix_length)
+    {}
+
+    /// Create IPv6 subnet address from its human-readable text representation
+    /// in prefix length notation (AKA "slash" notation).
+    ///
+    /// @param subnet_string Abbreviated or non-abbreviated IPv6 subnet address in prefix
+    /// length notation, like "2001:db8::/32"
+    ///
+    ipv6_subnet(const strslice &subnet_string, RaiseError raise_error = RAISE_ERROR) ;
+
+    explicit operator bool() const { return addr() || pfxlen() ; }
+
+    size_t hash() const { return t1ha0_bin128(*(idata()+0), *(idata()+1), pfxlen()) ; }
+
+    const ipv6_addr &addr() const { return *this ; }
+
+    operator ipv6_addr() const { return addr() ; }
+
+    /// Get the "canonical" address of this subnet where all the bits after the prefix
+    /// are reset to 0.
+    /// So, for instance, `ipv6_subnet("2001:db8:5:1234/32").subnet_addr()` is
+    /// "2001:db8::", while `ipv6_subnet("2001:db8:5:1234/32").addr()`
+    /// is "2001:db8:5:1234".
+    ///
+    ipv6_addr subnet_addr() const ;
+
+    ipv6_subnet subnet() const { return ipv6_subnet(subnet_addr(), pfxlen()) ; }
+
+    /// Get subnet prefix length
+    constexpr unsigned pfxlen() const { return _pfxlen ; }
+
+    constexpr bool is_host() const { return pfxlen() == 128 ; }
+    constexpr bool is_any() const { return pfxlen() == 0 ; }
+
+    std::string str() const
+    {
+        char buf[128] ;
+        return std::string(buf + 0, to_str(buf)) ;
+    }
+
+    template<typename OutputIterator>
+    OutputIterator to_str(OutputIterator s) const
+    {
+        s = addr().to_str(s) ;
+        *s = '/' ;
+        return numtoiter(pfxlen(), ++s) ;
+    }
+
+    friend std::ostream &operator<<(std::ostream &os, const ipv6_subnet &addr)
+    {
+        char buf[128] ;
+        return os << strslice(buf + 0, addr.to_str(buf)) ;
+    }
+
+private:
+    uint32_t  _pfxlen = 0 ; /* Subnetwork prefix length */
+
+    template<typename X>
+    static uint32_t ensure_pfxlen(unsigned prefix_length)
+    {
+        ensure<X>(prefix_length <= 128, "IPv6 subnetwork prefix length exceeds 128") ;
+        return prefix_length ;
+    }
+} ;
+
 /*******************************************************************************
  ipv6_addr comparison operators
 *******************************************************************************/
@@ -575,6 +672,18 @@ template<> struct hash<pcomn::ipv4_addr> {
     size_t operator()(const pcomn::ipv4_addr &addr) const
     {
         return pcomn::valhash(addr.ipaddr()) ;
+    }
+} ;
+template<> struct hash<pcomn::ipv6_addr> {
+    size_t operator()(const pcomn::ipv6_addr &addr) const
+    {
+        return addr.hash() ;
+    }
+} ;
+template<> struct hash<pcomn::ipv6_subnet> {
+    size_t operator()(const pcomn::ipv6_subnet &addr) const
+    {
+        return addr.hash() ;
     }
 } ;
 template<> struct hash<pcomn::sock_address> {
