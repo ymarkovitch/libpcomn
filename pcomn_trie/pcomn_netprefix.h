@@ -119,6 +119,29 @@ private:
 } ;
 
 /*******************************************************************************
+
+*******************************************************************************/
+template<typename Addr>
+class ipaddr_prefix_set : public shortest_netprefix_set {
+    PCOMN_STATIC_CHECK((is_one_of<Addr, ipv4_addr, ipv6_addr>::value)) ;
+public:
+    typedef Addr                    addr_type ;
+    typedef ip_subnet_t<addr_type>  subnet_type ;
+
+    explicit ipaddr_prefix_set(const simple_cslice<subnet_type> &subnets) ;
+
+    ipaddr_prefix_set() = default ;
+    ipaddr_prefix_set(ipaddr_prefix_set &&) = default ;
+    ipaddr_prefix_set &operator=(ipaddr_prefix_set &&) = default ;
+
+    /// Check is an addr starts with any of the prefixes in the set.
+    bool is_member(const addr_type &addr) const ;
+
+    /// STL set<> interface.
+    unsigned count(const addr_type &addr) const { return is_member(addr) ; }
+} ;
+
+/*******************************************************************************
  Global functions
 *******************************************************************************/
 namespace detail {

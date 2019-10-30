@@ -42,6 +42,20 @@ class ipv6_addr ;
 class ipv6_subnet ;
 class sock_address ;
 
+template<typename> struct ip_subnet ;
+template<typename> struct ip_addr ;
+
+template<typename T>
+using ip_subnet_t = typename ip_subnet<T>::type ;
+template<typename T>
+using ip_addr_t = typename ip_addr<T>::type ;
+
+template<> struct ip_subnet<ipv4_addr> : identity_type<ipv4_subnet> {} ;
+template<> struct ip_subnet<ipv6_addr> : identity_type<ipv6_subnet> {} ;
+
+template<> struct ip_addr<ipv4_subnet> : identity_type<ipv4_addr> {} ;
+template<> struct ip_addr<ipv6_subnet> : identity_type<ipv6_addr> {} ;
+
 /***************************************************************************//**
  IPv4 address.
 
