@@ -436,6 +436,7 @@ PCOMN_DEFINE_RELOP_FUNCTIONS(, sock_address) ;
 *******************************************************************************/
 class ipv6_addr : public binary128_t {
     typedef binary128_t ancestor ;
+    friend ipv6_subnet ;
 public:
     /// ipv6_addr construction mode flags
     enum CFlags {
@@ -556,6 +557,12 @@ private:
     static __noreturn __cold void invalid_address_string(const strslice &address_string) ;
 } ;
 
+/*******************************************************************************
+ ipv6_addr comparison operators
+*******************************************************************************/
+// Note that this line defines _all_ remaining operators (!=, <=, etc.)
+PCOMN_DEFINE_RELOP_FUNCTIONS(constexpr, ipv6_addr) ;
+
 /***************************************************************************//**
  IPv6 subnetwork address, i.e. IPv6 address + prefix length.
 *******************************************************************************/
@@ -598,7 +605,20 @@ public:
     /// "2001:db8::", while `ipv6_subnet("2001:db8:5:1234/32").addr()`
     /// is "2001:db8:5:1234".
     ///
-    ipv6_addr subnet_addr() const ;
+    ipv6_addr subnet_addr() const
+    {
+        if (is_host())
+            return addr() ;
+
+        const bool lo_qword = pfxlen() > 63 ;
+        const uint64_t mask = be(((1ULL << 63) - (1ULL << ((lo_qword * 64 + 63) - pfxlen()))) << 1) ;
+        const uint64_t other_mask = 0ULL - lo_qword ;
+
+        ipv6_addr r (addr()) ;
+        r.idata()[lo_qword] &= mask ;
+        r.idata()[!lo_qword] &= other_mask ;
+        return r ;
+    }
 
     ipv6_subnet subnet() const { return ipv6_subnet(subnet_addr(), pfxlen()) ; }
 
@@ -640,10 +660,19 @@ private:
 } ;
 
 /*******************************************************************************
- ipv6_addr comparison operators
+ ipv6_subnet comparison operators
 *******************************************************************************/
-// Note that this line defines _all_ remaining operators (!=, <=, etc.)
-PCOMN_DEFINE_RELOP_FUNCTIONS(constexpr, ipv6_addr) ;
+inline bool operator==(const ipv6_subnet &x, const ipv6_subnet &y)
+{
+    return x.addr() == y.addr() && x.pfxlen() == y.pfxlen() ;
+}
+
+inline bool operator<(const ipv6_subnet &x, const ipv6_subnet &y)
+{
+    return x.addr() < y.addr() || x.addr() == y.addr() && x.pfxlen() < y.pfxlen() ;
+}
+
+PCOMN_DEFINE_RELOP_FUNCTIONS(, ipv6_subnet) ;
 
 /*******************************************************************************
  Ostream output operators
