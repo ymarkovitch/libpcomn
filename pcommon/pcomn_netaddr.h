@@ -10,7 +10,14 @@
  CREATION DATE:   27 Jan 2008
 *******************************************************************************/
 /** @file
-  Classes and functions for network addresses handling.
+ Classes and functions for network addresses handling.
+
+ Provides classes to represent IPv4 and IPv6 addresses and corresponding subnets.
+ The class ipv4_subnet corresponds to the class ipv4_addr, and ipv6_subnet to
+ ipv6_addr, respectively.
+
+ There are template "type functions" ip_subnet_t<Addr> and  ip_addr_t<Subnet> that
+ allow to get the subnet class corresponding to the address class, and vice versa.
 *******************************************************************************/
 #include <pcomn_utils.h>
 #include <pcomn_hash.h>
@@ -343,107 +350,6 @@ inline bool operator<(const ipv4_subnet &x, const ipv4_subnet &y)
 PCOMN_DEFINE_RELOP_FUNCTIONS(, ipv4_subnet) ;
 
 /***************************************************************************//**
- The completely-defined SF_INET socket address; specifies both the inet address
- and the port.
-
- This is a wrapper around the socaddr_in structure: you can pass a pointer returned by the
- as_sockaddr_in or as_sockaddr to @em both as input @em and as output parameters to socket
- APIs.
-*******************************************************************************/
-class sock_address {
-public:
-    /// Create an empty socket address.
-    /// After this constructor, both addr().ipaddr() and port() are 0, is_null() is true.
-    sock_address() { init() ; }
-
-    /// Create a socket address with specified inet address and port.
-    /// @param addr Inet address.
-    /// @param port Port number.
-    sock_address(const strslice &addr, uint16_t port = 0)
-    {
-        init(ipv4_addr(addr, ipv4_addr::USE_HOSTNAME), port) ;
-    }
-
-    /// Create a socket address with specified inet address and port.
-    /// @param addr Inet address.
-    /// @param port Port number.
-    sock_address(const ipv4_addr &addr, uint16_t port = 0) { init(addr, port) ; }
-
-    /// Create a socket address on a loopback interface with specified port.
-    /// @param port Port number.
-    explicit sock_address(uint16_t port) { init(inaddr_loopback(), port) ; }
-
-    /// Create a socket address from a filled sockaddr structure.
-    /// @param sa Should have AF_INET address family.
-    /// @throw std::invalid_argument Invalid address family.
-    sock_address(const sockaddr &sa) : _sockaddr(ensure_family(&sa)) {}
-
-    /// Create a socket address from a filled sockaddr_in structure.
-    /// @param sin should have AF_INET address family.
-    /// @throw std::invalid_argument Invalid address family.
-    sock_address(const sockaddr_in &sin) : _sockaddr(ensure_family((const sockaddr *)&sin)) {}
-
-    ipv4_addr addr() const { return ipv4_addr(_sockaddr.sin_addr) ; }
-
-    uint16_t port() const { return ntohs(_sockaddr.sin_port) ; }
-
-    /// "Raw" value: IP address and port represented as a single 64-bit integer
-    uint64_t raw() const { return (((uint64_t)addr().ipaddr() << 32) | port()) ; }
-
-    bool is_null() const { return !raw() ; }
-
-    explicit operator bool() const { return !is_null() ; }
-
-    std::string str() const ;
-
-    const sockaddr_in *as_sockaddr_in() const { return &_sockaddr ; }
-    sockaddr_in *as_sockaddr_in() { return &_sockaddr ; }
-
-    const sockaddr *as_sockaddr() const { return reinterpret_cast<const sockaddr *>(&_sockaddr) ; }
-    sockaddr *as_sockaddr() { return reinterpret_cast<sockaddr *>(&_sockaddr) ; }
-
-    static size_t addrsize() { return sizeof(sockaddr_in) ; }
-
-private:
-    sockaddr_in _sockaddr ;
-
-    static const sockaddr_in &ensure_family(const sockaddr *sa)
-    {
-        PCOMN_THROW_MSG_IF(sa->sa_family != AF_INET, std::invalid_argument, "Invalid socket family, only AF_INET allowed.") ;
-        return *reinterpret_cast<const sockaddr_in *>(sa) ;
-    }
-    void init()
-    {
-        _sockaddr = sockaddr_in{} ;
-        _sockaddr.sin_family = AF_INET ;
-    }
-    void init(const in_addr &addr, uint16_t port)
-    {
-        init() ;
-        _sockaddr.sin_port = htons(port) ;
-        _sockaddr.sin_addr = addr ;
-    }
-} ;
-
-/*******************************************************************************
- sock_address comparison operators
-*******************************************************************************/
-inline bool operator==(const sock_address &x, const sock_address &y)
-{
-    return x.port() == y.port() && x.addr() == y.addr() ;
-}
-
-inline bool operator<(const sock_address &x, const sock_address &y)
-{
-    return
-        (((uint64_t)x.addr().ipaddr() << 16) | x.port()) <
-        (((uint64_t)y.addr().ipaddr() << 16) | y.port()) ;
-}
-
-// Note that this line defines _all_ remaining operators (!=, <=, etc.)
-PCOMN_DEFINE_RELOP_FUNCTIONS(, sock_address) ;
-
-/***************************************************************************//**
  IPv6 address in network byte order.
 
  @note Implicitly castable to binary128_t in the network (BE) byte order.
@@ -694,6 +600,107 @@ inline bool operator<(const ipv6_subnet &x, const ipv6_subnet &y)
 }
 
 PCOMN_DEFINE_RELOP_FUNCTIONS(, ipv6_subnet) ;
+
+/***************************************************************************//**
+ The completely-defined SF_INET socket address; specifies both the inet address
+ and the port.
+
+ This is a wrapper around the socaddr_in structure: you can pass a pointer returned by the
+ as_sockaddr_in or as_sockaddr to @em both as input @em and as output parameters to socket
+ APIs.
+*******************************************************************************/
+class sock_address {
+public:
+    /// Create an empty socket address.
+    /// After this constructor, both addr().ipaddr() and port() are 0, is_null() is true.
+    sock_address() { init() ; }
+
+    /// Create a socket address with specified inet address and port.
+    /// @param addr Inet address.
+    /// @param port Port number.
+    sock_address(const strslice &addr, uint16_t port = 0)
+    {
+        init(ipv4_addr(addr, ipv4_addr::USE_HOSTNAME), port) ;
+    }
+
+    /// Create a socket address with specified inet address and port.
+    /// @param addr Inet address.
+    /// @param port Port number.
+    sock_address(const ipv4_addr &addr, uint16_t port = 0) { init(addr, port) ; }
+
+    /// Create a socket address on a loopback interface with specified port.
+    /// @param port Port number.
+    explicit sock_address(uint16_t port) { init(inaddr_loopback(), port) ; }
+
+    /// Create a socket address from a filled sockaddr structure.
+    /// @param sa Should have AF_INET address family.
+    /// @throw std::invalid_argument Invalid address family.
+    sock_address(const sockaddr &sa) : _sockaddr(ensure_family(&sa)) {}
+
+    /// Create a socket address from a filled sockaddr_in structure.
+    /// @param sin should have AF_INET address family.
+    /// @throw std::invalid_argument Invalid address family.
+    sock_address(const sockaddr_in &sin) : _sockaddr(ensure_family((const sockaddr *)&sin)) {}
+
+    ipv4_addr addr() const { return ipv4_addr(_sockaddr.sin_addr) ; }
+
+    uint16_t port() const { return ntohs(_sockaddr.sin_port) ; }
+
+    /// "Raw" value: IP address and port represented as a single 64-bit integer
+    uint64_t raw() const { return (((uint64_t)addr().ipaddr() << 32) | port()) ; }
+
+    bool is_null() const { return !raw() ; }
+
+    explicit operator bool() const { return !is_null() ; }
+
+    std::string str() const ;
+
+    const sockaddr_in *as_sockaddr_in() const { return &_sockaddr ; }
+    sockaddr_in *as_sockaddr_in() { return &_sockaddr ; }
+
+    const sockaddr *as_sockaddr() const { return reinterpret_cast<const sockaddr *>(&_sockaddr) ; }
+    sockaddr *as_sockaddr() { return reinterpret_cast<sockaddr *>(&_sockaddr) ; }
+
+    static size_t addrsize() { return sizeof(sockaddr_in) ; }
+
+private:
+    sockaddr_in _sockaddr ;
+
+    static const sockaddr_in &ensure_family(const sockaddr *sa)
+    {
+        PCOMN_THROW_MSG_IF(sa->sa_family != AF_INET, std::invalid_argument, "Invalid socket family, only AF_INET allowed.") ;
+        return *reinterpret_cast<const sockaddr_in *>(sa) ;
+    }
+    void init()
+    {
+        _sockaddr = sockaddr_in{} ;
+        _sockaddr.sin_family = AF_INET ;
+    }
+    void init(const in_addr &addr, uint16_t port)
+    {
+        init() ;
+        _sockaddr.sin_port = htons(port) ;
+        _sockaddr.sin_addr = addr ;
+    }
+} ;
+
+/*******************************************************************************
+ sock_address comparison operators
+*******************************************************************************/
+inline bool operator==(const sock_address &x, const sock_address &y)
+{
+    return x.port() == y.port() && x.addr() == y.addr() ;
+}
+
+inline bool operator<(const sock_address &x, const sock_address &y)
+{
+    return
+        (((uint64_t)x.addr().ipaddr() << 16) | x.port()) <
+        (((uint64_t)y.addr().ipaddr() << 16) | y.port()) ;
+}
+
+// Note that this line defines _all_ remaining operators (!=, <=, etc.)
+PCOMN_DEFINE_RELOP_FUNCTIONS(, sock_address) ;
 
 /*******************************************************************************
  Ostream output operators
