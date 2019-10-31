@@ -29,24 +29,6 @@ namespace pcomn {
 *******************************************************************************/
 class shortest_netprefix_set {
 public:
-    explicit shortest_netprefix_set(const simple_cslice<ipv4_subnet> &subnets) ;
-
-    shortest_netprefix_set() = default ;
-
-    shortest_netprefix_set(shortest_netprefix_set &&) ;
-
-    shortest_netprefix_set &operator=(shortest_netprefix_set &&other)
-    {
-        std::swap(as_mutable(shortest_netprefix_set()), other) ;
-        return *this ;
-    }
-
-    /// Check is an addr starts with any of the prefixes in the set.
-    bool is_member(ipv4_addr addr) const ;
-
-    /// STL set<> interface.
-    unsigned count(ipv4_addr addr) const { return is_member(addr) ; }
-
     /// Get nodes count
     size_t nodes_count() const
     {
@@ -55,6 +37,24 @@ public:
 
     /// Get trie depth.
     size_t depth() const { return _depth ; }
+
+protected:
+    explicit shortest_netprefix_set(const simple_cslice<ipv4_subnet> &subnets) :
+        shortest_netprefix_set(std::false_type(), subnets)
+    {}
+    explicit shortest_netprefix_set(const simple_cslice<ipv6_subnet> &subnets) :
+        shortest_netprefix_set(std::false_type(), subnets)
+    {}
+
+    shortest_netprefix_set() = default ;
+
+    shortest_netprefix_set(shortest_netprefix_set &&) ;
+
+    ~shortest_netprefix_set() = default ;
+
+    /// Check is an addr starts with any of the prefixes in the set.
+    template<typename Addr>
+    bool is_member(const Addr &addr) const ;
 
 private:
     // {{descendant_array,leaves_array}, {subnodes_begin,}}
@@ -108,10 +108,18 @@ private:
     const node_type *      _root = &_nomatch_root ;
 
 private:
-    shortest_netprefix_set(std::true_type, std::vector<ipv4_subnet> &&data) ;
+    template<typename Subnet>
+    shortest_netprefix_set(std::false_type, const simple_cslice<Subnet> &subnets) ;
 
-    std::vector<ipv4_subnet> &prepare_source_data(std::vector<ipv4_subnet> &) ;
-    unsigned *compile_nodes(const simple_slice<ipv4_subnet> &, unsigned *count_per_level) ;
+    template<typename Subnet>
+    shortest_netprefix_set(std::true_type, std::vector<Subnet> &&data) ;
+
+    template<typename Subnet>
+    std::vector<Subnet> &prepare_source_data(std::vector<Subnet> &) ;
+
+    template<typename Subnet>
+    unsigned *compile_nodes(const simple_slice<Subnet> &, unsigned *count_per_level) ;
+
     // Returns trie depth
     size_t pack_nodes(const unsigned *count_per_level) ;
 
@@ -124,18 +132,26 @@ private:
 template<typename Addr>
 class ipaddr_prefix_set : public shortest_netprefix_set {
     PCOMN_STATIC_CHECK((is_one_of<Addr, ipv4_addr, ipv6_addr>::value)) ;
+    typedef shortest_netprefix_set ancestor ;
 public:
     typedef Addr                    addr_type ;
     typedef ip_subnet_t<addr_type>  subnet_type ;
 
-    explicit ipaddr_prefix_set(const simple_cslice<subnet_type> &subnets) ;
+    explicit ipaddr_prefix_set(const simple_cslice<subnet_type> &subnets) :
+        ancestor(subnets)
+    {}
 
     ipaddr_prefix_set() = default ;
     ipaddr_prefix_set(ipaddr_prefix_set &&) = default ;
-    ipaddr_prefix_set &operator=(ipaddr_prefix_set &&) = default ;
+
+    ipaddr_prefix_set &operator=(ipaddr_prefix_set &&other)
+    {
+        std::swap(as_mutable(ipaddr_prefix_set()), other) ;
+        return *this ;
+    }
 
     /// Check is an addr starts with any of the prefixes in the set.
-    bool is_member(const addr_type &addr) const ;
+    bool is_member(const addr_type &addr) const { return ancestor::is_member(addr) ; }
 
     /// STL set<> interface.
     unsigned count(const addr_type &addr) const { return is_member(addr) ; }
@@ -190,6 +206,25 @@ struct bittuple_extract<binary128_t, count> {
     }
 } ;
 
+template<unsigned count>
+struct bittuple_extract<ipv4_addr, count> : bittuple_extract<uint32_t, count> {
+    static unsigned extract(const ipv4_addr &v, unsigned ndx, unsigned basepos)
+    {
+        return bittuple_extract<uint32_t,count>::extract(v.ipaddr(), ndx, basepos) ;
+    }
+} ;
+
+template<unsigned count>
+struct bittuple_extract<ipv6_addr, count> : bittuple_extract<binary128_t, count> {
+    static unsigned extract(const ipv6_addr &v, unsigned ndx, unsigned basepos)
+    {
+        return bittuple_extract<binary128_t,count>::extract(v, ndx, basepos) ;
+    }
+} ;
+
+template<typename T, unsigned count>
+struct bittuple_extract<volatile T, count> : bittuple_extract<T, count> {} ;
+
 template<typename T, unsigned count>
 using bittuple_extract_t = typename bittuple_extract<T, count>::type ;
 
@@ -197,16 +232,16 @@ using bittuple_extract_t = typename bittuple_extract<T, count>::type ;
 
 /// The family of functions to extract n-bit chunks from 32-bit, 64-bit, and 128-bit
 /// values.
-/// Facilitate implementation of various tries (prefix trees): critbit, poptrie, qp-trie.
+/// Facilitates implementation of various tries (prefix trees): critbit, poptrie, qp-trie.
 /**{@*/
 template<unsigned count, typename T>
-inline detail::bittuple_extract_t<T, count> bittuple(T value, unsigned ndx, unsigned basepos)
+inline detail::bittuple_extract_t<T, count> bittuple(const T &value, unsigned ndx, unsigned basepos)
 {
     return detail::bittuple_extract<T, count>::extract(value, ndx, basepos) ;
 }
 
 template<unsigned count, typename T>
-inline detail::bittuple_extract_t<T, count> bittuple(T value, unsigned ndx)
+inline detail::bittuple_extract_t<T, count> bittuple(const T &value, unsigned ndx)
 {
     return bittuple<count>(value, ndx, 0) ;
 }
