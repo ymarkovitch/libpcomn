@@ -453,6 +453,13 @@ public:
         ancestor(net_order_inetaddr)
     {}
 
+    constexpr ipv6_addr(const in6_addr &a) :
+        ancestor(a.s6_addr[0], a.s6_addr[1], a.s6_addr[2], a.s6_addr[3],
+                 a.s6_addr[4], a.s6_addr[5], a.s6_addr[6], a.s6_addr[7],
+                 a.s6_addr[8], a.s6_addr[9], a.s6_addr[10], a.s6_addr[11],
+                 a.s6_addr[12], a.s6_addr[13], a.s6_addr[14], a.s6_addr[15])
+    {}
+
     /// Create IPv6 address from explicitly specified hextets.
     constexpr ipv6_addr(uint16_t h1, uint16_t h2, uint16_t h3, uint16_t h4,
                         uint16_t h5, uint16_t h6, uint16_t h7, uint16_t h8) :
