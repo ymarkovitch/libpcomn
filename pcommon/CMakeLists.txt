@@ -26,6 +26,21 @@ set(ENABLE_PCOMN_STACKTRACE OFF CACHE BOOL "Enable stacktrace classes. Linux-onl
 set(ENABLE_PCOMN_AVX        NO  CACHE BOOL "Enable use of AVX and BMI1 instruction sets. Substantially accelerates e.g. hashing, pcomn::bitarray.")
 set(ENABLE_PCOMN_AVX2       NO  CACHE BOOL "Enable use of AVX2 and BMI2 instruction sets. Substantially accelerates e.g. hashing, pcomn::bitarray, pcomn::bitops.")
 
+# Introduce custom build types RelAvx, RelAvx2, DbgAvx, DbgAvx2 to facilitate
+# one-pass unit testing for different processor architecture flags.
+# CMAKE_BUILD_TYPE=RelAvx
+set(CMAKE_CXX_FLAGS_RELAVX  "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+set(CMAKE_C_FLAGS_RELAVX    "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
+# CMAKE_BUILD_TYPE=RelAvx2
+set(CMAKE_CXX_FLAGS_RELAVX2 "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+set(CMAKE_C_FLAGS_RELAVX2   "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
+# CMAKE_BUILD_TYPE=DbgAvx
+set(CMAKE_CXX_FLAGS_DBGAVX  "${CMAKE_CXX_FLAGS_DEBUG}")
+set(CMAKE_C_FLAGS_DBGAVX    "${CMAKE_C_FLAGS_DEBUG}")
+# CMAKE_BUILD_TYPE=DbgAvx2
+set(CMAKE_CXX_FLAGS_RELAVX2 "${CMAKE_CXX_FLAGS_DEBUG}")
+set(CMAKE_C_FLAGS_RELAVX2   "${CMAKE_C_FLAGS_DEBUG}")
+
 message("***** Processing ${PROJECT_NAME} *****")
 
 if (ENABLE_PCOMN_STACKTRACE AND (NOT CMAKE_SYSTEM_NAME STREQUAL "Linux"))
@@ -81,6 +96,12 @@ endif()
 if (NOT CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
     set(ENABLE_PCOMN_AVX2 NO)
     set(ENABLE_PCOMN_AVX  NO)
+elseif (CMAKE_BUILD_TYPE MATCHES "AVX")
+    if (CMAKE_BUILD_TYPE MATCHES "AVX2")
+        set(ENABLE_PCOMN_AVX2 YES)
+    else()
+        set(ENABLE_PCOMN_AVX YES)
+    endif()
 endif()
 
 if (ENABLE_PCOMN_AVX2 OR ENABLE_PCOMN_AVX)
@@ -187,7 +208,7 @@ target_compile_options(pcommon
   $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>:-pthread>
   $<$<CXX_COMPILER_ID:GNU>:-frecord-gcc-switches>
   $<$<AND:${COMPILER_GCCLIKE},$<BOOL:${DISABLE_PCOMN_AVX}>>:-march=westmere>
-  $<$<AND:${COMPILER_GCCLIKE},$<BOOL:${ENABLE_PCOMN_AVX}>>:-march=corei7-avx -mbmi>
+  $<$<AND:${COMPILER_GCCLIKE},$<BOOL:${ENABLE_PCOMN_AVX}>>:-march=corei7-avx>
   $<$<AND:${COMPILER_GCCLIKE},$<BOOL:${ENABLE_PCOMN_AVX2}>>:-march=haswell>
 
   PRIVATE
