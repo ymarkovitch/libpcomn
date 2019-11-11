@@ -51,6 +51,7 @@ class BitOperationsTests : public CppUnit::TestFixture {
       void Test_SignTraits() ;
       void Test_Bitcount() ;
       void Test_Bitcount_CompileTime() ;
+      void Test_Broadcast() ;
       void Test_Clrrnzb() ;
       void Test_Getrnzb() ;
       void Test_NzbitIterator() ;
@@ -64,6 +65,7 @@ class BitOperationsTests : public CppUnit::TestFixture {
       CPPUNIT_TEST(Test_SignTraits) ;
       CPPUNIT_TEST(Test_Bitcount) ;
       CPPUNIT_TEST(Test_Bitcount_CompileTime) ;
+      CPPUNIT_TEST(Test_Broadcast) ;
       CPPUNIT_TEST(Test_Clrrnzb) ;
       CPPUNIT_TEST(Test_Getrnzb) ;
       CPPUNIT_TEST(Test_NzbitIterator) ;
@@ -186,6 +188,16 @@ void BitOperationsTests::Test_Bitcount_CompileTime()
    CPPUNIT_LOG_EQUAL(bitop::ct_bitcount<0x55>::value, 4U) ;
    CPPUNIT_LOG_EQUAL(bitop::ct_bitcount<(unsigned)-1>::value, int_traits<unsigned>::bitsize) ;
    CPPUNIT_LOG_EQUAL(bitop::ct_bitcount<0x20030055>::value, 7U) ;
+}
+
+void BitOperationsTests::Test_Broadcast()
+{
+   CPPUNIT_LOG_EQUAL(bitop::broadcasti<uint16_t>((uint8_t)0x50), (uint16_t)0x5050) ;
+   CPPUNIT_LOG_EQUAL(bitop::broadcasti<uint8_t>((int8_t)0x50), (uint8_t)0x50) ;
+   CPPUNIT_LOG_EQUAL(bitop::broadcasti<uint32_t>((uint8_t)0x50), (uint32_t)0x50505050) ;
+   CPPUNIT_LOG_EQUAL(bitop::broadcasti<int32_t>((uint8_t)0x50), (int32_t)0x50505050) ;
+   CPPUNIT_LOG_EQUAL(bitop::broadcasti<int64_t>(0x65432100), (int64_t)0x6543210065432100LL) ;
+   CPPUNIT_LOG_EQUAL((bitop::broadcasti<uint64_t, int8_t>(0x65)), (uint64_t)0x65'65'65'65'65'65'65'65ULL) ;
 }
 
 void BitOperationsTests::Test_Clrrnzb()

@@ -33,7 +33,7 @@
  bitop::rotl      - Rotate Left
  bitop::rotr      - Rotate Right
 
- bitop::bitextend - Get the integral value filled with the specified bit value
+ bitop::bitextend - Get the integral value filled with the specified bit value.
 *******************************************************************************/
 
 #include <pcomn_meta.h>
@@ -573,6 +573,23 @@ template<typename I>
 constexpr inline if_integer_t<I> bitextend(bool bit)
 {
    return I() - I(bit) ;
+}
+
+/// Broadcast integral operand into integral value.
+/// sizeof(result) must be >= sizeof(operand).
+/// E.g.
+///   - `broadcasti<uint16_t>('\xAB')` == `uint16_t(0xABAB)`
+///   - `broadcasti<uint64_t>('\xAB')` == `uint64_t(0xABAB'ABAB'ABAB'ABAB)`
+///   - `broadcasti<uint64_t>((uint32_t)0xF00DFEED)` == `uint64_t(0xF00DFEED'F00DFEED)`
+///
+template<typename R, typename I>
+constexpr inline std::enable_if_t<(is_integer<R>() &&
+                                   is_integer<I>() &&
+                                   sizeof(R)>=sizeof(I)),
+                                  R>
+broadcasti(I value)
+{
+   return ((std::make_unsigned_t<R>)~0ULL/(std::make_unsigned_t<I>)~0ULL) * value ;
 }
 
 /// Get the position of first nonzero bit between 'start' and 'finish'.
