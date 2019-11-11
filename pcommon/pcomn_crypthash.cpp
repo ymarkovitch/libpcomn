@@ -144,18 +144,6 @@ static inline V &calc_hash_file(F calc, int fd, size_t *size, RaiseError raise_e
 }
 
 /*******************************************************************************
- binary128_t
-*******************************************************************************/
-std::string binary128_t::to_string() const { return b2a_hex(data(), size()) ; }
-
-char *binary128_t::to_strbuf(char *buf) const
-{
-   b2a_hex(data(), size(), buf) ;
-   buf[slen()] = 0 ;
-   return buf ;
-}
-
-/*******************************************************************************
  md5hash_t
 *******************************************************************************/
 md5hash_t md5hash(const void *buf, size_t size)
@@ -200,18 +188,8 @@ sha1hash_t sha1hash_file(int fd, size_t *size, RaiseError raise_error)
 }
 
 /*******************************************************************************
- binary256_t
-*******************************************************************************/
-std::string binary256_t::to_string() const
-{
-   char buf[binary256_t::slen() + 1] ;
-   return to_strbuf(buf) ;
-}
-
-/*******************************************************************************
  sha256hash_t
 *******************************************************************************/
-
 sha256hash_t sha256hash(const void *buf, size_t size)
 {
    sha256hash_t result ;
@@ -308,18 +286,6 @@ SHA256Hash &SHA256Hash::append_file(const char *filename)
 std::ostream &operator<<(std::ostream &os, const sha1hash_t &v)
 {
    return os << v.to_string() ;
-}
-
-std::ostream &operator<<(std::ostream &os, const binary128_t &v)
-{
-   char buf[binary128_t::slen() + 1] ;
-   return os.write(v.to_strbuf(buf), binary128_t::slen()) ;
-}
-
-std::ostream &operator<<(std::ostream &os, const binary256_t &v)
-{
-   char buf[binary256_t::slen() + 1] ;
-   return os.write(v.to_strbuf(buf), binary256_t::slen()) ;
 }
 
 } // namespace pcomn

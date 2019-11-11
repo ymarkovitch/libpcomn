@@ -144,6 +144,7 @@ add_library(pcommon STATIC
   pcomn_trace.cpp
   pcomn_tracecfg.cpp
 
+  pcomn_binary128.cpp
   pcomn_binascii.cpp
   pcomn_binstream.cpp
   pcomn_cfgparser.cpp
