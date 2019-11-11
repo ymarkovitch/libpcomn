@@ -15,7 +15,27 @@
 /** @file
  Basic operations over bits of integral data types, both using common C integer arithmetic
  and CPU-specific instructions/intrinsics.
+
+ bitop::bitcount
+ bitop::log2floor
+ bitop::log2ceil
+
+ bitop::clrrnzb   - Clear Rightmost Non-Zero Bit      (00001010 -> 00001000)
+ bitop::getrnzb   - Get Rightmost Non-Zero Bit        (00001010 -> 00000010).
+ bitop::getrzb    - Get Rightmost Zero Bit            (01001111 -> 00010000)
+ bitop::getrzbseq - Get Rightmost Zero Bit Sequence   (00101000 -> 00000111,
+                                                      if all bits are 1s, returns 0)
+ bitop::rzcnt     - Rightmost Zero Bit Count          (00101000 -> 3, 00101001 -> 0, 0 -> bitsizeof(I))
+
+ bitop::tstpow2   - Test if Power of 2                (00000001 -> true, 00011000 -> false, 0 -> false)
+ bitop::tstpow2z  - Test if Power of 2 or Zero        (00010000 -> true, 00011000 -> false, 0 -> true)
+
+ bitop::rotl      - Rotate Left
+ bitop::rotr      - Rotate Right
+
+ bitop::bitextend - Get the integral value filled with the specified bit value
 *******************************************************************************/
+
 #include <pcomn_meta.h>
 #include <pcomn_assert.h>
 #include <pcommon.h>
@@ -70,8 +90,8 @@ using native_isa_tag =
 #endif
    ;
 
-/******************************************************************************/
-/** bit_traits<n> describes bit operations on integers of size n bits.
+/***************************************************************************//**
+ bit_traits<n> describes bit operations on integers of size n bits.
 *******************************************************************************/
 template<int nbits>
 struct bit_traits ;
@@ -82,8 +102,8 @@ using bit_stype_t = typename bit_traits<nbits>::stype ;
 template<int nbits>
 using bit_utype_t = typename bit_traits<nbits>::utype ;
 
-/******************************************************************************/
-/** bit_traits specialization for 64-bit integers
+/***************************************************************************//**
+ bit_traits specialization for 64-bit integers
 *******************************************************************************/
 template<> struct bit_traits<64> {
 
@@ -127,9 +147,8 @@ template<> struct bit_traits<64> {
    }
 } ;
 
-
-/******************************************************************************/
-/** bit_traits specialization for 32-bit integers
+/***************************************************************************//**
+ bit_traits specialization for 32-bit integers
 *******************************************************************************/
 template<> struct bit_traits<32> {
 
@@ -169,8 +188,8 @@ template<> struct bit_traits<32> {
    }
 } ;
 
-/******************************************************************************/
-/** bit_traits specialization for 16-bit integers
+/***************************************************************************//**
+ bit_traits specialization for 16-bit integers
 *******************************************************************************/
 template<> struct bit_traits<16> {
 
@@ -209,8 +228,8 @@ template<> struct bit_traits<16> {
    }
 } ;
 
-/******************************************************************************/
-/** bit_traits specialization for 8-bit integers
+/***************************************************************************//**
+ bit_traits specialization for 8-bit integers
 *******************************************************************************/
 template<> struct bit_traits<8> {
 
@@ -544,6 +563,12 @@ constexpr inline if_integer_t<I> tailmask(size_t bitcnt)
    return ~(~I(1) << bitndx<I>(bitcnt - 1)) ;
 }
 
+/// Get the integral value filled with the specified bit value.
+/// E.g.
+///    - `bitextend<int>(true)` is `-1`
+///    - `bitextend<unsigned>(false)` is `0`
+///    - `bitextend<uint64_t>(true)` is `0xffff'ffff'ffff'ffff`
+///
 template<typename I>
 constexpr inline if_integer_t<I> bitextend(bool bit)
 {
