@@ -430,7 +430,12 @@ public:
 
     constexpr bool is_mapped_ipv4() const
     {
-        return !(_idata[0] | (_wdata[2] ^ value_to_big_endian(0xffffu))) ;
+        return !(_idata[0] | (_wdata[2] ^ be(0xffffu))) ;
+    }
+
+    constexpr explicit operator ipv4_addr() const
+    {
+        return ipv4_addr(value_from_big_endian(_wdata[3] & -(int)is_mapped_ipv4())) ;
     }
 
     /// Get the maximum length of string representation of IPv6 address

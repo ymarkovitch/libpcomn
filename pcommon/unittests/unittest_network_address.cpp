@@ -235,7 +235,14 @@ void InetAddressTests::Test_IPv6_Address()
     CPPUNIT_LOG_EQUAL((binary128_t)ipv6_addr(ipv4_addr(127, 0, 0, 1)), binary128_t(0, 0, 0, 0, 0, 0xffff, 0x7f00, 0x0001)) ;
     CPPUNIT_LOG_ASSERT(ipv6_addr(ipv4_addr(127, 0, 0, 1)).is_mapped_ipv4()) ;
 
+    CPPUNIT_LOG_IS_FALSE(ipv6_addr(1, 0, 0, 0xFE01, 0, 0, 0, 0xF00D).is_mapped_ipv4()) ;
+    CPPUNIT_LOG_IS_FALSE(ipv6_addr(0, 0, 0, 0, 0, 0, 0, 0xF00D).is_mapped_ipv4()) ;
+
     CPPUNIT_LOG_EQ(ipv6_addr(ipv4_addr(127, 0, 0, 1)).str(), "127.0.0.1") ;
+
+    CPPUNIT_LOG_EQUAL((ipv4_addr)ipv6_addr(ipv4_addr(127, 0, 0, 1)), ipv4_addr(127, 0, 0, 1)) ;
+    CPPUNIT_LOG_EQUAL((ipv4_addr)ipv6_addr(0, 0, 0, 0, 0, 0, 0, 0xF00D), ipv4_addr()) ;
+    CPPUNIT_LOG_EQUAL((ipv4_addr)ipv6_addr(1, 0, 0, 0, 0, 0xffff, 0, 0xF00D), ipv4_addr()) ;
 
     // Make a distinction between
     //  - "universal unspecified address", AKA DENIL, which is equal by its binary
