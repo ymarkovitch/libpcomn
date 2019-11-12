@@ -30,14 +30,12 @@ class UUIDFixture : public unit::TestFixture<UUID_FIXTURE> {
       void Test_Empty_UUID() ;
       void Test_UUID() ;
       void Test_Cast128() ;
-      void Test_Binary256() ;
 
       CPPUNIT_TEST_SUITE(UUIDFixture) ;
 
       CPPUNIT_TEST(Test_Empty_UUID) ;
       CPPUNIT_TEST(Test_UUID) ;
       CPPUNIT_TEST(Test_Cast128) ;
-      CPPUNIT_TEST(Test_Binary256) ;
 
       CPPUNIT_TEST_SUITE_END() ;
 } ;
@@ -139,7 +137,7 @@ void UUIDFixture::Test_UUID()
 void UUIDFixture::Test_Cast128()
 {
    uuid mutable_uuid ("f47ac10b-58cc-4372-a567-0e02b2c3d479") ;
-   binary128_t mutable_bin ((binary128_t)mutable_uuid) ;
+   binary128_t mutable_bin (mutable_uuid) ;
 
    const uuid const_uuid  ("007ac10b-58cc-4372-a567-0e02b2c3d478") ;
    const binary128_t &const_bin {const_uuid} ;
@@ -170,30 +168,6 @@ void UUIDFixture::Test_Cast128()
 
    CPPUNIT_LOG_ASSERT(std::is_reference<decltype(cast128<uuid>(mutable_bin))>()) ;
    CPPUNIT_LOG_IS_FALSE(std::is_const<std::remove_reference_t<decltype(cast128<uuid>(mutable_bin))>>()) ;
-}
-
-void UUIDFixture::Test_Binary256()
-{
-   PCOMN_STATIC_CHECK(!binary256_t()) ;
-   PCOMN_STATIC_CHECK(binary256_t::size() == 32) ;
-   PCOMN_STATIC_CHECK(binary256_t::slen() == 64) ;
-
-   PCOMN_STATIC_CHECK(!binary256_t(0, 0, 0, 0)) ;
-   PCOMN_STATIC_CHECK(binary256_t(0, 0, 0, 1)) ;
-
-   static constexpr binary256_t b1(0, 0, 0, 1) ;
-   PCOMN_STATIC_CHECK(*(b1.idata() + 3) == 1) ;
-
-   CPPUNIT_LOG_EQUAL(binary256_t(0, 0, 0, 1), binary256_t(0, 0, 0, 1)) ;
-   CPPUNIT_LOG_NOT_EQUAL(binary256_t(0, 0, 0, 1), binary256_t()) ;
-   CPPUNIT_LOG_NOT_EQUAL(binary256_t(0, 3, 0, 1), binary256_t(0, 0, 0, 1)) ;
-   CPPUNIT_LOG_EQUAL(binary256_t(0, 3, 0, 1), binary256_t(0, 3, 0, 1)) ;
-   CPPUNIT_LOG_NOT_EQUAL(binary256_t(0, 3, 0, 1), binary256_t(0, 3, 0, 2)) ;
-
-   CPPUNIT_LOG_EQ(string_cast(binary256_t(0, 3, 0, 1)),
-                  "0000000000000001000000000000000000000000000000030000000000000000") ;
-
-   CPPUNIT_LOG_EQUAL(binary256_t(string_cast(binary256_t(0, 3, 0, 1)).c_str()), binary256_t(0, 3, 0, 1)) ;
 }
 
 /*******************************************************************************

@@ -32,6 +32,7 @@ unittest(unittest_strslice)
 
 unittest(unittest_algorithms)
 unittest(unittest_base64)
+unittest(unittest_binary128)
 unittest(unittest_bitops)
 unittest(unittest_buffer)
 unittest(unittest_cacher)

@@ -10,7 +10,7 @@
  CREATION DATE:   10 Jan 2000
 *******************************************************************************/
 /** @file
- Hash functions and functors, MD5 hash, CRC32 calculations.
+ Large fixed binary types (128- and 256-bit).
 *******************************************************************************/
 #include <pcomn_meta.h>
 #include <pcomn_bitops.h>
