@@ -15,11 +15,11 @@
 namespace pcomn {
 
 /*******************************************************************************
- binary128_t
+ b128_t
 *******************************************************************************/
-std::string binary128_t::to_string() const { return b2a_hex(data(), size()) ; }
+std::string b128_t::to_string() const { return b2a_hex(data(), size()) ; }
 
-char *binary128_t::to_strbuf(char *buf) const
+char *b128_t::to_strbuf(char *buf) const
 {
    b2a_hex(data(), size(), buf) ;
    buf[slen()] = 0 ;
@@ -38,10 +38,10 @@ std::string binary256_t::to_string() const
 /*******************************************************************************
  ostream
 *******************************************************************************/
-std::ostream &operator<<(std::ostream &os, const binary128_t &v)
+std::ostream &operator<<(std::ostream &os, const b128_t &v)
 {
-   char buf[binary128_t::slen() + 1] ;
-   return os.write(v.to_strbuf(buf), binary128_t::slen()) ;
+   char buf[b128_t::slen() + 1] ;
+   return os.write(v.to_strbuf(buf), b128_t::slen()) ;
 }
 
 std::ostream &operator<<(std::ostream &os, const binary256_t &v)

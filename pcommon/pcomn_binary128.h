@@ -1,4 +1,4 @@
-/*-*- mode:c++;tab-width:3;indent-tabs-mode:nil;c-file-style:"ellemtel";c-file-offsets:((innamespace.0)(inclass.++)) -*-*/
+/*-*- mode:c++;tab-width:3;indent-tabs-mode:nil;c-file-style:"ellemtel";c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 #ifndef __PCOMN_BINARY128_H
 #define __PCOMN_BINARY128_H
 /*******************************************************************************
@@ -20,6 +20,14 @@
 #include <utility>
 
 namespace pcomn {
+
+struct b128_t ;
+struct binary128_t ;
+struct binary256_t ;
+
+std::ostream &operator<<(std::ostream &, const b128_t &) ;
+std::ostream &operator<<(std::ostream &, const binary128_t &) ;
+std::ostream &operator<<(std::ostream &, const binary256_t &) ;
 
 /// @cond
 namespace detail {
@@ -156,32 +164,38 @@ inline uint64_t t1ha0_bin128(uint64_t lo, uint64_t hi)
 /**@}*/
 
 /***************************************************************************//**
- 128-bit binary big-endian POD data, aligned to 64-bit boundary.
+ 128-bit binary union with by-byte, by-word, by-dword, by-qword access.
+
+ 64-bit aligned.
 *******************************************************************************/
-struct binary128_t {
+struct b128_t {
+      union {
+            uint64_t       _idata[2] ;
+            uint32_t       _wdata[4] ;
+            uint16_t       _hdata[8] ;
+            unsigned char  _cdata[16] ;
+      } ;
 
-      constexpr binary128_t() : _idata() {}
-      constexpr binary128_t(uint64_t hi, uint64_t lo) : _idata{be(hi), be(lo)} {}
+   public:
+      constexpr b128_t() : _idata() {}
 
-      constexpr binary128_t(uint16_t h1, uint16_t h2, uint16_t h3, uint16_t h4,
-                            uint16_t h5, uint16_t h6, uint16_t h7, uint16_t h8) :
-         _hdata{be(h1), be(h2), be(h3), be(h4), be(h5), be(h6), be(h7), be(h8)}
+      constexpr b128_t(uint64_t i0, uint64_t i1) : _idata{i0, i1} {}
+
+      constexpr b128_t(uint32_t w0, uint32_t w1, uint32_t w2, uint32_t w3) :
+         _wdata{w0, w1, w2, w3}
       {}
-      constexpr binary128_t(uint8_t c0, uint8_t c1, uint8_t c2, uint8_t c3,
-                            uint8_t c4, uint8_t c5, uint8_t c6, uint8_t c7,
-                            uint8_t c8, uint8_t c9, uint8_t ca, uint8_t cb,
-                            uint8_t cc, uint8_t cd, uint8_t ce, uint8_t cf) :
+
+      constexpr b128_t(uint16_t h0, uint16_t h1, uint16_t h2, uint16_t h3,
+                          uint16_t h4, uint16_t h5, uint16_t h6, uint16_t h7) :
+         _hdata{h0, h1, h2, h3, h4, h5, h6, h7}
+      {}
+
+      constexpr b128_t(uint8_t c0, uint8_t c1, uint8_t c2, uint8_t c3,
+                          uint8_t c4, uint8_t c5, uint8_t c6, uint8_t c7,
+                          uint8_t c8, uint8_t c9, uint8_t ca, uint8_t cb,
+                          uint8_t cc, uint8_t cd, uint8_t ce, uint8_t cf) :
          _cdata{c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, ca, cb, cc, cd, ce, cf}
       {}
-
-      /// Create value from a hex string representation.
-      /// @note @a hexstr need not be null-terminated, the constructor will scan at most
-      /// 32 characters, or until '\0' encountered, whatever comes first.
-      explicit binary128_t(const char *hexstr)
-      {
-         if (!hextob(_idata, sizeof _idata, hexstr))
-            _idata[1] = _idata[0] = 0 ;
-      }
 
       /// Check helper
       explicit constexpr operator bool() const { return !!(_idata[0] | _idata[1]) ; }
@@ -193,6 +207,127 @@ struct binary128_t {
       static constexpr size_t size() { return sizeof _idata ; }
       /// Get the length of string representation (32 chars)
       static constexpr size_t slen() { return 2*size() ; }
+
+      unsigned bitcount() const
+      {
+         return
+            bitop::bitcount(_idata[0]) +
+            bitop::bitcount(_idata[1]) ;
+      }
+
+      size_t hash() const { return t1ha0_bin128(_idata[0], _idata[1]) ; }
+
+      _PCOMNEXP std::string to_string() const ;
+      _PCOMNEXP char *to_strbuf(char *buf) const ;
+
+      uint64_t *idata() { return _idata ; }
+      constexpr const uint64_t *idata() const { return _idata ; }
+
+      template<typename T>
+      static constexpr auto be(T value) -> decltype(value_to_big_endian(value))
+      {
+         return value_to_big_endian(value) ;
+      }
+} ;
+
+PCOMN_STATIC_CHECK(sizeof(b128_t) == 16) ;
+PCOMN_STATIC_CHECK(alignof(b128_t) == 8) ;
+
+/***************************************************************************//**
+ Indicate if the specified type can be interpreted as 128-bit literal.
+
+ The type must be trivially copyable, have size 16 bytes and be at least
+ 8-bytes aligned.
+*******************************************************************************/
+template<typename T>
+struct is_literal128 :
+   std::bool_constant<sizeof(T) == sizeof(b128_t) &&
+                      alignof(T) >= alignof(b128_t) &&
+                      std::is_trivially_copyable<T>::value>
+{} ;
+
+template<typename T, typename R>
+using if_literal128_t = std::enable_if_t<is_literal128<T>::value, R> ;
+
+/***************************************************************************//**
+ b128_t equality and inequality.
+*******************************************************************************/
+constexpr inline bool operator==(const b128_t &l, const b128_t &r)
+{
+   return !((l._idata[0] ^ r._idata[0]) | (l._idata[1] ^ r._idata[1])) ;
+}
+
+constexpr inline bool operator!=(const b128_t &l, const b128_t &r)
+{
+   return !(l == r) ;
+}
+
+/***************************************************************************//**
+ b128_t bit operations (~,&,|,^).
+*******************************************************************************/
+/**@{*/
+constexpr inline b128_t operator&(const b128_t &x, const b128_t &y)
+{
+   return detail::combine_bigbinary_bits::eval(x, y, std::bit_and<>()) ;
+}
+
+constexpr inline b128_t operator|(const b128_t &x, const b128_t &y)
+{
+   return detail::combine_bigbinary_bits::eval(x, y, std::bit_or<>()) ;
+}
+
+constexpr inline b128_t operator^(const b128_t &x, const b128_t &y)
+{
+   return detail::combine_bigbinary_bits::eval(x, y, std::bit_xor<>()) ;
+}
+
+constexpr inline b128_t operator~(const b128_t &x)
+{
+   return detail::combine_bigbinary_bits::invert(x) ;
+}
+/**@}*/
+
+/***************************************************************************//**
+ 128-bit binary big-endian POD data, aligned to 64-bit boundary.
+*******************************************************************************/
+struct binary128_t : protected b128_t {
+   private:
+      typedef b128_t ancestor ;
+      friend detail::combine_bigbinary_bits ;
+
+   public:
+      constexpr binary128_t() = default ;
+      constexpr binary128_t(uint64_t hi, uint64_t lo) : ancestor(be(hi), be(lo)) {}
+
+      constexpr binary128_t(uint16_t h1, uint16_t h2, uint16_t h3, uint16_t h4,
+                            uint16_t h5, uint16_t h6, uint16_t h7, uint16_t h8) :
+         ancestor(be(h1), be(h2), be(h3), be(h4), be(h5), be(h6), be(h7), be(h8))
+      {}
+
+      constexpr binary128_t(uint8_t c0, uint8_t c1, uint8_t c2, uint8_t c3,
+                            uint8_t c4, uint8_t c5, uint8_t c6, uint8_t c7,
+                            uint8_t c8, uint8_t c9, uint8_t ca, uint8_t cb,
+                            uint8_t cc, uint8_t cd, uint8_t ce, uint8_t cf) :
+         ancestor(c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, ca, cb, cc, cd, ce, cf)
+      {}
+
+      /// Create value from a hex string representation.
+      /// @note @a hexstr need not be null-terminated, the constructor will scan at most
+      /// 32 characters, or until '\0' encountered, whatever comes first.
+      explicit binary128_t(const char *hexstr)
+      {
+         if (!hextob(_idata, sizeof _idata, hexstr))
+            _idata[1] = _idata[0] = 0 ;
+      }
+
+      using ancestor::operator bool ;
+      using ancestor::data ;
+      using ancestor::size ;
+      using ancestor::slen ;
+      using ancestor::bitcount ;
+      using ancestor::hash ;
+      using ancestor::to_string ;
+      using ancestor::to_strbuf ;
 
       constexpr uint64_t hi() const { return value_from_big_endian(_idata[0]) ; }
       constexpr uint64_t lo() const { return value_from_big_endian(_idata[1]) ; }
@@ -207,47 +342,12 @@ struct binary128_t {
          return value_from_big_endian(_hdata[n]) ;
       }
 
-      unsigned bitcount() const
-      {
-         return
-            bitop::bitcount(_idata[0]) +
-            bitop::bitcount(_idata[1]) ;
-      }
-
-      size_t hash() const { return t1ha0_bin128(_idata[0], _idata[1]) ; }
-
-      _PCOMNEXP std::string to_string() const ;
-      _PCOMNEXP char *to_strbuf(char *buf) const ;
-
-      /*********************************************************************//**
-       Bit operations (~,&,|,^).
-      *************************************************************************/
-      friend constexpr binary128_t operator&(const binary128_t &x, const binary128_t &y)
-      {
-         return detail::combine_bigbinary_bits::eval(x, y, std::bit_and<>()) ;
-      }
-
-      friend constexpr binary128_t operator|(const binary128_t &x, const binary128_t &y)
-      {
-         return detail::combine_bigbinary_bits::eval(x, y, std::bit_or<>()) ;
-      }
-
-      friend constexpr binary128_t operator^(const binary128_t &x, const binary128_t &y)
-      {
-         return detail::combine_bigbinary_bits::eval(x, y, std::bit_xor<>()) ;
-      }
-
-      friend constexpr binary128_t operator~(const binary128_t &x)
-      {
-         return detail::combine_bigbinary_bits::invert(x) ;
-      }
-
       /*********************************************************************//**
        Equality (==), ordering (<)
       *************************************************************************/
       friend constexpr bool operator==(const binary128_t &l, const binary128_t &r)
       {
-         return !((l._idata[0] ^ r._idata[0]) | (l._idata[1] ^ r._idata[1])) ;
+         return *l.bdata() == *r.bdata() ;
       }
 
       friend constexpr bool operator<(const binary128_t &l, const binary128_t &r)
@@ -255,66 +355,46 @@ struct binary128_t {
          return (l.hi() < r.hi()) | (l._idata[0] == r._idata[0]) & (l.lo() < r.lo()) ;
       }
 
-   protected:
-      union {
-            uint64_t       _idata[2] ;
-            uint32_t       _wdata[4] ;
-            uint16_t       _hdata[8] ;
-            unsigned char  _cdata[16] ;
-      } ;
+      friend std::ostream &operator<<(std::ostream &os, const binary128_t &v)
+      {
+         return os << *v.bdata() ;
+      }
 
    protected:
-      template<typename T>
-      static constexpr T be(T value) { return value_to_big_endian(value) ; }
-
-      uint64_t *idata() { return _idata ; }
-      constexpr const uint64_t *idata() const { return _idata ; }
-
-      friend detail::combine_bigbinary_bits ;
+      b128_t *bdata() { return this ; }
+      constexpr const b128_t *bdata() const { return this ; }
 } ;
 
-PCOMN_STATIC_CHECK(sizeof(binary128_t) == 16) ;
-PCOMN_STATIC_CHECK(alignof(binary128_t) == 8) ;
+PCOMN_STATIC_CHECK(sizeof(binary128_t) == sizeof(b128_t)) ;
+PCOMN_STATIC_CHECK(alignof(binary128_t) == alignof(b128_t)) ;
 
 // Define !=, >, <=, >= for binary128_t
 PCOMN_DEFINE_RELOP_FUNCTIONS(, binary128_t) ;
 
-template<typename T>
-struct is_literal128 :
-   std::bool_constant<sizeof(T) == sizeof(binary128_t) &&
-                      alignof(T) == alignof(binary128_t) &&
-                      std::is_trivially_copyable<T>::value>
-{} ;
-
-template<typename T>
-inline std::enable_if_t<is_literal128<T>::value, T *> cast128(binary128_t *v)
+/***************************************************************************//**
+ binary128_t bit operations (~,&,|,^).
+*******************************************************************************/
+/**@{*/
+constexpr inline binary128_t operator&(const binary128_t &x, const binary128_t &y)
 {
-   return reinterpret_cast<T *>(v) ;
+   return detail::combine_bigbinary_bits::eval(x, y, std::bit_and<>()) ;
 }
 
-template<typename T>
-inline std::enable_if_t<is_literal128<T>::value, const T *> cast128(const binary128_t *v)
+constexpr inline binary128_t operator|(const binary128_t &x, const binary128_t &y)
 {
-   return reinterpret_cast<const T *>(v) ;
+   return detail::combine_bigbinary_bits::eval(x, y, std::bit_or<>()) ;
 }
 
-template<typename T>
-inline std::enable_if_t<is_literal128<T>::value, T &> cast128(binary128_t &v)
+constexpr inline binary128_t operator^(const binary128_t &x, const binary128_t &y)
 {
-   return *cast128<T>(&v) ;
+   return detail::combine_bigbinary_bits::eval(x, y, std::bit_xor<>()) ;
 }
 
-template<typename T>
-inline std::enable_if_t<is_literal128<T>::value, const T &> cast128(const binary128_t &v)
+constexpr inline binary128_t operator~(const binary128_t &x)
 {
-   return *cast128<T>(&v) ;
+   return detail::combine_bigbinary_bits::invert(x) ;
 }
-
-template<typename T>
-inline std::enable_if_t<is_literal128<T>::value, T &&> cast128(binary128_t &&v)
-{
-   return std::move(*reinterpret_cast<T *>(&v)) ;
-}
+/**@}*/
 
 /***************************************************************************//**
  256-bit binary
@@ -376,7 +456,7 @@ struct binary256_t {
          return buf ;
       }
 
-      binary256_t& flip_endianness()
+      binary256_t &flip_endianness()
       {
          const uint64_t q0 = be(_idata[3]) ;
          const uint64_t q1 = be(_idata[2]) ;
@@ -442,11 +522,71 @@ struct binary256_t {
 // Define !=, >, <=, >= for binary256_t
 PCOMN_DEFINE_RELOP_FUNCTIONS(, binary256_t) ;
 
-/*******************************************************************************
- ostream
+/***************************************************************************//**
+ Cast 128-bit literal
 *******************************************************************************/
-std::ostream &operator<<(std::ostream &, const binary128_t &) ;
-std::ostream &operator<<(std::ostream &, const binary256_t &) ;
+/**@{*/
+template<typename T>
+constexpr inline if_literal128_t<T,const T*> cast128(const b128_t *v)
+{
+   return reinterpret_cast<const T *>(v) ;
+}
+
+template<typename T>
+constexpr inline if_literal128_t<T,T*> cast128(b128_t *v)
+{
+   return reinterpret_cast<T *>(v) ;
+}
+
+template<typename T>
+constexpr inline if_literal128_t<T,const T*> cast128(const binary128_t *v)
+{
+   return reinterpret_cast<const T *>(v) ;
+}
+
+template<typename T>
+constexpr inline if_literal128_t<T,T*> cast128(binary128_t *v)
+{
+   return reinterpret_cast<T *>(v) ;
+}
+
+template<typename T>
+constexpr inline if_literal128_t<T,const T&> cast128(const b128_t &v)
+{
+   return *cast128<T>(&v) ;
+}
+
+template<typename T>
+constexpr inline if_literal128_t<T,T&> cast128(b128_t &v)
+{
+   return *cast128<T>(&v) ;
+}
+
+template<typename T>
+constexpr inline if_literal128_t<T,T&&> cast128(b128_t &&v)
+{
+   return std::move(*cast128<T>(&v)) ;
+}
+
+template<typename T>
+constexpr inline if_literal128_t<T,const T&> cast128(const binary128_t &v)
+{
+   return *cast128<T>(&v) ;
+}
+
+template<typename T>
+constexpr inline if_literal128_t<T,T&> cast128(binary128_t &v)
+{
+   return *cast128<T>(&v) ;
+}
+
+template<typename T>
+constexpr inline if_literal128_t<T,T&&> cast128(binary128_t &&v)
+{
+   return std::move(*cast128<T>(&v)) ;
+}
+
+/**@}*/
 
 } // end of namespace pcomn
 
@@ -455,6 +595,9 @@ namespace std {
  std::hash specializations for large binary types (binary128_t, binary256_t)
 *******************************************************************************/
 /**@{*/
+template<> struct hash<pcomn::b128_t> {
+      size_t operator()(const pcomn::b128_t &v) const { return v.hash() ; }
+} ;
 template<> struct hash<pcomn::binary128_t> {
       size_t operator()(const pcomn::binary128_t &v) const { return v.hash() ; }
 } ;
