@@ -773,6 +773,7 @@ class closed_hashtable {
          bucket_type * const first_found = begin_buckets() + bucket_ndx(key) ;
          bucket_type *bucket = first_found ;
          bucket_type *result = NULL ;
+         GCC_DIAGNOSTIC_PUSH_IGNORE_v7(implicit-fallthrough)
          do
             switch (bucket->state())
             {
@@ -792,6 +793,7 @@ class closed_hashtable {
                   PCOMN_FAIL("Invalid bucket state while searching available bucket") ;
             }
          while ((bucket = next(bucket)) != first_found) ;
+         GCC_DIAGNOSTIC_POP()
          return result ;
       }
 
