@@ -169,6 +169,9 @@ void InetAddressTests::Test_IPv4_Subnet_Address()
     CPPUNIT_LOG_EQUAL(ipv4_subnet("10.0.61.5/24").addr(), ipv4_addr(10, 0, 61, 5)) ;
     CPPUNIT_LOG_EQ(ipv4_subnet("10.0.61.5/24").pfxlen(), 24) ;
 
+    CPPUNIT_LOG_EQUAL(ipv4_subnet("0.0.0.0/0"), ipv4_subnet()) ;
+    CPPUNIT_LOG_NOT_EQUAL(ipv4_subnet("0.0.0.0/1"), ipv4_subnet()) ;
+
     CPPUNIT_LOG(std::endl) ;
     CPPUNIT_LOG_EXCEPTION(ipv4_subnet("10.0.61.5/-1"), invalid_str_repr) ;
     CPPUNIT_LOG_EXCEPTION(ipv4_subnet("10.0.61.5"), invalid_str_repr) ;
@@ -308,6 +311,16 @@ void InetAddressTests::Test_IPv6_Address_Parser()
                       ipv6_addr(0, 0, 0, 0, 0, 0xffff, 0xac10, 0x964)) ;
 
     CPPUNIT_LOG_EQUAL(ipv6_addr("0.0.0.0"), ipv6_addr()) ;
+    CPPUNIT_LOG_EQUAL((ipv4_addr)ipv6_addr("0.0.0.0"), ipv4_addr()) ;
+
+    CPPUNIT_LOG(std::endl) ;
+
+    CPPUNIT_LOG_EQUAL(ipv6_addr("1::fe01:feed:babe:cafe:f00d", ipv6_addr::IGNORE_DOTDEC),
+                      ipv6_addr(1, 0, 0, 0xFE01, 0xFEED, 0xBABE, 0xCAFE, 0xF00D)) ;
+
+    CPPUNIT_LOG_EXCEPTION_MSG(ipv6_addr("::ffff:127.0.0.1", ipv6_addr::IGNORE_DOTDEC), invalid_str_repr, "address") ;
+
+    CPPUNIT_LOG_EXCEPTION_MSG(ipv6_addr("172.16.9.100", ipv6_addr::IGNORE_DOTDEC), invalid_str_repr, "address") ;
 }
 
 void InetAddressTests::Test_IPv6_Subnet_Address()
@@ -415,7 +428,12 @@ void InetAddressTests::Test_IPv6_Subnet_Address()
     CPPUNIT_LOG_EXCEPTION(ipv6_subnet("1::/-1"), invalid_str_repr) ;
     CPPUNIT_LOG_EXCEPTION(ipv6_subnet("1::"), invalid_str_repr) ;
     CPPUNIT_LOG_EXCEPTION(ipv6_subnet("1::/129"), invalid_str_repr) ;
-    CPPUNIT_LOG_EXCEPTION_MSG(ipv6_subnet("1::/0x10"), invalid_str_repr, "subnet specification") ;
+    CPPUNIT_LOG_EXCEPTION(ipv6_subnet("1::/0x1"), invalid_str_repr) ;
+
+    CPPUNIT_LOG_EXCEPTION_MSG(ipv6_subnet("1::/0x10"), invalid_str_repr, "IPv6 subnet specification") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(ipv6_subnet("172.16.1.1/12"), invalid_str_repr, "IPv6 subnet specification") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(ipv6_subnet("::ffff:172.16.1.1/12"), invalid_str_repr, "IPv6 subnet specification") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(ipv6_subnet("0.0.0.0/0"), invalid_str_repr, "IPv6 subnet specification") ;
 }
 
 void InetAddressTests::Test_Sock_Address()

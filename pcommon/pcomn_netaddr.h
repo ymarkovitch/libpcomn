@@ -362,8 +362,10 @@ public:
     enum CFlags {
         NO_EXCEPTION    = 0x0001, /**< Don't throw exception if construction failed,
                                      intialize ipv6_addr to :: */
-        ALLOW_EMPTY     = 0x0002  /**< Allow to pass an empty string (the resulting
+        ALLOW_EMPTY     = 0x0002, /**< Allow to pass an empty string (the resulting
                                      address will be ::) */
+        IGNORE_DOTDEC   = 0x0400  /**< Don't attempt to interpret address string as a
+                                     dot-delimited IPv4 address */
     } ;
 
     /// Create the default address (::).
@@ -394,8 +396,11 @@ public:
     /// Create an IP address from its human-readable text representation.
     ///
     /// @param address_string Any valid IPv6 address string, abbreviated or
-    /// non-abbreviated form.
+    /// non-abbreviated form, or IPv4 in dot-decimal notation.
     /// @param flags        ORed ConstructFlags flags.
+    ///
+    /// @note If `address_string` is dot-decimal IPv4 address, creates IPv4-mapped IPv6
+    /// address (@see is_mapped_ipv4()).
     ///
     ipv6_addr(const strslice &address_string, CFlags flags = {}) :
         ancestor(from_string(address_string, flags))
@@ -433,7 +438,11 @@ public:
         return !(_idata[0] | (_wdata[2] ^ be(0xffffu))) ;
     }
 
-    constexpr explicit operator ipv4_addr() const
+    /// Get the IPv4 address, if the object is IPv4-mapped IPv6, or null address
+    /// otherwise.
+    /// @see is_mapped_ipv4()
+    ///
+    constexpr explicit operator ipv4_addr() const noexcept
     {
         return ipv4_addr(value_from_big_endian(_wdata[3] & -(int)is_mapped_ipv4())) ;
     }
@@ -489,6 +498,8 @@ private:
     static __noreturn __cold void invalid_address_string(const strslice &address_string) ;
 } ;
 
+PCOMN_DEFINE_FLAG_ENUM(ipv6_addr::CFlags) ;
+
 /*******************************************************************************
  ipv6_addr comparison operators
 *******************************************************************************/
@@ -519,7 +530,10 @@ public:
     /// in prefix length notation (AKA "slash" notation).
     ///
     /// @param subnet_string Abbreviated or non-abbreviated IPv6 subnet address in prefix
-    /// length notation, like "2001:db8::/32"
+    /// length notation, like "2001:db8::/32".
+    ///
+    /// @note In contrast to ipv6_addr parser, does _not_ allow ipv4 subnet
+    /// specification, like "172.16.1.1/12" or "0.0.0.0/0", throws invalid_str_repr.
     ///
     ipv6_subnet(const strslice &subnet_string, RaiseError raise_error = RAISE_ERROR) ;
 

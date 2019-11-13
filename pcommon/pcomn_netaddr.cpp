@@ -216,7 +216,7 @@ ipv4_subnet::ipv4_subnet(const strslice &subnet_string, RaiseError raise_error)
         { _pfxlen = 0 ; }
 
     PCOMN_THROW_MSG_IF(raise_error, invalid_str_repr,
-                       "Invalid subnet specification: " P_STRSLICEQF, P_STRSLICEV(subnet_string)) ;
+                       "Invalid IPv4 subnet specification: " P_STRSLICEQF, P_STRSLICEV(subnet_string)) ;
 }
 
 /*******************************************************************************
@@ -237,6 +237,7 @@ binary128_t ipv6_addr::from_string(const strslice &address_string, CFlags flags)
     union result_ptr { uint16_t *phextet ; uint32_t *pv4 ; } ;
 
     const bool raise_error = !(flags & NO_EXCEPTION) ;
+    const bool allow_dotdec = !(flags & IGNORE_DOTDEC) ;
 
     ipv6_addr result ;
     result_ptr dest = {result._hdata} ;
@@ -327,7 +328,10 @@ binary128_t ipv6_addr::from_string(const strslice &address_string, CFlags flags)
                     state = DelimColon ;
                     break ;
                 }
-                // '.', must be dot-decimal IPv4 at the end of the string
+                // '.', must be dot-decimal IPv4 at the end of the string; check if
+                // allowed at all.
+                IPV6_STRING_ENSURE(allow_dotdec) ;
+
                 const auto ipv4_opt = ipv4_from_dotdec(address_string(begin_hextet_pos)) ;
 
                 IPV6_STRING_ENSURE(ipv4_opt.second) ;
@@ -455,10 +459,10 @@ const char *ipv6_addr::to_strbuf(addr_strbuf output) const
 
 __noreturn __cold void ipv6_addr::invalid_address_string(const strslice &address_string)
 {
-    PCOMN_THROW_MSG_IF(!address_string, invalid_str_repr,
-                       "Empty IPv6 address string.") ;
-    PCOMN_THROW_MSGF(invalid_str_repr,
-                     "Invalid IPv6 address string " P_STRSLICEQF ".", P_STRSLICEV(address_string)) ;
+    if (!address_string)
+        throw_exception<invalid_str_repr>("Empty IPv6 address string.") ;
+    else
+        throwf<invalid_str_repr>("Invalid IPv6 address string " P_STRSLICEQF ".", P_STRSLICEV(address_string)) ;
 }
 
 /*******************************************************************************
@@ -471,14 +475,14 @@ ipv6_subnet::ipv6_subnet(const strslice &subnet_string, RaiseError raise_error)
     if (s.first && s.second)
         try {
             _pfxlen = ensure_pfxlen<invalid_str_repr>(strtonum<uint8_t>(make_strslice_range(s.second))) ;
-            *static_cast<ancestor*>(this) = ipv6_addr(s.first, flags_if(ipv6_addr::NO_EXCEPTION, !raise_error)) ;
+            *static_cast<ancestor*>(this) = ipv6_addr(s.first, flags_if(ipv6_addr::NO_EXCEPTION, !raise_error)|ipv6_addr::IGNORE_DOTDEC) ;
             return ;
         }
         catch (const std::exception &)
         { _pfxlen = 0 ; }
 
     PCOMN_THROW_MSG_IF(raise_error, invalid_str_repr,
-                       "Invalid subnet specification: " P_STRSLICEQF, P_STRSLICEV(subnet_string)) ;
+                       "Invalid IPv6 subnet specification: " P_STRSLICEQF, P_STRSLICEV(subnet_string)) ;
 }
 
 } // end of namespace pcomn
