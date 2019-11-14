@@ -104,7 +104,7 @@ struct MAC {
       _PCOMNEXP
       MAC(const strslice &str, RaiseError raise_error = RAISE_ERROR) ;
 
-      template<typename I, typename=std::enable_if_t<(sizeof(I) == 8 && std::is_unsigned<I>::value)>>
+      template<typename I, typename=std::enable_if_t<(sizeof(I) == 8 && std::is_unsigned<I>::value),int>>
       explicit constexpr MAC(I data) : _idata{value_to_little_endian(data & 0x00FFFFFFFFFFFFFFULL)} {}
 
       explicit constexpr operator bool() const { return !!_idata ; }

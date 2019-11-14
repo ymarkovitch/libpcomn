@@ -34,18 +34,6 @@
 #define PCOMN_NUMTOSTR(number, radix) (pcomn::numtostr((number), std::array<char, 72>().data(), 72, (radix)))
 
 namespace pcomn {
-
-/******************************************************************************/
-/** Exception that indicates unexpected character while parsing a string.
-*******************************************************************************/
-class _PCOMNEXP unexpected_char : public std::runtime_error {
-      typedef std::runtime_error ancestor ;
-   public:
-      explicit unexpected_char(const std::string &what) :
-         ancestor(what)
-      {}
-} ;
-
 /// @cond
 namespace detail {
 
@@ -208,7 +196,7 @@ inline Integer augment_with_digit(Integer n, int digit, int sign)
 template<typename Integer>
 inline Integer ensure_next_digit(Integer n, int c, int sign)
 {
-   PCOMN_THROW_IF(!isdigit(c), unexpected_char,
+   PCOMN_THROW_IF(!isdigit(c), invalid_str_repr,
                   "Unexpected character: %s encountered while expecting a decimal digit.",
                   charrepr(c).c_str()) ;
    return
@@ -270,29 +258,28 @@ inline Range strtonum(Range input, bool &result)
 }
 
 template<typename Num, typename Range>
-inline if_integer_t<Num> strtonum(Range input)
+if_integer_t<Num> strtonum(Range input)
 {
-   Num result = Num() ;
-   strtonum(input, result) ;
+   Num result {} ;
+   Range &&r = strtonum(input, result) ;
+   PCOMN_THROW_IF(!!r && (!std::is_pointer<Range>() || *r), invalid_str_repr,
+                  "Unexpected character: %s encountered while expecting a decimal digit.",
+                  charrepr(*r).c_str()) ;
    return result ;
 }
 
 /// Convert a string to a number, don't throw exceptions on conversion error
 ///
-/// @return pair(num,bool), where pair.first is the result of a conversiom, pair.second
+/// @return pair(num,bool), where pair.first is the result of a conversion, pair.second
 /// is true if conversion is successful and false otherwise; in case of conversion
 /// failure, pair.first is 0.
 template<typename Num, typename Range>
 if_integer_t<Num, std::pair<Num, bool>> strtonum_safe(Range input) noexcept
 {
-   std::pair<Num, bool> result (Num(), false) ;
-   try {
-      strtonum(input, result.first) ;
-      result.second = true;
-   }
+   try { return {strtonum<Num>(input), true} ; }
    catch(const std::exception &)
    {}
-   return result ;
+   return {} ;
 }
 
 template<typename Num, typename Range>

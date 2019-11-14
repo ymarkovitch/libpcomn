@@ -353,8 +353,6 @@ inline std::ostream &operator<<(std::ostream &os, const omanip<F> &manip)
 template<typename> class simple_slice ;
 template<typename> class simple_vector ;
 template<typename, size_t> class static_vector ;
-template<typename> struct matrix_slice ;
-template<typename, bool> struct simple_matrix ;
 
 template<typename T>
 inline std::ostream &operator<<(std::ostream &os, const simple_slice<T> &v)

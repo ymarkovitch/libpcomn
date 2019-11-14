@@ -93,7 +93,7 @@
 /// @hideinitializer @ingroup ExceptionMacros
 #define PCOMN_THROW_IF(condition, exception, format, ...)   \
 do {                                                        \
-   if (condition)                                           \
+   if (unlikely((condition)))                               \
       PCOMN_THROWF(exception, format, ##__VA_ARGS__) ;      \
 } while(false)
 
@@ -260,7 +260,7 @@ inline T &set_flags_masked(T &target, T flagset, T mask)
 template<typename T, typename U>
 inline T &set_flags(T &target, bool value, U mask)
 {
-   return set_flags_masked<T>(target, (T() - (T)value), mask) ;
+   return set_flags_masked<T>(target, (T)(T() - (T)value), mask) ;
 }
 
 template<typename T>

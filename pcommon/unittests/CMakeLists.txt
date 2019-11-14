@@ -14,11 +14,7 @@ project(pcommn_unittests)
 
 unittests_project(libpcommon_unittests)
 
-if (COMPILER_GCCLIKE)
-    set_project_link_libraries(crypto z stdc++fs)
-else()
-    set_project_link_libraries(crypto z)
-endif(COMPILER_GCCLIKE)
+set_project_link_libraries(pcommon)
 
 # Test cfgparser first, to ensure diagnostics log configuration is functioning properly
 unittest(unittest_cfgparser)
@@ -30,12 +26,13 @@ unittest(unittest_utils)
 # Test the library
 #
 unittest(unittest_immutablestr)
-#unittest(unittest_smartptr)
+unittest(unittest_smartptr)
 unittest(unittest_strshims)
 unittest(unittest_strslice)
 
 unittest(unittest_algorithms)
 unittest(unittest_base64)
+unittest(unittest_buffer)
 unittest(unittest_cacher)
 #unittest(unittest_cdsqueue)
 #unittest(unittest_cdscrq)
@@ -67,7 +64,12 @@ unittest(unittest_textio)
 unittest(unittest_timespec)
 unittest(unittest_uri)
 unittest(unittest_uuid)
+unittest(unittest_vector)
 unittest(unittest_zstream)
+
+if (ZSTD_FOUND)
+    unittest(unittest_zdict)
+endif()
 
 add_adhoc_executable(test_readfile)
 add_adhoc_executable(test_backtrace)

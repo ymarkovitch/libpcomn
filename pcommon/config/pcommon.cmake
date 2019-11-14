@@ -413,12 +413,11 @@ function(apply_project_requirements target1)
 
     get_property(link_requirements DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY PCOMN_PROJECT_LINK_LIBRARIES)
     set(libraries ${link_requirements} ${PCOMN_PROJREQ_LIBS})
-    get_interface_libraries(interface_libraries ${libraries})
-    list(APPEND libraries ${interface_libraries})
-
-    foreach(target IN LISTS target1 PCOMN_PROJREQ_UNPARSED_ARGUMENTS)
-        target_link_libraries(${target} PRIVATE -Wl,--start-group ${libraries} -Wl,--end-group)
-    endforeach()
+    if (NOT ("${libraries}" STREQUAL ""))
+        foreach(target IN LISTS target1 PCOMN_PROJREQ_UNPARSED_ARGUMENTS)
+            target_link_libraries(${target} PRIVATE ${libraries})
+        endforeach()
+    endif()
 endfunction()
 
 #

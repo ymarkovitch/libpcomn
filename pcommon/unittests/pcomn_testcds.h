@@ -17,7 +17,7 @@
 #include <pcomn_calgorithm.h>
 #include <pcomn_stopwatch.h>
 #include <pcomn_syncobj.h>
-#include <pcomn_simplematrix.h>
+#include <pcomn_vector.h>
 
 #include <thread>
 #include <vector>

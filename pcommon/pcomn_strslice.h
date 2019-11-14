@@ -925,7 +925,7 @@ template<typename C>
 inline detail::quote_<C> quote(const basic_strslice<C> &s, C q) { return {s, q} ; }
 
 template<typename S>
-inline auto quote(const S &s) -> decltype(detail::quote_<string_char_type_t<S>>(s))
+inline auto quote(const S &s) -> decltype(detail::quote_<string_char_t<S>>(s))
 {
    return {s} ;
 }
@@ -933,7 +933,7 @@ inline auto quote(const S &s) -> decltype(detail::quote_<string_char_type_t<S>>(
 inline detail::quote_<char> quote(const char &c) { return {{&c, &c + 1}, '\''} ; }
 
 template<typename S>
-inline detail::quote_<string_char_type_t<S>> quote(const S &s, string_char_type_t<S> q)
+inline detail::quote_<string_char_t<S>> quote(const S &s, string_char_t<S> q)
 {
    return {s, q} ;
 }

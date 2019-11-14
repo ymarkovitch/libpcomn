@@ -19,6 +19,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} CACHE PATH "")
 set_property(GLOBAL PROPERTY ALLOW_DUPLICATE_CUSTOM_TARGETS TRUE)
 
 include(pcommon)
+include(CMakeFindDependencyMacro)
 
 set(ENABLE_PCOMN_UNITTESTS  ON  CACHE BOOL "Enable unittests building. Requires CPPUntit.")
 set(ENABLE_PCOMN_STACKTRACE OFF CACHE BOOL "Enable stacktrace classes. Linux-only. Requires libunwind and libdw.")
@@ -46,22 +47,16 @@ else()
     set(COMPILER_GCCLIKE 0)
 endif()
 
-if (NOT UNIX)
-    if (NOT ZLIB_INCLUDE_DIR)
-        find_package(ZLIB)
-    endif()
-    if (NOT ZLIB_INCLUDE_DIR)
-        messsage(FATAL_ERROR "ZLib include path is not found. Please specify -DZLIB_INCLUDE_DIR manually.")
-    endif()
-else()
-    find_package(OpenSSL)
-    if (NOT OPENSSL_INCLUDE_DIR)
-        message(FATAL_ERROR "OpenSSL library include files are not found. Please install OpenSSL development library.")
-    endif()
+set(ZSTD_USE_STATIC_LIBS YES)
+
+find_dependency(ZSTD 1.4.3)
+find_dependency(ZLIB REQUIRED)
+if (UNIX)
+    find_dependency(OpenSSL REQUIRED)
 endif()
 
 function(find_required_package package_name package_checkvar)
-    find_package(${package_name} REQUIRED)
+    find_dependency(${package_name})
     if (NOT ${package_checkvar})
         message(FATAL_ERROR
             "\n${package_name} library, which is required for stack trace, is not found.\n"
@@ -154,6 +149,7 @@ add_library(pcommon STATIC
 
   $<$<NOT:$<PLATFORM_ID:Windows>>:
   pcomn_crypthash
+  $<$<BOOL:${ZSTD_FOUND}>:pcomn_zstd.cpp>
   unix/pcomn_posix_exec.cpp
   unix/pcomn_shutil.cpp
   unix/pcomn_sys.cpp
@@ -162,17 +158,7 @@ add_library(pcommon STATIC
 )
 
 # C++14 required
-target_compile_features(pcommon
-  PUBLIC
-  cxx_alignas
-  cxx_alignof
-  cxx_constexpr
-  cxx_decltype
-  cxx_delegating_constructors
-  cxx_return_type_deduction
-  cxx_relaxed_constexpr
-  cxx_lambda_init_captures
-  )
+target_compile_features(pcommon PUBLIC cxx_std_14)
 
 set_target_properties(pcommon
   PROPERTIES
@@ -225,6 +211,12 @@ target_link_libraries(pcommon
   $<$<BOOL:${ENABLE_PCOMN_STACKTRACE}>:unwind>
   $<$<BOOL:${ENABLE_PCOMN_STACKTRACE}>:dw>
   $<$<BOOL:${ENABLE_PCOMN_STACKTRACE}>:elf>
+
+  INTERFACE
+  $<$<BOOL:${ZSTD_FOUND}>:zstd>
+  $<$<BOOL:${COMPILER_GCCLIKE}>:OpenSSL::Crypto>
+  $<$<BOOL:${COMPILER_GCCLIKE}>:stdc++fs>
+  $<$<BOOL:${COMPILER_GCCLIKE}>:z>
   )
 
 set_source_files_properties(${T1HA_SOURCEFILES} PROPERTIES

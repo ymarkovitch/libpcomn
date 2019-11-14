@@ -1,16 +1,19 @@
 #------------------------------------------------------------------------------
 # FILE         :  CMakeLists.txt
-# COPYRIGHT    :  Yakov Markovitch, 2014-2019
+# COPYRIGHT    :  Yakov Markovitch, 2019
 #                 See LICENSE for information on usage/redistribution.
 #
-# DESCRIPTION  :  netreach library build script
+# DESCRIPTION  :
 #
 # PROGRAMMED BY:  Yakov Markovitch
-# CREATION DATE:  8 Sep 2014
+# CREATION DATE:  21 Oct 2019
 #------------------------------------------------------------------------------
 cmake_minimum_required(VERSION 3.12)
 
-add_library(pcomn_net STATIC netsockets.cpp)
+unittests_project(pcomn_trie_unittests)
 
-target_link_libraries(pcomn_net PUBLIC pcommon)
-target_include_directories(pcomn_net PUBLIC ..)
+set_project_link_libraries(pcomn_trie)
+
+# Test the library
+#
+unittest(unittest_netprefix)

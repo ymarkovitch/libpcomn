@@ -134,16 +134,20 @@ inline uint64_t t1ha2_bin128(uint64_t lo, uint64_t hi)
  Inlined T1HA0 specialization for 128-bit binary data.
 *******************************************************************************/
 /**@{*/
-inline uint64_t t1ha0_bin128(uint64_t lo, uint64_t hi)
+inline uint64_t t1ha0_bin128(uint64_t lo, uint64_t hi, uint64_t seed)
 {
    constexpr uint64_t len = 16 ;
-   constexpr uint64_t seed = 0 ;
    const uint64_t b = len  + detail::t1ha_mux64(lo, detail::t1ha_prime_2) ;
    const uint64_t a = seed + detail::t1ha_mux64(hi, detail::t1ha_prime_1) ;
    // final_weak_avalanche
    return
       detail::t1ha_mux64(detail::t1ha_rotr64(a + b, 17), detail::t1ha_prime_4) +
       detail::t1ha_mix64(a ^ b, detail::t1ha_prime_0) ;
+}
+
+inline uint64_t t1ha0_bin128(uint64_t lo, uint64_t hi)
+{
+   return t1ha0_bin128(lo, hi, 0) ;
 }
 /**@}*/
 

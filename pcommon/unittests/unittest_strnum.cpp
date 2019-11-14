@@ -129,12 +129,15 @@ void StrNumTests::Test_StrToNum()
    CPPUNIT_LOG_EQUAL(pcomn::strtonum<int>("0"), 0) ;
    CPPUNIT_LOG_EQUAL(pcomn::strtonum<int>("123"), 123) ;
    CPPUNIT_LOG_EQUAL(pcomn::strtonum<int>("-123"), -123) ;
-   CPPUNIT_LOG_EQUAL(pcomn::strtonum_def<int>("-123 ", 0), -123) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_def<int>("-123 ", 15), 15) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_def<int>("-123", 15), -123) ;
 
    CPPUNIT_LOG_EQUAL(pcomn::strtonum<long long>("0"), 0LL) ;
    CPPUNIT_LOG_EQUAL(pcomn::strtonum<long long>("123"), 123LL) ;
-   CPPUNIT_LOG_EQUAL(pcomn::strtonum<long long>("-123 "), -123LL) ;
-   CPPUNIT_LOG_EQUAL(pcomn::strtonum_def<long long>("-123 ", 0), -123LL) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum<long long>("-123"), -123LL) ;
+
+   CPPUNIT_LOG_EXCEPTION(pcomn::strtonum<long long>("-123 "), pcomn::invalid_str_repr) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_def<long long>("-123 ", 15), 15LL) ;
 }
 
 int main(int argc, char *argv[])

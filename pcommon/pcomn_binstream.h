@@ -27,7 +27,7 @@
 #include <pcomn_except.h>
 #include <pcomn_string.h>
 #include <pcomn_safeptr.h>
-#include <pcomn_simplematrix.h>
+#include <pcomn_vector.h>
 
 #include <string>
 #include <vector>

@@ -10,7 +10,7 @@
  CREATION DATE:   3 Apr 2003
 *******************************************************************************/
 #include <pcomn_iterator.h>
-#include <pcomn_simplematrix.h>
+#include <pcomn_vector.h>
 #include <pcomn_unittest.h>
 
 #include <iostream>
