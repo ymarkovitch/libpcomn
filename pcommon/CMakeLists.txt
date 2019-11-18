@@ -49,10 +49,10 @@ endif()
 
 set(ZSTD_USE_STATIC_LIBS YES)
 
-find_dependency(ZSTD 1.4.3)
-find_dependency(ZLIB REQUIRED)
+find_package(ZSTD 1.4.3)
+find_package(ZLIB REQUIRED)
 if (UNIX)
-    find_dependency(OpenSSL REQUIRED)
+    find_package(OpenSSL REQUIRED)
 endif()
 
 function(find_required_package package_name package_checkvar)
