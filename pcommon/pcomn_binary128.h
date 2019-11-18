@@ -297,6 +297,7 @@ struct binary128_t : protected b128_t {
 
    public:
       constexpr binary128_t() = default ;
+      constexpr explicit binary128_t(const b128_t &b) : ancestor(b) {}
       constexpr binary128_t(uint64_t hi, uint64_t lo) : ancestor(be(hi), be(lo)) {}
 
       constexpr binary128_t(uint16_t h1, uint16_t h2, uint16_t h3, uint16_t h4,

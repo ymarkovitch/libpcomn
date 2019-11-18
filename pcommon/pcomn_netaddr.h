@@ -545,6 +545,19 @@ public:
 
     operator ipv6_addr() const { return addr() ; }
 
+    binary128_t netmask() const
+    {
+        const uint64_t himask = pfxlen() >= 64 ? ~0ULL : 0ULL ;
+        const uint64_t lomask = pfxlen() >  64 ? ~0ULL : 0ULL ;
+
+        const int64_t shift = pfxlen() - 64 ;
+
+        const uint64_t hi = (~1LL << (-shift - 1)) | himask ;
+        const uint64_t lo = (~int64_t((~0ULL>>1)) >> (shift - 1)) & lomask ;
+
+        return {hi, lo} ;
+    }
+
     /// Get the "canonical" address of this subnet where all the bits after the prefix
     /// are reset to 0.
     /// So, for instance, `ipv6_subnet("2001:db8:5:1234/32").subnet_addr()` is
@@ -553,17 +566,7 @@ public:
     ///
     ipv6_addr subnet_addr() const
     {
-        if (is_host())
-            return addr() ;
-
-        const bool lo_qword = pfxlen() > 63 ;
-        const uint64_t mask = be(((1ULL << 63) - (1ULL << ((lo_qword * 64 + 63) - pfxlen()))) << 1) ;
-        const uint64_t other_mask = 0ULL - lo_qword ;
-
-        ipv6_addr r (addr()) ;
-        r.idata()[lo_qword] &= mask ;
-        r.idata()[!lo_qword] &= other_mask ;
-        return r ;
+        return ipv6_addr(addr() & netmask()) ;
     }
 
     ipv6_subnet subnet() const { return ipv6_subnet(subnet_addr(), pfxlen()) ; }
