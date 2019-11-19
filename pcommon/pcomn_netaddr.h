@@ -150,6 +150,9 @@ public:
     static constexpr ipv4_addr last() { return ipv4_addr((uint32_t)~0) ; }
 
     constexpr ipv4_addr operator&(uint32_t mask) const { return ipv4_addr(ipaddr() & mask) ; }
+    constexpr ipv4_addr operator|(uint32_t mask) const { return ipv4_addr(ipaddr() | mask) ; }
+    constexpr ipv4_addr operator^(uint32_t mask) const { return ipv4_addr(ipaddr() ^ mask) ; }
+    constexpr ipv4_addr operator~() const { return ipv4_addr(~ipaddr()) ; }
 
     /// Get a hostname for the address.
     /// @throw nothing
@@ -270,11 +273,11 @@ public:
 
     explicit operator bool() const { return !!raw() ; }
 
-    const ipv4_addr &addr() const { return _addr ; }
+    constexpr const ipv4_addr &addr() const { return _addr ; }
 
-    operator ipv4_addr() const { return _addr ; }
+    constexpr operator ipv4_addr() const { return _addr ; }
 
-    ipv4_addr subnet_addr() const { return addr() & netmask() ; }
+    constexpr ipv4_addr subnet_addr() const { return addr() & netmask() ; }
     ipv4_subnet subnet() const { return ipv4_subnet(subnet_addr(), pfxlen()) ; }
 
     /// Get subnet prefix length
@@ -283,8 +286,37 @@ public:
     /// Get subnet mask (host order)
     constexpr uint32_t netmask() const { return (uint32_t)(~0ULL << (32 - _pfxlen)) ; }
 
+    /// Test if the subnet matches single IPv4 address (the prefix length is 32).
     constexpr bool is_host() const { return pfxlen() == 32 ; }
+    /// Test if the subnet matches any IPv4 address (the prefix length is 0).
     constexpr bool is_any() const { return pfxlen() == 0 ; }
+
+    /// Match an IPv4 address with a subnet address and bitmask.
+    /// @note Autovectorized nicely.
+    static constexpr bool match(const ipv4_addr &address,
+                                const ipv4_addr &subnet_addr, uint32_t subnet_mask)
+    {
+        return !((address.ipaddr() ^ subnet_addr.ipaddr()) & subnet_mask) ;
+    }
+
+    /// Match an IPv6 address with an IPv4 subnet address and bitmask.
+    /// @note Returns false if `address` does not represent IPv4-mapped IPv6.
+    ///
+    static constexpr bool match(const ipv6_addr &address,
+                                const ipv4_addr &subnet_addr, uint32_t subnet_mask) ;
+
+    /// Test if the specified IPv4 address matches this subnet.
+    /// @note Autovectorized nicely.
+    ///
+    constexpr bool match(const ipv4_addr &v) const
+    {
+        return match(v, addr(), netmask()) ;
+    }
+
+    constexpr bool match(const ipv6_addr &v) const
+    {
+        return match(v, addr(), netmask()) ;
+    }
 
     /// Get the closed address interval for this subnetwork
     ///
@@ -541,11 +573,10 @@ public:
 
     size_t hash() const { return t1ha0_bin128(*(idata()+0), *(idata()+1), pfxlen()) ; }
 
-    const ipv6_addr &addr() const { return *this ; }
+    constexpr const ipv6_addr &addr() const { return *this ; }
+    constexpr operator ipv6_addr() const { return addr() ; }
 
-    operator ipv6_addr() const { return addr() ; }
-
-    binary128_t netmask() const
+    constexpr binary128_t netmask() const
     {
         const uint64_t himask = pfxlen() >= 64 ? ~0ULL : 0ULL ;
         const uint64_t lomask = pfxlen() >  64 ? ~0ULL : 0ULL ;
@@ -564,7 +595,7 @@ public:
     /// "2001:db8::", while `ipv6_subnet("2001:db8:5:1234/32").addr()`
     /// is "2001:db8:5:1234".
     ///
-    ipv6_addr subnet_addr() const
+    constexpr ipv6_addr subnet_addr() const
     {
         return ipv6_addr(addr() & netmask()) ;
     }
@@ -576,6 +607,11 @@ public:
 
     constexpr bool is_host() const { return pfxlen() == 128 ; }
     constexpr bool is_any() const { return pfxlen() == 0 ; }
+
+    constexpr bool match(const ipv6_addr &v) const
+    {
+        return !((v ^ addr()) & netmask()) ;
+    }
 
     std::string str() const
     {
@@ -723,6 +759,21 @@ inline bool operator<(const sock_address &x, const sock_address &y)
 
 // Note that this line defines _all_ remaining operators (!=, <=, etc.)
 PCOMN_DEFINE_RELOP_FUNCTIONS(, sock_address) ;
+
+/*******************************************************************************
+ ipv4_subnet
+*******************************************************************************/
+constexpr inline bool ipv4_subnet::match(const ipv6_addr &value,
+                                         const ipv4_addr &subnet_addr, uint32_t subnet_mask)
+{
+    constexpr uint64_t shift = cpu_little_endian * 32 ;
+    constexpr uint64_t mask  = cpu_little_endian ? 0xffff'0000ULL : 0xffff'0000'0000ULL ;
+
+    const uint64_t netmask = (uint64_t(value_to_big_endian(subnet_mask)) << shift) | mask ;
+    const uint64_t prefix  = (uint64_t(value_to_big_endian(subnet_addr.ipaddr())) << shift) | mask ;
+
+    return !(cast128<b128_t>(value)._idata[0] | ((cast128<b128_t>(value)._idata[1] ^ prefix) & netmask)) ;
+}
 
 /*******************************************************************************
  Ostream output operators

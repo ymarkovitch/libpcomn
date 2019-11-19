@@ -24,6 +24,7 @@ private:
     void Test_IPv6_Address() ;
     void Test_IPv6_Address_Parser() ;
     void Test_IPv6_Subnet_Address() ;
+    void Test_Subnet_Match() ;
 
     CPPUNIT_TEST_SUITE(IPAddressTests) ;
 
@@ -33,6 +34,8 @@ private:
     CPPUNIT_TEST(Test_IPv6_Address) ;
     CPPUNIT_TEST(Test_IPv6_Address_Parser) ;
     CPPUNIT_TEST(Test_IPv6_Subnet_Address) ;
+
+    CPPUNIT_TEST(Test_Subnet_Match) ;
 
     CPPUNIT_TEST_SUITE_END() ;
 } ;
@@ -421,6 +424,71 @@ void IPAddressTests::Test_IPv6_Subnet_Address()
     CPPUNIT_LOG_EXCEPTION_MSG(ipv6_subnet("172.16.1.1/12"), invalid_str_repr, "IPv6 subnet specification") ;
     CPPUNIT_LOG_EXCEPTION_MSG(ipv6_subnet("::ffff:172.16.1.1/12"), invalid_str_repr, "IPv6 subnet specification") ;
     CPPUNIT_LOG_EXCEPTION_MSG(ipv6_subnet("0.0.0.0/0"), invalid_str_repr, "IPv6 subnet specification") ;
+}
+
+void IPAddressTests::Test_Subnet_Match()
+{
+    const ipv6_addr addr_2001_food (0x2001, 0x0DB8, 0xAC10, 0xFE01, 0xFEED, 0xBABE, 0xCAFE, 0xF00D) ;
+    const ipv6_addr addr_00_food   (0,      0,      0xAC10, 0xFE01, 0xFEED, 0xBABE, 0xCAFE, 0xF00D) ;
+
+    const ipv6_addr addr_pre_1 (1, 0, 0, 0, 0, 0, 0, 0) ;
+    const ipv6_addr addr_post_1 (0, 0, 0, 0, 0, 0, 0, 1) ;
+
+    CPPUNIT_LOG_ASSERT(ipv4_subnet("172.16.1.1/12").match(ipv4_addr("172.16.1.20"))) ;
+    CPPUNIT_LOG_IS_FALSE(ipv4_subnet("172.16.1.1/12").match(ipv4_addr("172.48.1.1"))) ;
+
+    CPPUNIT_LOG_ASSERT(ipv4_subnet("1.1.1.1/0").match(ipv4_addr("172.16.1.20"))) ;
+    CPPUNIT_LOG_ASSERT(ipv4_subnet("1.1.1.1/0").match(ipv4_addr("1.0.0.1"))) ;
+    CPPUNIT_LOG_ASSERT(ipv4_subnet("1.1.1.1/0").match(ipv4_addr("103.15.17.1"))) ;
+
+    CPPUNIT_LOG_ASSERT(ipv4_subnet("1.1.1.1/32").match(ipv4_addr("1.1.1.1"))) ;
+    CPPUNIT_LOG_IS_FALSE(ipv4_subnet("1.1.1.1/32").match(ipv4_addr("1.1.1.0"))) ;
+
+    CPPUNIT_LOG(std::endl) ;
+
+    CPPUNIT_LOG_ASSERT(ipv6_subnet("2001:db8:ac10:fe01:feed:babe:cafe:f00d/128").match(addr_2001_food)) ;
+
+    CPPUNIT_LOG_ASSERT(ipv6_subnet("2001:db8:ac10:fe01:feed:babe:cafe:f00d/128")
+                       .match({0x2001, 0x0DB8, 0xAC10, 0xFE01, 0xFEED, 0xBABE, 0xCAFE, 0xF00D})) ;
+
+    CPPUNIT_LOG_IS_FALSE(ipv6_subnet("2001:db8:ac10:fe01:feed:babe:cafe:f00d/128")
+                         .match({0x2001, 0x0DB8, 0xAC10, 0xFE01, 0xFEED, 0xBABE, 0xCAFE, 0xF00F})) ;
+
+    CPPUNIT_LOG_ASSERT(ipv6_subnet("2001:db8:ac10:fe01:feed:babe:cafe:f00d/125")
+                       .match({0x2001, 0x0DB8, 0xAC10, 0xFE01, 0xFEED, 0xBABE, 0xCAFE, 0xF00F})) ;
+
+    CPPUNIT_LOG_ASSERT(ipv6_subnet("2001:db8:ac10:fe01:feed:babe:cafe:f00d/64")
+                       .match({0x2001, 0x0DB8, 0xAC10, 0xFE01,
+                               0x1111, 0x2222, 0x3333, 0x4444})) ;
+
+    CPPUNIT_LOG_IS_FALSE(ipv6_subnet("2001:db8:ac10:fe01:feed:babe:cafe:f00d/65")
+                         .match({0x2001, 0x0DB8, 0xAC10, 0xFE01,
+                                 0x1111, 0x2222, 0x3333, 0x4444})) ;
+
+    CPPUNIT_LOG_ASSERT(ipv6_subnet("2001:db8:ac10:fe01:feed:babe:cafe:f00d/65")
+                       .match({0x2001, 0x0DB8, 0xAC10, 0xFE01,
+                               0x8111, 0x2222, 0x3333, 0x4444})) ;
+
+    CPPUNIT_LOG_ASSERT(ipv6_subnet("8001::/0").match(addr_00_food)) ;
+    CPPUNIT_LOG_ASSERT(ipv6_subnet("2001:db8:ac10:fe01:feed:babe:cafe:f00d/0").match(addr_pre_1)) ;
+    CPPUNIT_LOG_ASSERT(ipv6_subnet("2001:db8:ac10:fe01:feed:babe:cafe:f00d/0").match(addr_post_1)) ;
+
+    CPPUNIT_LOG(std::endl) ;
+
+    // IPv4-mapped IPv6 vs. ipv4_subnet
+    CPPUNIT_LOG_ASSERT(ipv4_subnet("172.16.1.1/12").match(ipv6_addr("172.16.1.20"))) ;
+    CPPUNIT_LOG_IS_FALSE(ipv4_subnet("172.16.1.1/12").match(ipv6_addr("172.48.1.1"))) ;
+
+    CPPUNIT_LOG_ASSERT(ipv4_subnet("1.1.1.1/0").match(ipv6_addr("172.16.1.20"))) ;
+    CPPUNIT_LOG_ASSERT(ipv4_subnet("1.1.1.1/0").match(ipv6_addr("1.0.0.1"))) ;
+    CPPUNIT_LOG_ASSERT(ipv4_subnet("1.1.1.1/0").match(ipv6_addr("103.15.17.1"))) ;
+
+    CPPUNIT_LOG_ASSERT(ipv4_subnet("1.2.3.4/32").match(ipv6_addr("1.2.3.4"))) ;
+    CPPUNIT_LOG_IS_FALSE(ipv4_subnet("1.2.3.4/32").match(ipv6_addr("1.2.3.2"))) ;
+    CPPUNIT_LOG_IS_FALSE(ipv4_subnet("1.2.3.4/32").match(ipv6_addr("4.3.2.1"))) ;
+
+    CPPUNIT_LOG_ASSERT(ipv4_subnet("1.2.3.4/32").match(ipv6_addr("::ffff:0102:0304"))) ;
+    CPPUNIT_LOG_IS_FALSE(ipv4_subnet("1.2.3.4/32").match(ipv6_addr("::0102:0304"))) ;
 }
 
 /*******************************************************************************
