@@ -1,4 +1,4 @@
-/*-*- tab-width:3;indent-tabs-mode:nil;c-file-style:"ellemtel";c-file-offsets:((innamespace.0)(inclass.++)) -*-*/
+/*-*- tab-width:3;indent-tabs-mode:nil;c-file-style:"ellemtel";c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   pcomn_binary128.cpp
  COPYRIGHT    :   Yakov Markovitch, 2010-2019. All rights reserved.
