@@ -659,6 +659,69 @@ inline bool operator<(const ipv6_subnet &x, const ipv6_subnet &y)
 
 PCOMN_DEFINE_RELOP_FUNCTIONS(, ipv6_subnet) ;
 
+/*******************************************************************************
+
+*******************************************************************************/
+template<class Prefix, class Addr>
+class netprefix_match ;
+
+template<> struct netprefix_match<ipv4_subnet,ipv4_addr> {
+
+    constexpr netprefix_match() = default ;
+
+    constexpr netprefix_match(const ipv4_subnet &p) :
+        _prefix(p.subnet_addr().ipaddr()),
+        _mask(p.netmask())
+    {}
+
+    constexpr bool operator()(const ipv4_addr &address) const
+    {
+        return !((address.ipaddr() ^ _prefix) & _mask) ;
+    }
+
+    constexpr uint32_t prefix() const { return _prefix ; }
+    constexpr uint32_t mask() const { return _mask ; }
+
+    /// Test if the matcher matches single IPv4 address (the prefix length is 32).
+    constexpr bool is_host() const { return _mask == (uint32_t)~0U ; }
+    /// Test if the matcher matches any IPv4 address (the prefix length is 0).
+    constexpr bool is_any() const { return !_mask ; }
+
+private:
+    uint32_t _prefix = 0 ;
+    uint32_t _mask = 0 ;
+} ;
+
+template<> struct netprefix_match<ipv4_subnet,ipv6_addr> {
+
+    constexpr netprefix_match() = default ;
+
+    constexpr netprefix_match(const ipv4_subnet &p) :
+        _prefix(maplower64(p.subnet_addr().ipaddr())),
+        _mask(maplower64(p.netmask()))
+    {}
+
+    constexpr bool operator()(const ipv6_addr &addr) const
+    {
+        return !(cast128<b128_t>(addr)._idata[0] |
+                 ((cast128<b128_t>(addr)._idata[1] ^ _prefix) & _mask)) ;
+    }
+
+private:
+    uint64_t _prefix = 0 ;
+    uint64_t _mask = 0 ;
+
+private:
+    static constexpr uint64_t maplower64(uint32_t ipv4bits)
+    {
+        constexpr uint64_t shift   = cpu_little_endian * 32 ;
+        constexpr uint64_t mapbits = cpu_little_endian ? 0xffff'0000ULL : 0xffff'0000'0000ULL ;
+
+        return (uint64_t(value_to_big_endian(ipv4bits)) << shift) | mapbits ;
+    }
+} ;
+
+
 /***************************************************************************//**
  The completely-defined SF_INET socket address; specifies both the inet address
  and the port.
