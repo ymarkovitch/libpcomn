@@ -30,6 +30,8 @@
  bitop::tstpow2   - Test if Power of 2                (00000001 -> true, 00011000 -> false, 0 -> false)
  bitop::tstpow2z  - Test if Power of 2 or Zero        (00010000 -> true, 00011000 -> false, 0 -> true)
 
+ bitop::round2z   - Round Up to Power of 2 or Zero    (0->0, 1->1, 2->2, 3->4, 5->8)
+
  bitop::rotl      - Rotate Left
  bitop::rotr      - Rotate Right
 
@@ -427,6 +429,18 @@ inline typename if_unsigned_int<T, T>::type iabs(T v) { return v ; }
 *******************************************************************************/
 namespace bitop {
 
+/// Get the integral value filled with the specified bit value.
+/// E.g.
+///    - `bitextend<int>(true)` is `-1`
+///    - `bitextend<unsigned>(false)` is `0`
+///    - `bitextend<uint64_t>(true)` is `0xffff'ffff'ffff'ffff`
+///
+template<typename I>
+constexpr inline if_integer_t<I> bitextend(bool bit)
+{
+   return I() - I(bit) ;
+}
+
 /// Count 1s in a value of some integral type
 template<typename I>
 inline unsigned bitcount(I i)
@@ -454,6 +468,12 @@ template<typename I>
 constexpr inline int log2ceil(I i)
 {
    return bit_traits<int_traits<I>::bitsize>::log2ceil(i) ;
+}
+
+template<typename U>
+constexpr inline if_unsigned_int_t<U> round2z(U u)
+{
+   return (U(1) << log2ceil(u)) & bitextend<U>(u) ;
 }
 
 /// Clear Rightmost Non-Zero Bit.
@@ -561,18 +581,6 @@ template<typename I>
 constexpr inline if_integer_t<I> tailmask(size_t bitcnt)
 {
    return ~(~I(1) << bitndx<I>(bitcnt - 1)) ;
-}
-
-/// Get the integral value filled with the specified bit value.
-/// E.g.
-///    - `bitextend<int>(true)` is `-1`
-///    - `bitextend<unsigned>(false)` is `0`
-///    - `bitextend<uint64_t>(true)` is `0xffff'ffff'ffff'ffff`
-///
-template<typename I>
-constexpr inline if_integer_t<I> bitextend(bool bit)
-{
-   return I() - I(bit) ;
 }
 
 /// Broadcast integral operand into integral value.

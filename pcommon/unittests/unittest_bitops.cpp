@@ -350,6 +350,7 @@ void BitOperationsTests::Test_Log2()
    CPPUNIT_LOG_EQUAL(bitop::log2floor(1), 0) ;
    CPPUNIT_LOG_EQUAL(bitop::log2ceil(1), 0) ;
 
+   CPPUNIT_LOG(std::endl) ;
    CPPUNIT_LOG_EQUAL(bitop::log2floor(0x80000000), 31) ;
    CPPUNIT_LOG_EQUAL(bitop::log2ceil(0x80000000), 31) ;
    CPPUNIT_LOG_EQUAL(bitop::log2floor(0x40000000), 30) ;
@@ -365,16 +366,29 @@ void BitOperationsTests::Test_Log2()
    CPPUNIT_LOG_EQUAL(bitop::log2ceil(4), 2) ;
    CPPUNIT_LOG_EQUAL(bitop::log2ceil(10), 4) ;
 
+   CPPUNIT_LOG(std::endl) ;
    CPPUNIT_LOG_EQUAL(bitop::log2ceil((uint8_t)10), 4) ;
    CPPUNIT_LOG_EQUAL(bitop::log2floor((int16_t)-1), 15) ;
    CPPUNIT_LOG_EQUAL(bitop::log2ceil((int16_t)-1), 16) ;
    CPPUNIT_LOG_EQUAL(bitop::log2floor(0x800000001LLU), 35) ;
    CPPUNIT_LOG_EQUAL(bitop::log2ceil(0x800000001LLU), 36) ;
 
+   CPPUNIT_LOG(std::endl) ;
    CPPUNIT_LOG_ASSERT(bitop::tstpow2(0x8000)) ;
    CPPUNIT_LOG_ASSERT(bitop::tstpow2(0x1)) ;
    CPPUNIT_LOG_IS_FALSE(bitop::tstpow2(0x6)) ;
    CPPUNIT_LOG_IS_FALSE(bitop::tstpow2(0)) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_EQUAL(bitop::round2z(0U), 0U) ;
+   CPPUNIT_LOG_EQUAL(bitop::round2z(1U), 1U) ;
+   CPPUNIT_LOG_EQUAL(bitop::round2z(2U), 2U) ;
+   CPPUNIT_LOG_EQUAL(bitop::round2z(3U), 4U) ;
+   CPPUNIT_LOG_EQUAL(bitop::round2z(4U), 4U) ;
+   CPPUNIT_LOG_EQUAL(bitop::round2z(5U), 8U) ;
+
+   CPPUNIT_LOG_EQUAL(bitop::round2z((uint8_t)0), uint8_t(0)) ;
+   CPPUNIT_LOG_EQUAL(bitop::round2z((uint8_t)9), uint8_t(16)) ;
 }
 
 /*******************************************************************************
