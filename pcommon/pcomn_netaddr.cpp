@@ -216,7 +216,7 @@ ipv4_subnet::ipv4_subnet(const strslice &subnet_string, RaiseError raise_error)
         { _pfxlen = 0 ; }
 
     PCOMN_THROW_MSG_IF(raise_error, invalid_str_repr,
-                       "Invalid IPv4 subnet specification: " P_STRSLICEQF, P_STRSLICEV(subnet_string)) ;
+                       "Invalid IPv4 network prefix specification: " P_STRSLICEQF, P_STRSLICEV(subnet_string)) ;
 }
 
 /*******************************************************************************
@@ -409,7 +409,7 @@ ipv6_addr::zero_run ipv6_addr::find_longest_zero_run() const
 const char *ipv6_addr::to_strbuf(addr_strbuf output) const
 {
     // Is this an encapsulated IPv4 address?
-    if (is_mapped_ipv4())
+    if (is_ipv4_mapped())
     {
         // Make a distinction between
         //  - "universal unspecified address", AKA DENIL, which is equal by its binary
@@ -482,7 +482,7 @@ ipv6_subnet::ipv6_subnet(const strslice &subnet_string, RaiseError raise_error)
         { _pfxlen = 0 ; }
 
     PCOMN_THROW_MSG_IF(raise_error, invalid_str_repr,
-                       "Invalid IPv6 subnet specification: " P_STRSLICEQF, P_STRSLICEV(subnet_string)) ;
+                       "Invalid IPv6 network prefix specification: " P_STRSLICEQF, P_STRSLICEV(subnet_string)) ;
 }
 
 } // end of namespace pcomn

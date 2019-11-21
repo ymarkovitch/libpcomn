@@ -432,7 +432,7 @@ public:
     /// @param flags        ORed ConstructFlags flags.
     ///
     /// @note If `address_string` is dot-decimal IPv4 address, creates IPv4-mapped IPv6
-    /// address (@see is_mapped_ipv4()).
+    /// address (@see is_ipv4_mapped()).
     ///
     ipv6_addr(const strslice &address_string, CFlags flags = {}) :
         ancestor(from_string(address_string, flags))
@@ -465,18 +465,18 @@ public:
     }
     operator struct in6_addr() const { return inaddr() ; }
 
-    constexpr bool is_mapped_ipv4() const
+    constexpr bool is_ipv4_mapped() const
     {
         return !(_idata[0] | (_wdata[2] ^ be(0xffffu))) ;
     }
 
     /// Get the IPv4 address, if the object is IPv4-mapped IPv6, or null address
     /// otherwise.
-    /// @see is_mapped_ipv4()
+    /// @see is_ipv4_mapped()
     ///
     constexpr explicit operator ipv4_addr() const noexcept
     {
-        return ipv4_addr(value_from_big_endian(_wdata[3] & -(int)is_mapped_ipv4())) ;
+        return ipv4_addr(value_from_big_endian(_wdata[3] & -(int)is_ipv4_mapped())) ;
     }
 
     /// Get the maximum length of string representation of IPv6 address

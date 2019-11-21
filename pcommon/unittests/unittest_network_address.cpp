@@ -165,7 +165,7 @@ void IPAddressTests::Test_IPv4_Subnet_Address()
     CPPUNIT_LOG(std::endl) ;
     CPPUNIT_LOG_EXCEPTION(ipv4_subnet("10.0.61.5/-1"), invalid_str_repr) ;
     CPPUNIT_LOG_EXCEPTION(ipv4_subnet("10.0.61.5"), invalid_str_repr) ;
-    CPPUNIT_LOG_EXCEPTION_MSG(ipv4_subnet("10.0.61.5/0x1"), invalid_str_repr, "subnet specification") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(ipv4_subnet("10.0.61.5/0x1"), invalid_str_repr, "network prefix specification") ;
 }
 
 void IPAddressTests::Test_IPv6_Address()
@@ -226,10 +226,10 @@ void IPAddressTests::Test_IPv6_Address()
 
     // IPv6-mapped IPv4
     CPPUNIT_LOG_EQUAL((binary128_t)ipv6_addr(ipv4_addr(127, 0, 0, 1)), binary128_t(0, 0, 0, 0, 0, 0xffff, 0x7f00, 0x0001)) ;
-    CPPUNIT_LOG_ASSERT(ipv6_addr(ipv4_addr(127, 0, 0, 1)).is_mapped_ipv4()) ;
+    CPPUNIT_LOG_ASSERT(ipv6_addr(ipv4_addr(127, 0, 0, 1)).is_ipv4_mapped()) ;
 
-    CPPUNIT_LOG_IS_FALSE(ipv6_addr(1, 0, 0, 0xFE01, 0, 0, 0, 0xF00D).is_mapped_ipv4()) ;
-    CPPUNIT_LOG_IS_FALSE(ipv6_addr(0, 0, 0, 0, 0, 0, 0, 0xF00D).is_mapped_ipv4()) ;
+    CPPUNIT_LOG_IS_FALSE(ipv6_addr(1, 0, 0, 0xFE01, 0, 0, 0, 0xF00D).is_ipv4_mapped()) ;
+    CPPUNIT_LOG_IS_FALSE(ipv6_addr(0, 0, 0, 0, 0, 0, 0, 0xF00D).is_ipv4_mapped()) ;
 
     CPPUNIT_LOG_EQ(ipv6_addr(ipv4_addr(127, 0, 0, 1)).str(), "127.0.0.1") ;
 
@@ -420,10 +420,10 @@ void IPAddressTests::Test_IPv6_Subnet_Address()
     CPPUNIT_LOG_EXCEPTION(ipv6_subnet("1::/129"), invalid_str_repr) ;
     CPPUNIT_LOG_EXCEPTION(ipv6_subnet("1::/0x1"), invalid_str_repr) ;
 
-    CPPUNIT_LOG_EXCEPTION_MSG(ipv6_subnet("1::/0x10"), invalid_str_repr, "IPv6 subnet specification") ;
-    CPPUNIT_LOG_EXCEPTION_MSG(ipv6_subnet("172.16.1.1/12"), invalid_str_repr, "IPv6 subnet specification") ;
-    CPPUNIT_LOG_EXCEPTION_MSG(ipv6_subnet("::ffff:172.16.1.1/12"), invalid_str_repr, "IPv6 subnet specification") ;
-    CPPUNIT_LOG_EXCEPTION_MSG(ipv6_subnet("0.0.0.0/0"), invalid_str_repr, "IPv6 subnet specification") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(ipv6_subnet("1::/0x10"), invalid_str_repr, "IPv6 network prefix specification") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(ipv6_subnet("172.16.1.1/12"), invalid_str_repr, "IPv6 network prefix specification") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(ipv6_subnet("::ffff:172.16.1.1/12"), invalid_str_repr, "IPv6 network prefix specification") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(ipv6_subnet("0.0.0.0/0"), invalid_str_repr, "IPv6 network prefix specification") ;
 }
 
 void IPAddressTests::Test_Subnet_Match()
