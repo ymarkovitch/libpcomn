@@ -231,6 +231,7 @@ bool shortest_netprefix_set::is_member(const Addr &addr) const
     while(++level < maxlevels) ;
 
     PCOMN_DEBUG_FAIL("must never be here") ;
+    return false ;
 }
 
 
