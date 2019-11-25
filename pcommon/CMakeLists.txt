@@ -242,7 +242,7 @@ target_link_libraries(pcommon
   )
 
 set_source_files_properties(${T1HA_SOURCEFILES} PROPERTIES
-    COMPILE_OPTIONS $<$<BOOL:${CMAKE_OPTIMIZED_BUILD}>:"-O3 -fno-inline-functions">)
+    COMPILE_OPTIONS $<$<BOOL:${CMAKE_OPTIMIZED_BUILD}>:-O3>)
 
 set_source_files_properties(${T1HA_SOURCEDIR}/t1ha0_ia32aes_noavx.c PROPERTIES COMPILE_OPTIONS -maes)
 set_source_files_properties(${T1HA_SOURCEDIR}/t1ha0_ia32aes_avx.c   PROPERTIES COMPILE_OPTIONS "-maes;-mavx")
