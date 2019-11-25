@@ -151,7 +151,7 @@ public:
     }
 
     /// Check is an addr starts with any of the prefixes in the set.
-    bool is_member(const addr_type &addr) const { return ancestor::is_member(addr) ; }
+    bool is_member(const addr_type &addr) const ;
 
     /// STL set<> interface.
     unsigned count(const addr_type &addr) const { return is_member(addr) ; }

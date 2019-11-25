@@ -234,6 +234,14 @@ bool shortest_netprefix_set::is_member(const Addr &addr) const
     return false ;
 }
 
+/*******************************************************************************
+ ipaddr_prefix_set<Addr>
+*******************************************************************************/
+template<typename Addr>
+bool ipaddr_prefix_set<Addr>::is_member(const addr_type &addr) const
+{
+    return ancestor::is_member(addr) ;
+}
 
 /*******************************************************************************
  Explicitly instantiate ipaddr_prefix_set IPv4 and IPv6 variants to ensure
