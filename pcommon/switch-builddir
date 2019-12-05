@@ -3,7 +3,7 @@ BASEDIR="$(dirname $(readlink -f $0))"
 BASENAME="$(basename $0)"
 BUILDLINK="$BASEDIR/build"
 
-BUILDTYPES="debug|release|relwithdebinfo|dbgsanitize|relsanitize"
+BUILDTYPES="debug|release|relwithdebinfo|dbgsanitize|relsanitize|dbgavx|dbgavx2|relavx|relavx2"
 
 function usage {
     cat <<EOF

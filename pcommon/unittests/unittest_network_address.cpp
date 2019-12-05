@@ -10,32 +10,23 @@
 *******************************************************************************/
 #include <pcomn_netaddr.h>
 #include <pcomn_unittest.h>
-
 #include <pcomn_string.h>
-#include <pcomn_handle.h>
-#include <pcomn_exec.h>
-
-#include <stdexcept>
-
-#include <stdlib.h>
-#include <stdio.h>
 
 using namespace pcomn ;
 
 /*******************************************************************************
-                            class InetAddressTests
+                            class IPAddressTests
 *******************************************************************************/
-class InetAddressTests : public CppUnit::TestFixture {
+class IPAddressTests : public CppUnit::TestFixture {
 private:
     void Test_IPv4_Address() ;
     void Test_IPv4_Subnet_Address() ;
     void Test_IPv6_Address() ;
     void Test_IPv6_Address_Parser() ;
     void Test_IPv6_Subnet_Address() ;
-    void Test_Sock_Address() ;
-    void Test_Iface_Address() ;
+    void Test_Subnet_Match() ;
 
-    CPPUNIT_TEST_SUITE(InetAddressTests) ;
+    CPPUNIT_TEST_SUITE(IPAddressTests) ;
 
     CPPUNIT_TEST(Test_IPv4_Address) ;
     CPPUNIT_TEST(Test_IPv4_Subnet_Address) ;
@@ -44,8 +35,7 @@ private:
     CPPUNIT_TEST(Test_IPv6_Address_Parser) ;
     CPPUNIT_TEST(Test_IPv6_Subnet_Address) ;
 
-    CPPUNIT_TEST(Test_Sock_Address) ;
-    CPPUNIT_TEST(Test_Iface_Address) ;
+    CPPUNIT_TEST(Test_Subnet_Match) ;
 
     CPPUNIT_TEST_SUITE_END() ;
 } ;
@@ -56,7 +46,7 @@ static constexpr union {
     bool is_little() const { return s[0] == 2 ; }
 } endianness = { 0x0102 } ;
 
-void InetAddressTests::Test_IPv4_Address()
+void IPAddressTests::Test_IPv4_Address()
 {
     CPPUNIT_LOG_EQUAL(ipv4_addr(), ipv4_addr()) ;
     CPPUNIT_LOG_IS_TRUE(ipv4_addr() == ipv4_addr()) ;
@@ -121,7 +111,7 @@ void InetAddressTests::Test_IPv4_Address()
     CPPUNIT_LOG_EQUAL(ipv4_addr(1, 2, 3, 4).hostname(), std::string("1.2.3.4")) ;
 }
 
-void InetAddressTests::Test_IPv4_Subnet_Address()
+void IPAddressTests::Test_IPv4_Subnet_Address()
 {
     CPPUNIT_LOG_EQUAL(ipv4_subnet(), ipv4_subnet()) ;
     CPPUNIT_LOG_IS_TRUE(ipv4_subnet() == ipv4_subnet()) ;
@@ -169,13 +159,16 @@ void InetAddressTests::Test_IPv4_Subnet_Address()
     CPPUNIT_LOG_EQUAL(ipv4_subnet("10.0.61.5/24").addr(), ipv4_addr(10, 0, 61, 5)) ;
     CPPUNIT_LOG_EQ(ipv4_subnet("10.0.61.5/24").pfxlen(), 24) ;
 
+    CPPUNIT_LOG_EQUAL(ipv4_subnet("0.0.0.0/0"), ipv4_subnet()) ;
+    CPPUNIT_LOG_NOT_EQUAL(ipv4_subnet("0.0.0.0/1"), ipv4_subnet()) ;
+
     CPPUNIT_LOG(std::endl) ;
     CPPUNIT_LOG_EXCEPTION(ipv4_subnet("10.0.61.5/-1"), invalid_str_repr) ;
     CPPUNIT_LOG_EXCEPTION(ipv4_subnet("10.0.61.5"), invalid_str_repr) ;
-    CPPUNIT_LOG_EXCEPTION_MSG(ipv4_subnet("10.0.61.5/0x1"), invalid_str_repr, "subnet specification") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(ipv4_subnet("10.0.61.5/0x1"), invalid_str_repr, "network prefix specification") ;
 }
 
-void InetAddressTests::Test_IPv6_Address()
+void IPAddressTests::Test_IPv6_Address()
 {
     CPPUNIT_LOG_EQUAL(ipv6_addr(), ipv6_addr()) ;
     CPPUNIT_LOG_IS_TRUE(ipv6_addr() == ipv6_addr()) ;
@@ -233,9 +226,16 @@ void InetAddressTests::Test_IPv6_Address()
 
     // IPv6-mapped IPv4
     CPPUNIT_LOG_EQUAL((binary128_t)ipv6_addr(ipv4_addr(127, 0, 0, 1)), binary128_t(0, 0, 0, 0, 0, 0xffff, 0x7f00, 0x0001)) ;
-    CPPUNIT_LOG_ASSERT(ipv6_addr(ipv4_addr(127, 0, 0, 1)).is_mapped_ipv4()) ;
+    CPPUNIT_LOG_ASSERT(ipv6_addr(ipv4_addr(127, 0, 0, 1)).is_ipv4_mapped()) ;
+
+    CPPUNIT_LOG_IS_FALSE(ipv6_addr(1, 0, 0, 0xFE01, 0, 0, 0, 0xF00D).is_ipv4_mapped()) ;
+    CPPUNIT_LOG_IS_FALSE(ipv6_addr(0, 0, 0, 0, 0, 0, 0, 0xF00D).is_ipv4_mapped()) ;
 
     CPPUNIT_LOG_EQ(ipv6_addr(ipv4_addr(127, 0, 0, 1)).str(), "127.0.0.1") ;
+
+    CPPUNIT_LOG_EQUAL((ipv4_addr)ipv6_addr(ipv4_addr(127, 0, 0, 1)), ipv4_addr(127, 0, 0, 1)) ;
+    CPPUNIT_LOG_EQUAL((ipv4_addr)ipv6_addr(0, 0, 0, 0, 0, 0, 0, 0xF00D), ipv4_addr()) ;
+    CPPUNIT_LOG_EQUAL((ipv4_addr)ipv6_addr(1, 0, 0, 0, 0, 0xffff, 0, 0xF00D), ipv4_addr()) ;
 
     // Make a distinction between
     //  - "universal unspecified address", AKA DENIL, which is equal by its binary
@@ -248,7 +248,7 @@ void InetAddressTests::Test_IPv6_Address()
     CPPUNIT_LOG_IS_FALSE(ipv6_addr()) ;
 }
 
-void InetAddressTests::Test_IPv6_Address_Parser()
+void IPAddressTests::Test_IPv6_Address_Parser()
 {
     CPPUNIT_LOG_EQUAL(ipv6_addr("::"), ipv6_addr()) ;
 
@@ -301,9 +301,19 @@ void InetAddressTests::Test_IPv6_Address_Parser()
                       ipv6_addr(0, 0, 0, 0, 0, 0xffff, 0xac10, 0x964)) ;
 
     CPPUNIT_LOG_EQUAL(ipv6_addr("0.0.0.0"), ipv6_addr()) ;
+    CPPUNIT_LOG_EQUAL((ipv4_addr)ipv6_addr("0.0.0.0"), ipv4_addr()) ;
+
+    CPPUNIT_LOG(std::endl) ;
+
+    CPPUNIT_LOG_EQUAL(ipv6_addr("1::fe01:feed:babe:cafe:f00d", ipv6_addr::IGNORE_DOTDEC),
+                      ipv6_addr(1, 0, 0, 0xFE01, 0xFEED, 0xBABE, 0xCAFE, 0xF00D)) ;
+
+    CPPUNIT_LOG_EXCEPTION_MSG(ipv6_addr("::ffff:127.0.0.1", ipv6_addr::IGNORE_DOTDEC), invalid_str_repr, "address") ;
+
+    CPPUNIT_LOG_EXCEPTION_MSG(ipv6_addr("172.16.9.100", ipv6_addr::IGNORE_DOTDEC), invalid_str_repr, "address") ;
 }
 
-void InetAddressTests::Test_IPv6_Subnet_Address()
+void IPAddressTests::Test_IPv6_Subnet_Address()
 {
     CPPUNIT_LOG_EQUAL(ipv6_subnet(), ipv6_subnet()) ;
     CPPUNIT_LOG_IS_TRUE(ipv6_subnet() == ipv6_subnet()) ;
@@ -408,106 +418,87 @@ void InetAddressTests::Test_IPv6_Subnet_Address()
     CPPUNIT_LOG_EXCEPTION(ipv6_subnet("1::/-1"), invalid_str_repr) ;
     CPPUNIT_LOG_EXCEPTION(ipv6_subnet("1::"), invalid_str_repr) ;
     CPPUNIT_LOG_EXCEPTION(ipv6_subnet("1::/129"), invalid_str_repr) ;
-    CPPUNIT_LOG_EXCEPTION_MSG(ipv6_subnet("1::/0x10"), invalid_str_repr, "subnet specification") ;
+    CPPUNIT_LOG_EXCEPTION(ipv6_subnet("1::/0x1"), invalid_str_repr) ;
+
+    CPPUNIT_LOG_EXCEPTION_MSG(ipv6_subnet("1::/0x10"), invalid_str_repr, "IPv6 network prefix specification") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(ipv6_subnet("172.16.1.1/12"), invalid_str_repr, "IPv6 network prefix specification") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(ipv6_subnet("::ffff:172.16.1.1/12"), invalid_str_repr, "IPv6 network prefix specification") ;
+    CPPUNIT_LOG_EXCEPTION_MSG(ipv6_subnet("0.0.0.0/0"), invalid_str_repr, "IPv6 network prefix specification") ;
 }
 
-void InetAddressTests::Test_Sock_Address()
+void IPAddressTests::Test_Subnet_Match()
 {
-    CPPUNIT_LOG_EQUAL(sock_address(), sock_address()) ;
-    CPPUNIT_LOG_IS_TRUE(sock_address().is_null()) ;
-    CPPUNIT_LOG_IS_TRUE(sock_address() == sock_address()) ;
-    CPPUNIT_LOG_IS_FALSE(sock_address() != sock_address()) ;
-    CPPUNIT_LOG_IS_FALSE(sock_address() < sock_address()) ;
-    CPPUNIT_LOG_IS_TRUE(!sock_address().addr().ipaddr()) ;
-    CPPUNIT_LOG_EQUAL(sock_address().port(), (uint16_t)0) ;
+    const ipv6_addr addr_2001_food (0x2001, 0x0DB8, 0xAC10, 0xFE01, 0xFEED, 0xBABE, 0xCAFE, 0xF00D) ;
+    const ipv6_addr addr_00_food   (0,      0,      0xAC10, 0xFE01, 0xFEED, 0xBABE, 0xCAFE, 0xF00D) ;
+
+    const ipv6_addr addr_pre_1 (1, 0, 0, 0, 0, 0, 0, 0) ;
+    const ipv6_addr addr_post_1 (0, 0, 0, 0, 0, 0, 0, 1) ;
+
+    CPPUNIT_LOG_ASSERT(ipv4_subnet("172.16.1.1/12").match(ipv4_addr("172.16.1.20"))) ;
+    CPPUNIT_LOG_IS_FALSE(ipv4_subnet("172.16.1.1/12").match(ipv4_addr("172.48.1.1"))) ;
+
+    CPPUNIT_LOG_ASSERT(ipv4_subnet("1.1.1.1/0").match(ipv4_addr("172.16.1.20"))) ;
+    CPPUNIT_LOG_ASSERT(ipv4_subnet("1.1.1.1/0").match(ipv4_addr("1.0.0.1"))) ;
+    CPPUNIT_LOG_ASSERT(ipv4_subnet("1.1.1.1/0").match(ipv4_addr("103.15.17.1"))) ;
+
+    CPPUNIT_LOG_ASSERT(ipv4_subnet("1.1.1.1/32").match(ipv4_addr("1.1.1.1"))) ;
+    CPPUNIT_LOG_IS_FALSE(ipv4_subnet("1.1.1.1/32").match(ipv4_addr("1.1.1.0"))) ;
+
     CPPUNIT_LOG(std::endl) ;
 
-    CPPUNIT_LOG_EQUAL(sock_address(50000).str(), std::string("127.0.0.1:50000")) ;
-    CPPUNIT_LOG_EQUAL(sock_address("localhost", 50000).port(), (uint16_t)50000) ;
-    CPPUNIT_LOG_EQUAL(sock_address("localhost", 50000).addr(), inaddr_loopback()) ;
-    CPPUNIT_LOG_EQUAL(sock_address(50001).addr(), inaddr_loopback()) ;
-    CPPUNIT_LOG_EQUAL(sock_address(50001).port(), (uint16_t)50001) ;
-    CPPUNIT_LOG_EQUAL(sock_address(50000), sock_address(50000)) ;
+    CPPUNIT_LOG_ASSERT(ipv6_subnet("2001:db8:ac10:fe01:feed:babe:cafe:f00d/128").match(addr_2001_food)) ;
+
+    CPPUNIT_LOG_ASSERT(ipv6_subnet("2001:db8:ac10:fe01:feed:babe:cafe:f00d/128")
+                       .match({0x2001, 0x0DB8, 0xAC10, 0xFE01, 0xFEED, 0xBABE, 0xCAFE, 0xF00D})) ;
+
+    CPPUNIT_LOG_IS_FALSE(ipv6_subnet("2001:db8:ac10:fe01:feed:babe:cafe:f00d/128")
+                         .match({0x2001, 0x0DB8, 0xAC10, 0xFE01, 0xFEED, 0xBABE, 0xCAFE, 0xF00F})) ;
+
+    CPPUNIT_LOG_ASSERT(ipv6_subnet("2001:db8:ac10:fe01:feed:babe:cafe:f00d/125")
+                       .match({0x2001, 0x0DB8, 0xAC10, 0xFE01, 0xFEED, 0xBABE, 0xCAFE, 0xF00F})) ;
+
+    CPPUNIT_LOG_ASSERT(ipv6_subnet("2001:db8:ac10:fe01:feed:babe:cafe:f00d/64")
+                       .match({0x2001, 0x0DB8, 0xAC10, 0xFE01,
+                               0x1111, 0x2222, 0x3333, 0x4444})) ;
+
+    CPPUNIT_LOG_IS_FALSE(ipv6_subnet("2001:db8:ac10:fe01:feed:babe:cafe:f00d/65")
+                         .match({0x2001, 0x0DB8, 0xAC10, 0xFE01,
+                                 0x1111, 0x2222, 0x3333, 0x4444})) ;
+
+    CPPUNIT_LOG_ASSERT(ipv6_subnet("2001:db8:ac10:fe01:feed:babe:cafe:f00d/65")
+                       .match({0x2001, 0x0DB8, 0xAC10, 0xFE01,
+                               0x8111, 0x2222, 0x3333, 0x4444})) ;
+
+    CPPUNIT_LOG_ASSERT(ipv6_subnet("8001::/0").match(addr_00_food)) ;
+    CPPUNIT_LOG_ASSERT(ipv6_subnet("2001:db8:ac10:fe01:feed:babe:cafe:f00d/0").match(addr_pre_1)) ;
+    CPPUNIT_LOG_ASSERT(ipv6_subnet("2001:db8:ac10:fe01:feed:babe:cafe:f00d/0").match(addr_post_1)) ;
+
     CPPUNIT_LOG(std::endl) ;
 
-    CPPUNIT_LOG_IS_TRUE(sock_address(50000) != sock_address(50001)) ;
-    CPPUNIT_LOG_IS_TRUE(sock_address(50000) < sock_address(50001)) ;
-    CPPUNIT_LOG_IS_TRUE(sock_address(50001) > sock_address(50000)) ;
-    CPPUNIT_LOG_IS_TRUE(sock_address(50001) >= sock_address(50000)) ;
-    CPPUNIT_LOG_IS_TRUE(sock_address(50000) >= sock_address(50000)) ;
-    CPPUNIT_LOG_IS_FALSE(sock_address(49999) >= sock_address(50000)) ;
-    CPPUNIT_LOG_IS_TRUE(sock_address(49999) <= sock_address(50000)) ;
-    CPPUNIT_LOG_IS_TRUE(sock_address(50000) <= sock_address(50000)) ;
-    CPPUNIT_LOG_IS_FALSE(sock_address(50000) <= sock_address(49999)) ;
-    CPPUNIT_LOG_EQUAL(sock_address(ipv4_addr(1, 2, 3, 4), 50000),
-                      sock_address(ipv4_addr(1, 2, 3, 4), 50000)) ;
-    CPPUNIT_LOG_IS_TRUE(sock_address(ipv4_addr(2, 2, 3, 4), 50000) > sock_address(ipv4_addr(1, 2, 3, 4), 50000)) ;
-    CPPUNIT_LOG_IS_TRUE(sock_address(ipv4_addr(1, 2, 3, 3), 50000) < sock_address(ipv4_addr(1, 2, 3, 4), 50000)) ;
-    CPPUNIT_LOG_IS_TRUE(sock_address(ipv4_addr(1, 2, 3, 3), 50001) < sock_address(ipv4_addr(1, 2, 3, 4), 50000)) ;
-    CPPUNIT_LOG(std::endl) ;
+    // IPv4-mapped IPv6 vs. ipv4_subnet
+    CPPUNIT_LOG_ASSERT(ipv4_subnet("172.16.1.1/12").match(ipv6_addr("172.16.1.20"))) ;
+    CPPUNIT_LOG_IS_FALSE(ipv4_subnet("172.16.1.1/12").match(ipv6_addr("172.48.1.1"))) ;
 
-    sockaddr_in sa ;
+    CPPUNIT_LOG_ASSERT(ipv4_subnet("1.1.1.1/0").match(ipv6_addr("172.16.1.20"))) ;
+    CPPUNIT_LOG_ASSERT(ipv4_subnet("1.1.1.1/0").match(ipv6_addr("1.0.0.1"))) ;
+    CPPUNIT_LOG_ASSERT(ipv4_subnet("1.1.1.1/0").match(ipv6_addr("103.15.17.1"))) ;
 
-    CPPUNIT_LOG_RUN(memset(&sa, 0, sizeof sa)) ;
-    CPPUNIT_LOG_RUN((sa.sin_family = AF_INET, sa.sin_port = htons(50002), sa.sin_addr.s_addr = htonl(INADDR_LOOPBACK))) ;
-    CPPUNIT_LOG_EQUAL(sock_address(sa), sock_address(ipv4_addr(127, 0, 0, 1), 50002)) ;
-    CPPUNIT_LOG_RUN(memset(&sa, 0, sizeof sa)) ;
+    CPPUNIT_LOG_ASSERT(ipv4_subnet("1.2.3.4/32").match(ipv6_addr("1.2.3.4"))) ;
+    CPPUNIT_LOG_IS_FALSE(ipv4_subnet("1.2.3.4/32").match(ipv6_addr("1.2.3.2"))) ;
+    CPPUNIT_LOG_IS_FALSE(ipv4_subnet("1.2.3.4/32").match(ipv6_addr("4.3.2.1"))) ;
 
-    sock_address SockAddr ;
-    CPPUNIT_LOG_RUN(SockAddr = sock_address(ipv4_addr(127, 0, 0, 2), 49999)) ;
-    CPPUNIT_LOG_EQUAL((int)SockAddr.as_sockaddr_in()->sin_family, (int)AF_INET) ;
-    CPPUNIT_LOG_EQUAL(SockAddr.as_sockaddr_in()->sin_port, htons(49999)) ;
-    CPPUNIT_LOG_EQUAL(SockAddr.as_sockaddr_in()->sin_addr.s_addr, htonl(0x7f000002)) ;
+    CPPUNIT_LOG_ASSERT(ipv4_subnet("1.2.3.4/32").match(ipv6_addr("::ffff:0102:0304"))) ;
+    CPPUNIT_LOG_IS_FALSE(ipv4_subnet("1.2.3.4/32").match(ipv6_addr("::0102:0304"))) ;
 }
 
-void InetAddressTests::Test_Iface_Address()
-{
-#ifdef PCOMN_PL_LINUX
-    std::string ifaddr ;
-    std::string ifname ;
-    CPPUNIT_LOG_RUN(ifaddr = str::strip(sys::shellcmd("ifconfig eth0 | grep -Eoe 'inet addr:[0-9]+[.][0-9]+[.][0-9]+[.][0-9]+'",
-                                                      DONT_RAISE_ERROR).second).stdstring()) ;
-    if (!ifaddr.empty())
-        ifname = "eth0" ;
-    else
-    {
-        CPPUNIT_LOG_RUN(ifaddr = str::strip(sys::shellcmd("ifconfig eth1 | grep -Eoe 'inet addr:[0-9]+[.][0-9]+[.][0-9]+[.][0-9]+'",
-                                                          DONT_RAISE_ERROR).second).stdstring()) ;
-        ifname = "eth1" ;
-    }
-    if (ifaddr.empty() || !str::startswith(ifaddr, "inet addr:") || ifaddr.erase(0, strlen("inet addr:")).empty())
-        CPPUNIT_LOG("Cannot find out ethernet address. Skipping iface_addr test." << std::endl) ;
-    else
-    {
-        CPPUNIT_LOG("ifname: " << ifname << ", ifaddr: " << ifaddr << std::endl) ;
-        CPPUNIT_LOG_EQUAL(ipv4_addr(ifname, ipv4_addr::ONLY_IFACE), ipv4_addr(ifaddr)) ;
-    }
-
-    CPPUNIT_LOG_EQUAL(iface_addr("lo"), inaddr_loopback()) ;
-    CPPUNIT_LOG_EQUAL(ipv4_addr("lo", ipv4_addr::ONLY_IFACE), inaddr_loopback()) ;
-#endif
-
-    // There is no network interface with such _name_: "65.66.67.68"
-    CPPUNIT_LOG_EQUAL(iface_addr("65.66.67.68"), ipv4_addr()) ;
-
-    CPPUNIT_LOG_EQUAL(ipv4_addr("65.66.67.68", ipv4_addr::USE_IFACE), ipv4_addr(65, 66, 67, 68)) ;
-    CPPUNIT_LOG_EQUAL(ipv4_addr("localhost", ipv4_addr::USE_IFACE|ipv4_addr::USE_HOSTNAME), inaddr_loopback()) ;
-    CPPUNIT_LOG_EXCEPTION(ipv4_addr("lo", ipv4_addr::USE_HOSTNAME), system_error) ;
-
-    CPPUNIT_LOG_ASSERT(iface_addr("NoSuch").ipaddr() == 0) ;
-    CPPUNIT_LOG_EXCEPTION(ipv4_addr("NoSuch", ipv4_addr::ONLY_IFACE), system_error) ;
-}
-
+/*******************************************************************************
+ main
+*******************************************************************************/
 int main(int argc, char *argv[])
 {
-    pcomn::unit::TestRunner runner ;
-    runner.addTest(InetAddressTests::suite()) ;
-
-    #ifdef PCOMN_PL_MS
-    WSAStartup(MAKEWORD(2, 0), &std::move<WSADATA>(WSADATA{})) ;
-    #endif
-
-    return
-        pcomn::unit::run_tests(runner, argc, argv, "unittest.trace.ini",
-                               "Testing internet address classes.") ;
+    return pcomn::unit::run_tests
+        <
+            IPAddressTests
+        >
+        (argc, argv) ;
 }

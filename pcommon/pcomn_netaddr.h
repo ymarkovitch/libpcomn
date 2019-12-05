@@ -10,7 +10,14 @@
  CREATION DATE:   27 Jan 2008
 *******************************************************************************/
 /** @file
-  Classes and functions for network addresses handling.
+ Classes and functions for network addresses handling.
+
+ Provides classes to represent IPv4 and IPv6 addresses and corresponding subnets.
+ The class ipv4_subnet corresponds to the class ipv4_addr, and ipv6_subnet to
+ ipv6_addr, respectively.
+
+ There are template "type functions" ip_subnet_t<Addr> and  ip_addr_t<Subnet> that
+ allow to get the subnet class corresponding to the address class, and vice versa.
 *******************************************************************************/
 #include <pcomn_utils.h>
 #include <pcomn_hash.h>
@@ -41,6 +48,20 @@ class ipv4_subnet ;
 class ipv6_addr ;
 class ipv6_subnet ;
 class sock_address ;
+
+template<typename> struct ip_subnet ;
+template<typename> struct ip_addr ;
+
+template<typename T>
+using ip_subnet_t = typename ip_subnet<T>::type ;
+template<typename T>
+using ip_addr_t = typename ip_addr<T>::type ;
+
+template<> struct ip_subnet<ipv4_addr> : identity_type<ipv4_subnet> {} ;
+template<> struct ip_subnet<ipv6_addr> : identity_type<ipv6_subnet> {} ;
+
+template<> struct ip_addr<ipv4_subnet> : identity_type<ipv4_addr> {} ;
+template<> struct ip_addr<ipv6_subnet> : identity_type<ipv6_addr> {} ;
 
 /***************************************************************************//**
  IPv4 address.
@@ -129,6 +150,9 @@ public:
     static constexpr ipv4_addr last() { return ipv4_addr((uint32_t)~0) ; }
 
     constexpr ipv4_addr operator&(uint32_t mask) const { return ipv4_addr(ipaddr() & mask) ; }
+    constexpr ipv4_addr operator|(uint32_t mask) const { return ipv4_addr(ipaddr() | mask) ; }
+    constexpr ipv4_addr operator^(uint32_t mask) const { return ipv4_addr(ipaddr() ^ mask) ; }
+    constexpr ipv4_addr operator~() const { return ipv4_addr(~ipaddr()) ; }
 
     /// Get a hostname for the address.
     /// @throw nothing
@@ -249,11 +273,11 @@ public:
 
     explicit operator bool() const { return !!raw() ; }
 
-    const ipv4_addr &addr() const { return _addr ; }
+    constexpr const ipv4_addr &addr() const { return _addr ; }
 
-    operator ipv4_addr() const { return _addr ; }
+    constexpr operator ipv4_addr() const { return _addr ; }
 
-    ipv4_addr subnet_addr() const { return addr() & netmask() ; }
+    constexpr ipv4_addr subnet_addr() const { return addr() & netmask() ; }
     ipv4_subnet subnet() const { return ipv4_subnet(subnet_addr(), pfxlen()) ; }
 
     /// Get subnet prefix length
@@ -262,8 +286,37 @@ public:
     /// Get subnet mask (host order)
     constexpr uint32_t netmask() const { return (uint32_t)(~0ULL << (32 - _pfxlen)) ; }
 
+    /// Test if the subnet matches single IPv4 address (the prefix length is 32).
     constexpr bool is_host() const { return pfxlen() == 32 ; }
+    /// Test if the subnet matches any IPv4 address (the prefix length is 0).
     constexpr bool is_any() const { return pfxlen() == 0 ; }
+
+    /// Match an IPv4 address with a subnet address and bitmask.
+    /// @note Autovectorized nicely.
+    static constexpr bool match(const ipv4_addr &address,
+                                const ipv4_addr &subnet_addr, uint32_t subnet_mask)
+    {
+        return !((address.ipaddr() ^ subnet_addr.ipaddr()) & subnet_mask) ;
+    }
+
+    /// Match an IPv6 address with an IPv4 subnet address and bitmask.
+    /// @note Returns false if `address` does not represent IPv4-mapped IPv6.
+    ///
+    static constexpr bool match(const ipv6_addr &address,
+                                const ipv4_addr &subnet_addr, uint32_t subnet_mask) ;
+
+    /// Test if the specified IPv4 address matches this subnet.
+    /// @note Autovectorized nicely.
+    ///
+    constexpr bool match(const ipv4_addr &v) const
+    {
+        return match(v, addr(), netmask()) ;
+    }
+
+    constexpr bool match(const ipv6_addr &v) const
+    {
+        return match(v, addr(), netmask()) ;
+    }
 
     /// Get the closed address interval for this subnetwork
     ///
@@ -327,6 +380,347 @@ inline bool operator<(const ipv4_subnet &x, const ipv4_subnet &y)
 }
 
 PCOMN_DEFINE_RELOP_FUNCTIONS(, ipv4_subnet) ;
+
+/***************************************************************************//**
+ IPv6 address in network byte order.
+
+ @note Implicitly castable to binary128_t in the network (BE) byte order.
+*******************************************************************************/
+class ipv6_addr : public binary128_t {
+    typedef binary128_t ancestor ;
+    friend ipv6_subnet ;
+public:
+    /// ipv6_addr construction mode flags
+    enum CFlags {
+        NO_EXCEPTION    = 0x0001, /**< Don't throw exception if construction failed,
+                                     intialize ipv6_addr to :: */
+        ALLOW_EMPTY     = 0x0002, /**< Allow to pass an empty string (the resulting
+                                     address will be ::) */
+        IGNORE_DOTDEC   = 0x0400  /**< Don't attempt to interpret address string as a
+                                     dot-delimited IPv4 address */
+    } ;
+
+    /// Create the default address (::).
+    constexpr ipv6_addr() = default ;
+
+    explicit constexpr ipv6_addr(const binary128_t &net_order_inetaddr) :
+        ancestor(net_order_inetaddr)
+    {}
+
+    constexpr ipv6_addr(const in6_addr &a) :
+        ancestor(a.s6_addr[0], a.s6_addr[1], a.s6_addr[2], a.s6_addr[3],
+                 a.s6_addr[4], a.s6_addr[5], a.s6_addr[6], a.s6_addr[7],
+                 a.s6_addr[8], a.s6_addr[9], a.s6_addr[10], a.s6_addr[11],
+                 a.s6_addr[12], a.s6_addr[13], a.s6_addr[14], a.s6_addr[15])
+    {}
+
+    /// Create IPv6 address from explicitly specified hextets.
+    constexpr ipv6_addr(uint16_t h1, uint16_t h2, uint16_t h3, uint16_t h4,
+                        uint16_t h5, uint16_t h6, uint16_t h7, uint16_t h8) :
+        ancestor(h1, h2, h3, h4, h5, h6, h7, h8)
+    {}
+
+    /// Implicit conversion ipv4->ipv6
+    constexpr ipv6_addr(const ipv4_addr &ipv4) :
+        ancestor(0, 0, 0, 0, 0, 0xffffu, ipv4.ipaddr() >> 16, uint16_t(ipv4.ipaddr()))
+    {}
+
+    /// Create an IP address from its human-readable text representation.
+    ///
+    /// @param address_string Any valid IPv6 address string, abbreviated or
+    /// non-abbreviated form, or IPv4 in dot-decimal notation.
+    /// @param flags        ORed ConstructFlags flags.
+    ///
+    /// @note If `address_string` is dot-decimal IPv4 address, creates IPv4-mapped IPv6
+    /// address (@see is_ipv4_mapped()).
+    ///
+    ipv6_addr(const strslice &address_string, CFlags flags = {}) :
+        ancestor(from_string(address_string, flags))
+    {}
+
+    explicit constexpr operator bool() const { return static_cast<bool>(data()) ; }
+
+    static constexpr ipv6_addr localhost() { return {0, 0, 0, 0, 0, 0, 0, 1} ; }
+
+    /// Get the nth hextet of the address.
+    /// The hextet is returned as host-order word.
+    using ancestor::hextet ;
+    using ancestor::octet ;
+
+    /// Get all the eight hextets of an IPv6 address.
+    constexpr std::array<uint16_t, 8> hextets() const
+    {
+        return
+            {hextet(0), hextet(1), hextet(2), hextet(3),
+             hextet(4), hextet(5), hextet(6), hextet(7)} ;
+    }
+
+    constexpr in6_addr inaddr() const
+    {
+        union {
+            binary128_t addr ;
+            in6_addr    result ;
+        } _ = { data() } ;
+        return _.result ;
+    }
+    operator struct in6_addr() const { return inaddr() ; }
+
+    constexpr bool is_ipv4_mapped() const
+    {
+        return !(_idata[0] | (_wdata[2] ^ be(0xffffu))) ;
+    }
+
+    /// Get the IPv4 address, if the object is IPv4-mapped IPv6, or null address
+    /// otherwise.
+    /// @see is_ipv4_mapped()
+    ///
+    constexpr explicit operator ipv4_addr() const noexcept
+    {
+        return ipv4_addr(value_from_big_endian(_wdata[3] & -(int)is_ipv4_mapped())) ;
+    }
+
+    /// Get the maximum length of string representation of IPv6 address
+    /// (non including terminating zero).
+    static constexpr size_t slen() { return INET6_ADDRSTRLEN - 1 ; }
+
+    template<typename OutputIterator>
+    OutputIterator to_str(OutputIterator s) const
+    {
+        addr_strbuf buf ;
+        to_strbuf(buf) ;
+        for (const char *p = buf ; *p ; ++p, ++s) *s = *p ;
+        return s ;
+    }
+
+    std::string str() const
+    {
+        addr_strbuf buf ;
+        return std::string(to_strbuf(buf)) ;
+    }
+
+    friend constexpr bool operator==(const ipv6_addr &x, const ipv6_addr &y)
+    {
+        return x.data() == y.data() ;
+    }
+
+    friend constexpr bool operator<(const ipv6_addr &x, const ipv6_addr &y)
+    {
+        return x.data() < y.data() ;
+    }
+
+    friend std::ostream &operator<<(std::ostream &os, const ipv6_addr &addr)
+    {
+        char buf[64] ;
+        return os << addr.to_strbuf(buf) ;
+    }
+
+private:
+    typedef char addr_strbuf[INET6_ADDRSTRLEN] ;
+
+    constexpr const binary128_t &data() const { return *this ; }
+
+    static binary128_t from_string(const strslice &address_string, CFlags flags) ;
+
+    const char *to_strbuf(addr_strbuf) const ;
+
+    struct zero_run { short start = -1 ; short len = 0 ; } ;
+    // Find the longest run of zeros in the address for :: shorthanding
+    zero_run find_longest_zero_run() const ;
+
+    static __noreturn __cold void invalid_address_string(const strslice &address_string) ;
+} ;
+
+PCOMN_DEFINE_FLAG_ENUM(ipv6_addr::CFlags) ;
+
+/*******************************************************************************
+ ipv6_addr comparison operators
+*******************************************************************************/
+// Note that this line defines _all_ remaining operators (!=, <=, etc.)
+PCOMN_DEFINE_RELOP_FUNCTIONS(constexpr, ipv6_addr) ;
+
+/***************************************************************************//**
+ IPv6 subnetwork address, i.e. IPv6 address + prefix length.
+*******************************************************************************/
+class ipv6_subnet : private ipv6_addr {
+    typedef ipv6_addr ancestor ;
+public:
+    /// Create 0/0 prefix.
+    constexpr ipv6_subnet() = default ;
+
+    ipv6_subnet(const ipv6_addr &address, unsigned prefix_length) :
+        ancestor(address),
+        _pfxlen(ensure_pfxlen<std::invalid_argument>(prefix_length))
+    {}
+
+    ipv6_subnet(uint16_t h1, uint16_t h2, uint16_t h3, uint16_t h4,
+                uint16_t h5, uint16_t h6, uint16_t h7, uint16_t h8,
+                unsigned prefix_length) :
+        ipv6_subnet(ipv6_addr(h1, h2, h3, h4, h5, h6, h7, h8), prefix_length)
+    {}
+
+    /// Create IPv6 subnet address from its human-readable text representation
+    /// in prefix length notation (AKA "slash" notation).
+    ///
+    /// @param subnet_string Abbreviated or non-abbreviated IPv6 subnet address in prefix
+    /// length notation, like "2001:db8::/32".
+    ///
+    /// @note In contrast to ipv6_addr parser, does _not_ allow ipv4 subnet
+    /// specification, like "172.16.1.1/12" or "0.0.0.0/0", throws invalid_str_repr.
+    ///
+    ipv6_subnet(const strslice &subnet_string, RaiseError raise_error = RAISE_ERROR) ;
+
+    explicit operator bool() const { return addr() || pfxlen() ; }
+
+    size_t hash() const { return t1ha0_bin128(*(idata()+0), *(idata()+1), pfxlen()) ; }
+
+    constexpr const ipv6_addr &addr() const { return *this ; }
+    constexpr operator ipv6_addr() const { return addr() ; }
+
+    constexpr binary128_t netmask() const
+    {
+        const uint64_t himask = pfxlen() >= 64 ? ~0ULL : 0ULL ;
+        const uint64_t lomask = pfxlen() >  64 ? ~0ULL : 0ULL ;
+
+        const int64_t shift = pfxlen() - 64 ;
+
+        const uint64_t hi = (~1LL << (-shift - 1)) | himask ;
+        const uint64_t lo = (~int64_t((~0ULL>>1)) >> (shift - 1)) & lomask ;
+
+        return {hi, lo} ;
+    }
+
+    /// Get the "canonical" address of this subnet where all the bits after the prefix
+    /// are reset to 0.
+    /// So, for instance, `ipv6_subnet("2001:db8:5:1234/32").subnet_addr()` is
+    /// "2001:db8::", while `ipv6_subnet("2001:db8:5:1234/32").addr()`
+    /// is "2001:db8:5:1234".
+    ///
+    constexpr ipv6_addr subnet_addr() const
+    {
+        return ipv6_addr(addr() & netmask()) ;
+    }
+
+    ipv6_subnet subnet() const { return ipv6_subnet(subnet_addr(), pfxlen()) ; }
+
+    /// Get subnet prefix length
+    constexpr unsigned pfxlen() const { return _pfxlen ; }
+
+    constexpr bool is_host() const { return pfxlen() == 128 ; }
+    constexpr bool is_any() const { return pfxlen() == 0 ; }
+
+    constexpr bool match(const ipv6_addr &v) const
+    {
+        return !((v ^ addr()) & netmask()) ;
+    }
+
+    std::string str() const
+    {
+        char buf[128] ;
+        return std::string(buf + 0, to_str(buf)) ;
+    }
+
+    template<typename OutputIterator>
+    OutputIterator to_str(OutputIterator s) const
+    {
+        s = addr().to_str(s) ;
+        *s = '/' ;
+        return numtoiter(pfxlen(), ++s) ;
+    }
+
+    friend std::ostream &operator<<(std::ostream &os, const ipv6_subnet &addr)
+    {
+        char buf[128] ;
+        return os << strslice(buf + 0, addr.to_str(buf)) ;
+    }
+
+private:
+    uint32_t  _pfxlen = 0 ; /* Subnetwork prefix length */
+
+    template<typename X>
+    static uint32_t ensure_pfxlen(unsigned prefix_length)
+    {
+        ensure<X>(prefix_length <= 128, "IPv6 subnetwork prefix length exceeds 128") ;
+        return prefix_length ;
+    }
+} ;
+
+/*******************************************************************************
+ ipv6_subnet comparison operators
+*******************************************************************************/
+inline bool operator==(const ipv6_subnet &x, const ipv6_subnet &y)
+{
+    return x.addr() == y.addr() && x.pfxlen() == y.pfxlen() ;
+}
+
+inline bool operator<(const ipv6_subnet &x, const ipv6_subnet &y)
+{
+    return x.addr() < y.addr() || x.addr() == y.addr() && x.pfxlen() < y.pfxlen() ;
+}
+
+PCOMN_DEFINE_RELOP_FUNCTIONS(, ipv6_subnet) ;
+
+/*******************************************************************************
+
+*******************************************************************************/
+template<class Prefix, class Addr>
+class netprefix_match ;
+
+template<> struct netprefix_match<ipv4_subnet,ipv4_addr> {
+
+    constexpr netprefix_match() = default ;
+
+    constexpr netprefix_match(const ipv4_subnet &p) :
+        _prefix(p.subnet_addr().ipaddr()),
+        _mask(p.netmask())
+    {}
+
+    constexpr bool operator()(const ipv4_addr &address) const
+    {
+        return !((address.ipaddr() ^ _prefix) & _mask) ;
+    }
+
+    constexpr uint32_t prefix() const { return _prefix ; }
+    constexpr uint32_t mask() const { return _mask ; }
+
+    /// Test if the matcher matches single IPv4 address (the prefix length is 32).
+    constexpr bool is_host() const { return _mask == (uint32_t)~0U ; }
+    /// Test if the matcher matches any IPv4 address (the prefix length is 0).
+    constexpr bool is_any() const { return !_mask ; }
+
+private:
+    uint32_t _prefix = 0 ;
+    uint32_t _mask = 0 ;
+} ;
+
+template<> struct netprefix_match<ipv4_subnet,ipv6_addr> {
+
+    constexpr netprefix_match() = default ;
+
+    constexpr netprefix_match(const ipv4_subnet &p) :
+        _prefix(maplower64(p.subnet_addr().ipaddr())),
+        _mask(maplower64(p.netmask()))
+    {}
+
+    constexpr bool operator()(const ipv6_addr &addr) const
+    {
+        return !(cast128<b128_t>(addr)._idata[0] |
+                 ((cast128<b128_t>(addr)._idata[1] ^ _prefix) & _mask)) ;
+    }
+
+private:
+    uint64_t _prefix = 0 ;
+    uint64_t _mask = 0 ;
+
+private:
+    static constexpr uint64_t maplower64(uint32_t ipv4bits)
+    {
+        constexpr uint64_t shift   = cpu_little_endian * 32 ;
+        constexpr uint64_t mapbits = cpu_little_endian ? 0xffff'0000ULL : 0xffff'0000'0000ULL ;
+
+        return (uint64_t(value_to_big_endian(ipv4bits)) << shift) | mapbits ;
+    }
+} ;
+
 
 /***************************************************************************//**
  The completely-defined SF_INET socket address; specifies both the inet address
@@ -429,257 +823,20 @@ inline bool operator<(const sock_address &x, const sock_address &y)
 // Note that this line defines _all_ remaining operators (!=, <=, etc.)
 PCOMN_DEFINE_RELOP_FUNCTIONS(, sock_address) ;
 
-/***************************************************************************//**
- IPv6 address in network byte order.
-
- @note Implicitly castable to binary128_t in the network (BE) byte order.
-*******************************************************************************/
-class ipv6_addr : public binary128_t {
-    typedef binary128_t ancestor ;
-    friend ipv6_subnet ;
-public:
-    /// ipv6_addr construction mode flags
-    enum CFlags {
-        NO_EXCEPTION    = 0x0001, /**< Don't throw exception if construction failed,
-                                     intialize ipv6_addr to :: */
-        ALLOW_EMPTY     = 0x0002  /**< Allow to pass an empty string (the resulting
-                                     address will be ::) */
-    } ;
-
-    /// Create the default address (::).
-    constexpr ipv6_addr() = default ;
-
-    explicit constexpr ipv6_addr(const binary128_t &net_order_inetaddr) :
-        ancestor(net_order_inetaddr)
-    {}
-
-    constexpr ipv6_addr(const in6_addr &a) :
-        ancestor(a.s6_addr[0], a.s6_addr[1], a.s6_addr[2], a.s6_addr[3],
-                 a.s6_addr[4], a.s6_addr[5], a.s6_addr[6], a.s6_addr[7],
-                 a.s6_addr[8], a.s6_addr[9], a.s6_addr[10], a.s6_addr[11],
-                 a.s6_addr[12], a.s6_addr[13], a.s6_addr[14], a.s6_addr[15])
-    {}
-
-    /// Create IPv6 address from explicitly specified hextets.
-    constexpr ipv6_addr(uint16_t h1, uint16_t h2, uint16_t h3, uint16_t h4,
-                        uint16_t h5, uint16_t h6, uint16_t h7, uint16_t h8) :
-        ancestor(h1, h2, h3, h4, h5, h6, h7, h8)
-    {}
-
-    /// Implicit conversion ipv4->ipv6
-    constexpr ipv6_addr(const ipv4_addr &ipv4) :
-        ancestor(0, 0, 0, 0, 0, 0xffffu, ipv4.ipaddr() >> 16, uint16_t(ipv4.ipaddr()))
-    {}
-
-    /// Create an IP address from its human-readable text representation.
-    ///
-    /// @param address_string Any valid IPv6 address string, abbreviated or
-    /// non-abbreviated form.
-    /// @param flags        ORed ConstructFlags flags.
-    ///
-    ipv6_addr(const strslice &address_string, CFlags flags = {}) :
-        ancestor(from_string(address_string, flags))
-    {}
-
-    explicit constexpr operator bool() const { return static_cast<bool>(data()) ; }
-
-    static constexpr ipv6_addr localhost() { return {0, 0, 0, 0, 0, 0, 0, 1} ; }
-
-    /// Get the nth hextet of the address.
-    /// The hextet is returned as host-order word.
-    using ancestor::hextet ;
-    using ancestor::octet ;
-
-    /// Get all the eight hextets of an IPv6 address.
-    constexpr std::array<uint16_t, 8> hextets() const
-    {
-        return
-            {hextet(0), hextet(1), hextet(2), hextet(3),
-             hextet(4), hextet(5), hextet(6), hextet(7)} ;
-    }
-
-    constexpr in6_addr inaddr() const
-    {
-        union {
-            binary128_t addr ;
-            in6_addr    result ;
-        } _ = { data() } ;
-        return _.result ;
-    }
-    operator struct in6_addr() const { return inaddr() ; }
-
-    constexpr bool is_mapped_ipv4() const
-    {
-        return !(_idata[0] | (_wdata[2] ^ value_to_big_endian(0xffffu))) ;
-    }
-
-    /// Get the maximum length of string representation of IPv6 address
-    /// (non including terminating zero).
-    static constexpr size_t slen() { return INET6_ADDRSTRLEN - 1 ; }
-
-    template<typename OutputIterator>
-    OutputIterator to_str(OutputIterator s) const
-    {
-        addr_strbuf buf ;
-        to_strbuf(buf) ;
-        for (const char *p = buf ; *p ; ++p, ++s) *s = *p ;
-        return s ;
-    }
-
-    std::string str() const
-    {
-        addr_strbuf buf ;
-        return std::string(to_strbuf(buf)) ;
-    }
-
-    friend constexpr bool operator==(const ipv6_addr &x, const ipv6_addr &y)
-    {
-        return x.data() == y.data() ;
-    }
-
-    friend constexpr bool operator<(const ipv6_addr &x, const ipv6_addr &y)
-    {
-        return x.data() < y.data() ;
-    }
-
-    friend std::ostream &operator<<(std::ostream &os, const ipv6_addr &addr)
-    {
-        char buf[64] ;
-        return os << addr.to_strbuf(buf) ;
-    }
-
-private:
-    typedef char addr_strbuf[INET6_ADDRSTRLEN] ;
-
-    constexpr const binary128_t &data() const { return *this ; }
-
-    static binary128_t from_string(const strslice &address_string, CFlags flags) ;
-
-    const char *to_strbuf(addr_strbuf) const ;
-
-    struct zero_run { short start = -1 ; short len = 0 ; } ;
-    // Find the longest run of zeros in the address for :: shorthanding
-    zero_run find_longest_zero_run() const ;
-
-    static __noreturn __cold void invalid_address_string(const strslice &address_string) ;
-} ;
-
 /*******************************************************************************
- ipv6_addr comparison operators
+ ipv4_subnet
 *******************************************************************************/
-// Note that this line defines _all_ remaining operators (!=, <=, etc.)
-PCOMN_DEFINE_RELOP_FUNCTIONS(constexpr, ipv6_addr) ;
-
-/***************************************************************************//**
- IPv6 subnetwork address, i.e. IPv6 address + prefix length.
-*******************************************************************************/
-class ipv6_subnet : private ipv6_addr {
-    typedef ipv6_addr ancestor ;
-public:
-    /// Create 0/0 prefix.
-    constexpr ipv6_subnet() = default ;
-
-    ipv6_subnet(const ipv6_addr &address, unsigned prefix_length) :
-        ancestor(address),
-        _pfxlen(ensure_pfxlen<std::invalid_argument>(prefix_length))
-    {}
-
-    ipv6_subnet(uint16_t h1, uint16_t h2, uint16_t h3, uint16_t h4,
-                uint16_t h5, uint16_t h6, uint16_t h7, uint16_t h8,
-                unsigned prefix_length) :
-        ipv6_subnet(ipv6_addr(h1, h2, h3, h4, h5, h6, h7, h8), prefix_length)
-    {}
-
-    /// Create IPv6 subnet address from its human-readable text representation
-    /// in prefix length notation (AKA "slash" notation).
-    ///
-    /// @param subnet_string Abbreviated or non-abbreviated IPv6 subnet address in prefix
-    /// length notation, like "2001:db8::/32"
-    ///
-    ipv6_subnet(const strslice &subnet_string, RaiseError raise_error = RAISE_ERROR) ;
-
-    explicit operator bool() const { return addr() || pfxlen() ; }
-
-    size_t hash() const { return t1ha0_bin128(*(idata()+0), *(idata()+1), pfxlen()) ; }
-
-    const ipv6_addr &addr() const { return *this ; }
-
-    operator ipv6_addr() const { return addr() ; }
-
-    /// Get the "canonical" address of this subnet where all the bits after the prefix
-    /// are reset to 0.
-    /// So, for instance, `ipv6_subnet("2001:db8:5:1234/32").subnet_addr()` is
-    /// "2001:db8::", while `ipv6_subnet("2001:db8:5:1234/32").addr()`
-    /// is "2001:db8:5:1234".
-    ///
-    ipv6_addr subnet_addr() const
-    {
-        if (is_host())
-            return addr() ;
-
-        const bool lo_qword = pfxlen() > 63 ;
-        const uint64_t mask = be(((1ULL << 63) - (1ULL << ((lo_qword * 64 + 63) - pfxlen()))) << 1) ;
-        const uint64_t other_mask = 0ULL - lo_qword ;
-
-        ipv6_addr r (addr()) ;
-        r.idata()[lo_qword] &= mask ;
-        r.idata()[!lo_qword] &= other_mask ;
-        return r ;
-    }
-
-    ipv6_subnet subnet() const { return ipv6_subnet(subnet_addr(), pfxlen()) ; }
-
-    /// Get subnet prefix length
-    constexpr unsigned pfxlen() const { return _pfxlen ; }
-
-    constexpr bool is_host() const { return pfxlen() == 128 ; }
-    constexpr bool is_any() const { return pfxlen() == 0 ; }
-
-    std::string str() const
-    {
-        char buf[128] ;
-        return std::string(buf + 0, to_str(buf)) ;
-    }
-
-    template<typename OutputIterator>
-    OutputIterator to_str(OutputIterator s) const
-    {
-        s = addr().to_str(s) ;
-        *s = '/' ;
-        return numtoiter(pfxlen(), ++s) ;
-    }
-
-    friend std::ostream &operator<<(std::ostream &os, const ipv6_subnet &addr)
-    {
-        char buf[128] ;
-        return os << strslice(buf + 0, addr.to_str(buf)) ;
-    }
-
-private:
-    uint32_t  _pfxlen = 0 ; /* Subnetwork prefix length */
-
-    template<typename X>
-    static uint32_t ensure_pfxlen(unsigned prefix_length)
-    {
-        ensure<X>(prefix_length <= 128, "IPv6 subnetwork prefix length exceeds 128") ;
-        return prefix_length ;
-    }
-} ;
-
-/*******************************************************************************
- ipv6_subnet comparison operators
-*******************************************************************************/
-inline bool operator==(const ipv6_subnet &x, const ipv6_subnet &y)
+constexpr inline bool ipv4_subnet::match(const ipv6_addr &value,
+                                         const ipv4_addr &subnet_addr, uint32_t subnet_mask)
 {
-    return x.addr() == y.addr() && x.pfxlen() == y.pfxlen() ;
-}
+    constexpr uint64_t shift = cpu_little_endian * 32 ;
+    constexpr uint64_t mask  = cpu_little_endian ? 0xffff'0000ULL : 0xffff'0000'0000ULL ;
 
-inline bool operator<(const ipv6_subnet &x, const ipv6_subnet &y)
-{
-    return x.addr() < y.addr() || x.addr() == y.addr() && x.pfxlen() < y.pfxlen() ;
-}
+    const uint64_t netmask = (uint64_t(value_to_big_endian(subnet_mask)) << shift) | mask ;
+    const uint64_t prefix  = (uint64_t(value_to_big_endian(subnet_addr.ipaddr())) << shift) | mask ;
 
-PCOMN_DEFINE_RELOP_FUNCTIONS(, ipv6_subnet) ;
+    return !(cast128<b128_t>(value)._idata[0] | ((cast128<b128_t>(value)._idata[1] ^ prefix) & netmask)) ;
+}
 
 /*******************************************************************************
  Ostream output operators

@@ -23,12 +23,15 @@ static constexpr size_t trie_maxdepth = (256+5)/6 ;
 const shortest_netprefix_set::node_type shortest_netprefix_set::_nomatch_root ;
 const shortest_netprefix_set::node_type shortest_netprefix_set::_anymatch_root (~uint64_t()) ;
 
-shortest_netprefix_set::shortest_netprefix_set(const simple_cslice<ipv4_subnet> &subnets) :
-    shortest_netprefix_set(std::true_type(), std::vector<ipv4_subnet>(subnets.begin(), subnets.end()))
+template<typename Subnet>
+shortest_netprefix_set::shortest_netprefix_set(std::false_type, const simple_cslice<Subnet> &subnets) :
+    shortest_netprefix_set(std::true_type(), std::vector<Subnet>(subnets.begin(), subnets.end()))
 {}
 
-shortest_netprefix_set::shortest_netprefix_set(std::true_type, std::vector<ipv4_subnet> &&data) :
-    _depth(pack_nodes(compile_nodes(prepare_source_data(data), std::array<unsigned,trie_maxdepth>().data()))),
+template<typename Subnet>
+shortest_netprefix_set::shortest_netprefix_set(std::true_type, std::vector<Subnet> &&data) :
+    _depth(pack_nodes(compile_nodes(make_simple_slice(prepare_source_data(data)),
+                                    std::array<unsigned,trie_maxdepth>().data()))),
 
     _root(_nodes.size() ? _nodes.data() :
           _depth        ? &_anymatch_root :
@@ -46,16 +49,17 @@ shortest_netprefix_set::shortest_netprefix_set(shortest_netprefix_set &&other) :
     other._depth = 0 ;
 }
 
-std::vector<ipv4_subnet> &shortest_netprefix_set::prepare_source_data(std::vector<ipv4_subnet> &v)
+template<typename Subnet>
+std::vector<Subnet> &shortest_netprefix_set::prepare_source_data(std::vector<Subnet> &v)
 {
     // Sort the source array by subnet_addr() and then retain only unique shortest
     // prefixes, i.e. for every two subnets N1 and N2, if N1 is a prefix of N2, drop N2.
 
-    std::transform(v.begin(), v.end(), v.begin(), std::mem_fn(&ipv4_subnet::subnet)) ;
+    std::transform(v.begin(), v.end(), v.begin(), std::mem_fn(&Subnet::subnet)) ;
     pcomn::sort(v) ;
-    pcomn::unique(v, [](const ipv4_subnet &x, const ipv4_subnet &y)
+    pcomn::unique(v, [](const Subnet &x, const Subnet &y)
     {
-        return x.pfxlen() <= y.pfxlen() && x.subnet_addr() == (y.subnet_addr() & x.netmask()) ;
+        return x.pfxlen() <= y.pfxlen() && x.subnet_addr() == Subnet(y.addr(), x.pfxlen()).subnet_addr() ;
     }) ;
 
     return v ;
@@ -105,7 +109,8 @@ shortest_netprefix_set::append_node(node_type *current_node, uint8_t hexad, uint
     return new_node ;
 }
 
-unsigned *shortest_netprefix_set::compile_nodes(const simple_slice<ipv4_subnet> &source, unsigned *count_per_level)
+template<typename Subnet>
+unsigned *shortest_netprefix_set::compile_nodes(const simple_slice<Subnet> &source, unsigned *count_per_level)
 {
     memset(count_per_level, 0, trie_maxdepth*sizeof(*count_per_level)) ;
 
@@ -125,11 +130,11 @@ unsigned *shortest_netprefix_set::compile_nodes(const simple_slice<ipv4_subnet> 
     // Insert the empty root, we'll add all the nodes to it.
     _nodes.resize(1) ;
 
-    for (const ipv4_subnet &v: source)
+    for (const Subnet &v: source)
     {
         NOXCHECK(v.pfxlen()) ;
 
-        const auto addr = v.subnet_addr().ipaddr() ;
+        const auto addr = v.subnet_addr() ;
 
         // Start from the root.
         node_type *node = _nodes.data() ;
@@ -206,7 +211,8 @@ size_t shortest_netprefix_set::pack_nodes(const unsigned *count_per_level)
     return depth ;
 }
 
-bool shortest_netprefix_set::is_member(ipv4_addr addr) const
+template<typename Addr>
+bool shortest_netprefix_set::is_member(const Addr &addr) const
 {
     constexpr unsigned maxlevels = (8*sizeof(addr)+5)/6 ;
 
@@ -215,7 +221,7 @@ bool shortest_netprefix_set::is_member(ipv4_addr addr) const
     unsigned level = 0 ;
 
     do {
-        const uint64_t level_bit = 1ULL << bittuple<6>(addr.ipaddr(), level) ;
+        const uint64_t level_bit = 1ULL << bittuple<6>(addr, level) ;
 
         if (!(node->children_bits() & level_bit))
             return node->leaves_bits() & level_bit ;
@@ -225,6 +231,23 @@ bool shortest_netprefix_set::is_member(ipv4_addr addr) const
     while(++level < maxlevels) ;
 
     PCOMN_DEBUG_FAIL("must never be here") ;
+    return false ;
 }
+
+/*******************************************************************************
+ ipaddr_prefix_set<Addr>
+*******************************************************************************/
+template<typename Addr>
+bool ipaddr_prefix_set<Addr>::is_member(const addr_type &addr) const
+{
+    return ancestor::is_member(addr) ;
+}
+
+/*******************************************************************************
+ Explicitly instantiate ipaddr_prefix_set IPv4 and IPv6 variants to ensure
+ instantiation of the respective shortest_netprefix_set template members.
+*******************************************************************************/
+template class ipaddr_prefix_set<ipv4_addr> ;
+template class ipaddr_prefix_set<ipv6_addr> ;
 
 } // end of namespace pcomn
