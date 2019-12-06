@@ -583,7 +583,7 @@ public:
 
         const int64_t shift = pfxlen() - 64 ;
 
-        const uint64_t hi = (~1LL << (-shift - 1)) | himask ;
+        const uint64_t hi = (~1ULL << (-shift - 1)) | himask ;
         const uint64_t lo = (~int64_t((~0ULL>>1)) >> (shift - 1)) & lomask ;
 
         return {hi, lo} ;
