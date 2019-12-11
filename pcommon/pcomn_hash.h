@@ -693,10 +693,10 @@ inline t1ha2hash_t t1ha2hash() { return {} ; }
 /// @note There are convenient overloading of this function for any object that provides
 /// pcomn::buf::cdata() and pcomn::buf::size() and for strslice.
 ///
-inline t1ha2hash_t t1ha2hash(const void *data, size_t size)
+inline t1ha2hash_t t1ha2hash(const void *data, size_t size, uint64_t seed=0)
 {
    uint64_t hi = 0 ;
-   const uint64_t lo = t1ha2_atonce128(&hi, data, size, 0) ;
+   const uint64_t lo = t1ha2_atonce128(&hi, data, size, seed) ;
    return t1ha2hash_t(binary128_t(hi, lo)) ;
 }
 
