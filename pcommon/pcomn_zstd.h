@@ -107,8 +107,12 @@ public:
             delete [] static_cast<char*>(buf::data(_trained_dict)) ;
     }
 
-    /// Get the dictionary ID
+    /// Get the dictionary ID automatically stored by the dictionary builder.
+    /// See `--dictId` command line option of zstd.
+    ///
     unsigned id() const { return _id ; }
+
+    digest128_t digest() const ;
 
     const void *data() const { return buf::cdata(_trained_dict) ; }
     size_t size() const { return buf::size(_trained_dict) ; }
@@ -124,9 +128,10 @@ public:
     }
 
 private:
-    const iovec_t  _trained_dict ;
-    const unsigned _id ;
-    const bool     _owned ; /* Is destruction needed */
+    const iovec_t       _trained_dict ;
+    const unsigned      _id ;
+    const bool          _owned ; /* Is destruction needed */
+    mutable t1ha2hash_t _digest ;
 
 private:
     /// Use a knowinly valid dictionary.
