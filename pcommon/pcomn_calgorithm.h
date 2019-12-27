@@ -537,7 +537,7 @@ template<typename InputIterator, typename RandomIterator>
 inline void invert_permutation(InputIterator src_begin, InputIterator src_end, RandomIterator dst)
 {
     typedef pcomn::valtype_t<decltype(*dst)> dst_type ;
-    PCOMN_STATIC_CHECK(pcomn::is_integer<dst_type>::value) ;
+    PCOMN_STATIC_CHECK(std::is_integral<dst_type>() && !std::is_same<dst_type, bool>()) ;
 
     for (dst_type i = 0 ; src_begin != src_end ; ++src_begin)
         *(dst + *src_begin) = i++ ;
