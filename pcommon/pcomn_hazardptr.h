@@ -770,7 +770,7 @@ auto hazard_storage<L>::allocate_slot() -> registry_type &
          const size_t freepos = *p ;
          if (slots_map().cas(freepos, false, true, memory_order_seq_cst))
          {
-            atomic_op::check_and_swap(&_top_alloc, [=](size_t old){ return freepos + 1 > old ; }, freepos + 1,
+            atomic_op::check_and_swap(&_top_alloc, freepos + 1, [=](size_t oldv, size_t newv){ return newv > oldv ; },
                                       memory_order_seq_cst) ;
             // Success
             return
