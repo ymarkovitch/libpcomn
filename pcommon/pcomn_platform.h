@@ -758,6 +758,20 @@ typedef int64_t   int64_be ;
 typedef uint64_t  uint64_be ;
 
 #ifdef __cplusplus
+/***************************************************************************//**
+ @var PCOMN_CACHELINE_SIZE
+ Typical L1 cacheline size for the architecture the library is compiled for.
+*******************************************************************************/
+constexpr size_t PCOMN_CACHELINE_SIZE =
+#if !defined(PCOMN_PL_POWER8)
+   64
+#else
+   128
+#endif
+   ;
+#endif
+
+#ifdef __cplusplus
 namespace pcomn {
 #endif
 
@@ -770,9 +784,15 @@ typedef unsigned long long int   ulonglong_t ;
 
 #ifdef __cplusplus
 
-const size_t KiB = 1024 ;
-const size_t MiB = 1024*KiB ;
-const size_t GiB = 1024*MiB ;
+constexpr size_t KiB = 1024 ;
+constexpr size_t MiB = 1024*KiB ;
+constexpr size_t GiB = 1024*MiB ;
+
+/***************************************************************************//**
+ Data types for aligning to CPU cache line or memory page.
+*******************************************************************************/
+struct alignas(PCOMN_CACHELINE_SIZE) cacheline_t { char data[PCOMN_CACHELINE_SIZE] ; } ;
+struct alignas(4*KiB)                mempage_t   { char data[4*KiB] ; } ;
 
 /***************************************************************************//**
  A single-value enum for use as a tag for instantiation of static template
@@ -960,18 +980,6 @@ inline void put_byte(T *data, size_t byte_num, uint8_t byte)
    reinterpret_cast<const char *>(data)[__byte_pos(*data, byte_num)] = byte ;
 }
 } // end of namespace pcomn
-
-/***************************************************************************//**
- @var PCOMN_CACHELINE_SIZE
- Typical L1 cacheline size for the architecture the library is compiled for.
-*******************************************************************************/
-constexpr size_t PCOMN_CACHELINE_SIZE =
-#if !defined(PCOMN_PL_POWER8)
-   64
-#else
-   128
-#endif
-   ;
 
 #endif // __cplusplus
 
