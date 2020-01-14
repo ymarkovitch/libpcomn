@@ -102,7 +102,7 @@ struct refcount_basic_policy {
 /******************************************************************************/
 /** Reference counter: the base class for reference counted objects.
 *******************************************************************************/
-template<typename C = std::atomic<intptr_t> >
+template<typename C = std::atomic<intptr_t>>
 class PTRefCounter : public active_counter<C> {
       typedef active_counter<C> ancestor ;
    public:
@@ -147,9 +147,9 @@ class PTRefCounter : public active_counter<C> {
 
 typedef PTRefCounter<> PRefCount ;
 
-/******************************************************************************/
-/** Intrusive reference-counted pointer policy for objects based on
- PTRefCounter (or PRefCount)
+/***************************************************************************//**
+ Intrusive reference-counted pointer policy for objects based on PTRefCounter
+ (or PRefCount)
 *******************************************************************************/
 template<typename C>
 struct refcount_policy<PTRefCounter<C>> {
