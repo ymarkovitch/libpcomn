@@ -292,61 +292,6 @@ template<> struct bit_traits<8> {
    }
 } ;
 
-/*******************************************************************************
- Generic bitcount
-*******************************************************************************/
-template<typename I>
-inline size_t native_bitcount(I v, generic_isa_tag)
-{
-   return bit_traits<sizeof(I)*8>::bitcount(v) ;
-}
-
-template<typename I>
-inline size_t native_rzcnt(I v, generic_isa_tag)
-{
-   // Get rightmost non-zero bit
-   // 00001010 -> 00000010
-   const I rnzb = static_cast<I>(v & (0 - v)) ;
-   // Convert rigthmost 0-sequence to 1-sequence and count bits
-   return native_bitcount(static_cast<I>(rnzb - 1), native_isa_tag()) ;
-}
-
-/*******************************************************************************
- x86_64
-*******************************************************************************/
-#ifdef PCOMN_PL_X86
-#if defined(PCOMN_COMPILER_GNU)
-__forceinline size_t builtin_popcount(unsigned long long v) { return __builtin_popcountll(v) ; }
-__forceinline size_t builtin_popcount(unsigned long v) { return __builtin_popcountl(v) ; }
-__forceinline size_t builtin_popcount(unsigned int v) { return __builtin_popcount(v) ; }
-__forceinline size_t builtin_popcount(unsigned short v) { return __builtin_popcount(v) ; }
-__forceinline size_t builtin_popcount(unsigned char v) { return __builtin_popcount(v) ; }
-
-template<typename I>
-inline size_t native_bitcount(I v, sse42_isa_tag)
-{
-   return builtin_popcount((std::make_unsigned_t<I>)v) ;
-}
-
-template<typename I>
-inline size_t native_rzcnt(I v, x86_64_isa_tag)
-{
-   size_t result ;
-   const uintmax_t source = (std::make_unsigned_t<I>)v ;
-   const uintmax_t bitsize = bitsizeof(I) ;
-   asm(
-      "bsf   %[source],  %[result]\n\t"
-      "cmovz %[bitsize], %[result]"
-      : [result]"=r"(result)
-      : [source]"rm"(source),
-        [bitsize]"r"(bitsize)
-      : "cc") ;
-   return result ;
-}
-
-#endif
-#endif
-
 /// @cond
 namespace detail {
 
@@ -538,10 +483,24 @@ constexpr inline if_integer_t<I> getrzbseq(I x)
 /// 00101000 -> 3
 /// 00101001 -> 0
 /// 0 -> bitsizeof(I)
+/// @note Analog of TZCNT
 template<typename I>
-constexpr inline if_integer_t<I, size_t> rzcnt(I x)
+constexpr inline if_integer_t<I, unsigned> rzcnt(I v)
 {
-   return native_rzcnt(x, native_isa_tag()) ;
+   #ifdef PCOMN_COMPILER_GNU
+
+   const size_t c = bitsizeof(v) <= 32 ? __builtin_ctz(v) : __builtin_ctzl(v) ;
+   return v ? c : bitsizeof(v) ;
+
+   #else
+
+   // Get rightmost non-zero bit
+   // 00001010 -> 00000010
+   const I rnzb = static_cast<I>(v & (0 - v)) ;
+   // Convert rigthmost 0-sequence to 1-sequence and count bits
+   return bitcount(static_cast<I>(rnzb - 1)) ;
+
+   #endif
 }
 
 /// Test if Power of 2 or Zero.

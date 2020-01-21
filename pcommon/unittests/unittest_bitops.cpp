@@ -150,9 +150,21 @@ void BitOperationsTests::Test_Clrrnzb()
 void BitOperationsTests::Test_Getrnzb()
 {
    CPPUNIT_LOG_EQUAL(bitop::getrnzb(0xF0), 0x10) ;
+   CPPUNIT_LOG_EQ(bitop::rzcnt(0xF0), 4) ;
+   CPPUNIT_LOG_EQUAL(bitop::getrnzb(0xF0ULL), 0x10ULL) ;
+   CPPUNIT_LOG_EQ(bitop::rzcnt(0xF0ULL), 4) ;
+
    CPPUNIT_LOG_EQUAL(bitop::getrnzb(1), 1) ;
    CPPUNIT_LOG_EQUAL(bitop::getrnzb(-1), 1) ;
    CPPUNIT_LOG_EQUAL(bitop::getrnzb(6), 2) ;
+   CPPUNIT_LOG_EQ(bitop::rzcnt(6), 1) ;
+
+   CPPUNIT_LOG_EQ(bitop::rzcnt((uint64_t)0), 64) ;
+   CPPUNIT_LOG_EQ(bitop::rzcnt((uint32_t)0), 32) ;
+   CPPUNIT_LOG_EQ(bitop::rzcnt((uint16_t)0), 16) ;
+   CPPUNIT_LOG_EQ(bitop::rzcnt((uint8_t)0),   8) ;
+   CPPUNIT_LOG_EQ(bitop::rzcnt(1), 0) ;
+
    CPPUNIT_LOG_EQUAL(bitop::getrnzb((char)0x50), (char)0x10) ;
    CPPUNIT_LOG_EQUAL(bitop::getrnzb(0x5500000000000000ll), 0x100000000000000ll) ;
 }
