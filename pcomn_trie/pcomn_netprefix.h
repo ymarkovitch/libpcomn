@@ -68,11 +68,11 @@ private:
         constexpr uint64_t children_bits() const { return _children[0] ; }
         constexpr uint64_t leaves_bits() const { return _children[1] ; }
 
-        uint64_t children_count() const { return bitop::bitcount(children_bits()) ; }
+        uint64_t children_count() const { return bitop::popcount(children_bits()) ; }
 
         const node_type *child(size_t n) const
         {
-            NOXCHECK(n < bitop::bitcount(children_bits())) ;
+            NOXCHECK(n < bitop::popcount(children_bits())) ;
             NOXCHECK(_first_child_offs) ;
 
             return this + _first_child_offs + n ;

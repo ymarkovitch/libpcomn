@@ -226,7 +226,7 @@ bool shortest_netprefix_set::is_member(const Addr &addr) const
         if (!(node->children_bits() & level_bit))
             return node->leaves_bits() & level_bit ;
 
-        node = node->child(bitop::bitcount(node->children_bits() & (level_bit-1))) ;
+        node = node->child(bitop::popcount(node->children_bits() & (level_bit-1))) ;
     }
     while(++level < maxlevels) ;
 

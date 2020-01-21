@@ -208,11 +208,11 @@ struct b128_t {
       /// Get the length of string representation (32 chars)
       static constexpr size_t slen() { return 2*size() ; }
 
-      unsigned bitcount() const
+      constexpr unsigned popcount() const
       {
          return
-            bitop::bitcount(_idata[0]) +
-            bitop::bitcount(_idata[1]) ;
+            bitop::popcount(_idata[0]) +
+            bitop::popcount(_idata[1]) ;
       }
 
       size_t hash() const { return t1ha0_bin128(_idata[0], _idata[1]) ; }
@@ -228,6 +228,9 @@ struct b128_t {
       {
          return value_to_big_endian(value) ;
       }
+
+      /// Backward compatibility
+      unsigned bitcount() const { return popcount() ; }
 } ;
 
 PCOMN_STATIC_CHECK(sizeof(b128_t) == 16) ;
@@ -325,7 +328,7 @@ struct binary128_t : protected b128_t {
       using ancestor::data ;
       using ancestor::size ;
       using ancestor::slen ;
-      using ancestor::bitcount ;
+      using ancestor::popcount ;
       using ancestor::hash ;
       using ancestor::to_string ;
       using ancestor::to_strbuf ;
@@ -360,6 +363,9 @@ struct binary128_t : protected b128_t {
       {
          return os << *v.bdata() ;
       }
+
+      /// Backward compatibility
+      using ancestor::bitcount ;
 
    protected:
       b128_t *bdata() { return this ; }
@@ -427,13 +433,13 @@ struct binary256_t {
       uint64_t *idata() { return _idata ; }
       constexpr const uint64_t *idata() const { return _idata ; }
 
-      unsigned bitcount() const
+      constexpr unsigned popcount() const
       {
          return
-            bitop::bitcount(_idata[0]) +
-            bitop::bitcount(_idata[1]) +
-            bitop::bitcount(_idata[2]) +
-            bitop::bitcount(_idata[3]) ;
+            bitop::popcount(_idata[0]) +
+            bitop::popcount(_idata[1]) +
+            bitop::popcount(_idata[2]) +
+            bitop::popcount(_idata[3]) ;
       }
 
       /// Get the count of octets (16)

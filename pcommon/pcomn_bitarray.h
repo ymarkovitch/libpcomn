@@ -59,9 +59,9 @@ struct bitarray_base {
       {
          if (!size())
             return 0 ;
-         auto &ones = cb(cdata())->cached_bitcount() ;
+         auto &ones = cb(cdata())->cached_popcount() ;
          if (ones == ~0UL)
-            ones = bitop::bitcount(cbits(), nelements()) ;
+            ones = bitop::popcount(cbits(), nelements()) ;
          return bitval ? ones : _size - ones ;
       }
 
@@ -175,7 +175,7 @@ struct bitarray_base {
          // Fix the tail of the nonzero map
          *(nzmap(data) + cellndx(elemcount - 1)) &= tailmask(elemcount) ;
 
-         cb(data)->cached_bitcount() = size() ;
+         cb(data)->cached_popcount() = size() ;
       }
 
       void set(size_t pos, bool val = true) ;
@@ -217,25 +217,25 @@ struct bitarray_base {
       /*************************************************************************
        Data layout (every single item is item_type):
           control_block (AKA bcb, bits control block)
-              cached_bitcount
+              cached_popcount
               nonzero_map[]
           elements[]
       *************************************************************************/
       union item_type {
             element_type   _element ;
-            mutable size_t _bitcount ; /* The cached count of 1s in the bitset */
+            mutable size_t _popcount ; /* The cached count of 1s in the bitset */
       } ;
 
       struct control_block {
-            item_type _cached_bitcount ;
+            item_type _cached_popcount ;
             item_type _nonzero_map[] ; /* Map of nonzero elements */
 
-            size_t &cached_bitcount() const { return _cached_bitcount._bitcount ; }
+            size_t &cached_popcount() const { return _cached_popcount._popcount ; }
 
             // The size of the control block expressed in item_type items
             static constexpr size_t size(size_t nelements)
             {
-               // Add 1 to make allowance for _cached_bitcount
+               // Add 1 to make allowance for _cached_popcount
                return (nelements + (BITS_PER_ELEMENT - 1))/BITS_PER_ELEMENT + 1 ;
             }
       } ;
@@ -305,7 +305,7 @@ struct bitarray_base {
       {
          NOXCHECK(_size) ;
          item_type * const data = static_cast<item_type *>(_elements.get()) ;
-         cb(data)->cached_bitcount() = ~0UL ;
+         cb(data)->cached_popcount() = ~0UL ;
          return data ;
       }
 
@@ -669,7 +669,7 @@ bitarray_base<Element>::bitarray_base(RandomAccessIterator &start, RandomAccessI
    item_type * const data = mdata() ;
    element_type * const bitdata = bits(data) ;
    element_type * const nzmapdata = nzmap(data) ;
-   auto &cached_count = cb(data)->cached_bitcount() ;
+   auto &cached_count = cb(data)->cached_popcount() ;
 
    for (size_t pos = 0 ; pos < size() ; ++pos, ++start)
    {

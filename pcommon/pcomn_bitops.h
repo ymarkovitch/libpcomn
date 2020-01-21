@@ -16,7 +16,7 @@
  Basic operations over bits of integral data types, both using common C integer arithmetic
  and CPU-specific instructions/intrinsics.
 
- bitop::bitcount
+ bitop::popcount
  bitop::log2floor
  bitop::log2ceil
 
@@ -112,7 +112,7 @@ template<> struct bit_traits<64> {
    typedef int64_t  stype ;
    typedef uint64_t utype ;
 
-   static constexpr unsigned bitcount(utype value)
+   static constexpr unsigned popcount(utype value)
    {
       #if defined(PCOMN_COMPILER_GNU)
       return __builtin_popcountll(value) ;
@@ -142,7 +142,7 @@ template<> struct bit_traits<64> {
       x |= (x >> 8) ;
       x |= (x >> 16) ;
       x |= (x >> 32) ;
-      return (int)bitcount(x) - 1 ;
+      return (int)popcount(x) - 1 ;
 
       #endif
    }
@@ -162,7 +162,7 @@ template<> struct bit_traits<32> {
    typedef int       stype ;
    typedef unsigned  utype ;
 
-   static constexpr unsigned bitcount(utype value)
+   static constexpr unsigned popcount(utype value)
    {
       #if defined(PCOMN_COMPILER_GNU)
       return __builtin_popcount(value) ;
@@ -189,7 +189,7 @@ template<> struct bit_traits<32> {
       x |= (x >> 4) ;
       x |= (x >> 8) ;
       x |= (x >> 16) ;
-      return (int)bitcount((utype)x) - 1 ;
+      return (int)popcount((utype)x) - 1 ;
 
       #endif
    }
@@ -209,7 +209,7 @@ template<> struct bit_traits<16> {
    typedef int16_t  stype ;
    typedef uint16_t utype ;
 
-   static constexpr unsigned bitcount(utype value)
+   static constexpr unsigned popcount(utype value)
    {
       #if defined(PCOMN_COMPILER_GNU)
       return __builtin_popcount(value) ;
@@ -235,7 +235,7 @@ template<> struct bit_traits<16> {
       x |= (x >> 2) ;
       x |= (x >> 4) ;
       x |= (x >> 8) ;
-      return (int)bitcount((utype)x) - 1 ;
+      return (int)popcount((utype)x) - 1 ;
 
       #endif
    }
@@ -255,7 +255,7 @@ template<> struct bit_traits<8> {
    typedef int8_t  stype ;
    typedef uint8_t utype ;
 
-   static constexpr unsigned bitcount(utype value)
+   static constexpr unsigned popcount(utype value)
    {
       #if defined(PCOMN_COMPILER_GNU)
       return __builtin_popcount(value) ;
@@ -280,7 +280,7 @@ template<> struct bit_traits<8> {
       x |= (x >> 1) ;
       x |= (x >> 2) ;
       x |= (x >> 4) ;
-      return (int)bitcount((utype)x) - 1 ;
+      return (int)popcount((utype)x) - 1 ;
 
       #endif
    }
@@ -411,18 +411,18 @@ constexpr inline if_integer_t<I> bitextend(bool bit)
 
 /// Count 1s in a value of some integral type
 template<typename I>
-constexpr inline unsigned bitcount(I v)
+constexpr inline unsigned popcount(I v)
 {
-   return bit_traits<sizeof(I)*8>::bitcount(v) ;
+   return bit_traits<sizeof(I)*8>::popcount(v) ;
 }
 
 /// Count 1s in a bit vector
 template<typename InputIterator>
-size_t bitcount(InputIterator data, size_t nelements)
+size_t popcount(InputIterator data, size_t nelements)
 {
    size_t cnt = 0 ;
    for (; nelements-- ; ++data)
-      cnt += bitcount(*data) ;
+      cnt += popcount(*data) ;
    return cnt ;
 }
 
@@ -498,7 +498,7 @@ constexpr inline if_integer_t<I, unsigned> rzcnt(I v)
    // 00001010 -> 00000010
    const I rnzb = static_cast<I>(v & (0 - v)) ;
    // Convert rigthmost 0-sequence to 1-sequence and count bits
-   return bitcount(static_cast<I>(rnzb - 1)) ;
+   return popcount(static_cast<I>(rnzb - 1)) ;
 
    #endif
 }
@@ -775,15 +775,15 @@ template<unsigned v> struct ibc<8, v> : public std::integral_constant
 <unsigned, (ibc<4, v>::value + (ibc<4, v>::value >> 8U))> {} ;
 }
 
-/// Count nonzero bits in unsigned N at compile-time (the same as bitop::bitcount(),
+/// Count nonzero bits in unsigned N at compile-time (the same as bitop::popcount(),
 /// but at compile-time).
 template<unsigned x>
-struct ct_bitcount : std::integral_constant
+struct ct_popcount : std::integral_constant
 <unsigned, (detail::ibc<8, x>::value + (detail::ibc<8, x>::value >> 16U)) & 0x0000003fU> {} ;
 
 /// Get a position of the rightmost nonzero bit at compile-time.
 template<unsigned x>
-struct ct_rnzbpos : std::integral_constant<int, (int)ct_bitcount<~(-(int)(x & -(int)x))>::value - 1> {} ;
+struct ct_rnzbpos : std::integral_constant<int, (int)ct_popcount<~(-(int)(x & -(int)x))>::value - 1> {} ;
 
 template<typename U, U i>
 struct ct_lnzbpos_value ;
@@ -824,6 +824,20 @@ struct ct_log2ceil : std::integral_constant
 
 template<uint64_t i>
 using ct_log2floor = ct_lnzbpos<i> ;
+
+/***************************************************************************//**
+ Backward compatibility
+*******************************************************************************/
+/**@{*/
+template<unsigned x>
+using ct_bitcount = ct_popcount<x> ;
+
+template<typename... Args>
+auto inline bitcount(Args && ...args) -> decltype(popcount(std::forward<Args>(args)...))
+{
+   return popcount(std::forward<Args>(args)...) ;
+}
+/**@}*/
 
 } // pcomn::bitop
 

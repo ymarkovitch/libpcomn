@@ -74,7 +74,7 @@ struct basic_bitvector<const E> {
       /// Get the count of 1 or 0 bit in vector
       size_t count(bool bitval = true) const
       {
-         const size_t c = bitop::bitcount(cdata(), nelements()) ;
+         const size_t c = bitop::popcount(cdata(), nelements()) ;
          return bitval ? c : size() - c ;
       }
 

@@ -90,41 +90,48 @@ void BitOperationsTests::Test_SignTraits()
 
 void BitOperationsTests::Test_Bitcount()
 {
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<int8_t>(0)), 0U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<uint8_t>(0)), 0U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<int16_t>(0)), 0U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<uint16_t>(0)), 0U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<int32_t>(0)), 0U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<uint32_t>(0)), 0U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<int64_t>(0)), 0U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<uint64_t>(0)), 0U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<int8_t>(0)), 0U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<uint8_t>(0)), 0U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<int16_t>(0)), 0U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<uint16_t>(0)), 0U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<int32_t>(0)), 0U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<uint32_t>(0)), 0U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<int64_t>(0)), 0U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<uint64_t>(0)), 0U) ;
 
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<int8_t>(-1)), 8U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<uint8_t>(-1)), 8U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<int16_t>(-1)), 16U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<uint16_t>(-1)), 16U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<int32_t>(-1)), 32U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<uint32_t>(-1)), 32U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<int64_t>(-1)), 64U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<uint64_t>((int64_t)-1)), 64U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<int8_t>(-1)), 8U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<uint8_t>(-1)), 8U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<int16_t>(-1)), 16U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<uint16_t>(-1)), 16U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<int32_t>(-1)), 32U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<uint32_t>(-1)), 32U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<int64_t>(-1)), 64U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<uint64_t>((int64_t)-1)), 64U) ;
 
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<int8_t>(0x41)), 2U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<int8_t>(-1)), 8U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<uint8_t>(0x41)), 2U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<uint8_t>(0x43)), 3U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<uint8_t>(0x80)), 1U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<int32_t>(0xF1)), 5U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<int64_t>(0xF1)), 5U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<int8_t>(0x41)), 2U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<int8_t>(-1)), 8U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<uint8_t>(0x41)), 2U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<uint8_t>(0x43)), 3U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<uint8_t>(0x80)), 1U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<int32_t>(0xF1)), 5U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<int64_t>(0xF1)), 5U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<int32_t>(0x10000001)), 2U) ;
+
+   // Test backward compatibility
    CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<int32_t>(0x10000001)), 2U) ;
+   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<int8_t>(0x41)), 2U) ;
 }
 
 void BitOperationsTests::Test_Bitcount_CompileTime()
 {
-   CPPUNIT_LOG_EQUAL(bitop::ct_bitcount<0>::value, 0U) ;
-   CPPUNIT_LOG_EQUAL(uint_constant<bitop::bitcount(0)>(), uint_constant<0>()) ;
+   CPPUNIT_LOG_EQUAL(bitop::ct_popcount<0>::value, 0U) ;
+   CPPUNIT_LOG_EQUAL(uint_constant<bitop::popcount(0)>(), uint_constant<0>()) ;
 
-   CPPUNIT_LOG_EQUAL(bitop::ct_bitcount<0x55>::value, 4U) ;
-   CPPUNIT_LOG_EQUAL(bitop::ct_bitcount<(unsigned)-1>::value, int_traits<unsigned>::bitsize) ;
+   CPPUNIT_LOG_EQUAL(bitop::ct_popcount<0x55>::value, 4U) ;
+   CPPUNIT_LOG_EQUAL(bitop::ct_popcount<(unsigned)-1>::value, int_traits<unsigned>::bitsize) ;
+   CPPUNIT_LOG_EQUAL(bitop::ct_popcount<0x20030055>::value, 7U) ;
+
+   // Test backward compatibility
    CPPUNIT_LOG_EQUAL(bitop::ct_bitcount<0x20030055>::value, 7U) ;
 }
 
