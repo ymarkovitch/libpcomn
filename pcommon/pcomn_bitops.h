@@ -114,6 +114,10 @@ template<> struct bit_traits<64> {
 
    static constexpr unsigned bitcount(utype value)
    {
+      #if defined(PCOMN_COMPILER_GNU)
+      return __builtin_popcountll(value) ;
+      #else
+
       utype r = value ;
       r = (0x5555555555555555ULL & r) + (0x5555555555555555ULL & (r >> 1U)) ;
       r = (0x3333333333333333ULL & r) + (0x3333333333333333ULL & (r >>  2U)) ;
@@ -122,6 +126,7 @@ template<> struct bit_traits<64> {
       // Attempt to use a bit more of the out-of-order parallelism
       return
          ((unsigned)(r >> 48U) + (unsigned)(r >> 32U) + (unsigned)(r >> 16U) + (unsigned)r) & 0x7fU ;
+      #endif
    }
 
    static constexpr int log2floor(utype value)
@@ -159,11 +164,17 @@ template<> struct bit_traits<32> {
 
    static constexpr unsigned bitcount(utype value)
    {
+      #if defined(PCOMN_COMPILER_GNU)
+      return __builtin_popcount(value) ;
+      #else
+
       unsigned r = value ;
       r = (0x55555555U & r) + (0x55555555U & (r >> 1U)) ;
       r = (0x33333333U & r) + (0x33333333U & (r >> 2U)) ;
       r = (r + (r >> 4U)) & 0x0f0f0f0fU ;
       return (r + (r >> 8U) + (r >> 16U) + (r >> 24U)) & 0x3fU ;
+
+      #endif
    }
 
    static constexpr int log2floor(utype value)
@@ -200,12 +211,18 @@ template<> struct bit_traits<16> {
 
    static constexpr unsigned bitcount(utype value)
    {
+      #if defined(PCOMN_COMPILER_GNU)
+      return __builtin_popcount(value) ;
+      #else
+
       unsigned r = value ;
       r = (0x5555U & r) + (0x5555U & (r >> 1U)) ;
       r = (0x3333U & r) + (0x3333U & (r >> 2U)) ;
       r = (r + (r >> 4U)) & 0x0f0fU ;
       return (r + (r >> 8U)) & 0x1fU ;
-   }
+
+      #endif
+  }
 
    static constexpr int log2floor(utype value)
    {
@@ -240,10 +257,16 @@ template<> struct bit_traits<8> {
 
    static constexpr unsigned bitcount(utype value)
    {
+      #if defined(PCOMN_COMPILER_GNU)
+      return __builtin_popcount(value) ;
+      #else
+
       unsigned r = value ;
       r = (0x55U & r) + (0x55U & (r >> 1U)) ;
       r = (0x33U & r) + (0x33U & (r >> 2U)) ;
       return (r + (r >> 4U)) & 0xfU ;
+
+      #endif
    }
 
    static constexpr int log2floor(utype value)
@@ -336,8 +359,8 @@ template<unsigned v, unsigned s> struct _ct_shl<v, s, false> :
 } // end of namespace pcomn::detail
 /// @endcond
 
-/******************************************************************************/
-/** A traits class template that abstracts properties for a given integral type.
+/***************************************************************************//**
+ A traits class template that abstracts properties for a given integral type.
 
 The defined property set is such that to allow to implement generic
 bit-manipulation algorithms.
@@ -365,8 +388,8 @@ constexpr const T int_traits<T>::ones ;
 template<typename T>
 constexpr const T int_traits<T>::signbit ;
 
-/******************************************************************************/
-/** Type trait checks whether T is an integral type and @em not bool.
+/***************************************************************************//**
+ Type trait checks whether T is an integral type and @em not bool.
 *******************************************************************************/
 template<typename T>
 struct is_integer : std::bool_constant<std::is_integral<T>::value && !std::is_same<T, bool>::value> {} ;
@@ -374,8 +397,8 @@ struct is_integer : std::bool_constant<std::is_integral<T>::value && !std::is_sa
 template<typename T>
 struct is_numeric : std::bool_constant<std::is_arithmetic<T>::value && !std::is_same<T, bool>::value> {} ;
 
-/******************************************************************************/
-/** Overload enabler, a la enable_if<>.
+/***************************************************************************//**
+ Overload enabler, a la enable_if<>.
  If T is an integer type, returns (as internal typedef) R as 'type'
 *******************************************************************************/
 template<typename T, typename R = T> struct
@@ -443,9 +466,9 @@ constexpr inline if_integer_t<I> bitextend(bool bit)
 
 /// Count 1s in a value of some integral type
 template<typename I>
-inline unsigned bitcount(I i)
+constexpr inline unsigned bitcount(I v)
 {
-   return native_bitcount(i, native_isa_tag()) ;
+   return bit_traits<sizeof(I)*8>::bitcount(v) ;
 }
 
 /// Count 1s in a bit vector
@@ -638,8 +661,8 @@ set_bits_masked(T target, T bits, T mask)
    return target &~ mask | bits & mask ;
 }
 
-/******************************************************************************/
-/** Iterate over nonzero bits of an integer, from LSB to MSB.
+/***************************************************************************//**
+ Iterate over nonzero bits of an integer, from LSB to MSB.
 
  operator *() returns the currently selected nonsero bit.
  E.g.
