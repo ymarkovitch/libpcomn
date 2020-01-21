@@ -52,7 +52,11 @@ unittest(unittest_strslice)
 unittest(unittest_algorithms)
 unittest(unittest_base64)
 unittest(unittest_binary128)
-unittest(unittest_bitops)
+
+unittest_NOAVX(unittest_bitops)
+unittest_AVX  (unittest_bitops_AVX)
+unittest_AVX2 (unittest_bitops_AVX2)
+
 unittest(unittest_buffer)
 unittest(unittest_cacher)
 #unittest(unittest_cdsqueue)

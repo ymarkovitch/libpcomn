@@ -17,32 +17,6 @@
 using namespace pcomn ;
 
 /*******************************************************************************
- NativeBitopsTests
-*******************************************************************************/
-class NativeBitopsTests : public CppUnit::TestFixture {
-
-      template<typename T>
-      void Test_Native_Bitcount() ;
-
-      CPPUNIT_TEST_SUITE(NativeBitopsTests) ;
-
-      CPPUNIT_TEST(Test_Native_Bitcount<generic_isa_tag>) ;
-      CPPUNIT_TEST(Test_Native_Bitcount<native_isa_tag>) ;
-
-      #ifdef PCOMN_PL_SIMD_AVX2
-      CPPUNIT_TEST(Test_Native_Bitcount<avx2_isa_tag>) ;
-      #endif
-      #ifdef PCOMN_PL_SIMD_AVX
-      CPPUNIT_TEST(Test_Native_Bitcount<avx_isa_tag>) ;
-      #endif
-      #ifdef PCOMN_PL_SIMD_SSE42
-      CPPUNIT_TEST(Test_Native_Bitcount<sse42_isa_tag>) ;
-      #endif
-
-      CPPUNIT_TEST_SUITE_END() ;
-} ;
-
-/*******************************************************************************
  BitOperationsTests
 *******************************************************************************/
 class BitOperationsTests : public CppUnit::TestFixture {
@@ -77,44 +51,6 @@ class BitOperationsTests : public CppUnit::TestFixture {
 
       template<typename T> bool isSigned(T) { return std::numeric_limits<T>::is_signed ; }
 } ;
-
-/*******************************************************************************
- NativeBitopsTests
-*******************************************************************************/
-template<typename T>
-void NativeBitopsTests::Test_Native_Bitcount()
-{
-   typedef T isa_tag ;
-
-   CPPUNIT_LOG_LINE("**** " << PCOMN_CLASSNAME(isa_tag) << '\n') ;
-
-   CPPUNIT_LOG_EQ(native_bitcount(int8_t(), isa_tag()), 0U) ;
-   CPPUNIT_LOG_EQ(native_bitcount(uint8_t(), isa_tag()), 0U) ;
-   CPPUNIT_LOG_EQ(native_bitcount(int16_t(), isa_tag()), 0U) ;
-   CPPUNIT_LOG_EQ(native_bitcount(uint16_t(), isa_tag()), 0U) ;
-   CPPUNIT_LOG_EQ(native_bitcount(int32_t(), isa_tag()), 0U) ;
-   CPPUNIT_LOG_EQ(native_bitcount(uint32_t(), isa_tag()), 0U) ;
-   CPPUNIT_LOG_EQ(native_bitcount(int64_t(), isa_tag()), 0U) ;
-   CPPUNIT_LOG_EQ(native_bitcount(uint64_t(), isa_tag()), 0U) ;
-
-   CPPUNIT_LOG_EQ(native_bitcount((int8_t)-1, isa_tag()), 8U) ;
-   CPPUNIT_LOG_EQ(native_bitcount((uint8_t)-1, isa_tag()), 8U) ;
-   CPPUNIT_LOG_EQ(native_bitcount((int16_t)-1, isa_tag()), 16U) ;
-   CPPUNIT_LOG_EQ(native_bitcount((uint16_t)-1, isa_tag()), 16U) ;
-   CPPUNIT_LOG_EQ(native_bitcount((int32_t)-1, isa_tag()), 32U) ;
-   CPPUNIT_LOG_EQ(native_bitcount((uint32_t)-1, isa_tag()), 32U) ;
-   CPPUNIT_LOG_EQ(native_bitcount((int64_t)-1, isa_tag()), 64U) ;
-   CPPUNIT_LOG_EQ(native_bitcount((uint64_t)(-1), isa_tag()), 64U) ;
-
-   CPPUNIT_LOG_EQ(native_bitcount((int8_t)0x41, isa_tag()), 2U) ;
-   CPPUNIT_LOG_EQ(native_bitcount((int8_t)-1, isa_tag()), 8U) ;
-   CPPUNIT_LOG_EQ(native_bitcount((uint8_t)0x41, isa_tag()), 2U) ;
-   CPPUNIT_LOG_EQ(native_bitcount((uint8_t)0x43, isa_tag()), 3U) ;
-   CPPUNIT_LOG_EQ(native_bitcount((uint8_t)0x80, isa_tag()), 1U) ;
-   CPPUNIT_LOG_EQ(native_bitcount((int32_t)0xF1, isa_tag()), 5U) ;
-   CPPUNIT_LOG_EQ(native_bitcount((int64_t)0xF1, isa_tag()), 5U) ;
-   CPPUNIT_LOG_EQ(native_bitcount((int32_t)0x10000001, isa_tag()), 2U) ;
-}
 
 /*******************************************************************************
  BitOperationsTests
@@ -185,6 +121,8 @@ void BitOperationsTests::Test_Bitcount()
 void BitOperationsTests::Test_Bitcount_CompileTime()
 {
    CPPUNIT_LOG_EQUAL(bitop::ct_bitcount<0>::value, 0U) ;
+   CPPUNIT_LOG_EQUAL(uint_constant<bitop::bitcount(0)>(), uint_constant<0>()) ;
+
    CPPUNIT_LOG_EQUAL(bitop::ct_bitcount<0x55>::value, 4U) ;
    CPPUNIT_LOG_EQUAL(bitop::ct_bitcount<(unsigned)-1>::value, int_traits<unsigned>::bitsize) ;
    CPPUNIT_LOG_EQUAL(bitop::ct_bitcount<0x20030055>::value, 7U) ;
@@ -398,7 +336,6 @@ int main(int argc, char *argv[])
 {
    return unit::run_tests
        <
-          NativeBitopsTests,
           BitOperationsTests
        >
        (argc, argv) ;
