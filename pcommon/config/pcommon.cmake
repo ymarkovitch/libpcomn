@@ -199,6 +199,25 @@ else()
 endif(WIN32)
 
 ################################################################################
+# AVX/AVX2/AVX512 support
+################################################################################
+set_global(PCOMN_HOST_HAS_AVX  FALSE)
+set_global(PCOMN_HOST_HAS_AVX2 FALSE)
+
+cmake_host_system_information(RESULT __PCOMN_SSE2 QUERY HAS_SSE2)
+
+if (__PCOMN_SSE2 AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    file(READ "/proc/cpuinfo" __PCOMN_CPUINFO)
+    string(REGEX REPLACE ".*flags[ \t]*:[ \t]+([^\n]+).*" "\\1" __PCOMN_CPUFLAGS "${__PCOMN_CPUINFO}")
+    if ("${__PCOMN_CPUFLAGS}" MATCHES ".*[ \t](avx)[ \t].*")
+        set_global(PCOMN_HOST_HAS_AVX TRUE)
+    endif()
+    if ("${__PCOMN_CPUFLAGS}" MATCHES ".*[ \t](avx2)[ \t].*")
+        set_global(PCOMN_HOST_HAS_AVX2 TRUE)
+    endif()
+endif()
+
+################################################################################
 # Unittest handling
 ################################################################################
 function(unittests_directory)
