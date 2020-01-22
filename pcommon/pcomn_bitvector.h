@@ -39,8 +39,8 @@
 
 namespace pcomn {
 
-/******************************************************************************/
-/** Pointer to an array of integral types interpreted as a bit vector.
+/***************************************************************************//**
+ Pointer to an array of integral types interpreted as a bit vector.
 *******************************************************************************/
 template<typename E>
 struct basic_bitvector ;
@@ -113,8 +113,8 @@ struct basic_bitvector<const E> {
 
       static constexpr element_type bitextend(bool bit) { return bitop::bitextend<element_type>(bit) ; }
 
-      /************************************************************************/
-      /** Random-access constant iterator over bits
+      /*********************************************************************//**
+       Random-access constant iterator over bits.
       *************************************************************************/
       struct iterator : std::iterator<std::random_access_iterator_tag, bool, ptrdiff_t, void, void> {
             constexpr iterator() = default ;
@@ -152,8 +152,8 @@ struct basic_bitvector<const E> {
             ptrdiff_t pos() const { return _pos ; }
       } ;
 
-      /************************************************************************/
-      /** A constant iterator over a bit set, which traverses bit @em positions
+      /*********************************************************************//**
+       A constant iterator over a bit set, which traverses bit @em positions
        instead of bit @em values.
 
        The iterator successively returns positions of 1-bits or 0-bits in a vector,
@@ -185,10 +185,44 @@ struct basic_bitvector<const E> {
             bool operator!=(const positional_iterator &rhs) const { return !(*this == rhs) ; }
 
          private:
-            const basic_bitvector * _vec ;
-            ptrdiff_t               _pos ;
+            const basic_bitvector * _vec = nullptr ;
+            ptrdiff_t               _pos = 0 ;
       } ;
 
+      /*********************************************************************//**
+       A constant iterator which traverses starts of equal bits ranges.
+
+       E.g., given a bit vector `01000011000000001111` the iterator will
+       successively return 0, 1, 2, 6, 8, 16.
+      *************************************************************************/
+      struct boundary_iterator : std::iterator<std::forward_iterator_tag, ptrdiff_t, ptrdiff_t> {
+
+            constexpr boundary_iterator() = default ;
+            constexpr boundary_iterator(const basic_bitvector &v, size_t pos) :
+               _vec(&v),
+               _pos(v.find_first_bit<bitval>(pos))
+            {}
+
+            ptrdiff_t operator*() const { return _pos ; }
+
+            boundary_iterator &operator++() ;
+            PCOMN_DEFINE_POSTCREMENT(boundary_iterator, ++) ;
+
+            bool operator==(const boundary_iterator &rhs) const
+            {
+               NOXCHECK(_vec == rhs._vec) ;
+               return _pos == rhs._pos ;
+            }
+            bool operator!=(const boundary_iterator &rhs) const { return !(*this == rhs) ; }
+
+         private:
+            const basic_bitvector * _vec = nullptr ;
+            ptrdiff_t               _pos = 0 ;
+      } ;
+
+      /*************************************************************************
+       Iteration
+      *************************************************************************/
       typedef iterator const_iterator ;
 
       iterator begin() const { return iterator(*this, 0) ; }
@@ -227,8 +261,8 @@ struct basic_bitvector<const E> {
       size_t         _nelements = 0 ;
 } ;
 
-/******************************************************************************/
-/** Pointer to an array of integral types interpreted as a bit vector.
+/***************************************************************************//**
+ Pointer to an array of integral types interpreted as a bit vector.
 *******************************************************************************/
 template<typename E>
 struct basic_bitvector : basic_bitvector<const E> {
