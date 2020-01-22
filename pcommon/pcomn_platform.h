@@ -531,6 +531,27 @@
 #define GCC_MAKE_PRAGMA(text)
 #define MS_MAKE_PRAGMA(text)
 
+/***************************************************************************//**
+ CPU intrinsics availability.
+*******************************************************************************/
+/**@{*/
+#ifdef PCOMN_COMPILER_GNU
+
+#  define PCOMN_GCC_INTRINSICS 1
+
+#  ifdef PCOMN_PL_X86
+#     define PCOMN_GCC86_INTRINSICS 1
+#  endif
+#  ifdef PCOMN_PL_SIMD_AVX
+#     define PCOMN_AVX_INTRINSICS 1
+#  endif
+#  ifdef PCOMN_PL_SIMD_AVX2
+#     define PCOMN_AVX2_INTRINSICS 1
+#  endif
+
+#endif
+/**@}*/
+
 /*******************************************************************************
  Macro definitions for extended attribute specifiers, like __noreturn, __noinline, etc.,
  for various compilers.
