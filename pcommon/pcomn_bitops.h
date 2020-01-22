@@ -48,10 +48,8 @@
 #include <cstdlib>
 #include <limits.h>
 
-#ifdef PCOMN_COMPILER_GNU
-#  if defined(PCOMN_PL_X86)
-#     include <x86intrin.h>
-#  endif
+#ifdef PCOMN_GCC86_INTRINSICS
+#  include <x86intrin.h>
 #endif
 
 namespace pcomn {
@@ -114,7 +112,7 @@ template<> struct bit_traits<64> {
 
    static constexpr unsigned popcount(utype value)
    {
-      #if defined(PCOMN_COMPILER_GNU)
+      #if defined(PCOMN_GCC_INTRINSICS)
       return __builtin_popcountll(value) ;
       #else
 
@@ -131,8 +129,15 @@ template<> struct bit_traits<64> {
 
    static constexpr int log2floor(utype value)
    {
-      #if defined(PCOMN_COMPILER_GNU) && defined(__BMI2__)
-      return 63 - __builtin_clzll(value) ;
+      #ifdef PCOMN_GCC_INTRINSICS
+
+      const int result = 63 - __builtin_clzll(value) ;
+      return
+         #ifndef __BMI2__
+         !value ? -1 :
+         #endif
+         result ;
+
       #else
 
       utype x = value ;
@@ -164,7 +169,7 @@ template<> struct bit_traits<32> {
 
    static constexpr unsigned popcount(utype value)
    {
-      #if defined(PCOMN_COMPILER_GNU)
+      #ifdef PCOMN_GCC_INTRINSICS
       return __builtin_popcount(value) ;
       #else
 
@@ -179,8 +184,15 @@ template<> struct bit_traits<32> {
 
    static constexpr int log2floor(utype value)
    {
-      #if defined(PCOMN_COMPILER_GNU) && defined(__BMI2__)
-      return 31 - __builtin_clz(value) ;
+      #ifdef PCOMN_GCC_INTRINSICS
+
+      const int result = 31 - __builtin_clz(value) ;
+      return
+         #ifndef __BMI2__
+         !value ? -1 :
+         #endif
+         result ;
+
       #else
 
       unsigned x = value ;
@@ -211,7 +223,7 @@ template<> struct bit_traits<16> {
 
    static constexpr unsigned popcount(utype value)
    {
-      #if defined(PCOMN_COMPILER_GNU)
+      #ifdef PCOMN_GCC_INTRINSICS
       return __builtin_popcount(value) ;
       #else
 
@@ -226,8 +238,10 @@ template<> struct bit_traits<16> {
 
    static constexpr int log2floor(utype value)
    {
-      #if defined(PCOMN_COMPILER_GNU) && defined(__BMI2__)
-      return 31 - __builtin_clz(value) ;
+      #ifdef PCOMN_GCC_INTRINSICS
+
+      return bit_traits<32>::log2floor(value) ;
+
       #else
 
       unsigned x = static_cast<utype>(value) ;
@@ -257,7 +271,7 @@ template<> struct bit_traits<8> {
 
    static constexpr unsigned popcount(utype value)
    {
-      #if defined(PCOMN_COMPILER_GNU)
+      #if defined(PCOMN_GCC_INTRINSICS)
       return __builtin_popcount(value) ;
       #else
 
@@ -271,8 +285,10 @@ template<> struct bit_traits<8> {
 
    static constexpr int log2floor(utype value)
    {
-      #if defined(PCOMN_COMPILER_GNU) && defined(__BMI2__)
-      return 31 - __builtin_clz(value) ;
+      #ifdef PCOMN_GCC_INTRINSICS
+
+      return bit_traits<32>::log2floor(value) ;
+
       #else
 
       // At the end, x will have the same most significant 1 as value and all '1's below
@@ -487,10 +503,15 @@ constexpr inline if_integer_t<I> getrzbseq(I x)
 template<typename I>
 constexpr inline if_integer_t<I, unsigned> rzcnt(I v)
 {
-   #ifdef PCOMN_COMPILER_GNU
+   #ifdef PCOMN_GCC_INTRINSICS
 
-   const size_t c = bitsizeof(v) <= 32 ? __builtin_ctz(v) : __builtin_ctzl(v) ;
-   return v ? c : bitsizeof(v) ;
+   const size_t count = bitsizeof(v) <= 32 ? __builtin_ctz(v) : __builtin_ctzl(v) ;
+   return
+      #ifndef __BMI2__
+      !v ? bitsizeof(v) :
+      #endif
+
+      count ;
 
    #else
 
@@ -582,6 +603,31 @@ broadcasti(I value)
    return ((std::make_unsigned_t<R>)~0ULL/(std::make_unsigned_t<I>)~0ULL) * value ;
 }
 
+/// Set bits in the @a target selected by the @a mask to corresponding bits from the
+/// second arguments (@a bits).
+///
+template<typename T>
+constexpr inline std::enable_if_t<ct_and<std::is_integral<T>, ct_not<is_same_unqualified<T, bool>>>::value, T>
+set_bits_masked(T target, T bits, T mask)
+{
+   return target &~ mask | bits & mask ;
+}
+
+/// Get the end of the range of equal bits starting from the given position of specified
+/// word.
+template<typename I>
+inline if_integer_t<I, uint8_t> find_range_boundary(I word, uint8_t start_bit)
+{
+   const unsigned start = bitndx<I>(start_bit) ;
+   const I startmask = int_traits<std::make_signed_t<I>>::signbit >> (start - 1) ;
+   const I leading_ones = start ? startmask : 0 ;
+
+   word >>= start ;
+   word ^= -(word & 1) ;
+
+   return start_bit + popcount(getrzbseq(I(word | leading_ones))) ;
+}
+
 /// Get the position of first nonzero bit between 'start' and 'finish'.
 /// If there is no such bit, returns 'finish'
 template<typename I>
@@ -608,16 +654,6 @@ if_integer_t<I, size_t> find_first_bit(const I *bits, size_t start, size_t finis
       start = ndx * int_traits<cell_type>::bitsize ;
    }
    return std::min<size_t>(start + rzcnt(cell), finish) ;
-}
-
-/// Set bits in the @a target selected by the @a mask to corresponding bits from the
-/// second arguments (@a bits).
-///
-template<typename T>
-constexpr inline std::enable_if_t<ct_and<std::is_integral<T>, ct_not<is_same_unqualified<T, bool>>>::value, T>
-set_bits_masked(T target, T bits, T mask)
-{
-   return target &~ mask | bits & mask ;
 }
 
 /***************************************************************************//**

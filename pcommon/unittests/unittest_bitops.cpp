@@ -30,6 +30,7 @@ class BitOperationsTests : public CppUnit::TestFixture {
       void Test_Getrnzb() ;
       void Test_NzbitIterator() ;
       void Test_NzbitPosIterator() ;
+      void Test_BitRangeBoundary() ;
       void Test_OneOf() ;
       void Test_Log2() ;
 
@@ -44,6 +45,7 @@ class BitOperationsTests : public CppUnit::TestFixture {
       CPPUNIT_TEST(Test_Getrnzb) ;
       CPPUNIT_TEST(Test_NzbitIterator) ;
       CPPUNIT_TEST(Test_NzbitPosIterator) ;
+      CPPUNIT_TEST(Test_BitRangeBoundary) ;
       CPPUNIT_TEST(Test_OneOf) ;
       CPPUNIT_TEST(Test_Log2) ;
 
@@ -243,6 +245,114 @@ void BitOperationsTests::Test_NzbitPosIterator()
    typedef bitop::nzbitpos_iterator<unsigned, TestEnum> te_iter ;
    te_iter iter_te((1 << TE_1) | (1 << TE_3)) ;
    CPPUNIT_LOG_EQUAL(std::vector<TestEnum>(iter_te, te_iter()), (std::vector<TestEnum>{TE_1, TE_3})) ;
+}
+
+void BitOperationsTests::Test_BitRangeBoundary()
+{
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint8_t)0, 0), 8) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int8_t)0, 0), 8) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint16_t)0, 0), 16) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int16_t)0, 0), 16) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint32_t)0, 0), 32) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int32_t)0, 0), 32) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint64_t)0, 0), 64) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int64_t)0, 0), 64) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint8_t)~0ULL, 0), 8) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int8_t)~0ULL, 0), 8) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint16_t)~0ULL, 0), 16) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int16_t)~0ULL, 0), 16) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint32_t)~0ULL, 0), 32) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int32_t)~0ULL, 0), 32) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint64_t)~0ULL, 0), 64) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int64_t)~0ULL, 0), 64) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint8_t)1, 0), 1) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int8_t)1, 0), 1) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint16_t)1, 0), 1) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int16_t)1, 0), 1) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint32_t)1, 0), 1) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int32_t)1, 0), 1) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint64_t)1, 0), 1) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int64_t)1, 0), 1) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint8_t)0b10, 0), 1) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int8_t)0b10, 0), 1) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint16_t)0b10, 0), 1) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int16_t)0b10, 0), 1) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint32_t)0b10, 0), 1) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int32_t)0b10, 0), 1) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint64_t)0b10, 0), 1) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int64_t)0b10, 0), 1) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint8_t)0b10, 1), 2) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int8_t)0b10, 1), 2) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint16_t)0b10, 1), 2) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int16_t)0b10, 1), 2) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint32_t)0b10, 1), 2) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int32_t)0b10, 1), 2) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint64_t)0b10, 1), 2) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int64_t)0b10, 1), 2) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint8_t)0b11111110, 1), 8) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int8_t)0b11111110, 1), 8) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint16_t)0b11111110, 1), 8) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int16_t)0b11111110, 1), 8) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint32_t)0b11111110, 1), 8) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int32_t)0b11111110, 1), 8) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint64_t)0b11111110, 1), 8) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int64_t)0b11111110, 1), 8) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint8_t)0b11111110, 7), 8) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int8_t)0b11111110, 7), 8) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint16_t)0b11111110, 7), 8) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int16_t)0b11111110, 7), 8) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint32_t)0b11111110, 7), 8) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int32_t)0b11111110, 7), 8) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint64_t)0b11111110, 7), 8) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int64_t)0b11111110, 7), 8) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint64_t)0x80'000000'00000000ULL, 63), 64) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int64_t) 0x80'000000'00000000ULL, 63), 64) ;
+
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint64_t)0x80'000000'00000000ULL, 62), 63) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int64_t) 0x80'000000'00000000ULL, 62), 63) ;
+
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint64_t)0x80'000000'00000000ULL, 61), 63) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int64_t) 0x80'000000'00000000ULL, 61), 63) ;
+
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint64_t)0x80'000000'00000000ULL, 0), 63) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int64_t) 0x80'000000'00000000ULL, 0), 63) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint64_t)0xf0'000000'00000000ULL, 63), 64) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int64_t) 0xf0'000000'00000000ULL, 63), 64) ;
+
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint64_t)0xf0'000000'00000000ULL, 62), 64) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int64_t) 0xf0'000000'00000000ULL, 62), 64) ;
+
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint64_t)0xf0'000000'00000000ULL, 60), 64) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int64_t) 0xf0'000000'00000000ULL, 60), 64) ;
+
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint64_t)0xf0'000000'00000000ULL, 59), 60) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int64_t) 0xf0'000000'00000000ULL, 59), 60) ;
+
+   CPPUNIT_LOG(std::endl) ;
 }
 
 void BitOperationsTests::Test_OneOf()
