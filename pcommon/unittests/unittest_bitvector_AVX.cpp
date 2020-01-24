@@ -1,6 +1,6 @@
 /*-*- mode:c++;tab-width:4;indent-tabs-mode:nil;c-file-style:"ellemtel";c-basic-offset:4;c-file-offsets:((innamespace . 0)(inlambda . 0)) -*-*/
 /*******************************************************************************
- FILE         :   unittest_bitvector_avx.cpp
+ FILE         :   unittest_bitvector_AVX.cpp
  COPYRIGHT    :   Yakov Markovitch, 2020
  DESCRIPTION  :   Shim source file to separately compile unittest_bitvector for AVX
                   instructions set.
@@ -9,8 +9,8 @@
 *******************************************************************************/
 #include <pcomn_platform.h>
 
-#ifndef PCOMN_PL_SIMD_AVX2
-#error This test must be compiled for AVX2 instruction set.
+#if !defined (PCOMN_PL_SIMD_AVX) || defined (PCOMN_PL_SIMD_AVX2)
+#error This test must be compiled for AVX instruction set (and AVX2 shall not be enabled).
 #endif
 
 #include "unittest_bitvector.cpp"

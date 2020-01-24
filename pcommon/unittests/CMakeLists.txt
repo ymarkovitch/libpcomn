@@ -57,6 +57,14 @@ unittest_NOAVX(unittest_bitops)
 unittest_AVX  (unittest_bitops_AVX)
 unittest_AVX2 (unittest_bitops_AVX2)
 
+unittest_NOAVX(unittest_bitarray)
+unittest_AVX  (unittest_bitarray_AVX)
+unittest_AVX2 (unittest_bitarray_AVX2)
+
+unittest_NOAVX(unittest_bitvector)
+unittest_AVX  (unittest_bitvector_AVX)
+unittest_AVX2 (unittest_bitvector_AVX2)
+
 unittest(unittest_buffer)
 unittest(unittest_cacher)
 #unittest(unittest_cdsqueue)
