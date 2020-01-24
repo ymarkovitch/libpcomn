@@ -139,7 +139,7 @@ __noreturn __cold void __pcomn_assert_fail__(const char *fmt, const char *msg, c
 #include <stdlib.h>
 #include <stdio.h>
 
-static __cold __noreturn
+static __cold __noreturn __attribute__((used))
 void __pcomn_assert_fail__(const char *fmt, const char *msg, const char *file, unsigned line)
 #ifdef __cplusplus
 noexcept
