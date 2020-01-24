@@ -116,7 +116,7 @@ struct basic_bitvector<const E> {
       /*********************************************************************//**
        Random-access constant iterator over bits.
       *************************************************************************/
-      struct iterator : std::iterator<std::random_access_iterator_tag, bool, ptrdiff_t, void, void> {
+      struct iterator final : std::iterator<std::random_access_iterator_tag, bool, ptrdiff_t, void, void> {
             constexpr iterator() = default ;
             constexpr iterator(const basic_bitvector &v, size_t pos) :
                _elements(v._elements),
@@ -160,19 +160,21 @@ struct basic_bitvector<const E> {
        depending on @a bitval template argument (1-bits fore true, 0-bits for false)
       *************************************************************************/
       template<bool bitval>
-      struct positional_iterator : std::iterator<std::forward_iterator_tag, ptrdiff_t, ptrdiff_t> {
+      struct positional_iterator final : std::iterator<std::forward_iterator_tag, ptrdiff_t, ptrdiff_t> {
+
+            static constexpr bool value = bitval ;
 
             constexpr positional_iterator() = default ;
             constexpr positional_iterator(const basic_bitvector &v, size_t pos) :
                _vec(&v),
-               _pos(v.find_first_bit<bitval>(pos))
+               _pos(v.find_first_bit<value>(pos))
             {}
 
             ptrdiff_t operator*() const { return _pos ; }
 
             positional_iterator &operator++()
             {
-               _pos = _vec->find_first_bit<bitval>(_pos + 1) ;
+               _pos = _vec->find_first_bit<value>(_pos + 1) ;
                return *this ;
             }
             PCOMN_DEFINE_POSTCREMENT(positional_iterator, ++) ;
@@ -183,6 +185,8 @@ struct basic_bitvector<const E> {
                return _pos == rhs._pos ;
             }
             bool operator!=(const positional_iterator &rhs) const { return !(*this == rhs) ; }
+
+            constexpr bool operator() const { return value ; }
 
          private:
             const basic_bitvector * _vec = nullptr ;
@@ -195,15 +199,15 @@ struct basic_bitvector<const E> {
        E.g., given a bit vector `01000011000000001111` the iterator will
        successively return 0, 1, 2, 6, 8, 16.
       *************************************************************************/
-      struct boundary_iterator : std::iterator<std::forward_iterator_tag, ptrdiff_t, ptrdiff_t> {
+      struct boundary_iterator final : std::iterator<std::forward_iterator_tag, ptrdiff_t, ptrdiff_t> {
 
             constexpr boundary_iterator() = default ;
             constexpr boundary_iterator(const basic_bitvector &v, size_t pos) :
                _vec(&v),
-               _pos(v.find_first_bit<bitval>(pos))
+               _pos(pos)
             {}
 
-            ptrdiff_t operator*() const { return _pos ; }
+            constexpr ptrdiff_t operator*() const { return _pos ; }
 
             boundary_iterator &operator++() ;
             PCOMN_DEFINE_POSTCREMENT(boundary_iterator, ++) ;
@@ -214,6 +218,13 @@ struct basic_bitvector<const E> {
                return _pos == rhs._pos ;
             }
             bool operator!=(const boundary_iterator &rhs) const { return !(*this == rhs) ; }
+
+            bool operator() const
+            {
+               NOXCHECK(_vec) ;
+               NOXCHECK(_pos < _vec->size()) ;
+               return _vec->test(_pos) ;
+            }
 
          private:
             const basic_bitvector * _vec = nullptr ;
@@ -386,7 +397,13 @@ struct basic_bitvector : basic_bitvector<const E> {
 } ;
 
 /*******************************************************************************
- bitvector
+ basic_bitvector::boundary_iterator
+*******************************************************************************/
+template<typename E>
+basic_bitvector<const E>::boundary_iterator
+
+/*******************************************************************************
+ basic_bitvector
 *******************************************************************************/
 template<typename E>
 void basic_bitvector<E>::flip() const
