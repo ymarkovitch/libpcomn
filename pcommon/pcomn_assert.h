@@ -108,12 +108,12 @@ PCOMN_CFUNC _CRTIMP void __cdecl _assert(const char *, const char *, unsigned) ;
 
 #ifndef __cplusplus
 #  define __pcomn_assert_fail__(fmt, msg, file, line)                   \
-   ((intptr_t)GetStdHandle(STD_ERROR_HANDLE) > 0 &&                          \
+   ((intptr_t)GetStdHandle(STD_ERROR_HANDLE) > 0 &&                     \
     (fputc('\n', stderr) && fprintf(stderr, (char *)(fmt), (char *)(msg), (char *)(file), (line)) > 0 && \
      (_flushall(), raise(SIGABRT), exit(3), 1)) || (_assert((char *)(msg), (char *)(file), (line)), 1))
 #else /* __cplusplus */
 template<typename N>
-__noreturn __noinline void __pcomn_assert_fail__(const char *fmt, const char *msg, const char *file, N line)
+__noreturn __cold void __pcomn_assert_fail__(const char *fmt, const char *msg, const char *file, N line) noexcept
 {
    // This is a hack: there is no good and simple way to know in MSVC whether
    // the application is console or windows.
@@ -139,8 +139,11 @@ __noreturn __noinline void __pcomn_assert_fail__(const char *fmt, const char *ms
 #include <stdlib.h>
 #include <stdio.h>
 
-static __inline
+static __cold __noreturn
 void __pcomn_assert_fail__(const char *fmt, const char *msg, const char *file, unsigned line)
+#ifdef __cplusplus
+noexcept
+#endif
 {
    putc('\n', stderr) ;
    error_at_line(0, 0, file, line, fmt, msg, file, line) ;
@@ -224,7 +227,7 @@ static __attribute__((used)) __noinline int IsDebuggerPresent()
 
 #ifdef __cplusplus
 template<typename N>
-__noinline __noreturn void pcomn_fail(const char *fmt, const char *msg, const char *file, N line) noexcept
+__cold __noreturn void pcomn_fail(const char *fmt, const char *msg, const char *file, N line) noexcept
 {
    __pcomn_debug_fail__(fmt, msg, file, line) ;
    abort() ;
