@@ -616,7 +616,7 @@ set_bits_masked(T target, T bits, T mask)
 /// Get the end of the range of equal bits starting from the given position of specified
 /// word.
 template<typename I>
-inline if_integer_t<I, uint8_t> find_range_boundary(I word, uint8_t start_bit)
+inline if_integer_t<I, size_t> find_range_boundary(I word, size_t start_bit)
 {
    const unsigned start = bitndx<I>(start_bit) ;
    const I startmask = int_traits<std::make_signed_t<I>>::signbit >> (start - 1) ;

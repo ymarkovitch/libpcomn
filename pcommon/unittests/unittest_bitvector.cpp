@@ -35,6 +35,7 @@ class BitVectorTests : public CppUnit::TestFixture {
     void Test_Bit_Search() ;
     template<typename I>
     void Test_Positional_Iterator() ;
+    void Test_Boundary_Iterator() ;
     void Test_Atomic_Set_Reset_Bits() ;
 
     CPPUNIT_TEST_SUITE(BitVectorTests) ;
@@ -45,6 +46,7 @@ class BitVectorTests : public CppUnit::TestFixture {
     CPPUNIT_TEST(Test_Bit_Search) ;
     CPPUNIT_TEST(Test_Positional_Iterator<uint32_t>) ;
     CPPUNIT_TEST(Test_Positional_Iterator<uint64_t>) ;
+    CPPUNIT_TEST(Test_Boundary_Iterator) ;
     CPPUNIT_TEST(Test_Atomic_Set_Reset_Bits) ;
 
     CPPUNIT_TEST_SUITE_END() ;
@@ -170,6 +172,9 @@ void BitVectorTests::Test_Bit_Count()
     auto bv2 = make_bitvector(v2) ;
     auto bv3 = make_bitvector(v3) ;
 
+    auto bv4 = make_bitvector(130, v2) ;
+    auto bv5 = make_bitvector(59,  v3) ;
+
     CPPUNIT_LOG_EQ(bv1.count(true), 1) ;
     CPPUNIT_LOG_EQ(bv1.count(false), 63) ;
     CPPUNIT_LOG_EQ(bv1.count(), 1) ;
@@ -181,6 +186,22 @@ void BitVectorTests::Test_Bit_Count()
     CPPUNIT_LOG_EQ(bv3.count(true), 5) ;
     CPPUNIT_LOG_EQ(bv3.count(false), 59) ;
     CPPUNIT_LOG_EQ(bv3.count(), 5) ;
+
+    CPPUNIT_LOG(std::endl) ;
+
+    CPPUNIT_LOG_EQ(bv4.count(true), 1) ;
+    CPPUNIT_LOG_EQ(bv4.count(false), 129) ;
+    CPPUNIT_LOG_EQ(bv4.count(), 1) ;
+
+    CPPUNIT_LOG_EQ(bv5.count(true), 4) ;
+    CPPUNIT_LOG_EQ(bv5.count(false), 55) ;
+    CPPUNIT_LOG_EQ(bv5.count(), 4) ;
+
+    CPPUNIT_LOG_EQ(string_cast(bv4),
+                   "0000000000000000000000000000000000000000000000000000000000000000"
+                   "0000000000000000000000000000000000000000000000000000000000000000"
+                   "01"
+        ) ;
 }
 
 void BitVectorTests::Test_Bit_Search()
@@ -268,19 +289,21 @@ void BitVectorTests::Test_Bit_Search()
 template<typename I>
 void BitVectorTests::Test_Positional_Iterator()
 {
-    typedef typename basic_bitvector<I>::template positional_iterator<true> positional_iterator ;
+    typedef basic_bitvector<I>       bitvector ;
+    typedef typename bitvector::element_type element_type ;
+    typedef typename bitvector::template positional_iterator<true> positional_iterator ;
 
-    basic_bitvector<I> bv_empty ;
+    element_type vdata[4096/bitvector::bits_per_element()]  = {} ;
+
+    bitvector bv_empty ;
     CPPUNIT_LOG_ASSERT(bv_empty.begin_positional() == bv_empty.end_positional()) ;
 
-    I vdata[4096/bitsizeof(I)]  = {} ;
-
-    auto bv = make_bitvector(vdata) ;
+    bitvector bv = make_bitvector(vdata) ;
 
     set_bits(bv, {36, 44, 48, 52, 64, 70, 72, 76, 100, 208}) ;
 
-    auto bp = bv.begin_positional() ;
-    const auto ep = bv.end_positional() ;
+    positional_iterator bp = bv.begin_positional() ;
+    const positional_iterator ep = bv.end_positional() ;
 
     CPPUNIT_LOG_ASSERT(bp != ep) ;
     CPPUNIT_LOG_EQ(*bp, 36) ;
@@ -331,6 +354,82 @@ void BitVectorTests::Test_Positional_Iterator()
     CPPUNIT_LOG_ASSERT(bp != ep) ;
     CPPUNIT_LOG_EQ(*bp, 4095) ;
     CPPUNIT_LOG_ASSERT(++bp == ep) ;
+}
+
+void BitVectorTests::Test_Boundary_Iterator()
+{
+    typedef basic_bitvector<uint64_t>       bitvector ;
+    typedef basic_bitvector<const uint64_t> cbitvector ;
+    typedef bitvector::boundary_iterator    boundary_iterator ;
+    typedef bitvector::element_type         element_type ;
+
+    element_type vdata[4096/bitvector::bits_per_element()]  = {} ;
+
+    bitvector bv_empty ;
+    bitvector bv = make_bitvector(1025, vdata) ;
+
+    set_bits(bv, {36, 37, 38, 65, 67, 68}) ;
+
+    cbitvector cbv (bv) ;
+
+    CPPUNIT_LOG_ASSERT(bv_empty.begin_boundary() == bv_empty.end_boundary()) ;
+    boundary_iterator b = bv.begin_boundary() ;
+    const boundary_iterator e = bv.end_boundary() ;
+
+    CPPUNIT_LOG_ASSERT(b != e) ;
+    CPPUNIT_LOG_EQ(*b, 0) ;
+    CPPUNIT_LOG_IS_FALSE(b()) ;
+    CPPUNIT_LOG_ASSERT(b != e) ;
+
+    CPPUNIT_LOG_EQ(*++b, 36) ;
+    CPPUNIT_LOG_EQ(*b, 36) ;
+    CPPUNIT_LOG_ASSERT(b()) ;
+    CPPUNIT_LOG_ASSERT(b != e) ;
+
+    CPPUNIT_LOG_EQ(*++b, 39) ;
+    CPPUNIT_LOG_EQ(*b, 39) ;
+    CPPUNIT_LOG_IS_FALSE(b()) ;
+    CPPUNIT_LOG_ASSERT(b != e) ;
+
+    CPPUNIT_LOG_EQ(*++b, 65) ;
+    CPPUNIT_LOG_EQ(*b, 65) ;
+    CPPUNIT_LOG_ASSERT(b()) ;
+    CPPUNIT_LOG_ASSERT(b != e) ;
+
+    CPPUNIT_LOG_EQ(*++b, 66) ;
+    CPPUNIT_LOG_EQ(*b, 66) ;
+    CPPUNIT_LOG_IS_FALSE(b()) ;
+    CPPUNIT_LOG_ASSERT(b != e) ;
+
+    CPPUNIT_LOG_EQ(*++b, 67) ;
+    CPPUNIT_LOG_EQ(*b, 67) ;
+    CPPUNIT_LOG_ASSERT(b()) ;
+    CPPUNIT_LOG_ASSERT(b != e) ;
+
+    CPPUNIT_LOG_EQ(*++b, 69) ;
+    CPPUNIT_LOG_EQ(*b, 69) ;
+    CPPUNIT_LOG_IS_FALSE(b()) ;
+    CPPUNIT_LOG_ASSERT(b != e) ;
+
+    CPPUNIT_LOG_EQ(*++b, 1025) ;
+    CPPUNIT_LOG_EQ(*b, 1025) ;
+    CPPUNIT_LOG_ASSERT(b == e) ;
+
+    CPPUNIT_LOG_EQ(std::distance(bv.begin_boundary(), e), 7) ;
+
+    CPPUNIT_LOG(std::endl) ;
+
+    boundary_iterator b1 = boundary_iterator(bv, 37) ;
+
+    CPPUNIT_LOG_EQ(*b1, 37) ;
+    CPPUNIT_LOG_ASSERT(b1()) ;
+    CPPUNIT_LOG_EQ(*++b1, 39) ;
+    CPPUNIT_LOG_IS_FALSE(b1()) ;
+
+    CPPUNIT_LOG_EQ(std::distance(boundary_iterator(bv, 37), e), 6) ;
+    CPPUNIT_LOG_EQ(std::distance(boundary_iterator(bv, 69), e), 1) ;
+    CPPUNIT_LOG_EQ(std::distance(boundary_iterator(bv, 1024), e), 1) ;
+    CPPUNIT_LOG_EQ(std::distance(boundary_iterator(bv, 1025), e), 0) ;
 }
 
 void BitVectorTests::Test_Atomic_Set_Reset_Bits()
