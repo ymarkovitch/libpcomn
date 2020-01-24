@@ -186,7 +186,7 @@ struct basic_bitvector<const E> {
             }
             bool operator!=(const positional_iterator &rhs) const { return !(*this == rhs) ; }
 
-            constexpr bool operator() const { return value ; }
+            constexpr bool operator()() const { return value ; }
 
          private:
             const basic_bitvector * _vec = nullptr ;
@@ -219,7 +219,7 @@ struct basic_bitvector<const E> {
             }
             bool operator!=(const boundary_iterator &rhs) const { return !(*this == rhs) ; }
 
-            bool operator() const
+            bool operator()() const
             {
                NOXCHECK(_vec) ;
                NOXCHECK(_pos < _vec->size()) ;
@@ -399,8 +399,8 @@ struct basic_bitvector : basic_bitvector<const E> {
 /*******************************************************************************
  basic_bitvector::boundary_iterator
 *******************************************************************************/
-template<typename E>
-basic_bitvector<const E>::boundary_iterator
+//template<typename E>
+//basic_bitvector<const E>::boundary_iterator
 
 /*******************************************************************************
  basic_bitvector
