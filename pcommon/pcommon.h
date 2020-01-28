@@ -872,7 +872,7 @@ inline void *hextob(void *buf, size_t bufsz, const char *hexstr)
 
 /// Providing there is @a type ::swap, define namespace-level swap overload @a type
 #define PCOMN_DEFINE_SWAP(type, ...) \
-   __VA_ARGS__ inline void swap(type &lhs, type &rhs) { lhs.swap(rhs) ; }
+   __VA_ARGS__ inline void swap(type &lhs, type &rhs) noexcept { lhs.swap(rhs) ; }
 
 /// For a type without state, define operators '==' and '!=' that are invariantly 'true'
 /// and 'false' respectively
