@@ -411,7 +411,7 @@ struct is_base_of_strict :
                          std::is_convertible_v<const volatile Derived*, const volatile Base*>> {} ;
 
 template<typename T, typename U>
-using is_same_unqualified = std::is_same<std::remove_cv_t<T>, std::remove_cv_t<U> > ;
+using is_same_unqualified = std::is_same<std::remove_cv_t<T>, std::remove_cv_t<U>> ;
 
 template<typename To, typename... From>
 struct is_all_convertible : std::true_type {} ;
