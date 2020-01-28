@@ -16,7 +16,6 @@
 #include <pcomn_macros.h>
 
 #include <functional>
-#include <tuple>
 
 namespace pcomn {
 
