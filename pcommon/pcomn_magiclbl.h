@@ -3,7 +3,7 @@
 #define __PCOMN_MAGICLBL_H
 /*******************************************************************************
  FILE         :   pcomn_magiclbl.h
- COPYRIGHT    :   Yakov Markovitch, 2018-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2018-2020. All rights reserved.
 
  DESCRIPTION  :   Magic label structures.
 

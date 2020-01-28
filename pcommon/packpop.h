@@ -1,7 +1,7 @@
 /*-*- mode: c; tab-width: 3; indent-tabs-mode: nil; c-file-style: "ellemtel" -*-*/
 /*******************************************************************************
  FILE         :   packpop.h
- COPYRIGHT    :   Yakov Markovitch, 1998-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1998-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   This file turns packing of structures off.  (That is, it enables

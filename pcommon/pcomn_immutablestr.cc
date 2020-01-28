@@ -2,7 +2,7 @@
 #pragma once
 /*******************************************************************************
  FILE         :   pcomn_immutablestr.cc
- COPYRIGHT    :   Yakov Markovitch, 2006-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2006-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   This is an internal header file.

@@ -3,7 +3,7 @@
 #define __PCOMN_ZSTD_H
 /*******************************************************************************
  FILE         :   pcomn_zstd.h
- COPYRIGHT    :   Yakov Markovitch, 2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2019-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   zstd/zdict wrappers.

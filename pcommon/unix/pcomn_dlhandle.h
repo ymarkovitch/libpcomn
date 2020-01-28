@@ -3,7 +3,7 @@
 #define __PCOMN_DLHANDLE_H
 /*******************************************************************************
  FILE         :   pcomn_dlhandle.h
- COPYRIGHT    :   Yakov Markovitch, 2012-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2012-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   UNIX dlopen()/dlclose() "handle" traits for safe_handle<>

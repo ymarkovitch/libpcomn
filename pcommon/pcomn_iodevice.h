@@ -3,7 +3,7 @@
 #define __PCOMN_IODEVICE_H
 /*******************************************************************************
  FILE         :   pcomn_iodevice.h
- COPYRIGHT    :   Yakov Markovitch, 2007-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2007-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Abstract input and output devices, supporting character

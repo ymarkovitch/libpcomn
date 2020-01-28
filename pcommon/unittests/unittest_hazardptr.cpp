@@ -1,7 +1,7 @@
 /*-*- tab-width:3;indent-tabs-mode:nil;c-file-style:"ellemtel";c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   unittest_hazardptr.cpp
- COPYRIGHT    :   Yakov Markovitch, 2016-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2016-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Unittests for hazard pointers.

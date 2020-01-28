@@ -3,7 +3,7 @@
 #define __PCOMN_SHUTIL_H
 /*******************************************************************************
  FILE         :   pcomn_shutil.h
- COPYRIGHT    :   Yakov Markovitch, 2011-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2011-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   High-level operations on files and collections of files.

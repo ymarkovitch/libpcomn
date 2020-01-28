@@ -3,7 +3,7 @@
 #define __CMDLINE_CMDEXT_H
 /*******************************************************************************
  FILE         :   cmdext.h
- COPYRIGHT    :   Yakov Markovitch, 2009-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2009-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Extensions for Brad Aplleton's CmdLine library

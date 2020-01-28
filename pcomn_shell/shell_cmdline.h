@@ -3,7 +3,7 @@
 #define __SHELL_CMDLINE_H
 /*******************************************************************************
  FILE         :   shell_cmdline.h
- COPYRIGHT    :   Yakov Markovitch, 2009-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2009-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Command-line argument handling for DS daemons and utilities

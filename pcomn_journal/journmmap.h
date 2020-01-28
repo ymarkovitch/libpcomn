@@ -3,7 +3,7 @@
 #define __PCOMN_JOURNMMAP_H
 /*******************************************************************************
  FILE         :   journmmap.h
- COPYRIGHT    :   Yakov Markovitch, 2008-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2008-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Journalling engine storage implemented on memory-mappable filesystem.

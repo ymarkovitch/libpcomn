@@ -3,7 +3,7 @@
 #define __PCOMN_NETPREFIX_H
 /*******************************************************************************
  FILE         :   pcomn_netprefix.h
- COPYRIGHT    :   Yakov Markovitch, 2019
+ COPYRIGHT    :   Yakov Markovitch, 2019-2020
 
  DESCRIPTION  :
 

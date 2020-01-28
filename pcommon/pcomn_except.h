@@ -3,7 +3,7 @@
 #define __PCOMN_EXCEPT_H
 /*******************************************************************************
  FILE         :   pcomn_except.h
- COPYRIGHT    :   Yakov Markovitch, 2000-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2000-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Base PCOMMON exception classes

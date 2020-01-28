@@ -3,7 +3,7 @@
 #define __PCOMN_THREADPOOL_H
 /*******************************************************************************
  FILE         :   pcomn_threadpool.h
- COPYRIGHT    :   Yakov Markovitch, 2018-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2018-2020. All rights reserved.
 
  DESCRIPTION  :   A resizable threadpool.
 

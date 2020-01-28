@@ -3,7 +3,7 @@
 #define __PCOMN_TEXTIO_H
 /*******************************************************************************
  FILE         :   pcomn_textio.h
- COPYRIGHT    :   Yakov Markovitch, 2007-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2007-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Universal newline text reader/writer

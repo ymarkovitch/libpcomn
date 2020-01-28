@@ -1,7 +1,7 @@
 /*-*- tab-width:4;indent-tabs-mode:nil;c-file-style:"ellemtel";c-basic-offset:4;c-file-offsets:((innamespace . 0)(inlambda . 0)) -*-*/
 /*******************************************************************************
  FILE         :   pcomn_netprefix.cpp
- COPYRIGHT    :   Yakov Markovitch, 2019
+ COPYRIGHT    :   Yakov Markovitch, 2019-2020
 
  DESCRIPTION  :   Network address prefix tables.
 
