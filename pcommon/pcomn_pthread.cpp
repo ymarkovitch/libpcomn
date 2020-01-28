@@ -36,29 +36,31 @@ void pthread::finalize()
     if (!joinable())
         return ;
 
-    if (_autojoin)
+    if (_flags & F_AUTOJOIN)
         join() ;
     else
         PCOMN_FAIL("Attempt to destroy running pcomn::pthread with disabled autojoin") ;
 }
 
-void pthread::start_native_thread(thread_state_ptr &&state_ptr)
+pthread::id pthread::start_native_thread(thread_state_ptr &&state_ptr)
 {
     PCOMN_VERIFY(state_ptr) ;
 
     const auto exec_native_thread_function = [](void *sp) -> void*
     {
-        //const thread_state_ptr state (static_cast<thread_state *>(sp)) ;
-        //state->run() ;
+        const thread_state_ptr state (static_cast<thread_state *>(sp)) ;
+        state->run() ;
         return NULL ;
     } ;
 
-    NOXCHECK(!_id) ;
+    pthread_t phandle {} ;
 
-    PCOMN_ENSURE_ENOERR(pthread_create(&_id._handle, nullptr, exec_native_thread_function, state_ptr.get()),
+    PCOMN_ENSURE_ENOERR(pthread_create(&phandle, nullptr, exec_native_thread_function, state_ptr.get()),
                         "pthread_create") ;
 
     state_ptr.release() ;
+
+    return id(phandle) ;
 }
 
 } // namespace pcomn

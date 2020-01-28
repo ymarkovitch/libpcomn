@@ -20,6 +20,7 @@
 
 #include "pcomn_syncobj.h"
 #include "pcomn_hash.h"
+#include "pcomn_function.h"
 
 #include <thread>
 #include <memory>
@@ -27,21 +28,38 @@
 
 namespace pcomn {
 
-/*******************************************************************************
+/***************************************************************************//**
+ Represents a POSIX thread with interface compatible with std::thread but allows
+ to specify various pthread specifics, like affinity, stack size, etc.
 
+ @note Also allows to automatically rejoin on destruction, like std::jthread,
+ depending on construction flags.
 *******************************************************************************/
 class pthread {
     PCOMN_NONCOPYABLE(pthread) ;
     PCOMN_NONASSIGNABLE(pthread) ;
+
+    template<typename F, typename... Args>
+    using valid_callable = std::enable_if_t<is_callable<valtype_t<F>, Args...>::value> ;
+
 public:
     struct id ;
+
+    enum Flags : unsigned {
+        F_NONE      = 0, /**< Default behaviour */
+        F_AUTOJOIN  = 1  /**< Automatically rejoin on destruction, if in joinable state */
+    } ;
 
     pthread() noexcept = default ;
     pthread(pthread &&other) noexcept { swap(other) ; }
 
-    template<typename F, typename... Args,
-             typename = disable_if_t<std::is_same<valtype_t<F>, pthread>::value>>
-    explicit pthread(F &&callable, Args &&... args) ;
+    template<typename F, typename... Args, typename = valid_callable<F, Args...>>
+    pthread(Flags flags, F &&callable, Args &&... args) ;
+
+    template<typename F, typename... Args, typename = valid_callable<F, Args...>>
+    explicit pthread(F &&callable, Args &&... args) :
+        pthread(F_NONE, std::forward<F>(callable), std::forward<Args>(args)...)
+    {}
 
     ~pthread() ;
 
@@ -61,7 +79,7 @@ public:
     void swap(pthread &other) noexcept
     {
         std::swap(_id, other._id) ;
-        std::swap(_autojoin, other._autojoin) ;
+        std::swap(_flags, other._flags) ;
     }
 
     void join() ;
@@ -111,20 +129,69 @@ public:
     pthread_t native_handle() const { return _id._handle ; }
 
 private:
+    Flags   _flags ;
     id      _id ;
-    bool    _autojoin = false ;
 
 private:
     // Thread function state
     struct thread_state ;
     typedef std::unique_ptr<thread_state> thread_state_ptr ;
 
+    pthread(Flags flags, thread_state_ptr &&state) :
+        _flags(flags),
+        _id(start_native_thread(std::move(state)))
+    {}
+
     // If the state is not joinable, no-op.
     // Otherwise, if autojoin is enabled, join; if disabled, aborts the process.
     void finalize() ;
     void ensure_running(const char *attempted_action) ;
-    void start_native_thread(thread_state_ptr &&) ;
+
+    static id start_native_thread(thread_state_ptr &&) ;
+
+private:
+    struct thread_state {
+        virtual void run() = 0 ;
+        virtual ~thread_state() = 0 ;
+    } ;
+
+    template<typename F, typename... Args>
+    struct state_data final : thread_state {
+
+        template<typename A0, typename... An>
+        state_data(A0 &&fn, An &&...args) :
+            _function(std::forward<A0>(fn)),
+            _args(std::forward<An>(args)...)
+        {}
+
+    private:
+        ~state_data() final = default ;
+
+        template<size_t... I>
+        void invoke_function(std::index_sequence<I...>)
+        {
+            _function(std::get<I>(_args)...) ;
+        }
+
+        void run() final { invoke_function(std::index_sequence_for<Args...>()) ; }
+
+    private:
+        F                     _function ;
+        std::tuple<Args...>   _args ;
+    } ;
 } ;
+
+/*******************************************************************************
+ pthread
+*******************************************************************************/
+PCOMN_DEFINE_FLAG_ENUM(pthread::Flags) ;
+
+template<typename F, typename... Args, typename>
+pthread::pthread(Flags flags, F &&callable, Args &&... args) :
+    pthread(flags, thread_state_ptr(new state_data<std::decay_t<F>, std::decay_t<Args>...>
+                                    (std::forward<F>(callable),
+                                     std::forward<Args>(args)...)))
+{}
 
 /*******************************************************************************
  Global functions
