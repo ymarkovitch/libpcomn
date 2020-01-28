@@ -171,6 +171,7 @@ add_library(pcommon STATIC
 
   $<$<NOT:$<PLATFORM_ID:Windows>>:
   pcomn_crypthash
+  pcomn_pthread
   $<$<BOOL:${ZSTD_FOUND}>:pcomn_zstd.cpp>
   unix/pcomn_posix_exec.cpp
   unix/pcomn_shutil.cpp
