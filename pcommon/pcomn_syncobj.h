@@ -14,7 +14,24 @@
 /** @file
  Synchronization primitives missing in STL: shared mutex, primitive semaphore
  (event_mutex)
+
+ Polymorphic scope lock macros:
+
+   + PCOMN_SCOPE_LOCK(NAME,LOCK) : declare std::lock_guard variable of name NAME over LOCK
+   + PCOMN_SCOPE_XLOCK(NAME,LOCK): declare std::unique_lock variable of name NAME over LOCK
+   + PCOMN_SCOPE_R_LOCK(NAME,LOCK)
+   + PCOMN_SCOPE_W_LOCK(NAME,LOCK):
+   + PCOMN_SCOPE_W_XLOCK(NAME,LOCK):
+
+ binary_semaphore: classic binary Dijkstra semaphore (AKA benafore)
+
+ promise_lock: a binary semaphore with only possible state change from locked to unlocked,
+    with idempotent unlocked state (allows to call unlock arbitrary number of times).
+
+ Both the binary_semaphore and promise_lock are extremely fast when uncontended,
+ the cost is one atomic userspace operation.
 *******************************************************************************/
+
 #include <pcomn_platform.h>
 #include <pcomn_assert.h>
 
@@ -23,10 +40,11 @@
 
 #include <type_traits>
 
+// Include wrappers over native synchronization objects
 #include PCOMN_PLATFORM_HEADER(pcomn_native_syncobj.h)
 
-/******************************************************************************/
-/** Polymorphic scope lock
+/***************************************************************************//**
+ Polymorphic scope locks
 
  Let's 'mymutex' is a variable of any type T for which pcomn::PTGuarg<T> is defined.
  To create a lexical scope guard variable 'myguardvar' for mymutex, use the following:
@@ -39,6 +57,7 @@
  @param guard_varname   The name of local guard variable.
  @param lock_expr       The expression that should return PTScopeGuard<T> value.
 *******************************************************************************/
+/**@{*/
 #define PCOMN_SCOPE_LOCK(guard_varname, lock_expr, ...)                 \
    const std::lock_guard<std::remove_cvref_t<decltype((lock_expr))>> guard_varname ((lock_expr), ##__VA_ARGS__)
 
@@ -51,10 +70,12 @@
 #define PCOMN_SCOPE_W_LOCK(guard_varname, lock_expr, ...)   PCOMN_SCOPE_LOCK(guard_varname, (lock_expr), ##__VA_ARGS__)
 #define PCOMN_SCOPE_W_XLOCK(guard_varname, lock_expr, ...)  PCOMN_SCOPE_XLOCK(guard_varname, (lock_expr), ##__VA_ARGS__)
 
+/**@}*/
+
 namespace pcomn {
 
-/******************************************************************************/
-/** Get logical CPU(core) which the calling thread is running on.
+/***************************************************************************//**
+ Get the logical CPU(core) which the calling thread is running on.
  Never fails: if underlying OS API fails, returns 0.
 *******************************************************************************/
 inline unsigned current_cpu_core()
@@ -84,8 +105,8 @@ unsigned probable_current_cpu_core()
    return coreid_cache ;
 }
 
-/******************************************************************************/
-/** Read-write mutex on top of a native (platform) read-write mutex for those platforms
+/***************************************************************************//**
+ Read-write mutex on top of a native (platform) read-write mutex for those platforms
  that have such native mutex (e.g. POSIX Threads).
 *******************************************************************************/
 class shared_mutex {
@@ -105,8 +126,8 @@ class shared_mutex {
       sys::native_rw_mutex _lock ;
 } ;
 
-/******************************************************************************/
-/** General-purpose shared (read-write) mutex ownership wrapper allowing  deferred
+/***************************************************************************//**
+ General-purpose shared (read-write) mutex ownership wrapper allowing  deferred
  locking and transfer of lock ownership.
 
  Locking a shared_lock locks the associated mutex in shared (read) mode.
@@ -206,9 +227,8 @@ class shared_lock {
       }
 } ;
 
-#if PCOMN_HAS_NATIVE_PROMISE
-/******************************************************************************/
-/** Promise lock is a binary semaphore with only possible state change from locked
+/***************************************************************************//**
+ Promise lock is a binary semaphore with only possible state change from locked
  to unlocked.
 
  The promise lock is constructed either in locked (default) or unlocked state and
@@ -240,25 +260,8 @@ class promise_lock : private sys::native_promise_lock {
       using ancestor::unlock ;
 } ;
 
-#else // No native_promise_lock, fallback to standard (inefficient)
-class promise_lock : private std::mutex {
-      typedef std::mutex ancestor ;
-      PCOMN_NONCOPYABLE(promise_lock) ;
-      PCOMN_NONASSIGNABLE(promise_lock) ;
-   public:
-      explicit constexpr promise_lock(bool initially_locked = true) :
-         _locked(initially_locked)
-      {}
-
-      ~promise_lock() = default ;
-
-   private:
-      std::cond
-} ;
-#endif // PCOMN_HAS_NATIVE_PROMISE
-
-/******************************************************************************/
-/** Identifier dispenser: requests range of integral numbers, then (atomically)
+/***************************************************************************//**
+ Identifier dispenser: requests range of integral numbers, then (atomically)
  allocates successive numbers from the range upon request.
 
  @param AtomicInt       Atomic integer type
@@ -320,15 +323,16 @@ class ident_dispenser {
       RangeProvider           _provider ;
 } ;
 
-/******************************************************************************/
-/** Generator of integral identifiers which are unique insdide a process run.
+/***************************************************************************//**
+ Generator of integral identifiers which are unique insdide a process run.
 
  Atomically allocates a range of integral numbers for a thread and then allocates
  successive numbers from that range upon request from this thread until the range
  depletion, when allocates new range.
- Range allocation is atomic (interlocked), but the ident allocation is needn't
- be atomic since it is thread-local, thus performing only one interlocked
- operation per range (by default, per 65536 identifiers allocated).
+
+ Range allocation is atomic, but the ident allocation is needn't be atomic since
+ it is thread-local, so only one interlocked operation per range is required
+ (by default, per 65536 identifiers allocated).
 *******************************************************************************/
 template<typename Tag, typename Int = uint64_t, Int blocksize = 0x10000U>
 class local_ident_dispenser {

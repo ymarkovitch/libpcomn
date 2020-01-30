@@ -10,11 +10,11 @@
  PROGRAMMED BY:   Yakov Markovitch
  CREATION DATE:   6 Nov 2018
 *******************************************************************************/
-#include <pcomn_syncobj.h>
-#include <pcomn_meta.h>
+#include "pcomn_pthread.h"
+#include "pcomn_syncobj.h"
+#include "pcomn_meta.h"
 
 #include <functional>
-#include <thread>
 #include <atomic>
 #include <memory>
 #include <future>
@@ -98,7 +98,7 @@ private:
     std::condition_variable _pool_condvar ;
 
     std::queue<packed_task> _task_queue ;
-    std::list<std::pair<std::thread, atomic_flag_ptr>> _threads ;
+    std::list<std::pair<pthread, atomic_flag_ptr>> _threads ;
 
 private:
     void start_thread() ;
