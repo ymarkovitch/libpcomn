@@ -28,50 +28,83 @@
 namespace pcomn {
 
 /***************************************************************************//**
- counting_semaphore
+ Unlike a mutex a counting_semaphore is not tied to a thread - acquiring a
+ semaphore can occur on a different thread than releasing the semaphore.
+
+ A counting_semaphore contains an internal counter initialized by the constructor.
+
+ This counter is decremented by calls to acquire(), acquire_some(), try_acquire(),
+ try_acquire_some(), and related methods, and is incremented by calls to release().
+
+ When the counter is zero, acquire() blocks until the counter is
+ decremented, but try_acquire() does not block; try_acquire_for() and try_acquire_until()
+ block until the counter is decremented or a timeout is reached.
 *******************************************************************************/
 class counting_semaphore {
     PCOMN_NONCOPYABLE(counting_semaphore) ;
     PCOMN_NONASSIGNABLE(counting_semaphore) ;
 
 public:
-    explicit counting_semaphore(int32_t init_count = 0) : _data(init_count)
-    {
-        PCOMN_VERIFY(init_count >= 0) ;
-    }
+    explicit counting_semaphore(int32_t init_count = 0) : _data(init_count) {}
 
-    /// Attempt to decrement the semaphore counter by 1, never blocks.
+    /// Get the maximum value the semaphore count can have.
+    static constexpr int32_t max_count() { return std::numeric_limits<int32_t>::max() ; }
+
+    /// Decrement the internal counter by the specified amount, even if the result is <0.
+    /// Never blocks.
+    ///
+    /// @return 1 on success (counter decremented), 0 otherwise.
+    ///
+    int32_t borrow(unsigned count) ;
+
+    /// Attempt to decrement the internal counter by 1 as long as the result is >=0.
+    /// Never blocks.
+    ///
     /// @return 1 on success (counter decremented), 0 otherwise.
     ///
     unsigned try_acquire() noexcept { return try_acquire(1) ; }
 
-    /// Attempt to decrement the semaphore counter by the specified amount,
-    /// never blocks.
+    /// Attempt to decrement the internal counter by the specified amount as long as the
+    /// result is >=0.
+    /// Never blocks.
     ///
     /// @return `count` on success (counter decremented), 0 otherwise.
     /// @note Either decrements by full `count` or not at all; @see try_acquire_some().
     ///
-    unsigned try_acquire(int32_t count) noexcept ;
+    unsigned try_acquire(unsigned count) noexcept
+    {
+        return try_acquire_in_userspace(count, count) ;
+    }
 
     /// Acquire between 0 and (greedily) `maxcount`, inclusive, never blocks.
     ///
     /// @return Actually acquired amount (<=`maxcount`).
     ///
-    unsigned try_acquire_some(int32_t maxcount) noexcept ;
+    unsigned try_acquire_some(unsigned maxcount) noexcept
+    {
+        return try_acquire_in_userspace(1, maxcount) ;
+    }
 
     unsigned acquire() { return acquire(1) ; }
 
-    unsigned acquire(int32_t count) ;
+    unsigned acquire(unsigned count) ;
 
-    unsigned acquire_some(int32_t maxcount) ;
+    /// Acquire between 1 and (greedily) `maxcount`.
+    ///
+    /// If internal counter is >0, acquires min(counter,maxcount), otherwise blocks
+    /// until the intenal counter becomes positive.
+    ///
+    /// @return Actually acquired amount (<=`maxcount`).
+    ///
+    unsigned acquire_some(unsigned maxcount) ;
 
     void release() { release(1) ; }
 
-    void release(int32_t count) ;
+    void release(unsigned count) ;
 
 private:
     union sem_data {
-        constexpr sem_data(uint64_t v) noexcept : _value(v) {}
+        constexpr sem_data(uint64_t v = 0) noexcept : _value(v) {}
 
         constexpr sem_data(int32_t count, uint32_t wcount) noexcept :
             _token_count(count),
@@ -97,7 +130,9 @@ private:
     } ;
 
 private:
-    unsigned try_acquire_in_userspace(int32_t mincount, int32_t maxcount) ;
+    unsigned try_acquire_in_userspace(unsigned mincount, unsigned maxcount) noexcept ;
+    unsigned acquire_with_lock(int32_t mincount, int32_t maxcount) ;
+    bool data_cas(sem_data &expected, const sem_data &desired) noexcept ;
 } ;
 
 }  // end of namespace pcomn
