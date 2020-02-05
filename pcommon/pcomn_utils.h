@@ -35,6 +35,17 @@
    auto_buffer
    imemstream
    omemstream
+
+ Namespace fwd is like __future__ in Python dedicated to inject std::experimental
+ classes until pcommon drops support of previous C++ standard, to facilitate
+ forward-compatibility.
+
+ E.g. we inject
+
+  - std::experimental::optional into pcomn::fwd when compiling for C++14,
+  - std::optional when compiling for C++17 and later
+
+ and use pcomn::fwd::optional in poth cases.
 *******************************************************************************/
 #include <pcommon.h>
 #include <pcomn_assert.h>
@@ -775,6 +786,35 @@ constexpr inline const T &clamp(const T &v, const T &lo, const T &hi)
 }
 
 } // end of namespace std
+
+/*******************************************************************************
+ std::optional is extremely needed, but we cannot use it until the minimum supported
+ C++ version for pcommon is C++17 - currently it is C++14.
+
+ There is std::experimental::optional, which present in both libstdc++ (GCC)
+ and libc++ (Clang) and almost completely interface-compatible with std::optional;
+ so we inject it into pcomn::fwd namespace and use as pcomn::fwd::optional until
+ full transition to C++17 or C++20.
+*******************************************************************************/
+#if !defined(PCOMN_STL_CXX17) && __cplusplus < 201500L
+#include <experimental/optional>
+
+namespace fwd {
+using experimental::optional ;
+using experimental::nullopt_t ;
+using experimental::nullopt ;
+using experimental::make_optional ;
+} // end of namespace pcomn::fwd
+
+#else /* PCOMN_STL_CXX17 */
+#include <optional>
+
+namespace fwd {
+using std::optional ;
+using std::nullopt_t ;
+using std::nullopt ;
+using std::make_optional ;
+} // end of namespace pcomn::fwd
 
 #endif /* PCOMN_STL_CXX17 */
 
