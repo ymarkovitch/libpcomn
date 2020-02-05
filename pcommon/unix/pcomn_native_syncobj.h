@@ -16,14 +16,16 @@
   @li PCOMN_HAS_NATIVE_PROMISE
   @li PCOMN_HAS_NATIVE_RWMUTEX
 *******************************************************************************/
+#include <pcomn_platform.h>
+#ifndef PCOMN_PL_UNIX
+#error This header supports only Unix.
+#endif
+
 #include <pcommon.h>
 #include <pcomn_assert.h>
 #include <pcomn_except.h>
 #include <pcomn_atomic.h>
-
-#ifndef PCOMN_PL_UNIX
-#error This header supports only Unix.
-#endif
+#include <pcomn_sys.h>
 
 #include <pthread.h>
 
@@ -103,6 +105,32 @@ inline int futex(int32_t *self, int32_t op, int32_t value, int32_t val2)
 inline int futex_wait(int32_t *self, int32_t expected_value)
 {
    return futex(self, FUTEX_WAIT_PRIVATE, expected_value) ;
+}
+
+inline int futex_wait_for(int32_t *self, int32_t expected_value, std::chrono::nanoseconds timeout)
+{
+   struct timespec ts = nsec_to_timespec(timeout) ;
+   return futex(self, FUTEX_WAIT_PRIVATE, expected_value, &ts, NULL, 0) ;
+}
+
+template<class Clock, class Duration>
+int futex_wait_until(int32_t *self, int32_t expected_value, std::chrono::time_point<Clock, Duration> timeout)
+{
+   using namespace std::chrono ;
+
+   static_assert(is_one_of<Clock, steady_clock, system_clock>::value,
+                 "futex_wait_until supports only timeouts based on "
+                 "std::chrono::steady_clock or std::chrono::system_clock") ;
+
+   constexpr int32_t op = FUTEX_WAIT_BITSET_PRIVATE|flags_if(FUTEX_CLOCK_REALTIME, std::is_same<Clock, system_clock>::value) ;
+
+   struct timespec ts = nsec_to_timespec(timeout.time_since_epoch()) ;
+
+   int err ;
+   do err = futex(self, op, expected_value, &timeout, NULL, FUTEX_BITSET_MATCH_ANY) ;
+   while (err == EINTR) ;
+
+   return err ;
 }
 
 /// Wake at most `max_waked_count` of the waiters that are waiting (e.g., inside
