@@ -85,6 +85,22 @@ public:
         return try_acquire_in_userspace(1, maxcount) ;
     }
 
+    template<typename R, typename P>
+    unsigned try_acquire_for(const std::chrono::duration<R, P> &relative_time,
+                             unsigned count = 1) ;
+
+    template<typename Clock, typename Duration>
+    unsigned try_acquire_until(const std::chrono::time_point<Clock, Duration> &absolute_time,
+                               unsigned count = 1) ;
+
+    template<typename R, typename P>
+    unsigned try_acquire_some_for(const std::chrono::duration<R, P> &relative_time,
+                                  unsigned maxcount) ;
+
+    template<typename Clock, typename Duration>
+    unsigned try_acquire_some_until(const std::chrono::time_point<Clock, Duration> &absolute_time,
+                                    unsigned maxcount) ;
+
     unsigned acquire() { return acquire(1) ; }
 
     unsigned acquire(unsigned count) ;
