@@ -12,6 +12,7 @@
 *******************************************************************************/
 #include "pcomn_pthread.h"
 #include "pcomn_syncobj.h"
+#include "pcomn_blocqueue.h"
 #include "pcomn_meta.h"
 
 #include <functional>
