@@ -775,7 +775,7 @@ inline auto end(pcomn::tdef<P,G> &&x)->decltype(end(move(x).get())) { return end
 
 } // end of std namespace
 
-#ifndef PCOMN_STL_CXX17
+#if !defined(PCOMN_STL_CXX17) && __cplusplus < 201500L
 
 namespace std {
 
@@ -796,17 +796,17 @@ constexpr inline const T &clamp(const T &v, const T &lo, const T &hi)
  so we inject it into pcomn::fwd namespace and use as pcomn::fwd::optional until
  full transition to C++17 or C++20.
 *******************************************************************************/
-#if !defined(PCOMN_STL_CXX17) && __cplusplus < 201500L
 #include <experimental/optional>
 
 namespace fwd {
-using experimental::optional ;
-using experimental::nullopt_t ;
-using experimental::nullopt ;
-using experimental::make_optional ;
+using std::experimental::optional ;
+using std::experimental::nullopt_t ;
+using std::experimental::nullopt ;
+using std::experimental::make_optional ;
 } // end of namespace pcomn::fwd
 
 #else /* PCOMN_STL_CXX17 */
+
 #include <optional>
 
 namespace fwd {
