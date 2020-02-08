@@ -11,7 +11,6 @@
  CREATION DATE:   6 Nov 2018
 *******************************************************************************/
 #include "pcomn_pthread.h"
-#include "pcomn_syncobj.h"
 #include "pcomn_blocqueue.h"
 #include "pcomn_meta.h"
 
@@ -28,14 +27,54 @@ namespace pcomn {
  A resizable thread pool to run any callable objects with signature `ret func()`.
 
  The resulting task value or exception is available through std::future<ret>.
-*******************************************************************************/
+
+ There are two kinds of work that can be submitted into the pool: a *task* and a *job*.
+ The difference is we don't care about the resut of a job ("fire and forget"),
+ so enqueue_job() returns void, while the result of the task can be obtained
+ through std::future object returned by enqueue_task().
+ ******************************************************************************/
 class threadpool {
     PCOMN_NONCOPYABLE(threadpool) ;
     PCOMN_NONASSIGNABLE(threadpool) ;
 
     typedef std::atomic<bool>               atomic_flag ;
     typedef std::shared_ptr<atomic_flag>    atomic_flag_ptr ;
-    typedef std::function<void()>           packed_task ;
+
+    // Threadpool's task queue item
+    class packed_job final {
+        template<typename=void, std::nullptr_t=nullptr> struct make ;
+
+        template<std::nullptr_t dummy>
+        struct make<void, dummy> {
+            virtual ~make() = 0 ;
+            virtual void operator()() = 0 ;
+        } ;
+
+        template<typename Function, std::nullptr_t dummy>
+        struct make final : make<void> {
+            make(Function &&f) : _f(std::move(f)) {}
+            ~make() = default ;
+            void operator()() { _f() ; }
+
+        private:
+            Function _f ;
+            PCOMN_NONCOPYABLE(make) ;
+        } ;
+
+    public:
+        template<typename R>
+        packed_job(std::packaged_task<R()> &&task) :
+            _make(new make<std::packaged_task<R()>>(std::move(task)))
+        {}
+
+        packed_job(packed_job &&) = default ;
+        packed_job &operator=(packed_job &&) = default ;
+
+        void operator()() const { (*_make)() ; }
+
+    private:
+        std::unique_ptr<make<>> _make ;
+    } ;
 
 public:
     threadpool() ;
@@ -57,17 +96,23 @@ public:
     /// Change the count of threads in the pool.
     void resize(size_t threadcount) ;
 
-    /// Empty the task queue.
-    void clear_queue()
-    {
-        PCOMN_SCOPE_LOCK(lock, _pool_mutex) ;
-        flush_task_queue() ;
-    }
+    /// Drop all the pending tasks from the task queue.
+    ///
+    unsigned clear_queue() ;
 
     /// Stop the pool.
     /// All threads are joined and deleted.
-    /// @param complete_pending_tasks If true, complete all the tasks in the queue before
-    /// the stop; otherwise clear the queue immediately, ignore all the pending tasks.
+    ///
+    /// This function immediately closes the producing end of the pool's queue, so any
+    /// attempt to add a new task to the pool leads to sequence_closed exception.
+    /// All the task already being run will be completed; whether the pending (not yet
+    /// started) task will be invoked depends on `complete_pending_tasks` argument.
+    ///
+    /// @param complete_pending_tasks If true, all the tasks already in the queue will be
+    ///  invoked and completed before the stop; otherwise the queue is cleared
+    ///  immediately and only already running tasks are completed.
+    ///
+    /// @note After this call the pool cannot be restarted.
     ///
     void stop(bool complete_pending_tasks = false) ;
 
@@ -75,19 +120,28 @@ public:
     /// The result of execution (return value or exception) is available through the
     /// returned std::future<> object.
     template<typename F>
-    auto enqueue(F &&task) ->std::future<decltype(task())>
+    auto enqueue_task(F &&task) ->std::future<decltype(task())>
     {
         typedef decltype(task()) task_result ;
 
-        auto ptask = std::packaged_task<task_result>(std::forward<F>(task)) ;
+        auto ptask = std::packaged_task<task_result()>(std::forward<F>(task)) ;
         std::future<task_result> result (ptask.get_future()) ;
 
-        PCOMN_SCOPE_LOCK(lock, _pool_mutex) ;
-
-        _task_queue.emplace(std::move(ptask)) ;
-        _pool_condvar.notify_one() ;
+        _task_queue.push(std::move(ptask)) ;
 
         return result ;
+    }
+
+    template<typename F>
+    auto enqueue_job(F &&job) ->std::void_t<decltype(job())>
+    {
+        _task_queue.push(packed_job(std::packaged_task<void()>(std::forward<F>(job)))) ;
+    }
+
+    auto qq()
+    {
+        enqueue_job([]{ return 2*2 ; }) ;
+        return enqueue_task([]{ return 2*2 ; }) ;
     }
 
 private:
@@ -95,10 +149,9 @@ private:
     atomic_flag           _retire {false} ;
     atomic_flag           _stop   {false} ;
 
-    mutable std::mutex      _pool_mutex ;
-    std::condition_variable _pool_condvar ;
+    mutable std::mutex _pool_mutex ;
 
-    std::queue<packed_task> _task_queue ;
+    blocking_ring_queue<packed_job> _task_queue {4096} ;
     std::list<std::pair<pthread, atomic_flag_ptr>> _threads ;
 
 private:

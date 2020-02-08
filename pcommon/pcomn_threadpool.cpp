@@ -17,8 +17,11 @@ namespace pcomn {
 *******************************************************************************/
 threadpool::threadpool() = default ;
 
-threadpool::~threadpool() { stop(true) ; }
+threadpool::~threadpool() { stop() ; }
 
-void threadpool::flush_task_queue() { _task_queue = decltype(_task_queue)() ; }
+unsigned threadpool::clear_queue()
+{
+    return _task_queue.try_pop_some(std::numeric_limits<int32_t>::max()).size() ;
+}
 
 } // end of namespace pcomn
