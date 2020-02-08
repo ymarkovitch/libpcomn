@@ -14,10 +14,17 @@
 *******************************************************************************/
 #include "pcomn_semaphore.h"
 #include "pcomn_utils.h"
+#include "pcomn_except.h"
 
 #include <list>
 
 namespace pcomn {
+
+namespace detail {
+template<typename> class list_cbqueue ;
+template<typename> class ring_cbqueue ;
+} // end of namespace pcomn::detail
+
 
 /***************************************************************************//**
  The blocking_queue is thread-safe to put elements into and take out of from,
@@ -27,6 +34,14 @@ namespace pcomn {
  This is a multiple-producer-multi-consumer queue with optionally specified
  maximum capacity.
 
+ One can *close* the queue either partially (the sending end) or completely (both
+ ends). close() can be called multiple times, once a closed queue remains closed.
+
+ As the sending end of the queue is closed, the queue throws sequence_closed
+ exception on any attempt to push an item. Once the queue is empty, sequence_closed
+ is thrown also on any attempt to pull an item. Closing both ends is amounting to
+ closing the sending end and clearing the queue at the same time.
+
  @param T The type of the stored elements.
  @param ConcurrentContainer The type of the underlying container to use to store the elements.
  @parblock
@@ -35,7 +50,7 @@ namespace pcomn {
     - push(T): return value ignored
     - push_many(Iterator begin, Iterator end): return value ignored
     - pop(): return value must be ConvertibleTo(T)
-    - pop_many(): return value must be SequenceContainer(T)
+    - pop_many(unsigned): return value must be SequenceContainer(T)
     - change_capacity(unsigned): return value ignored
 
  push(), push_many(), pop(), pop_many() must be thread-safe with respect both
@@ -46,7 +61,7 @@ namespace pcomn {
  thread-safe to itself.
  @endparblock
 *******************************************************************************/
-template<typename T, typename ConcurrentContainer>
+template<typename T, typename ConcurrentContainer = detail::list_cbqueue<T>>
 class blocking_queue {
     typedef ConcurrentContainer container_type ;
 
@@ -58,20 +73,23 @@ class blocking_queue {
 
 public:
     typedef T                           value_type ;
-    typedef std::list<value_type>       value_list ;
     typedef fwd::optional<value_type>   optional_value ;
+
+    typedef std::remove_cvref_t<decltype(std::declval<container_type>().pop_many(1U))> value_list ;
 
     /// Create a blocking queue with specified maximum capacity.
     explicit blocking_queue(unsigned capacity) ;
 
+    void close(bool close_both_ends = true) ;
+
     /***************************************************************************
      push
     ***************************************************************************/
-    void push(const value_type &value) ;
-    void push(value_type &&value) ;
+    void push(const value_type &value) { put_item(value) ; }
+    void push(value_type &&value) { put_item(std::move(value)) ; }
 
-    template<typename InputIterator>
-    InputIterator push_some(InputIterator b, InputIterator e) ;
+    template<typename FwdIterator>
+    FwdIterator push_some(FwdIterator b, FwdIterator e) ;
 
     bool try_push(const value_type &value) ;
     bool try_push(value_type &&value) ;
@@ -92,19 +110,20 @@ public:
     bool try_push_until(value_type &&value,
                         const time_point<Clock, Duration> &abs_time) ;
 
-    template<typename InputIterator, typename R, typename P>
-    InputIterator try_push_some_for(InputIterator b, InputIterator e,
+    template<typename FwdIterator, typename R, typename P>
+    FwdIterator try_push_some_for(FwdIterator b, FwdIterator e,
                                     const duration<R, P> &rel_time) ;
 
-    template<typename InputIterator, typename Clock, typename Duration>
-    InputIterator try_push_some_until(InputIterator b, InputIterator e,
-                                      const time_point<Clock, Duration> &abs_time) ;
+    template<typename FwdIterator, typename Clock, typename Duration>
+    FwdIterator try_push_some_until(FwdIterator b, FwdIterator e,
+                                    const time_point<Clock, Duration> &abs_time) ;
 
     /***************************************************************************
      pop
     ***************************************************************************/
     value_type pop() ;
     value_list pop_some(unsigned count) ;
+    value_list try_pop_some(unsigned count) ;
 
     optional_value try_pop() ;
 
@@ -123,15 +142,15 @@ public:
     /***************************************************************************
      capacity
     ***************************************************************************/
-    size_t capacity() const ;
+    size_t capacity() const { return _capacity.load(std::memory_order_relaxed) ; }
 
     size_t remaining_capacity() const ;
+
+    void change_capacity(unsigned new_capacity) ;
 
     size_t size() const ;
 
     bool empty() const ;
-
-    void change_capacity(unsigned new_capacity) ;
 
 private:
     std::atomic<int32_t> _capacity ;
@@ -140,7 +159,17 @@ private:
     alignas(cacheline_t) counting_semaphore _full_slots ;
 
     container_type _data ;
+
+private:
+    bool is_closed() const { return _capacity.load(std::memory_order_relaxed) > 0 ; }
+    void ensure_open() const { conditional_throw<sequence_closed>(is_closed()) ; }
+
+    template<typename V>
+    void put_item(V &&value) ;
 } ;
+
+template<typename T>
+using blocking_ring_queue = blocking_queue<T, detail::ring_cbqueue<T>> ;
 
 /*******************************************************************************
 
@@ -148,6 +177,24 @@ private:
 namespace detail {
 template<typename T>
 class list_cbqueue {
+public:
+    typedef T value_type ;
+
+    explicit list_cbqueue(unsigned /*initial capacity: ignored*/) {}
+
+    void push(const value_type &) ;
+    void push(value_type &&) ;
+
+    template<typename FwdIterator>
+    FwdIterator push_many(FwdIterator begin, FwdIterator end) ;
+
+    value_type pop() ;
+    std::list<value_type> pop_many(unsigned count) ;
+
+    void change_capacity(unsigned /*new capacity: ignored*/) {}
+
+private:
+    std::list<value_type> _data ;
 } ;
 
 /*******************************************************************************
@@ -155,9 +202,48 @@ class list_cbqueue {
 *******************************************************************************/
 template<typename T>
 class ring_cbqueue {
+public:
+    typedef T value_type ;
+
+    explicit ring_cbqueue(unsigned init_capacity) ;
+
+    void push(const value_type &) ;
+    void push(value_type &&) ;
+
+    template<typename FwdIterator>
+    FwdIterator push_many(FwdIterator begin, FwdIterator end) ;
+
+    value_type pop() ;
+    std::vector<value_type> pop_many(unsigned count) ;
 } ;
 } // end of namespace pcomn::detail
 
+
+/*******************************************************************************
+ blocking_queue
+*******************************************************************************/
+template<typename T, typename C>
+template<typename V>
+void blocking_queue<T,C>::put_item(V &&value)
+{
+    ensure_open() ;
+
+    // Acquire one empty slot.
+    _empty_slots.acquire() ;
+
+    // Take precautions in case _data.push() or ensure_open() throws exception.
+    auto &&empty_slots_guard = make_finalizer([&]{ _empty_slots.release() ; }) ;
+
+    ensure_open() ;
+
+    _data.push(std::forward<V>(value)) ;
+
+    // Make sure an empty slot token remains acquired.
+    empty_slots_guard.release() ;
+
+    // Make the new full slot available.
+    _full_slots.release() ;
+}
 
 } // end of namespace pcomn
 
