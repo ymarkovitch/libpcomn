@@ -82,17 +82,32 @@ inline unsigned get_current_cpu_core()
 /*******************************************************************************
  Futex API
 *******************************************************************************/
-inline int futex(void *addr1, int32_t op, int32_t val, struct timespec *timeout, void *addr2, int32_t val3)
+/// FutexWait is the set of ORable flags to specify futex_wait behaviour.
+enum class FutexWait : uint8_t {
+   RelTime = 0,      /**< Wait for the specified duration (default). */
+   AbsTime = 1,      /**< Wait until the specified point in time. */
+
+   SteadyClock = 0,  /**< Use CLOCK_MONOTONIC. */
+   SystemClock = 2,  /**< Use CLOCK_REALTIME; ignored for RelTime. */
+
+   Interruptible = 0x40 /**< Enable wait interruption by EINTR */
+} ;
+
+PCOMN_DEFINE_FLAG_ENUM(FutexWait) ;
+
+constexpr inline bool operator!(FutexWait f) { return !(uint8_t)f ; }
+
+inline int futex(void *addr1, int32_t op, int32_t val, struct timespec *timeout, void *addr2, int32_t val3) noexcept
 {
   return syscall(SYS_futex, addr1, op, val, timeout, addr2, val3) ;
 }
 
-inline int futex(int32_t *self, int32_t op, int32_t value)
+inline int futex(int32_t *self, int32_t op, int32_t value) noexcept
 {
   return futex(self, op, value, NULL, NULL, 0) ;
 }
 
-inline int futex(int32_t *self, int32_t op, int32_t value, int32_t val2)
+inline int futex(int32_t *self, int32_t op, int32_t value, int32_t val2) noexcept
 {
   return futex(self, op, value, (struct timespec *)(intptr_t)val2, NULL, 0) ;
 }
@@ -102,36 +117,12 @@ inline int futex(int32_t *self, int32_t op, int32_t value, int32_t val2)
 ///
 /// @note The operation is FUTEX_WAIT_PRIVATE.
 ///
-inline int futex_wait(int32_t *self, int32_t expected_value)
+inline int futex_wait(int32_t *self, int32_t expected_value) noexcept
 {
    return futex(self, FUTEX_WAIT_PRIVATE, expected_value) ;
 }
 
-inline int futex_wait_for(int32_t *self, int32_t expected_value, std::chrono::nanoseconds timeout)
-{
-   struct timespec ts = nsec_to_timespec(timeout) ;
-   return futex(self, FUTEX_WAIT_PRIVATE, expected_value, &ts, NULL, 0) ;
-}
-
-template<class Clock, class Duration>
-int futex_wait_until(int32_t *self, int32_t expected_value, std::chrono::time_point<Clock, Duration> timeout)
-{
-   using namespace std::chrono ;
-
-   static_assert(is_one_of<Clock, steady_clock, system_clock>::value,
-                 "futex_wait_until supports only timeouts based on "
-                 "std::chrono::steady_clock or std::chrono::system_clock") ;
-
-   constexpr int32_t op = FUTEX_WAIT_BITSET_PRIVATE|flags_if(FUTEX_CLOCK_REALTIME, std::is_same<Clock, system_clock>::value) ;
-
-   struct timespec ts = nsec_to_timespec(timeout.time_since_epoch()) ;
-
-   int err ;
-   do err = futex(self, op, expected_value, &timeout, NULL, FUTEX_BITSET_MATCH_ANY) ;
-   while (err == EINTR) ;
-
-   return err ;
-}
+int futex_wait(int32_t *self, int32_t expected_value, FutexWait flags, struct timespec timeout) ;
 
 /// Wake at most `max_waked_count` of the waiters that are waiting (e.g., inside
 /// futex_wait()) on the futex word at the address `self`.

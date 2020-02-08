@@ -170,10 +170,11 @@ add_library(pcommon STATIC
   pcomn_zstream.cpp
 
   $<$<NOT:$<PLATFORM_ID:Windows>>:
-  pcomn_crypthash
-  pcomn_pthread
-  pcomn_semaphore
+  pcomn_crypthash.cpp
+  pcomn_pthread.cpp
+  pcomn_semaphore.cpp
   $<$<BOOL:${ZSTD_FOUND}>:pcomn_zstd.cpp>
+  unix/pcomn_native_syncobj.cpp
   unix/pcomn_posix_exec.cpp
   unix/pcomn_shutil.cpp
   unix/pcomn_sys.cpp
