@@ -217,17 +217,23 @@ typedef std::chrono::nanoseconds nanotime_t ;
 
 /// Convert timespec structure to a 64-bit integer containing the number of nanoseconds
 /// since epoch
-inline nanotime_t timespec_to_nsec(const struct timespec &ts)
+constexpr inline nanotime_t timespec_to_nsec(const struct timespec &ts) noexcept
 {
    return nanotime_t(ts.tv_sec * 1000000000LL + ts.tv_nsec) ;
 }
 
 /// Convert a 64-bit integer containing the number of nanoseconds since epoch to a
 /// timespec structure
-inline struct timespec nsec_to_timespec(nanotime_t t)
+constexpr inline struct timespec nsec_to_timespec(const nanotime_t &t) noexcept
 {
    const struct timespec ts = { t.count() / 1000000000LL, t.count() % 1000000000LL } ;
    return ts ;
+}
+
+template<typename R, typename P>
+constexpr inline struct timespec duration_to_timespec(const std::chrono::duration<R,P> &period) noexcept
+{
+   return nsec_to_timespec(period) ;
 }
 
 #ifdef _POSIX_TIMERS
