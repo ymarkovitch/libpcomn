@@ -44,6 +44,13 @@ class counting_semaphore {
     PCOMN_NONCOPYABLE(counting_semaphore) ;
     PCOMN_NONASSIGNABLE(counting_semaphore) ;
 
+    enum class TimeoutMode {
+        None,
+        Period,
+        SteadyClock,
+        SystemClock
+    } ;
+
 public:
     explicit counting_semaphore(int32_t init_count = 0) : _data(init_count) {}
 
@@ -86,33 +93,59 @@ public:
     }
 
     template<typename R, typename P>
-    unsigned try_acquire_for(const std::chrono::duration<R, P> &relative_time,
-                             unsigned count = 1) ;
+    unsigned try_acquire_for(const std::chrono::duration<R, P> &rel_time,
+                             unsigned count = 1)
+    {
+        return acquire_with_timeout(count, count, TimeoutMode::Period, rel_time) ;
+    }
 
     template<typename Clock, typename Duration>
-    unsigned try_acquire_until(const std::chrono::time_point<Clock, Duration> &absolute_time,
-                               unsigned count = 1) ;
+    unsigned try_acquire_until(const std::chrono::time_point<Clock, Duration> &abs_time,
+                               unsigned count = 1)
+    {
+        return acquire_with_timeout(count, count, timeout_mode<Clock>(), abs_time.time_since_epoch()) ;
+    }
 
     template<typename R, typename P>
-    unsigned try_acquire_some_for(const std::chrono::duration<R, P> &relative_time,
-                                  unsigned maxcount) ;
+    unsigned try_acquire_some_for(const std::chrono::duration<R, P> &rel_time, unsigned maxcount)
+    {
+        return acquire_with_timeout(1, maxcount, TimeoutMode::Period, rel_time) ;
+    }
 
     template<typename Clock, typename Duration>
-    unsigned try_acquire_some_until(const std::chrono::time_point<Clock, Duration> &absolute_time,
-                                    unsigned maxcount) ;
+    unsigned try_acquire_some_until(const std::chrono::time_point<Clock, Duration> &abs_time,
+                                    unsigned maxcount)
+    {
+        return acquire_with_timeout(1, maxcount, timeout_mode<Clock>(), abs_time.time_since_epoch()) ;
+    }
 
+    /// Acquire specified count of tokens.
+    ///
+    /// If internal counter is >=count, acquires tokens, otherwise blocks until
+    /// the intenal counter becomes big enough.
+    ///
+    /// @return `count`.
+    ///
+    unsigned acquire(unsigned count)
+    {
+        return acquire_with_timeout(count, count, {}, {}) ;
+    }
+
+    /// Acquire single token.
+    /// @overload
     unsigned acquire() { return acquire(1) ; }
-
-    unsigned acquire(unsigned count) ;
 
     /// Acquire between 1 and (greedily) `maxcount`.
     ///
     /// If internal counter is >0, acquires min(counter,maxcount), otherwise blocks
-    /// until the intenal counter becomes positive.
+    /// until the internal counter becomes positive.
     ///
     /// @return Actually acquired amount (<=`maxcount`).
     ///
-    unsigned acquire_some(unsigned maxcount) ;
+    unsigned acquire_some(unsigned maxcount)
+    {
+        return acquire_with_timeout(1, maxcount, {}, {}) ;
+    }
 
     void release() { release(1) ; }
 
@@ -146,9 +179,25 @@ private:
     } ;
 
 private:
+    unsigned acquire_with_timeout(unsigned mincount, unsigned maxcount,
+                                  TimeoutMode mode, std::chrono::nanoseconds timeout) ;
+
     unsigned try_acquire_in_userspace(unsigned mincount, unsigned maxcount) noexcept ;
-    unsigned acquire_with_lock(int32_t mincount, int32_t maxcount) ;
+    unsigned acquire_with_lock(int32_t mincount, int32_t maxcount,
+                               TimeoutMode mode, std::chrono::nanoseconds timeout) ;
     bool data_cas(sem_data &expected, const sem_data &desired) noexcept ;
+
+    template<typename Clock>
+    constexpr static TimeoutMode timeout_mode()
+    {
+        static_assert(is_one_of<Clock,
+                      std::chrono::steady_clock,
+                      std::chrono::system_clock>::value,
+                      "Only steady_clock and system_clock are supported for timeout specification.") ;
+
+        return std::is_same_v<Clock, std::chrono::steady_clock> ?
+            TimeoutMode::SteadyClock : TimeoutMode::SystemClock ;
+    }
 } ;
 
 }  // end of namespace pcomn

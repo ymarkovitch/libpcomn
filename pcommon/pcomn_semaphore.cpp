@@ -13,6 +13,8 @@
 
 #include <semaphore.h>
 
+using namespace pcomn::sys ;
+
 namespace pcomn {
 
 static inline void check_overflow(uint64_t count, const char *msg)
@@ -58,28 +60,48 @@ unsigned counting_semaphore::try_acquire_in_userspace(unsigned minc, unsigned ma
     return acquired_count ;
 }
 
-unsigned counting_semaphore::acquire_with_lock(int32_t mincount, int32_t maxcount)
+unsigned counting_semaphore::acquire_with_lock(int32_t mincount, int32_t maxcount,
+                                               TimeoutMode mode, std::chrono::nanoseconds timeout)
 {
+    // Convert relative timeout to absolute
+    const auto make_timepoint = [mode, timeout]() -> struct timespec
+    {
+        switch (mode)
+        {
+            case TimeoutMode::None: return {} ;
+            case TimeoutMode::Period:
+                return nsec_to_timespec(std::chrono::steady_clock::now().time_since_epoch() + timeout) ;
+            default: break ;
+        }
+        return nsec_to_timespec(timeout) ;
+    } ;
+
+    // Always use absolute timeout to compensate for EINTR possibility.
+    const FutexWait wait_mode = FutexWait::AbsTime |
+        ((mode == TimeoutMode::SteadyClock) ? FutexWait::SteadyClock : FutexWait::SystemClock) ;
+    // Calculate the end of timeout period.
+    struct timespec timeout_point = make_timepoint() ;
+
     // Check in to the set of waiting threads, we're going to sleep.
     sem_data old_data (_data.fetch_add(sem_data(0, 1)._value, std::memory_order_acq_rel)) ;
 
     for(;;)
     {
-        const int32_t count = std::clamp(old_data._token_count, mincount, maxcount) ;
+        const int32_t desired_count = std::clamp(old_data._token_count, mincount, maxcount) ;
 
-        if (old_data._token_count >= count)
+        if (old_data._token_count >= desired_count)
         {
-            // At least our thread is going to wait.
+            // At least our thread is waiting.
             NOXCHECK(old_data._waiting_count) ;
 
             // Probably enough available tokens: try both to grab the tokens _and_ check
             // out from the set of waiting threads.
-            const sem_data new_data (old_data._token_count - count, old_data._waiting_count - 1) ;
+            const sem_data new_data (old_data._token_count - desired_count, old_data._waiting_count - 1) ;
 
             if (data_cas(old_data, new_data))
             {
                 // The only exit from this function.
-                return count ;
+                return desired_count ;
             }
 
             // Bad luck, loop again.
@@ -88,7 +110,10 @@ unsigned counting_semaphore::acquire_with_lock(int32_t mincount, int32_t maxcoun
         }
 
         // If not enough tokens available, go to sleep.
-        const int result = sys::futex_wait(&_sdata._token_count, old_data._token_count) ;
+        const int result = mode == TimeoutMode::None
+            ? futex_wait(&_sdata._token_count, old_data._token_count)
+            : futex_wait(&_sdata._token_count, old_data._token_count,
+                         wait_mode|FutexWait::AbsTime, timeout_point) ;
 
         PCOMN_ENSURE_POSIX(result == EAGAIN || result == EINTR ? 0 : result, "FUTEX_WAIT") ;
 
@@ -97,22 +122,20 @@ unsigned counting_semaphore::acquire_with_lock(int32_t mincount, int32_t maxcoun
     }
 }
 
-unsigned counting_semaphore::acquire(unsigned exact_count)
+unsigned counting_semaphore::acquire_with_timeout(unsigned mincount, unsigned maxcount,
+                                                  TimeoutMode mode, std::chrono::nanoseconds timeout)
 {
-    if (try_acquire_in_userspace(exact_count, exact_count))
-        return exact_count ;
+    maxcount = std::min(maxcount, (unsigned)max_count()) ;
 
-    check_overflow(exact_count, "counting_semaphore::acquire") ;
+    if (const unsigned acquired_count = try_acquire_in_userspace(mincount, maxcount))
+        return acquired_count ;
 
-    return acquire_with_lock(exact_count, exact_count) ;
-}
+    check_overflow(mincount, "counting_semaphore::acquire") ;
 
-unsigned counting_semaphore::acquire_some(unsigned maxcount)
-{
-    if (const unsigned a = try_acquire_in_userspace(1, maxcount))
-        return a ;
+    if (mode != TimeoutMode::None && timeout == std::chrono::nanoseconds())
+        return 0 ;
 
-    return acquire_with_lock(1, std::min(maxcount, (unsigned)max_count())) ;
+    return acquire_with_lock(mincount, maxcount, mode, timeout) ;
 }
 
 int32_t counting_semaphore::borrow(unsigned count)
@@ -155,7 +178,7 @@ void counting_semaphore::release(unsigned count)
 
     // If there is any potentially waiting threads, wake at most count of them
     if (old_data._waiting_count)
-        sys::futex_wake(&_sdata._token_count, std::min<unsigned>(count, old_data._waiting_count)) ;
+        futex_wake(&_sdata._token_count, std::min<unsigned>(count, old_data._waiting_count)) ;
 }
 
 }  // end of namespace pcomn
