@@ -22,13 +22,13 @@ namespace sys {
 int futex_wait(int32_t *self, int32_t expected_value, FutexWait flags, struct timespec timeout)
 {
    if (!(flags & FutexWait::AbsTime))
-      return futex(self, FUTEX_WAIT_PRIVATE, expected_value, &period, NULL, 0) ;
+      return futex(self, FUTEX_WAIT_PRIVATE, expected_value, &timeout, NULL, 0) ;
 
    // To wait until the specified point in time (i.e. to absolute time), use
    // FUTEX_WAIT_BITSET operation: FUTEX_WAIT is for _relative_ time (i.e., period).
    const int32_t op = FUTEX_WAIT_BITSET_PRIVATE | flags_if(FUTEX_CLOCK_REALTIME, !!(flags & FutexWait::SystemClock)) ;
 
-   return futex(self, op, expected_value, &timeout, NULL, FUTEX_BITSET_MATCH_ANY)
+   return futex(self, op, expected_value, &timeout, NULL, FUTEX_BITSET_MATCH_ANY) ;
 }
 
 } // end of namespace pcomn::sys
