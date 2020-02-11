@@ -284,18 +284,21 @@ inline bool cas(T *target, atomic_value_t<T> expected_value, atomic_value_t<T> n
 ///
 template<typename T>
 inline enable_if_atomic2_t<T, bool>
-cas2_weak(T *target, T *expected_value, T new_value, std::memory_order order = std::memory_order_acq_rel)
+cas2_weak(T *target, T *expected_value, T new_value, std::memory_order = std::memory_order_acq_rel)
 {
    static_assert(PCOMN_ATOMIC_WIDTH >=2,
                  "CAS2 is only available on CPU platforms with 2-pointer-wide-enabled atomic operation(s).") ;
 
    #if !defined(PCOMN_PL_MS)
 
-   __int128 * const expected128 = reinterpret_cast<__int128 *>(expected_value) ;
-   const __int128 * const new128 = reinterpret_cast<__int128 *>(&new_value) ;
+   __int128 * const target128 = reinterpret_cast<__int128 *>(target) ;
+   __int128 * const old128 = reinterpret_cast<__int128 *>(expected_value) ;
+   const __int128 * const desired128 = reinterpret_cast<__int128 *>(&new_value) ;
+   const __int128 expected128 = *old128 ;
 
-   return reinterpret_cast<std::atomic<__int128> *>(target)
-      ->compare_exchange_weak(*expected128, *new128, order) ;
+   *old128 = __sync_val_compare_and_swap(target128, expected128, desired128) ;
+
+   return *old128 == expected128 ;
 
    #else
 
@@ -327,16 +330,19 @@ cas2_strong(T *target, T *expected_value, T new_value, std::memory_order order =
 
 template<typename T>
 inline enable_if_atomic2_t<T, bool>
-cas2_strong(T *target, T *expected_value, T new_value, std::memory_order order = std::memory_order_acq_rel)
+cas2_strong(T *target, T *expected_value, T new_value, std::memory_order = std::memory_order_acq_rel)
 {
    static_assert(PCOMN_ATOMIC_WIDTH >=2,
                  "CAS2 is only available on CPU platforms with 2-pointer-wide-enabled atomic operation(s).") ;
 
-   __int128 * const expected128 = reinterpret_cast<__int128 *>(expected_value) ;
-   const __int128 * const new128 = reinterpret_cast<__int128 *>(&new_value) ;
+   __int128 * const target128 = reinterpret_cast<__int128 *>(target) ;
+   __int128 * const old128 = reinterpret_cast<__int128 *>(expected_value) ;
+   const __int128 * const desired128 = reinterpret_cast<__int128 *>(&new_value) ;
+   const __int128 expected128 = *old128 ;
 
-   return reinterpret_cast<std::atomic<__int128> *>(target)
-      ->compare_exchange_strong(*expected128, *new128, order) ;
+   *old128 = __sync_val_compare_and_swap(target128, expected128, desired128) ;
+
+   return *old128 == expected128 ;
 }
 
 #endif
