@@ -88,9 +88,7 @@ enum class FutexWait : uint8_t {
    AbsTime = 1,      /**< Wait until the specified point in time. */
 
    SteadyClock = 0,  /**< Use CLOCK_MONOTONIC. */
-   SystemClock = 2,  /**< Use CLOCK_REALTIME; ignored for RelTime. */
-
-   Interruptible = 0x40 /**< Enable wait interruption by EINTR */
+   SystemClock = 2   /**< Use CLOCK_REALTIME; ignored for RelTime. */
 } ;
 
 PCOMN_DEFINE_FLAG_ENUM(FutexWait) ;
@@ -116,19 +114,28 @@ inline int futex(int32_t *self, int32_t op, int32_t value, int32_t val2) noexcep
 /// waiting for a FUTEX_WAKE operation on `self`.
 ///
 /// @note The operation is FUTEX_WAIT_PRIVATE.
+/// @note Can be interrupted by a signal, in which case it returns EINTR.
 ///
 inline int futex_wait(int32_t *self, int32_t expected_value) noexcept
 {
    return futex(self, FUTEX_WAIT_PRIVATE, expected_value) ;
 }
 
+/// Test that `*self` still contains `expected_value`, and if so, sleeps waiting for
+/// a futex_wake() on `self` or until `timeout` expired.
+///
+/// @note The operation is FUTEX_WAIT_PRIVATE (on FutexWait::RelTime `flags`)
+///  or FUTEX_WAIT_BITSET_PRIVATE (on FutexWait::AbsTime `flags`).
+///
+/// @note Can be interrupted by a signal before wake or timeot, in which case
+/// it returns EINTR.
+///
 int futex_wait(int32_t *self, int32_t expected_value, FutexWait flags, struct timespec timeout) ;
 
 /// Wake at most `max_waked_count` of the waiters that are waiting (e.g., inside
 /// futex_wait()) on the futex word at the address `self`.
 ///
 /// @note When `max_waked_count` is not specified, this is futex_wake_any().
-/// @note The operation is FUTEX_WAKE_PRIVATE.
 ///
 inline int futex_wake(int32_t *self, int32_t max_waked_count = 1)
 {
