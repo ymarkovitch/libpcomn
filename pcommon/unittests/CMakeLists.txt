@@ -67,8 +67,6 @@ unittest_AVX2 (unittest_bitvector_AVX2)
 
 unittest(unittest_buffer)
 unittest(unittest_cacher)
-#unittest(unittest_cdsqueue)
-#unittest(unittest_cdscrq)
 unittest(unittest_crypthash)
 unittest(unittest_ctype)
 unittest(unittest_enum)
