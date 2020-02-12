@@ -85,14 +85,14 @@ public:
     /***************************************************************************
      push
     ***************************************************************************/
-    void push(const value_type &value) { put_item(value) ; }
-    void push(value_type &&value) { put_item(std::move(value)) ; }
+    void push(const value_type &value) { put_item(value, true) ; }
+    void push(value_type &&value) { put_item(std::move(value), true) ; }
 
     template<typename FwdIterator>
     FwdIterator push_some(FwdIterator b, FwdIterator e) ;
 
-    bool try_push(const value_type &value) ;
-    bool try_push(value_type &&value) ;
+    bool try_push(const value_type &value) { put_item(value, false) ; }
+    bool try_push(value_type &&value) { put_item(std::move(value), false) ; }
 
     template<typename R, typename P>
     bool try_push_for(const value_type &value,
@@ -165,7 +165,7 @@ private:
     void ensure_open() const { conditional_throw<sequence_closed>(is_closed()) ; }
 
     template<typename V>
-    void put_item(V &&value) ;
+    bool put_item(V &&value, bool wait) ;
 } ;
 
 template<typename T>
@@ -224,12 +224,16 @@ public:
 *******************************************************************************/
 template<typename T, typename C>
 template<typename V>
-void blocking_queue<T,C>::put_item(V &&value)
+bool blocking_queue<T,C>::put_item(V &&value, bool wait)
 {
     ensure_open() ;
 
-    // Acquire one empty slot.
-    _empty_slots.acquire() ;
+    // Take one empty slot.
+    if (wait)
+        _empty_slots.acquire() ;
+
+    else if (!_empty_slots.try_acquire())
+        return false ;
 
     // Take precautions in case _data.push() or ensure_open() throws exception.
     auto &&empty_slots_guard = make_finalizer([&]{ _empty_slots.release() ; }) ;
@@ -241,8 +245,46 @@ void blocking_queue<T,C>::put_item(V &&value)
     // Make sure an empty slot token remains acquired.
     empty_slots_guard.release() ;
 
-    // Make the new full slot available.
+    // Add a new full slot.
     _full_slots.release() ;
+
+    return true ;
+}
+
+template<typename T, typename C>
+auto blocking_queue<T,C>::pop() -> value_type
+{
+    if (is_closed())
+        return *try_pop() ;
+
+    // Take a full slot.
+    // Wait until a full slot appears.
+    _full_slots.acquire() ;
+
+    value_type value (_data.pop()) ;
+
+    // Make one more empty slot available.
+    _empty_slots.release() ;
+
+    return value ;
+}
+
+template<typename T, typename C>
+auto blocking_queue<T,C>::try_pop() -> optional_value
+{
+    if (!_full_slots.try_acquire())
+    {
+        if (!is_closed())
+            return {} ;
+        ensure<sequence_closed>(_full_slots.try_acquire()) ;
+    }
+
+    optional_value value (_data.pop()) ;
+
+    // Make one more empty slot available.
+    _empty_slots.release() ;
+
+    return value ;
 }
 
 } // end of namespace pcomn
