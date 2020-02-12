@@ -77,7 +77,7 @@ public:
 
     typedef std::remove_cvref_t<decltype(std::declval<container_type>().pop_many(1U))> value_list ;
 
-    /// Create a blocking queue with specified maximum capacity.
+    /// Create a blocking queue with specified capacity.
     explicit blocking_queue(unsigned capacity) ;
 
     void close(bool close_both_ends = true) ;
@@ -144,13 +144,7 @@ public:
     ***************************************************************************/
     size_t capacity() const { return _capacity.load(std::memory_order_relaxed) ; }
 
-    size_t remaining_capacity() const ;
-
     void change_capacity(unsigned new_capacity) ;
-
-    size_t size() const ;
-
-    bool empty() const ;
 
 private:
     struct SlotsKind : bool_value {
@@ -165,6 +159,8 @@ private:
 
 private:
     std::atomic<int32_t> _capacity ;
+    std::mutex           _caplock ;
+
     mutable semaphore    _slots[2] ;
     container_type       _data ;
 
@@ -205,7 +201,7 @@ private:
             return result_type() ;
         }
 
-        // Take precautions in case ensure_open() or handle_queue throws exception.
+        // Take precautions in case ensure_open() or queue handler throws exception.
         auto checkin_guard (make_finalizer([&]{ slots_to_acquire.release(acquired_count) ; })) ;
 
         ensure_open() ;
@@ -276,6 +272,11 @@ public:
 /*******************************************************************************
  blocking_queue
 *******************************************************************************/
+template<typename T, typename C>
+void blocking_queue<T,C>::close(bool close_both_ends)
+{
+}
+
 template<typename T, typename C>
 template<typename V>
 bool blocking_queue<T,C>::put_item(V &&value)
