@@ -60,7 +60,7 @@ public:
     /// Decrement the internal counter by the specified amount, even if the result is <0.
     /// Never blocks.
     ///
-    /// @return 1 on success (counter decremented), 0 otherwise.
+    /// @return Value of internal count before decrementing.
     ///
     int32_t borrow(unsigned count) ;
 
@@ -132,7 +132,7 @@ public:
     }
 
     /// Acquire single token.
-    /// @overload
+    /// @return 1
     unsigned acquire() { return acquire(1) ; }
 
     /// Acquire between 1 and (greedily) `maxcount`.
