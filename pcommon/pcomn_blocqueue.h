@@ -27,6 +27,55 @@ template<typename> class ring_cbqueue ;
 
 
 /***************************************************************************//**
+ Base non-template class of the MPMC blocking queue template.
+*******************************************************************************/
+class blocqueue_controller {
+    struct alignas(cacheline_t) semaphore : counting_semaphore {
+        using counting_semaphore::counting_semaphore ;
+    } ;
+
+public:
+    void close(bool close_both_ends = true) ;
+
+    size_t capacity() const { return _capacity.load(std::memory_order_relaxed) ; }
+
+    /// Get the maximum allowed queue capacity.
+    ///
+    /// @note Circa 1G slots.
+    constexpr static size_t max_capacity()
+    {
+        // Reserve a half of alvailable range to mark a queue as closed
+        // (see close() source code)
+        return semaphore::max_count()/2 ;
+    }
+
+    void change_capacity(unsigned new_capacity) ;
+
+private:
+    std::atomic<int32_t> _capacity ;
+    std::mutex           _capmutex ;
+    mutable semaphore    _slots[2] ;
+
+protected:
+    struct SlotsKind : bool_value { using bool_value::bool_value ; } ;
+    // Slot kinds
+    constexpr static SlotsKind EMPTY {false} ;
+    constexpr static SlotsKind FULL  {!EMPTY} ;
+
+protected:
+    explicit blocqueue_controller(unsigned capacity) ;
+    virtual ~blocqueue_controller() = default ;
+
+    counting_semaphore &slots(SlotsKind kind) noexcept { return _slots[(bool)kind] ; }
+
+    bool is_closed() const { return _capacity.load(std::memory_order_relaxed) > 0 ; }
+    void ensure_open() const { conditional_throw<sequence_closed>(is_closed()) ; }
+
+private:
+    virtual void change_data_capacity(unsigned new_capacity) = 0 ;
+} ;
+
+/***************************************************************************//**
  The blocking_queue is thread-safe to put elements into and take out of from,
  and capable to block threads on attempt to take elements from an empty queue
  or to put into a full queue.
@@ -62,7 +111,9 @@ template<typename> class ring_cbqueue ;
  @endparblock
 *******************************************************************************/
 template<typename T, typename ConcurrentContainer = detail::list_cbqueue<T>>
-class blocking_queue {
+class blocking_queue : private blocqueue_controller {
+    typedef blocqueue_controller ancestor ;
+
     typedef ConcurrentContainer container_type ;
 
     template<typename R, typename P>
@@ -80,7 +131,12 @@ public:
     /// Create a blocking queue with specified capacity.
     explicit blocking_queue(unsigned capacity) ;
 
-    void close(bool close_both_ends = true) ;
+    /***************************************************************************
+     capacity
+    ***************************************************************************/
+    using ancestor::capacity ;
+    using ancestor::max_capacity ;
+    using ancestor::change_capacity ;
 
     /***************************************************************************
      push
@@ -112,7 +168,7 @@ public:
 
     template<typename FwdIterator, typename R, typename P>
     FwdIterator try_push_some_for(FwdIterator b, FwdIterator e,
-                                    const duration<R, P> &rel_time) ;
+                                  const duration<R, P> &rel_time) ;
 
     template<typename FwdIterator, typename Clock, typename Duration>
     FwdIterator try_push_some_until(FwdIterator b, FwdIterator e,
@@ -139,36 +195,14 @@ public:
     template<typename Clock, typename Duration>
     value_list try_pop_some_until(const time_point<Clock, Duration> &abs_time) ;
 
-    /***************************************************************************
-     capacity
-    ***************************************************************************/
-    size_t capacity() const { return _capacity.load(std::memory_order_relaxed) ; }
-
-    void change_capacity(unsigned new_capacity) ;
-
 private:
-    struct SlotsKind : bool_value {
-        using bool_value::bool_value ;
-    } ;
-    struct alignas(cacheline_t) semaphore : counting_semaphore {
-        using counting_semaphore::counting_semaphore ;
-    } ;
-
-    constexpr static SlotsKind EMPTY {false} ;
-    constexpr static SlotsKind FULL  {!EMPTY} ;
-
-private:
-    std::atomic<int32_t> _capacity ;
-    std::mutex           _caplock ;
-
-    mutable semaphore    _slots[2] ;
     container_type       _data ;
 
 private:
-    counting_semaphore &slots(SlotsKind kind) noexcept { return _slots[(bool)kind] ; }
-
-    bool is_closed() const { return _capacity.load(std::memory_order_relaxed) > 0 ; }
-    void ensure_open() const { conditional_throw<sequence_closed>(is_closed()) ; }
+    void change_data_capacity(unsigned new_capacity) final
+    {
+        _data.change_capacity(new_capacity) ;
+    }
 
     template<typename V>
     bool put_item(V &&value) ;
@@ -265,6 +299,17 @@ public:
 
     value_type pop() ;
     std::vector<value_type> pop_many(unsigned count) ;
+
+    void change_capacity(size_t new_capacity)
+    {
+        ensure_le<std::out_of_range>(new_capacity, max_capacity(),
+                                     "The requested ring_cbqueue capacity is too big.") ;
+    }
+
+private:
+    const size_t _capacity_mask ;
+
+    const size_t max_capacity() const { return (~_capacity_mask) + 1 ; }
 } ;
 } // end of namespace pcomn::detail
 
@@ -272,11 +317,6 @@ public:
 /*******************************************************************************
  blocking_queue
 *******************************************************************************/
-template<typename T, typename C>
-void blocking_queue<T,C>::close(bool close_both_ends)
-{
-}
-
 template<typename T, typename C>
 template<typename V>
 bool blocking_queue<T,C>::put_item(V &&value)

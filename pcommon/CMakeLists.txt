@@ -170,6 +170,7 @@ add_library(pcommon STATIC
   pcomn_zstream.cpp
 
   $<$<NOT:$<PLATFORM_ID:Windows>>:
+  pcomn_blocqueue.cpp
   pcomn_crypthash.cpp
   pcomn_pthread.cpp
   pcomn_semaphore.cpp
