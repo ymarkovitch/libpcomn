@@ -25,7 +25,6 @@ template<typename> class list_cbqueue ;
 template<typename> class ring_cbqueue ;
 } // end of namespace pcomn::detail
 
-
 /***************************************************************************//**
  Base non-template class of the MPMC blocking queue template.
 *******************************************************************************/
@@ -35,26 +34,19 @@ class blocqueue_controller {
     } ;
 
 public:
-    void close(bool close_both_ends = true) ;
-
     size_t capacity() const { return _capacity.load(std::memory_order_relaxed) ; }
 
     /// Get the maximum allowed queue capacity.
     ///
-    /// @note Circa 1G slots.
+    /// @note Circa 0.5G slots.
     constexpr static size_t max_capacity()
     {
-        // Reserve a half of alvailable range to mark a queue as closed
+        // Reserve 3/4 of available range to mark a queue as closed
         // (see close() source code)
-        return semaphore::max_count()/2 ;
+        return semaphore::max_count()/4 ;
     }
 
     void change_capacity(unsigned new_capacity) ;
-
-private:
-    std::atomic<int32_t> _capacity ;
-    std::mutex           _capmutex ;
-    mutable semaphore    _slots[2] ;
 
 protected:
     struct SlotsKind : bool_value { using bool_value::bool_value ; } ;
@@ -62,17 +54,58 @@ protected:
     constexpr static SlotsKind EMPTY {false} ;
     constexpr static SlotsKind FULL  {!EMPTY} ;
 
+    enum class TimeoutKind {
+        NONE,       /**< No timeout, wait until the pop end if closed */
+        RELATIVE,   /**< Relative timeout (duration since steady_clock::now) */
+        ABSOLUTE    /**< Absolute timeout in stready_clock */
+    } ;
+
+    enum class State : unsigned {
+        OPEN,
+        PUSH_CLOSED,
+        POP_CLOSING,
+        CLOSED
+    } ;
+
+private:
+    std::mutex            _capmutex ;
+    std::atomic<State>    _state {State::OPEN} ;
+    std::atomic<unsigned> _capacity ;
+
+    mutable semaphore _slots[2] ;
+
 protected:
     explicit blocqueue_controller(unsigned capacity) ;
     virtual ~blocqueue_controller() = default ;
 
     counting_semaphore &slots(SlotsKind kind) noexcept { return _slots[(bool)kind] ; }
 
-    bool is_closed() const { return _capacity.load(std::memory_order_relaxed) > 0 ; }
-    void ensure_open() const { conditional_throw<sequence_closed>(is_closed()) ; }
+    void ensure_open() const
+    {
+        ensure<sequence_closed>(_state.load(std::memory_order_acquire) == State::OPEN) ;
+    }
+
+    bool close_push_end(TimeoutKind kind, std::chrono::nanoseconds d) ;
+    void close_both_ends() ;
+
+    /// @return the count of actually acquired empty slots.
+    unsigned start_push(unsigned requested_count) ;
+    void finalize_push(unsigned acquired_count) ;
+
+    unsigned start_pop(unsigned requested_count) ;
+    void finalize_pop(unsigned acquired_count) ;
 
 private:
     virtual void change_data_capacity(unsigned new_capacity) = 0 ;
+
+    static unsigned validate_capacity(unsigned new_capacity)
+    {
+        if (!inrange(new_capacity, 1U, (unsigned)max_capacity()))
+            invalid_capacity(new_capacity) ;
+        return new_capacity ;
+    }
+
+    __noreturn __cold static void invalid_capacity(unsigned new_capacity) ;
 } ;
 
 /***************************************************************************//**
@@ -130,6 +163,26 @@ public:
 
     /// Create a blocking queue with specified capacity.
     explicit blocking_queue(unsigned capacity) ;
+
+    /// Immediately close both the push and pop ends of the queue.
+    /// All the items still in the queue will be lost.
+    void close() { this->close_both_ends() ; }
+
+    /// Immediately close the push end of the queue and return.
+    void close_push() { this->close_push_end({}, {}) ; }
+
+    template<typename Duration>
+    bool close_push_wait_empty(std::chrono::time_point<std::chrono::steady_clock, Duration> &abs_timeout)
+    {
+        return this->close_push_end(ancestor::TimeoutKind::ABSOLUTE,
+                                    abs_timeout.time_since_epoch()) ;
+    }
+
+    template<typename R, typename P>
+    bool close_push_wait_empty(const std::chrono::duration<R, P> &rel_timeout)
+    {
+        return this->close_push_end(ancestor::TimeoutKind::RELATIVE, rel_timeout) ;
+    }
 
     /***************************************************************************
      capacity
@@ -196,7 +249,7 @@ public:
     value_list try_pop_some_until(const time_point<Clock, Duration> &abs_time) ;
 
 private:
-    container_type       _data ;
+    container_type _data ;
 
 private:
     void change_data_capacity(unsigned new_capacity) final
