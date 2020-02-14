@@ -68,6 +68,7 @@ public:
     /// Never blocks.
     ///
     /// @return 1 on success (counter decremented), 0 otherwise.
+    /// @note If successful (nonzero return) establishes a full memory barrier.
     ///
     unsigned try_acquire() noexcept { return try_acquire(1) ; }
 
@@ -77,6 +78,7 @@ public:
     ///
     /// @return `count` on success (counter decremented), 0 otherwise.
     /// @note Either decrements by full `count` or not at all; @see try_acquire_some().
+    /// @note If successful (nonzero return) establishes a full memory barrier.
     ///
     unsigned try_acquire(unsigned count) noexcept
     {
@@ -125,6 +127,7 @@ public:
     /// the intenal counter becomes big enough.
     ///
     /// @return `count`.
+    /// @note Establishes a full memory barrier.
     ///
     unsigned acquire(unsigned count)
     {
@@ -133,6 +136,8 @@ public:
 
     /// Acquire single token.
     /// @return 1
+    /// @note Establishes a full memory barrier.
+    ///
     unsigned acquire() { return acquire(1) ; }
 
     /// Acquire between 1 and (greedily) `maxcount`.
@@ -141,14 +146,17 @@ public:
     /// until the internal counter becomes positive.
     ///
     /// @return Actually acquired amount (<=`maxcount`).
+    /// @note Establishes a full memory barrier.
     ///
     unsigned acquire_some(unsigned maxcount)
     {
         return acquire_with_timeout(1, maxcount, {}, {}) ;
     }
 
+    /// @note Establishes a full memory barrier.
     void release() { release(1) ; }
 
+    /// @note Establishes a full memory barrier.
     void release(unsigned count) ;
 
 private:
