@@ -77,27 +77,21 @@ bool blocqueue_controller::close_push_end(TimeoutKind kind, std::chrono::nanosec
     return true ;
 }
 
-unsigned blocqueue_controller::start_push(unsigned requested_count)
+unsigned blocqueue_controller::start_pop(unsigned requested_count,
+                                         TimeoutKind kind, std::chrono::nanoseconds d)
 {
-    const unsigned acquired_count = slots(EMPTY).acquire(requested_count) ;
-    ensure_open() ;
-    return acquired_count ;
-}
+    const unsigned acquired_count =
+        kind == TimeoutKind::NONE       ? slots(FULL).acquire_some(requested_count) :
+        kind == TimeoutKind::RELATIVE   ? slots(FULL).try_acquire_some_for(d, requested_count) :
 
-void blocqueue_controller::finalize_push(unsigned acquired_count)
-{
-    slots(FULL).release(acquired_count) ;
-}
+        slots(FULL).try_acquire_some_until(std::chrono::time_point<std::chrono::steady_clock>(d), requested_count) ;
 
-unsigned blocqueue_controller::start_pop(unsigned requested_count)
-{
-    const unsigned acquired_count = slots(FULL).acquire_some(requested_count) ;
 
     State s = _state.load(std::memory_order_acquire) ;
 
     if (is_in(s, State::OPEN, State::POP_CLOSING))
     {
-        return slots(FULL).acquire_some(requested_count) ;
+        return acquired_count ;
     }
 
     conditional_throw<sequence_closed>(s == State::CLOSED) ;
@@ -106,7 +100,7 @@ unsigned blocqueue_controller::start_pop(unsigned requested_count)
     if (!_state.compare_exchange_strong(s, State::POP_CLOSING))
     {
         conditional_throw<sequence_closed>(s != State::POP_CLOSING) ;
-        return slots(FULL).acquire_some(requested_count) ;
+        return acquired_count ;
     }
 
     // This thread is just changed queue state PUSH_CLOSED -> POP_CLOSING.
