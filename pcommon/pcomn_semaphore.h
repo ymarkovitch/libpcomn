@@ -44,13 +44,6 @@ class counting_semaphore {
     PCOMN_NONCOPYABLE(counting_semaphore) ;
     PCOMN_NONASSIGNABLE(counting_semaphore) ;
 
-    enum class TimeoutMode {
-        None,
-        Period,
-        SteadyClock,
-        SystemClock
-    } ;
-
 public:
     explicit counting_semaphore(int32_t init_count = 0) : _data(init_count) {}
 
@@ -63,6 +56,38 @@ public:
     /// @return Value of internal count before decrementing.
     ///
     int32_t borrow(unsigned count) ;
+
+    /// Acquire specified count of tokens.
+    ///
+    /// If internal counter is >=count, acquires tokens, otherwise blocks until
+    /// the intenal counter becomes big enough.
+    ///
+    /// @return `count`.
+    /// @note Establishes a full memory barrier.
+    ///
+    unsigned acquire(unsigned count)
+    {
+        return acquire_with_timeout(count, count, TimeoutMode::Period, {}) ;
+    }
+
+    /// Acquire single token.
+    /// @return 1
+    /// @note Establishes a full memory barrier.
+    ///
+    unsigned acquire() { return acquire(1) ; }
+
+    /// Acquire between 1 and (greedily) `maxcount`.
+    ///
+    /// If internal counter is >0, acquires min(counter,maxcount), otherwise blocks
+    /// until the internal counter becomes positive.
+    ///
+    /// @return Actually acquired amount (<=`maxcount`).
+    /// @note Establishes a full memory barrier.
+    ///
+    unsigned acquire_some(unsigned maxcount)
+    {
+        return acquire_with_timeout(1, maxcount, TimeoutMode::Period, {}) ;
+    }
 
     /// Attempt to decrement the internal counter by 1 as long as the result is >=0.
     /// Never blocks.
@@ -84,6 +109,36 @@ public:
     {
         return try_acquire_in_userspace(count, count) ;
     }
+
+    /// Acquire with lock, or try acquire without lock, or try acquire with timeout of
+    /// any kind (duration, or monotonic time, or system time).
+    ///
+    ///  - `mode` is None:   acquire(), `timeout` ignored
+    ///  - `mode` is Period: try_acquire_for() or try_acquire(), `timeout` is relative
+    ///  - `mode` is SteadyClock: try_acquire_until(), `timeout` is from epoch
+    ///  - `mode` is SystemClock: try_acquire_until(), `timeout` is from epoch
+    ///
+    bool universal_acquire(unsigned count, TimeoutMode mode,
+                           std::chrono::nanoseconds timeout)
+    {
+        return acquire_with_timeout(count, count, mode, timeout) ;
+    }
+
+    unsigned universal_acquire_some(unsigned maxcount, TimeoutMode mode,
+                                    std::chrono::nanoseconds timeout)
+    {
+        return acquire_with_timeout(1, maxcount, mode, timeout) ;
+    }
+
+    /// @note Establishes a full memory barrier.
+    void release() { release(1) ; }
+
+    /// @note Establishes a full memory barrier.
+    void release(unsigned count) ;
+
+    /***************************************************************************
+     Acquire with timeout
+    ***************************************************************************/
 
     /// Acquire between 0 and (greedily) `maxcount`, inclusive, never blocks.
     ///
@@ -120,44 +175,6 @@ public:
     {
         return acquire_with_timeout(1, maxcount, timeout_mode<Clock>(), abs_time.time_since_epoch()) ;
     }
-
-    /// Acquire specified count of tokens.
-    ///
-    /// If internal counter is >=count, acquires tokens, otherwise blocks until
-    /// the intenal counter becomes big enough.
-    ///
-    /// @return `count`.
-    /// @note Establishes a full memory barrier.
-    ///
-    unsigned acquire(unsigned count)
-    {
-        return acquire_with_timeout(count, count, {}, {}) ;
-    }
-
-    /// Acquire single token.
-    /// @return 1
-    /// @note Establishes a full memory barrier.
-    ///
-    unsigned acquire() { return acquire(1) ; }
-
-    /// Acquire between 1 and (greedily) `maxcount`.
-    ///
-    /// If internal counter is >0, acquires min(counter,maxcount), otherwise blocks
-    /// until the internal counter becomes positive.
-    ///
-    /// @return Actually acquired amount (<=`maxcount`).
-    /// @note Establishes a full memory barrier.
-    ///
-    unsigned acquire_some(unsigned maxcount)
-    {
-        return acquire_with_timeout(1, maxcount, {}, {}) ;
-    }
-
-    /// @note Establishes a full memory barrier.
-    void release() { release(1) ; }
-
-    /// @note Establishes a full memory barrier.
-    void release(unsigned count) ;
 
 private:
     union sem_data {
