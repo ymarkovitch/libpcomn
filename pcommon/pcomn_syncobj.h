@@ -75,6 +75,13 @@
 
 namespace pcomn {
 
+enum class TimeoutMode {
+   None,
+   Period,
+   SteadyClock,
+   SystemClock
+} ;
+
 /***************************************************************************//**
  Get the logical CPU(core) which the calling thread is running on.
  Never fails: if underlying OS API fails, returns 0.
