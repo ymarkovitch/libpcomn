@@ -12,7 +12,7 @@
 
 namespace pcomn {
 
-PCOMN_STATIC_CHECK(3*blocqueue_controller::max_capacity() - 1 < counting_semaphore::max_count()) ;
+PCOMN_STATIC_CHECK(2*blocqueue_controller::max_capacity() < counting_semaphore::max_count()) ;
 
 /*******************************************************************************
  blocqueue_controller
@@ -31,10 +31,17 @@ void blocqueue_controller::invalid_capacity(unsigned new_capacity)
          new_capacity, 1U, (unsigned)max_capacity()) ;
 }
 
+__noreturn __cold
+void blocqueue_controller::invalid_acquire_count(unsigned count, const char *queue_end)
+{
+    throwf<std::out_of_range>
+        ("Too big count %u is specified for %s operation on blocking_queue, maximum allowed is %u",
+         count, queue_end, (unsigned)max_capacity()) ;
+}
+
 void blocqueue_controller::change_capacity(unsigned new_capacity)
 {
-    ensure_range<std::out_of_range>(new_capacity, (size_t)1, max_capacity(),
-                                    "Invalid capactity specified for blocking_queue") ;
+    validate_capacity(new_capacity) ;
 
     PCOMN_SCOPE_LOCK(caplock, _capmutex) ;
     ensure_open() ;
@@ -57,73 +64,115 @@ void blocqueue_controller::change_capacity(unsigned new_capacity)
         slots(EMPTY).borrow(-diff) ;
 }
 
+inline
+bool blocqueue_controller::atomic_test_and_set_closed() noexcept
+{
+    for (State s = _state.load(std::memory_order_relaxed) ; s != State::CLOSED ;)
+    {
+        // CST order is intentional, don't "optimize"!
+        if (!_state.compare_exchange_strong(s, State::CLOSED))
+            continue ;
+
+        slots(FULL).release(blocqueue_controller::max_capacity()) ;
+        return true ;
+    }
+    return false ;
+}
+
+inline
+bool blocqueue_controller::wait_until_empty(unsigned full_slots_reserved,
+                                            TimeoutKind kind,
+                                            std::chrono::nanoseconds timeout) noexcept
+{
+    const unsigned empty_slots_wait_count = max_empty_slots() - full_slots_reserved ;
+
+    if (!slots(EMPTY).universal_acquire(empty_slots_wait_count, timeout_mode(kind), timeout))
+        return false ;
+
+    slots(EMPTY).release(empty_slots_wait_count) ;
+    return true ;
+}
+
 void blocqueue_controller::close_both_ends()
 {
     PCOMN_SCOPE_LOCK(caplock, _capmutex) ;
 
-    State s = State::OPEN ;
-    // CST order is intentional, don't "optimize"!
-    do if (_state.compare_exchange_strong(s, State::CLOSED))
-       {
-           slots(EMPTY).release(blocqueue_controller::max_capacity()) ;
-           slots(FULL).release(blocqueue_controller::max_capacity()) ;
-           break ;
-       }
-    while (s != State::CLOSED) ;
+    (close_push_end(TimeoutKind::NONE, {}) ||
+     atomic_test_and_set_closed()) ;
 }
 
-bool blocqueue_controller::close_push_end(TimeoutKind kind, std::chrono::nanoseconds d)
+bool blocqueue_controller::close_push_end(TimeoutKind kind, std::chrono::nanoseconds timeout)
 {
+    PCOMN_SCOPE_LOCK(caplock, _capmutex) ;
+
+    State s = _state.load(std::memory_order_relaxed) ;
+
+    if (s == State::CLOSED)
+        return true ;
+
+    if (s == State::OPEN)
+    {
+        // Memory fence
+        _state.store(s = State::PUSH_CLOSED) ;
+
+        // Allow any pushing thread: as _state is now PUSH_CLOSED, any push() caller
+        // (AKA producer) will freely acquire(n) only to immediately notice that
+        // the producing end is already closed, release(n), and to throw sequence_closed
+        // (see start_pop()).
+        //
+        // Since now, the slots(EMPTY) count when the queue is empty is
+        // capacity() + blocqueue_controller::max_capacity().
+
+        slots(EMPTY).release(blocqueue_controller::max_capacity()) ;
+    }
+
+    if (slots(FULL).borrow(0))
+    {
+        return wait_until_empty(0, kind, timeout) ;
+    }
+
+    wait_until_empty() ;
+    atomic_test_and_set_closed() ;
+
     return true ;
 }
 
-unsigned blocqueue_controller::start_pop(unsigned requested_count,
-                                         TimeoutKind kind, std::chrono::nanoseconds d)
+unsigned blocqueue_controller::start_pop(unsigned maxcount,
+                                         TimeoutKind kind, std::chrono::nanoseconds timeout)
 {
+    validate_acquire_count(maxcount, "pop") ;
+
+    ensure<sequence_closed>(_state.load(std::memory_order_acquire) != State::CLOSED) ;
+
     const unsigned acquired_count =
-        kind == TimeoutKind::NONE       ? slots(FULL).acquire_some(requested_count) :
-        kind == TimeoutKind::RELATIVE   ? slots(FULL).try_acquire_some_for(d, requested_count) :
-
-        slots(FULL).try_acquire_some_until(std::chrono::time_point<std::chrono::steady_clock>(d), requested_count) ;
-
+        slots(FULL).universal_acquire_some(maxcount, timeout_mode(kind), timeout) ;
 
     State s = _state.load(std::memory_order_acquire) ;
 
-    if (is_in(s, State::OPEN, State::POP_CLOSING))
-    {
+    if (s == State::OPEN || s == State::POP_CLOSING)
         return acquired_count ;
-    }
 
-    conditional_throw<sequence_closed>(s == State::CLOSED) ;
+    auto checkin_guard (make_finalizer([&]{ slots(FULL).release(acquired_count) ; })) ;
+
+    ensure<sequence_closed>(s != State::CLOSED) ;
 
     // Here s == PUSH_CLOSED
-    if (!_state.compare_exchange_strong(s, State::POP_CLOSING))
+    if (_state.compare_exchange_strong(s, State::POP_CLOSING))
     {
-        conditional_throw<sequence_closed>(s != State::POP_CLOSING) ;
+        // This thread is just changed queue state PUSH_CLOSED -> POP_CLOSING.
+        // Wait until others pop all but the last remaining items.
+
+        checkin_guard.release() ;
+        wait_until_empty(acquired_count) ;
+        atomic_test_and_set_closed() ;
+
         return acquired_count ;
     }
 
-    // This thread is just changed queue state PUSH_CLOSED -> POP_CLOSING.
-    // Ensure all the pushing threads can start_push and get sequence_closed:
-    // "wide open the doors".
-    slots(EMPTY).release(blocqueue_controller::max_capacity() - 1) ;
-
-    // Wait until others pop all but the last remaining items.
-    const unsigned doorway_width =
-        _capacity.load(std::memory_order_acquire) + blocqueue_controller::max_capacity() - acquired_count ;
-
-    slots(EMPTY).acquire(doorway_width) ;
-    slots(EMPTY).release(doorway_width) ;
-
-    s = State::POP_CLOSING ;
-    ensure<sequence_closed>(_state.compare_exchange_strong(s, State::CLOSED)) ;
+    ensure<sequence_closed>(s == State::POP_CLOSING) ;
+    checkin_guard.release() ;
 
     return acquired_count ;
-}
-
-void blocqueue_controller::finalize_pop(unsigned acquired_count)
-{
-    slots(EMPTY).release(acquired_count) ;
 }
 
 } // end of namespace pcomn

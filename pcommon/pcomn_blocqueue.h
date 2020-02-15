@@ -44,12 +44,12 @@ public:
 
     /// Get the maximum allowed queue capacity.
     ///
-    /// @note Circa 0.5G slots.
+    /// @note Circa 1G slots.
     constexpr static size_t max_capacity()
     {
-        // Reserve 3/4 of available range to mark a queue as closed
+        // Reserve half of available range to ensure close() won't deadlock
         // (see close() source code)
-        return semaphore::max_count()/4 ;
+        return semaphore::max_count()/2 ;
     }
 
     void change_capacity(unsigned new_capacity) ;
@@ -74,7 +74,7 @@ protected:
     } ;
 
 private:
-    std::mutex            _capmutex ;
+    std::recursive_mutex  _capmutex ;
     std::atomic<State>    _state {State::OPEN} ;
     std::atomic<unsigned> _capacity ;
 
@@ -99,17 +99,45 @@ protected:
                        TimeoutKind, std::chrono::nanoseconds) ;
     void finalize_pop(unsigned acquired_count) ;
 
+    static constexpr TimeoutMode timeout_mode(TimeoutKind kind) noexcept
+    {
+        return
+            kind == TimeoutKind::NONE       ? TimeoutMode::None :
+            kind == TimeoutKind::RELATIVE   ? TimeoutMode::Period :
+            TimeoutMode::SteadyClock ;
+    }
+
 private:
     virtual void change_data_capacity(unsigned new_capacity) = 0 ;
 
+    // Returns true if State::CLOSED is set by us, false if it has been already set.
+    bool atomic_test_and_set_closed() noexcept ;
+
+    bool wait_until_empty(unsigned full_slots_reserved = 0,
+                          TimeoutKind = {}, std::chrono::nanoseconds = {}) noexcept ;
+
+    unsigned max_empty_slots() const noexcept
+    {
+        return capacity() + blocqueue_controller::max_capacity() ;
+    }
+
     static unsigned validate_capacity(unsigned new_capacity)
     {
-        if (!inrange(new_capacity, 1U, (unsigned)max_capacity()))
+        if (unlikely(!inrange(new_capacity, 1U, (unsigned)max_capacity())))
             invalid_capacity(new_capacity) ;
         return new_capacity ;
     }
 
-    __noreturn __cold static void invalid_capacity(unsigned new_capacity) ;
+    static unsigned validate_acquire_count(unsigned count, const char *queue_end)
+    {
+        if (unlikely(count > max_capacity()))
+            invalid_acquire_count(count, queue_end) ;
+        return count ;
+    }
+
+    __noreturn __cold static void invalid_capacity(unsigned capacity) ;
+    __noreturn __cold static void invalid_acquire_count(unsigned count,
+                                                        const char *queue_end) ;
 } ;
 
 /***************************************************************************//**
@@ -261,12 +289,22 @@ private:
     bool try_put_item(V &&value) ;
 
     // Push handler
-    template<typename SlotsHandler, typename QueueHandler>
-    auto handle_push(unsigned requested_count, SlotsHandler &&acquire, QueueHandler &&queue_handler)
+    template<typename QueueHandler>
+    auto handle_push(unsigned requested_count, QueueHandler &&queue_handler,
+                     TimeoutKind kind = {}, std::chrono::nanoseconds timeout = {})
     {
+        validate_acquire_count(requested_count, "push") ;
+
+        ensure_open() ;
+
         // Acquire slots empty slots for push()
         const unsigned acquired_count =
-            std::forward<SlotsHandler>(acquire)(slots(EMPTY), requested_count) ;
+            slots(EMPTY).universal_acquire(requested_count, timeout_mode(kind), timeout) ;
+
+        // Take precautions in case ensure_open() or queue handler throws exception.
+        auto checkin_guard (make_finalizer([&]{ slots(EMPTY).release(acquired_count) ; })) ;
+
+        ensure_open() ;
 
         const auto handle = [&]
         {
@@ -277,14 +315,9 @@ private:
 
         if (!acquired_count)
         {
-            ensure_open() ;
+            checkin_guard.release() ;
             return result_type() ;
         }
-
-        // Take precautions in case ensure_open() or queue handler throws exception.
-        auto checkin_guard (make_finalizer([&]{ slots(EMPTY).release(acquired_count) ; })) ;
-
-        ensure_open() ;
 
         result_type result (handle()) ;
 
@@ -298,12 +331,11 @@ private:
     }
 
     // Pop handler
-    template<typename SlotsHandler, typename QueueHandler>
-    auto handle_pop(unsigned requested_count, SlotsHandler &&acquire, QueueHandler &&queue_handler)
+    template<typename QueueHandler>
+    auto handle_pop(unsigned requested_count, QueueHandler &&queue_handler,
+                    TimeoutKind kind = {}, std::chrono::nanoseconds timeout = {})
     {
-        // Acquire slots empty slots for push()
-        const unsigned acquired_count =
-            std::forward<SlotsHandler>(acquire)(slots(EMPTY), requested_count) ;
+        unsigned acquired_count ;
 
         const auto handle = [&]
         {
@@ -312,26 +344,18 @@ private:
 
         typedef decltype(handle()) result_type ;
 
+        acquired_count = start_pop(requested_count, kind, timeout) ;
+
         if (!acquired_count)
-        {
-            ensure_open() ;
             return result_type() ;
-        }
 
-        // Take precautions in case ensure_open() or queue handler throws exception.
-        auto checkin_guard (make_finalizer([&]{ slots(EMPTY).release(acquired_count) ; })) ;
+        auto finalizer (make_finalizer([&]
+        {
+            // Add new full slots for push()
+            slots(EMPTY).release(acquired_count) ;
+        })) ;
 
-        ensure_open() ;
-
-        result_type result (handle()) ;
-
-        // Make sure slots remain acquired.
-        checkin_guard.release() ;
-
-        // Add new full slots for push()
-        slots(FULL).release(acquired_count) ;
-
-        return result ;
+        return handle() ;
     }
 } ;
 
@@ -406,7 +430,6 @@ bool blocking_queue<T,C>::put_item(V &&value)
 {
     return
         handle_push(1,
-                    [](auto &slots, unsigned) { return slots.acquire() ; },
                     [&](auto &data, unsigned)
                     {
                         data.push(std::forward<V>(value)) ;
@@ -420,33 +443,28 @@ bool blocking_queue<T,C>::try_put_item(V &&value)
 {
     return
         handle_push(1,
-                    [](auto &slots, unsigned) { return slots.try_acquire() ; },
                     [&](auto &data, unsigned)
                     {
                         data.push(std::forward<V>(value)) ;
                         return true ;
-                    }) ;
+                    },
+                    TimeoutKind::RELATIVE, 0) ;
 }
 
-#if 0
 template<typename T, typename C>
 auto blocking_queue<T,C>::pop() -> value_type
 {
     return
-        handle_queue(FULL, 1,
-                     [](auto &slots, unsigned) { return slots.acquire() ; },
-                     [](auto &data, unsigned) { return data.pop() ; }) ;
+        handle_pop(1, [](auto &data, unsigned) { return data.pop() ; }) ;
 }
 
 template<typename T, typename C>
 auto blocking_queue<T,C>::try_pop() -> optional_value
 {
     return
-        handle_queue(FULL, 1,
-                     [](auto &slots, unsigned) { return slots.try_acquire() ; },
-                     [](auto &data, unsigned) { return optional_value(data.pop()) ; }) ;
+        handle_pop(1, [](auto &data, unsigned) { return data.pop() ; },
+                   TimeoutKind::RELATIVE, 0) ;
 }
-#endif
 
 } // end of namespace pcomn
 
