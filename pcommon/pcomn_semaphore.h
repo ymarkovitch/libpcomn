@@ -22,6 +22,7 @@
 
 #include "pcomn_syncobj.h"
 #include "pcomn_meta.h"
+#include "pcommon.h"
 
 #include <atomic>
 
@@ -45,7 +46,11 @@ class counting_semaphore {
     PCOMN_NONASSIGNABLE(counting_semaphore) ;
 
 public:
-    explicit counting_semaphore(int32_t init_count = 0) : _data(init_count) {}
+    explicit counting_semaphore(unsigned init_count = 0) :
+        _data(init_count)
+    {
+        check_overflow(init_count, "counting_semaphore") ;
+    }
 
     /// Get the maximum value the semaphore count can have.
     static constexpr int32_t max_count() { return std::numeric_limits<int32_t>::max() ; }
@@ -93,7 +98,9 @@ public:
     /// Never blocks.
     ///
     /// @return 1 on success (counter decremented), 0 otherwise.
+    ///
     /// @note If successful (nonzero return) establishes a full memory barrier.
+    /// @note Obstruction-free.
     ///
     unsigned try_acquire() noexcept { return try_acquire(1) ; }
 
@@ -102,10 +109,12 @@ public:
     /// Never blocks.
     ///
     /// @return `count` on success (counter decremented), 0 otherwise.
+    ///
     /// @note Either decrements by full `count` or not at all; @see try_acquire_some().
     /// @note If successful (nonzero return) establishes a full memory barrier.
+    /// @note Obstruction-free.
     ///
-    unsigned try_acquire(unsigned count) noexcept
+    unsigned try_acquire(unsigned count)
     {
         return try_acquire_in_userspace(count, count) ;
     }
@@ -131,9 +140,11 @@ public:
     }
 
     /// @note Establishes a full memory barrier.
+    /// @note Lock-free (not wait-free!)
     void release() { release(1) ; }
 
     /// @note Establishes a full memory barrier.
+    /// @note Lock-free (not wait-free!)
     void release(unsigned count) ;
 
     /***************************************************************************
@@ -146,7 +157,7 @@ public:
     ///
     unsigned try_acquire_some(unsigned maxcount) noexcept
     {
-        return try_acquire_in_userspace(1, maxcount) ;
+        return try_acquire_in_userspace(1, std::min<unsigned>(maxcount, max_count())) ;
     }
 
     template<typename R, typename P>
@@ -204,10 +215,16 @@ private:
     } ;
 
 private:
+    static void check_overflow(int64_t count, const char *msg)
+    {
+        if (unlikely(count > counting_semaphore::max_count()))
+            throw_system_error(EOVERFLOW, msg) ;
+    }
+
     unsigned acquire_with_timeout(unsigned mincount, unsigned maxcount,
                                   TimeoutMode mode, std::chrono::nanoseconds timeout) ;
 
-    unsigned try_acquire_in_userspace(unsigned mincount, unsigned maxcount) noexcept ;
+    unsigned try_acquire_in_userspace(unsigned mincount, unsigned maxcount) ;
     unsigned acquire_with_lock(int32_t mincount, int32_t maxcount,
                                TimeoutMode mode, std::chrono::nanoseconds timeout) ;
     bool data_cas(sem_data &expected, const sem_data &desired) noexcept ;

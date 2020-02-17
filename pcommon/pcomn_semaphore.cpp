@@ -17,11 +17,6 @@ using namespace pcomn::sys ;
 
 namespace pcomn {
 
-static inline void check_overflow(uint64_t count, const char *msg)
-{
-    PCOMN_ENSURE_POSIX(count <= (uint64_t)counting_semaphore::max_count() ? 0 : EOVERFLOW, msg) ;
-}
-
 /*******************************************************************************
  counting_semaphore
 *******************************************************************************/
@@ -33,8 +28,10 @@ inline bool counting_semaphore::data_cas(sem_data &expected, const sem_data &des
 }
 
 // Try to capture `count` tokens w/o blocking.
-unsigned counting_semaphore::try_acquire_in_userspace(unsigned minc, unsigned maxc) noexcept
+unsigned counting_semaphore::try_acquire_in_userspace(unsigned minc, unsigned maxc)
 {
+    check_overflow(minc, "counting_semaphore::acquire") ;
+
     if (!(minc | maxc) || (maxc < minc) || maxc > (unsigned)max_count())
         return 0 ;
 
@@ -115,6 +112,9 @@ unsigned counting_semaphore::acquire_with_lock(int32_t mincount, int32_t maxcoun
             : futex_wait(&_sdata._token_count, old_data._token_count,
                          wait_mode|FutexWait::AbsTime, timeout_point) ;
 
+        if (result == ETIMEDOUT && mode != TimeoutMode::None)
+            return 0 ;
+
         PCOMN_ENSURE_POSIX(result == EAGAIN || result == EINTR ? 0 : result, "FUTEX_WAIT") ;
 
         // Reload the data value
@@ -129,8 +129,6 @@ unsigned counting_semaphore::acquire_with_timeout(unsigned mincount, unsigned ma
 
     if (const unsigned acquired_count = try_acquire_in_userspace(mincount, maxcount))
         return acquired_count ;
-
-    check_overflow(mincount, "counting_semaphore::acquire") ;
 
     if (mode != TimeoutMode::None && timeout == std::chrono::nanoseconds())
         return 0 ;
@@ -149,10 +147,11 @@ int32_t counting_semaphore::borrow(unsigned count)
 
     do
     {
-        check_overflow(-((int64_t)old_data._token_count - count), "counting_semaphore::borrow") ;
+        const int64_t new_token_count = (int64_t)old_data._token_count - count ;
+        check_overflow(-new_token_count, "counting_semaphore::borrow") ;
 
         new_data = old_data ;
-        new_data._token_count -= count ;
+        new_data._token_count = new_token_count ;
     }
     while(!data_cas(old_data, new_data)) ;
 
@@ -169,10 +168,12 @@ void counting_semaphore::release(unsigned count)
 
     do
     {
-        check_overflow((uint64_t)old_data._token_count + count, "counting_semaphore::release") ;
+        // Note new_token_count can be negative thanks to borrow()
+        const int64_t new_token_count = (int64_t)old_data._token_count + count ;
+        check_overflow(new_token_count, "counting_semaphore::release") ;
 
         new_data = old_data ;
-        new_data._token_count += count ;
+        new_data._token_count = new_token_count ;
     }
     while(!data_cas(old_data, new_data)) ;
 

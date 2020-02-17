@@ -25,6 +25,19 @@ template<typename> class list_cbqueue ;
 template<typename> class ring_cbqueue ;
 } // end of namespace pcomn::detail
 
+/*******************************************************************************
+ blocking_queue<T>: the underlying container is based on std::list and implies
+                    (very short) locking.
+
+ blocking_ring_queue<T>: the underlying container is lock-free ring queue
+                         (not wait-free!).
+*******************************************************************************/
+template<typename T, typename ConcurrentContainer = detail::list_cbqueue<T>>
+class blocking_queue ;
+
+template<typename T>
+using blocking_ring_queue = blocking_queue<T, detail::ring_cbqueue<T>> ;
+
 /***************************************************************************//**
  Base non-template class of the MPMC blocking queue template.
 *******************************************************************************/
@@ -107,18 +120,18 @@ protected:
             TimeoutMode::SteadyClock ;
     }
 
-private:
-    virtual void change_data_capacity(unsigned new_capacity) = 0 ;
-
-    // Returns true if State::CLOSED is set by us, false if it has been already set.
-    bool atomic_test_and_set_closed() noexcept ;
-
-    bool wait_until_empty(unsigned full_slots_reserved = 0,
-                          TimeoutKind = {}, std::chrono::nanoseconds = {}) noexcept ;
-
-    unsigned max_empty_slots() const noexcept
+    template<typename R, typename P>
+    constexpr static TimeoutKind timeout_kind(const duration<R,P> &)
     {
-        return capacity() + blocqueue_controller::max_capacity() ;
+        return TimeoutKind::RELATIVE ;
+    }
+
+    template<typename Clock, typename Duration>
+    constexpr static TimeoutKind timeout_kind(const time_point<Clock,Duration> &)
+    {
+        static_assert(std::is_same_v<Clock, std::chrono::steady_clock>,
+                      "Only steady_clock is supported for blocking_queue timeout specification.") ;
+        return TimeoutKind::ABSOLUTE ;
     }
 
     static unsigned validate_capacity(unsigned new_capacity)
@@ -133,6 +146,20 @@ private:
         if (unlikely(count > max_capacity()))
             invalid_acquire_count(count, queue_end) ;
         return count ;
+    }
+
+private:
+    virtual void change_data_capacity(unsigned new_capacity) = 0 ;
+
+    // Returns true if State::CLOSED is set by us, false if it has been already set.
+    bool atomic_test_and_set_closed() noexcept ;
+
+    bool wait_until_empty(unsigned full_slots_reserved = 0,
+                          TimeoutKind = {}, std::chrono::nanoseconds = {}) noexcept ;
+
+    unsigned max_empty_slots() const noexcept
+    {
+        return capacity() + blocqueue_controller::max_capacity() ;
     }
 
     __noreturn __cold static void invalid_capacity(unsigned capacity) ;
@@ -175,7 +202,7 @@ private:
  thread-safe to itself.
  @endparblock
 *******************************************************************************/
-template<typename T, typename ConcurrentContainer = detail::list_cbqueue<T>>
+template<typename T, typename ConcurrentContainer>
 class blocking_queue : private blocqueue_controller {
     typedef blocqueue_controller ancestor ;
 
@@ -225,24 +252,32 @@ public:
     template<typename FwdIterator>
     FwdIterator push_some(FwdIterator b, FwdIterator e) ;
 
-    bool try_push(const value_type &value) { return try_put_item(value) ; }
-    bool try_push(value_type &&value) { return try_put_item(std::move(value)) ; }
+    bool try_push(const value_type &value) { return put_item(value, TimeoutKind::RELATIVE, 0) ; }
+    bool try_push(value_type &&value) { return put_item(std::move(value), TimeoutKind::RELATIVE, 0) ; }
 
     template<typename R, typename P>
-    bool try_push_for(const value_type &value,
-                      const duration<R, P> &rel_time) ;
+    bool try_push_for(const value_type &value, const duration<R, P> &rel_time)
+    {
+        return put_item(value, timeout_kind(rel_time), rel_time) ;
+    }
 
     template<typename R, typename P>
-    bool try_push_for(value_type &&value,
-                      const duration<R, P> &rel_time) ;
+    bool try_push_for(value_type &&value, const duration<R, P> &rel_time)
+    {
+        return put_item(std::move(value), timeout_kind(rel_time), rel_time) ;
+    }
 
     template<typename Clock, typename Duration>
-    bool try_push_until(const value_type &value,
-                        const time_point<Clock, Duration> &abs_time) ;
+    bool try_push_until(const value_type &value, const time_point<Clock, Duration> &abs_time)
+    {
+        return put_item(value, timeout_kind(abs_time), abs_time.time_since_epoch()) ;
+    }
 
     template<typename Clock, typename Duration>
-    bool try_push_until(value_type &&value,
-                        const time_point<Clock, Duration> &abs_time) ;
+    bool try_push_until(value_type &&value, const time_point<Clock, Duration> &abs_time)
+    {
+        return put_item(std::move(value), timeout_kind(abs_time), abs_time.time_since_epoch()) ;
+    }
 
     template<typename FwdIterator, typename R, typename P>
     FwdIterator try_push_some_for(FwdIterator b, FwdIterator e,
@@ -259,13 +294,19 @@ public:
     value_list pop_some(unsigned count) ;
     value_list try_pop_some(unsigned count) ;
 
-    optional_value try_pop() ;
+    optional_value try_pop() { return try_get_item(TimeoutKind::RELATIVE, 0) ; }
 
     template<typename R, typename P>
-    optional_value try_pop_for(const duration<R, P> &rel_time) ;
+    optional_value try_pop_for(const duration<R, P> &rel_time)
+    {
+        return try_get_item(timeout_kind(rel_time), rel_time) ;
+    }
 
     template<typename Clock, typename Duration>
-    optional_value try_pop_until(const time_point<Clock, Duration> &abs_time) ;
+    optional_value try_pop_until(const time_point<Clock, Duration> &abs_time)
+    {
+        return try_get_item(timeout_kind(abs_time), abs_time.time_since_epoch()) ;
+    }
 
     template<typename R, typename P>
     value_list try_pop_some_for(const duration<R, P> &rel_time) ;
@@ -283,10 +324,9 @@ private:
     }
 
     template<typename V>
-    bool put_item(V &&value) ;
+    bool put_item(V &&value, TimeoutKind kind = {}, std::chrono::nanoseconds timeout = {}) ;
 
-    template<typename V>
-    bool try_put_item(V &&value) ;
+    optional_value try_get_item(TimeoutKind kind, std::chrono::nanoseconds timeout) ;
 
     // Push handler
     template<typename QueueHandler>
@@ -359,9 +399,6 @@ private:
     }
 } ;
 
-template<typename T>
-using blocking_ring_queue = blocking_queue<T, detail::ring_cbqueue<T>> ;
-
 /*******************************************************************************
 
 *******************************************************************************/
@@ -426,20 +463,7 @@ private:
 *******************************************************************************/
 template<typename T, typename C>
 template<typename V>
-bool blocking_queue<T,C>::put_item(V &&value)
-{
-    return
-        handle_push(1,
-                    [&](auto &data, unsigned)
-                    {
-                        data.push(std::forward<V>(value)) ;
-                        return true ;
-                    }) ;
-}
-
-template<typename T, typename C>
-template<typename V>
-bool blocking_queue<T,C>::try_put_item(V &&value)
+bool blocking_queue<T,C>::put_item(V &&value, TimeoutKind kind, std::chrono::nanoseconds timeout)
 {
     return
         handle_push(1,
@@ -448,7 +472,7 @@ bool blocking_queue<T,C>::try_put_item(V &&value)
                         data.push(std::forward<V>(value)) ;
                         return true ;
                     },
-                    TimeoutKind::RELATIVE, 0) ;
+                    kind, timeout) ;
 }
 
 template<typename T, typename C>
@@ -459,11 +483,12 @@ auto blocking_queue<T,C>::pop() -> value_type
 }
 
 template<typename T, typename C>
-auto blocking_queue<T,C>::try_pop() -> optional_value
+auto blocking_queue<T,C>::try_get_item(TimeoutKind kind, std::chrono::nanoseconds timeout)
+    -> optional_value
 {
     return
-        handle_pop(1, [](auto &data, unsigned) { return data.pop() ; },
-                   TimeoutKind::RELATIVE, 0) ;
+        handle_pop(1, [](auto &data, unsigned) { return optional_value(data.pop()) ; },
+                   kind, timeout) ;
 }
 
 } // end of namespace pcomn

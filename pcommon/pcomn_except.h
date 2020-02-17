@@ -292,13 +292,13 @@ struct _PCOMNEXP invalid_str_repr : std::invalid_argument {
  System/POSIX errors handling functions
 *******************************************************************************/
 template<bool>
-__noreturn __noinline
+__noreturn __cold
 void throw_syserror(const char *, const char *, int err = system_error::lasterr()) ;
 template<bool>
-__noreturn __noinline void throw_syserror(int, const char *, ...) PCOMN_ATTR_PRINTF(2, 3) ;
+__noreturn __cold void throw_syserror(int, const char *, ...) PCOMN_ATTR_PRINTF(2, 3) ;
 
 template<bool>
-__noreturn __noinline
+__noreturn __cold
 void throw_syserror(int err, const char *format, ...)
 {
    char buf[PCOMN_MSGBUFSIZE] ;
@@ -310,7 +310,7 @@ void throw_syserror(int err, const char *format, ...)
 }
 
 template<bool dummy>
-__noreturn __noinline
+__noreturn __cold
 void throw_syserror(const char *function_name, const char *call_name_or_message, int err)
 {
    if (!strchr(call_name_or_message, ' '))
