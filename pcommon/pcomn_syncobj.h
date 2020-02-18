@@ -31,9 +31,9 @@
  Both the binary_semaphore and promise_lock are extremely fast when uncontended,
  the cost is one atomic userspace operation.
 *******************************************************************************/
-
-#include <pcomn_platform.h>
-#include <pcomn_assert.h>
+#include "pcomn_platform.h"
+#include "pcomn_assert.h"
+#include "pcomn_except.h"
 
 #include <mutex>
 #include <atomic>
@@ -192,8 +192,8 @@ class shared_lock {
             return ;
 
          if (!owns_lock())
-            throw_system_error(std::errc::operation_not_permitted,
-                               "Attempt to unlock already unlocked mutex") ;
+            throw_syserror(std::errc::operation_not_permitted,
+                           "Attempt to unlock already unlocked mutex") ;
          mutex()->unlock_shared() ;
          _owns = false ;
       }
@@ -223,7 +223,7 @@ class shared_lock {
       void ensure_nonempty() const
       {
          if (!mutex())
-            throw_system_error(std::errc::operation_not_permitted, "NULL mutex pointer") ;
+            throw_syserror(std::errc::operation_not_permitted, "NULL mutex pointer") ;
       }
       void unlock_nocheck()
       {

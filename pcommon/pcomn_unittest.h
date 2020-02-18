@@ -352,7 +352,7 @@ template<typename Tag>
 unique_locked_ostream<Tag>::unique_locked_ostream(const strslice &filename) :
    unique_locked_ostream(new std::ofstream(std::string(filename).c_str()))
 {
-   PCOMN_THROW_IF(!stream(), environment_error, "Cannot open " P_STRSLICEQF " for writing", P_STRSLICEV(filename)) ;
+   PCOMN_THROW_IF(!stream(), system_error, "Cannot open " P_STRSLICEQF " for writing", P_STRSLICEV(filename)) ;
 }
 
 template<typename Tag>
@@ -630,7 +630,7 @@ typename TestFixture<private_dirname>::locked_out TestFixture<private_dirname>::
          // Ensure $CPPUNIT_PROGDIR/data is here
          CPPUNIT_ASSERT(_datadir_ready || mkdir_with_parents(_data_basedir)) ;
          std::unique_ptr<std::ofstream> new_stream (new std::ofstream(data_file().c_str())) ;
-         PCOMN_THROW_IF(!*new_stream, environment_error, "Cannot open " P_STRSLICEQF " for writing", P_STRSLICEV(data_file())) ;
+         PCOMN_THROW_IF(!*new_stream, system_error, "Cannot open " P_STRSLICEQF " for writing", P_STRSLICEV(data_file())) ;
          _out = std::move(new_stream) ;
       }
    }

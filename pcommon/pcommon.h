@@ -461,20 +461,6 @@ template<class X, typename... XArgs>
 __noreturn __cold
 void throw_exception(XArgs&& ...args) { throw X(std::forward<XArgs>(args)...) ; }
 
-template<typename Msg>
-__noreturn __cold
-void throw_system_error(std::errc errcode, const Msg &msg)
-{
-   throw_exception<std::system_error>(std::make_error_code(errcode), msg) ;
-}
-
-template<typename Msg>
-__noreturn __cold
-void throw_system_error(int errno_code, const Msg &msg)
-{
-   throw_exception<std::system_error>(errno_code, std::system_category(), msg) ;
-}
-
 /// Throw exception with formatted message
 ///
 template<class X, size_t bufsize = PCOMN_MSGBUFSIZE>
