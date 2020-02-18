@@ -112,10 +112,16 @@ unsigned counting_semaphore::acquire_with_lock(int32_t mincount, int32_t maxcoun
             : futex_wait(&_sdata._token_count, old_data._token_count,
                          wait_mode|FutexWait::AbsTime, timeout_point) ;
 
-        if (result == ETIMEDOUT && mode != TimeoutMode::None)
-            return 0 ;
-
-        PCOMN_ENSURE_POSIX(result == EAGAIN || result == EINTR ? 0 : result, "FUTEX_WAIT") ;
+        if (result < 0)
+            switch(errno)
+            {
+                // Repeat an attempt.
+                case EAGAIN: case EINTR: break ;
+                // The wait is timed out, it's OK if timeout possibility is assumed.
+                case ETIMEDOUT: if (mode != TimeoutMode::None) return 0 ;
+                // Error
+                default: PCOMN_ENSURE_POSIX(-1, "FUTEX_WAIT") ;
+            }
 
         // Reload the data value
         old_data = _data.load(std::memory_order_relaxed) ;

@@ -47,7 +47,7 @@ class SemaphoreTests : public CppUnit::TestFixture {
 
     CPPUNIT_TEST_SUITE(SemaphoreTests) ;
 
-    //CPPUNIT_TEST(Test_Semaphore_Limits) ;
+    CPPUNIT_TEST(Test_Semaphore_Limits) ;
     CPPUNIT_TEST(Test_Semaphore_SingleThreaded) ;
     CPPUNIT_TEST(Test_Semaphore_EINTR) ;
 

@@ -218,7 +218,7 @@ private:
     static void check_overflow(int64_t count, const char *msg)
     {
         if (unlikely(count > counting_semaphore::max_count()))
-            throw_system_error(EOVERFLOW, msg) ;
+            throw_syserror(std::errc::value_too_large, msg) ;
     }
 
     unsigned acquire_with_timeout(unsigned mincount, unsigned maxcount,
