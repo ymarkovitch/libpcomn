@@ -14,11 +14,13 @@
 
 #include <thread>
 #include <chrono>
+#include <random>
 
 #include <stdlib.h>
 #include <signal.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <math.h>
 
 using namespace pcomn ;
 using namespace std::chrono ;
@@ -35,6 +37,74 @@ static void sigusr2_handler(int signo)
         write(STDOUT_FILENO, msg, sizeof(msg) - 1) ;
     }
 }
+
+/*******************************************************************************
+ Watchdog
+*******************************************************************************/
+class Watchdog {
+public:
+    explicit Watchdog(milliseconds timeout) :
+        _timeout(timeout)
+    {}
+
+    void arm() ;
+    void disarm() ;
+
+private:
+    milliseconds     _timeout ;
+    std::timed_mutex _armed ;
+    std::thread      _watchdog ;
+} ;
+
+void Watchdog::arm()
+{
+    CPPUNIT_ASSERT(!_watchdog.joinable()) ;
+
+    _armed.lock() ;
+
+    _watchdog = std::thread([&]{
+        if (!_armed.try_lock_for(_timeout))
+        {
+            CPPUNIT_LOG_LINE("ERROR: THE TEST DEADLOCKED") ;
+            exit(3) ;
+        }
+    }) ;
+}
+
+void Watchdog::disarm()
+{
+    CPPUNIT_ASSERT(_watchdog.joinable()) ;
+
+    _armed.unlock() ;
+    _watchdog.join() ;
+    _watchdog = {} ;
+}
+
+struct geometric_distributed_range {
+    geometric_distributed_range(unsigned lo, unsigned hi, double p) :
+        _generator(p),
+        _offset((PCOMN_VERIFY(lo <= hi), lo)),
+        _divisor(ceil(_generator.max()/double(hi - lo + 1)))
+    {
+        PCOMN_VERIFY(lo > hi) ;
+        PCOMN_VERIFY(hi != 0) ;
+    }
+
+    unsigned operator()()
+    {
+        return _generator(_random_engine)/_divisor + _offset ;
+    }
+
+    static std::random_device seed_device ;
+
+private:
+    std::mt19937 _random_engine {seed_device()} ;
+    std::geometric_distribution<unsigned> _generator ;
+    unsigned _offset ;
+    unsigned _divisor ;
+} ;
+
+std::random_device geometric_distributed_range::seed_device ;
 
 /*******************************************************************************
  class MutexTests
@@ -54,8 +124,7 @@ class SemaphoreTests : public CppUnit::TestFixture {
     CPPUNIT_TEST_SUITE_END() ;
 
 private:
-    std::timed_mutex  armed ;
-    std::thread       watchdog ;
+    Watchdog watchdog {3s} ;
 
     static const unsigned maxcount = counting_semaphore::max_count() ;
 
@@ -63,20 +132,11 @@ public:
     void setUp()
     {
         signaled_id = {} ;
-        armed.lock() ;
-
-        watchdog = std::thread([&]{
-            if (!armed.try_lock_for(std::chrono::seconds(3)))
-            {
-                CPPUNIT_LOG_LINE("ERROR: THE TEST DEADLOCKED") ;
-                exit(3) ;
-            }
-        }) ;
+        watchdog.arm() ;
     }
     void tearDown()
     {
-        armed.unlock() ;
-        watchdog.join() ;
+        watchdog.disarm() ;
         reset_sighandler() ;
     }
 
@@ -94,6 +154,151 @@ public:
 } ;
 
 const unsigned SemaphoreTests::maxcount ;
+
+/*******************************************************************************
+ SemaphoreMTFixture
+*******************************************************************************/
+class SemaphoreMTFixture : public CppUnit::TestFixture {
+public:
+    enum TesterMode : bool {
+        Producer,
+        Consumer
+    } ;
+
+    static std::random_device &seed_random_device()
+    {
+        return geometric_distributed_range::seed_device ;
+    }
+
+    static unsigned random_seed() { return seed_random_device()() ; }
+
+    struct tester_thread final {
+
+        geometric_distributed_range _generate ;
+        std::mt19937                _random_engine {random_seed()} ;
+        std::uniform_int_distribution<uint64_t> _generate_pause ;
+
+        std::vector<unsigned>   _released ; /* <0 means attempt with overflow */
+        std::vector<unsigned>   _acqured ;  /* <0 means borrow */
+        uint64_t                _volume = 0 ;
+        uint64_t                _remains = _volume ;
+        counting_semaphore &    _semaphore ;
+        std::thread             _thread ;
+
+        tester_thread(TesterMode mode, counting_semaphore &semaphore, unsigned volume, double p,
+                      nanoseconds max_pause = {}) ;
+
+        nanoseconds generate_pause()
+        {
+            return nanoseconds(_generate_pause(_random_engine)) ;
+        }
+    private:
+        void produce() ;
+        void consume() ;
+    } ;
+
+    typedef std::unique_ptr<tester_thread> tester_thread_ptr ;
+
+private:
+    Watchdog watchdog {10s} ;
+
+protected:
+    std::vector<tester_thread_ptr> _producers ;
+    std::vector<tester_thread_ptr> _consumers ;
+
+protected:
+    void join_producers()
+    {
+        join_tester_threads(_producers, "producers") ;
+    }
+    void join_consumers()
+    {
+        join_tester_threads(_consumers, "consumers") ;
+    }
+
+    void setUp()
+    {
+        watchdog.arm() ;
+    }
+
+    void tearDown()
+    {
+        join_producers() ;
+        join_consumers() ;
+
+        watchdog.disarm() ;
+
+        _producers.clear() ;
+        _consumers.clear() ;
+    }
+
+private:
+    void join_tester_threads(const simple_slice<tester_thread_ptr> &testers,
+                             const strslice &what) ;
+} ;
+
+/*******************************************************************************
+ SemaphoreMTFixture
+*******************************************************************************/
+void SemaphoreMTFixture::join_tester_threads(const simple_slice<tester_thread_ptr> &testers,
+                                             const strslice &what)
+{
+    const auto is_joinable = [](const auto &t) { return t && t->_thread.joinable() ; } ;
+
+    const unsigned joinable_count = std::count_if(testers.begin(), testers.end(), is_joinable) ;
+    if (!joinable_count)
+        return ;
+
+    CPPUNIT_LOG_LINE("Join " << joinable_count << " " << what << " of " << testers.size()) ;
+
+    for (const auto &t: testers)
+        if (is_joinable(t))
+            t->_thread.join() ;
+
+    CPPUNIT_LOG_LINE("Joined " << joinable_count << " " << what) ;
+}
+
+/*******************************************************************************
+ SemaphoreMTFixture::tester_thread
+*******************************************************************************/
+SemaphoreMTFixture::tester_thread::
+tester_thread(TesterMode mode, counting_semaphore &semaphore,
+              unsigned volume, double p, nanoseconds max_pause) :
+
+    _generate(1, volume, p),
+    _volume(volume),
+    _semaphore(semaphore),
+    _thread([this, mode] { mode == Consumer ? consume() : produce() ; })
+{}
+
+void SemaphoreMTFixture::tester_thread::produce()
+{
+    CPPUNIT_LOG_LINE("Start producer " << _thread.get_id() << ", must produce " << _remains << " slots.") ;
+
+    while (_remains)
+    {
+        const nanoseconds pause =  generate_pause() ;
+        if (pause != nanoseconds())
+            std::this_thread::sleep_for(pause) ;
+
+        const unsigned count = std::min<uint64_t>(_remains, _generate()) ;
+        _semaphore.release(count) ;
+        _remains -= count ;
+    }
+
+    CPPUNIT_LOG_LINE("Finish producer " << _thread.get_id()
+                     << ", produced " << _volume << " slots, " << _remains << " remains.") ;
+}
+
+void SemaphoreMTFixture::tester_thread::consume()
+{
+}
+
+/*******************************************************************************
+                            class SemaphoreMTTests
+*******************************************************************************/
+class SemaphoreMTTests : public SemaphoreMTFixture {
+} ;
 
 /*******************************************************************************
  SemaphoreTests
