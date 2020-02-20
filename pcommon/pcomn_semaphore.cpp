@@ -79,8 +79,11 @@ unsigned counting_semaphore::acquire_with_lock(int32_t mincount, int32_t maxcoun
     // Calculate the end of timeout period.
     struct timespec timeout_point = make_timepoint() ;
 
+    const uint64_t waiting_one = sem_data(0, 1)._value ;
+
     // Check in to the set of waiting threads, we're going to sleep.
-    sem_data old_data (_data.fetch_add(sem_data(0, 1)._value, std::memory_order_acq_rel)) ;
+    // Note we need a new value (preincrement, not postincrement).
+    sem_data old_data (_data.fetch_add(waiting_one, std::memory_order_acq_rel) + waiting_one) ;
 
     for(;;)
     {

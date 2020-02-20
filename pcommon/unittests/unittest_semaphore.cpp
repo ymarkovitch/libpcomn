@@ -18,6 +18,7 @@
 #include <thread>
 #include <chrono>
 #include <random>
+#include <numeric>
 
 #include <stdlib.h>
 #include <signal.h>
@@ -87,14 +88,17 @@ struct geometric_distributed_range {
     geometric_distributed_range(unsigned lo, unsigned hi, double p) :
         _generator(p),
         _offset((PCOMN_VERIFY(lo <= hi), lo)),
-        _divisor(ceil(_generator.max()/double(hi - lo + 1)))
+        _hibound(hi - lo)
     {
         PCOMN_VERIFY(hi != 0) ;
     }
 
     unsigned operator()()
     {
-        return _generator(_random_engine)/_divisor + _offset ;
+        unsigned v ;
+        // Chop off the tail
+        while((v = _generator(_random_engine)) > _hibound) ;
+        return v + _offset ;
     }
 
     static std::random_device seed_device ;
@@ -103,7 +107,7 @@ private:
     std::mt19937 _random_engine {seed_device()} ;
     std::geometric_distribution<unsigned> _generator ;
     unsigned _offset ;
-    unsigned _divisor ;
+    unsigned _hibound ;
 } ;
 
 std::random_device geometric_distributed_range::seed_device ;
@@ -283,7 +287,7 @@ tester_thread(TesterMode mode, counting_semaphore &semaphore,
 
 void SemaphoreMTFixture::tester_thread::produce()
 {
-    CPPUNIT_LOG_LINE("Start producer " << HEXOUT(_thread.get_id()) << ", must produce " << _remains << " slots.") ;
+    CPPUNIT_LOG_LINE("Start producer " << HEXOUT(_thread.get_id()) << ", must produce " << _remains << " items.") ;
 
     while (_remains && !_stop.load(std::memory_order_acquire))
     {
@@ -312,12 +316,15 @@ void SemaphoreMTFixture::tester_thread::consume()
     while (!_stop.load(std::memory_order_acquire))
     {
         const unsigned count = std::min<uint64_t>(_volume, _generate()) ;
-        _consumed.push_back
-            (_semaphore.acquire(count)) ;
-        _total += count ;
+        const unsigned consumed = _semaphore.acquire(count) ;
+
+        PCOMN_VERIFY(consumed == count) ;
 
         if (_stop.load(std::memory_order_acquire))
             break ;
+
+        _consumed.push_back(consumed) ;
+        _total += consumed ;
 
         const nanoseconds pause = generate_pause() ;
         if (pause != nanoseconds())
@@ -347,8 +354,10 @@ class SemaphoreFuzzyTests : public SemaphoreMTFixture {
     CPPUNIT_TEST(P_PASS(RunTest<1,1,2'000'000,0>)) ;
     CPPUNIT_TEST(P_PASS(RunTest<2,2,2'000'000,0>)) ;
     CPPUNIT_TEST(P_PASS(RunTest<2,1,1'000'000,1000>)) ;
+    CPPUNIT_TEST(P_PASS(RunTest<2,2,2'000'000,1000>)) ;
     CPPUNIT_TEST(P_PASS(RunTest<2,5,10'000'000,0>)) ;
     CPPUNIT_TEST(P_PASS(RunTest<10,10,1'000'000,0>)) ;
+    CPPUNIT_TEST(P_PASS(RunTest<10,10,1'000'000,100>)) ;
 
     CPPUNIT_TEST_SUITE_END() ;
 
@@ -364,10 +373,10 @@ void SemaphoreFuzzyTests::run(unsigned producers, unsigned consumers,
     const uint64_t total_volume = pcount*producers ;
     const nanoseconds max_pause (max_pause_nano) ;
 
-    const nanoseconds consumers_timeout (std::max(4*max_pause, nanoseconds(100ms))) ;
+    const nanoseconds consumers_timeout (std::max(consumers*100*max_pause, nanoseconds(50ms))) ;
 
     CPPUNIT_LOG_LINE("Running " << producers << " producers, " << consumers << " consumers, "
-                     << total_volume << " total slotes (" << pcount << " per producer), "
+                     << total_volume << " total items (" << pcount << " per producer), "
                      << "max pause "<< (duration<double,std::micro>(max_pause).count()) << "ms") ;
 
     PRealStopwatch wall_time ;
@@ -390,22 +399,43 @@ void SemaphoreFuzzyTests::run(unsigned producers, unsigned consumers,
     make_testers(Consumer, _consumers, consumers) ;
     make_testers(Producer, _producers, producers) ;
 
-    std::this_thread::sleep_for(consumers_timeout) ;
-
     join_producers() ;
 
+    // Wait until the quiescent state
+    unsigned pending = 0 ;
+    for (unsigned p ; (p = semaphore.borrow(0)) != pending ; std::this_thread::sleep_for(consumers_timeout))
+        pending = p ;
+
+    CPPUNIT_LOG_LINE("Stopping consumers, " << pending << " items pending.") ;
+
     for (auto &consumer: _consumers)
+        consumer->_stop = true ;
+
+    for (unsigned i = consumers ; i-- ;)
     {
         std::this_thread::sleep_for(consumers_timeout) ;
-        consumer->_stop = true ;
         semaphore.release(maxcount - semaphore.borrow(0)) ;
     }
     join_consumers() ;
 
+    const auto eval_total = [](auto &testers, size_t init)
+    {
+        return std::accumulate(testers.begin(), testers.end(), init,
+                               [](size_t total, const auto &p) { return total + p->_total ; }) ;
+    } ;
+
     cpu_time.stop() ;
     wall_time.stop() ;
 
+    const size_t total_produced = eval_total(_producers, 0) ;
+    const size_t total_consumed = eval_total(_consumers, pending) ;
+
     CPPUNIT_LOG_LINE("Finished in " << wall_time << " real time, " << cpu_time << " CPU time.") ;
+    CPPUNIT_LOG_LINE(total_produced << " produced, " <<  total_consumed << " consumed, "
+                     << '(' << pending << " pending), " << total_volume << " expected.") ;
+
+    CPPUNIT_LOG_EQUAL(total_produced, total_volume) ;
+    CPPUNIT_LOG_EQUAL(total_consumed, total_produced) ;
 }
 
 /*******************************************************************************
@@ -514,187 +544,6 @@ void SemaphoreTests::Test_Semaphore_EINTR()
  SemaphoreFuzzyTests
 *******************************************************************************/
 
-#if 0
-void SemaphoreTests::Test_Scoped_ReadWriteLock()
-{
-    pcomn::shared_mutex rwmutex ;
-
-    CPPUNIT_LOG_ASSERT(rwmutex.try_lock_shared()) ;
-    CPPUNIT_LOG_RUN(rwmutex.unlock_shared()) ;
-
-    CPPUNIT_LOG_ASSERT(rwmutex.try_lock()) ;
-    CPPUNIT_LOG_RUN(rwmutex.unlock()) ;
-
-    {
-        PCOMN_SCOPE_R_LOCK(rguard1, rwmutex) ;
-
-        CPPUNIT_LOG_IS_TRUE(rguard1) ;
-
-        CPPUNIT_LOG_IS_TRUE(rwmutex.try_lock_shared()) ;
-        CPPUNIT_LOG_RUN(rwmutex.unlock_shared()) ;
-        CPPUNIT_LOG_IS_FALSE(rwmutex.try_lock()) ;
-
-        CPPUNIT_LOG_IS_TRUE(rguard1.try_lock()) ;
-        CPPUNIT_LOG_RUN(rguard1.unlock()) ;
-
-        CPPUNIT_LOG_IS_FALSE(rguard1) ;
-        CPPUNIT_LOG_RUN(rwmutex.unlock_shared()) ;
-    }
-    CPPUNIT_LOG_ASSERT(rwmutex.try_lock()) ;
-    CPPUNIT_LOG_RUN(rwmutex.unlock()) ;
-    {
-        PCOMN_SCOPE_W_LOCK(wguard1, rwmutex) ;
-
-        CPPUNIT_LOG_IS_FALSE(rwmutex.try_lock_shared()) ;
-        CPPUNIT_LOG_IS_FALSE(rwmutex.try_lock()) ;
-    }
-    CPPUNIT_LOG_ASSERT(rwmutex.try_lock()) ;
-    CPPUNIT_LOG_RUN(rwmutex.unlock()) ;
-    {
-        PCOMN_SCOPE_W_XLOCK(wguard1, rwmutex) ;
-
-        CPPUNIT_LOG_IS_TRUE(wguard1) ;
-
-        CPPUNIT_LOG_IS_FALSE(rwmutex.try_lock_shared()) ;
-        CPPUNIT_LOG_IS_FALSE(rwmutex.try_lock()) ;
-
-        CPPUNIT_LOG_IS_TRUE(wguard1) ;
-    }
-    CPPUNIT_LOG_ASSERT(rwmutex.try_lock()) ;
-    CPPUNIT_LOG_RUN(rwmutex.unlock()) ;
-}
-
-void SemaphoreTests::Test_Promise_SingleThreaded()
-{
-    using namespace std ;
-    promise_lock lock0 {false} ;
-
-    CPPUNIT_LOG_RUN(lock0.wait()) ;
-    CPPUNIT_LOG_RUN(lock0.wait()) ;
-    CPPUNIT_LOG_RUN(lock0.unlock()) ;
-    CPPUNIT_LOG_RUN(lock0.wait()) ;
-
-    CPPUNIT_LOG(std::endl) ;
-
-    promise_lock lock1 ;
-    CPPUNIT_LOG_RUN(lock1.unlock()) ;
-    CPPUNIT_LOG_RUN(lock1.wait()) ;
-    CPPUNIT_LOG_RUN(lock1.unlock()) ;
-    CPPUNIT_LOG_RUN(lock1.wait()) ;
-
-    promise_lock lock2 {true} ;
-    CPPUNIT_LOG_RUN(lock2.unlock()) ;
-    CPPUNIT_LOG_RUN(lock2.wait()) ;
-    CPPUNIT_LOG_RUN(lock2.unlock()) ;
-    CPPUNIT_LOG_RUN(lock2.wait()) ;
-
-    promise_lock lock3 {true} ;
-    CPPUNIT_LOG_RUN(lock3.unlock()) ;
-    CPPUNIT_LOG_RUN(lock3.unlock()) ;
-    CPPUNIT_LOG_RUN(lock3.wait()) ;
-}
-
-void SemaphoreTests::Test_Promise_MultiThreaded()
-{
-    using namespace std ;
-    vector<int> v1, v2, v3, v4 ;
-    for (vector<int> *v: {&v1, &v2, &v3, &v4})
-        v->reserve(100) ;
-
-    std::thread t1, t2, t3, t4 ;
-    promise_lock lock1 ;
-    t1 = thread([&]{
-        v1.push_back(10001) ;
-        lock1.wait() ;
-        v1.push_back(10002) ;
-        lock1.wait() ;
-        v1.push_back(10003) ;
-    }) ;
-    CPPUNIT_LOG_RUN(this_thread::sleep_for(chrono::milliseconds(100))) ;
-    CPPUNIT_LOG_EQ(v1.size(), 1) ;
-    CPPUNIT_LOG_EQ(v1.front(), 10001) ;
-    CPPUNIT_LOG_RUN(this_thread::sleep_for(chrono::milliseconds(100))) ;
-    CPPUNIT_LOG_EQ(v1.size(), 1) ;
-    CPPUNIT_LOG_EQ(v1.front(), 10001) ;
-    CPPUNIT_LOG_RUN(lock1.unlock()) ;
-    CPPUNIT_LOG_RUN(this_thread::sleep_for(chrono::milliseconds(100))) ;
-    CPPUNIT_LOG_EQ(v1.size(), 3) ;
-    CPPUNIT_LOG_EQUAL(v1, (std::vector<int>{10001, 10002, 10003})) ;
-    CPPUNIT_LOG_RUN(t1.join()) ;
-
-    CPPUNIT_LOG(std::endl) ;
-
-    CPPUNIT_LOG_RUN(v1.clear()) ;
-    CPPUNIT_LOG_RUN(v1.resize(100)) ;
-    CPPUNIT_LOG_RUN(v1.clear()) ;
-
-    promise_lock lock2 {true} ;
-    promise_lock lock3 {true} ;
-    t1 = thread([&]{
-        lock3.wait() ;
-        v1.push_back(10007) ;
-        lock2.wait() ;
-        v1.push_back(10008) ;
-        lock2.wait() ;
-        v1.push_back(10009) ;
-    }) ;
-    t2 = thread([&]{
-        lock3.wait() ;
-        v2.push_back(20007) ;
-        lock2.wait() ;
-        v2.push_back(20008) ;
-        lock2.wait() ;
-        v2.push_back(20009) ;
-    }) ;
-    t3 = thread([&]{
-        lock3.wait() ;
-        v3.push_back(30007) ;
-        lock2.wait() ;
-        v3.push_back(30008) ;
-        lock2.wait() ;
-        v3.push_back(30009) ;
-    }) ;
-    t4 = thread([&]{
-        lock3.wait() ;
-        v4.push_back(40007) ;
-        lock2.wait() ;
-        v4.push_back(40008) ;
-        lock2.wait() ;
-        v4.push_back(40009) ;
-    }) ;
-    CPPUNIT_LOG_RUN(this_thread::sleep_for(chrono::milliseconds(100))) ;
-    CPPUNIT_LOG_EQ(v1.size(), 0) ;
-    CPPUNIT_LOG_EQ(v2.size(), 0) ;
-    CPPUNIT_LOG_EQ(v3.size(), 0) ;
-    CPPUNIT_LOG_EQ(v4.size(), 0) ;
-
-    CPPUNIT_LOG_RUN(lock3.unlock()) ;
-    CPPUNIT_LOG_RUN(this_thread::sleep_for(chrono::milliseconds(100))) ;
-
-    vector<int> v11 (v1), v21 (v2), v31 (v3), v41 (v4) ;
-
-    CPPUNIT_LOG_RUN(lock2.unlock()) ;
-    CPPUNIT_LOG_RUN(this_thread::sleep_for(chrono::milliseconds(100))) ;
-
-    vector<int> v12 (v1), v22 (v2), v32 (v3), v42 (v4) ;
-
-    CPPUNIT_LOG_RUN(lock2.wait()) ;
-    CPPUNIT_LOG_RUN(lock3.wait()) ;
-
-    for (thread *t: {&t1, &t2, &t3, &t4})
-        t->join() ;
-
-    CPPUNIT_LOG_EQUAL(v11, (std::vector<int>{10007})) ;
-    CPPUNIT_LOG_EQUAL(v21, (std::vector<int>{20007})) ;
-    CPPUNIT_LOG_EQUAL(v31, (std::vector<int>{30007})) ;
-    CPPUNIT_LOG_EQUAL(v41, (std::vector<int>{40007})) ;
-
-    CPPUNIT_LOG_EQUAL(v12, (std::vector<int>{10007, 10008, 10009})) ;
-    CPPUNIT_LOG_EQUAL(v22, (std::vector<int>{20007, 20008, 20009})) ;
-    CPPUNIT_LOG_EQUAL(v32, (std::vector<int>{30007, 30008, 30009})) ;
-    CPPUNIT_LOG_EQUAL(v42, (std::vector<int>{40007, 40008, 40009})) ;
-}
-#endif
 
 /*******************************************************************************
  main

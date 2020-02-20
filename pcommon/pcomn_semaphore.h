@@ -72,7 +72,7 @@ public:
     ///
     unsigned acquire(unsigned count)
     {
-        return acquire_with_timeout(count, count, TimeoutMode::Period, {}) ;
+        return acquire_with_timeout(count, count, {}, {}) ;
     }
 
     /// Acquire single token.
@@ -91,7 +91,7 @@ public:
     ///
     unsigned acquire_some(unsigned maxcount)
     {
-        return acquire_with_timeout(1, maxcount, TimeoutMode::Period, {}) ;
+        return acquire_with_timeout(1, maxcount, {}, {}) ;
     }
 
     /// Attempt to decrement the internal counter by 1 as long as the result is >=0.
