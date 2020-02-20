@@ -9,8 +9,11 @@
  PROGRAMMED BY:   Yakov Markovitch
  CREATION DATE:   17 Feb 2020
 *******************************************************************************/
+#define CPPUNIT_USE_SYNC_LOGSTREAM
+
 #include <pcomn_unittest.h>
 #include <pcomn_semaphore.h>
+#include <pcomn_stopwatch.h>
 
 #include <thread>
 #include <chrono>
@@ -86,7 +89,6 @@ struct geometric_distributed_range {
         _offset((PCOMN_VERIFY(lo <= hi), lo)),
         _divisor(ceil(_generator.max()/double(hi - lo + 1)))
     {
-        PCOMN_VERIFY(lo > hi) ;
         PCOMN_VERIFY(hi != 0) ;
     }
 
@@ -160,6 +162,9 @@ const unsigned SemaphoreTests::maxcount ;
 *******************************************************************************/
 class SemaphoreMTFixture : public CppUnit::TestFixture {
 public:
+    class tester_thread ;
+    typedef std::unique_ptr<tester_thread> tester_thread_ptr ;
+
     enum TesterMode : bool {
         Producer,
         Consumer
@@ -172,17 +177,38 @@ public:
 
     static unsigned random_seed() { return seed_random_device()() ; }
 
-    struct tester_thread final {
+    void setUp()
+    {
+        watchdog.arm() ;
+    }
 
+    void tearDown()
+    {
+        join_producers() ;
+        join_consumers() ;
+
+        watchdog.disarm() ;
+
+        _producers.clear() ;
+        _consumers.clear() ;
+    }
+
+    /***************************************************************************
+     tester_thread
+    ***************************************************************************/
+    class tester_thread final {
+    public:
         geometric_distributed_range _generate ;
         std::mt19937                _random_engine {random_seed()} ;
         std::uniform_int_distribution<uint64_t> _generate_pause ;
 
-        std::vector<unsigned>   _released ; /* <0 means attempt with overflow */
-        std::vector<unsigned>   _acqured ;  /* <0 means borrow */
+        std::vector<unsigned>   _produced ; /* <0 means attempt with overflow */
+        std::vector<unsigned>   _consumed ;  /* <0 means borrow */
         uint64_t                _volume = 0 ;
         uint64_t                _remains = _volume ;
+        uint64_t                _total = 0 ;
         counting_semaphore &    _semaphore ;
+        std::atomic_bool        _stop {false} ;
         std::thread             _thread ;
 
         tester_thread(TesterMode mode, counting_semaphore &semaphore, unsigned volume, double p,
@@ -196,8 +222,6 @@ public:
         void produce() ;
         void consume() ;
     } ;
-
-    typedef std::unique_ptr<tester_thread> tester_thread_ptr ;
 
 private:
     Watchdog watchdog {10s} ;
@@ -216,21 +240,6 @@ protected:
         join_tester_threads(_consumers, "consumers") ;
     }
 
-    void setUp()
-    {
-        watchdog.arm() ;
-    }
-
-    void tearDown()
-    {
-        join_producers() ;
-        join_consumers() ;
-
-        watchdog.disarm() ;
-
-        _producers.clear() ;
-        _consumers.clear() ;
-    }
 
 private:
     void join_tester_threads(const simple_slice<tester_thread_ptr> &testers,
@@ -266,6 +275,7 @@ tester_thread(TesterMode mode, counting_semaphore &semaphore,
               unsigned volume, double p, nanoseconds max_pause) :
 
     _generate(1, volume, p),
+    _generate_pause(0, max_pause.count()),
     _volume(volume),
     _semaphore(semaphore),
     _thread([this, mode] { mode == Consumer ? consume() : produce() ; })
@@ -273,32 +283,130 @@ tester_thread(TesterMode mode, counting_semaphore &semaphore,
 
 void SemaphoreMTFixture::tester_thread::produce()
 {
-    CPPUNIT_LOG_LINE("Start producer " << _thread.get_id() << ", must produce " << _remains << " slots.") ;
+    CPPUNIT_LOG_LINE("Start producer " << HEXOUT(_thread.get_id()) << ", must produce " << _remains << " slots.") ;
 
-    while (_remains)
+    while (_remains && !_stop.load(std::memory_order_acquire))
     {
-        const nanoseconds pause =  generate_pause() ;
+        const nanoseconds pause = generate_pause() ;
         if (pause != nanoseconds())
             std::this_thread::sleep_for(pause) ;
 
         const unsigned count = std::min<uint64_t>(_remains, _generate()) ;
+        PCOMN_VERIFY(count > 0) ;
+
         _semaphore.release(count) ;
+        _produced.push_back(count) ;
+        _total += count ;
         _remains -= count ;
     }
 
-    CPPUNIT_LOG_LINE("Finish producer " << _thread.get_id()
-                     << ", produced " << _volume << " slots, " << _remains << " remains.") ;
+    CPPUNIT_LOG_LINE("Finish producer " << HEXOUT(_thread.get_id())
+                     << ", produced " << _total << " items in " << _produced.size() << " slots, "
+                     << _remains << " remains.") ;
 }
 
 void SemaphoreMTFixture::tester_thread::consume()
 {
+    CPPUNIT_LOG_LINE("Start consumer " << HEXOUT(_thread.get_id())) ;
+
+    while (!_stop.load(std::memory_order_acquire))
+    {
+        const unsigned count = std::min<uint64_t>(_volume, _generate()) ;
+        _consumed.push_back
+            (_semaphore.acquire(count)) ;
+        _total += count ;
+
+        if (_stop.load(std::memory_order_acquire))
+            break ;
+
+        const nanoseconds pause = generate_pause() ;
+        if (pause != nanoseconds())
+            std::this_thread::sleep_for(pause) ;
+    }
+
+    CPPUNIT_LOG_LINE("Finish consumer " << HEXOUT(_thread.get_id())
+                     << ", consumed " << _total << " items in " << _consumed.size() << " slots.") ;
 }
 
 /*******************************************************************************
-                            class SemaphoreMTTests
+                            class SemaphoreFuzzyTests
 *******************************************************************************/
-class SemaphoreMTTests : public SemaphoreMTFixture {
+class SemaphoreFuzzyTests : public SemaphoreMTFixture {
+
+    template<unsigned producers, unsigned consumers,
+             unsigned pcount, unsigned max_pause_nano>
+    void RunTest()
+    {
+        run(producers, consumers, pcount, max_pause_nano) ;
+    }
+
+    CPPUNIT_TEST_SUITE(SemaphoreFuzzyTests) ;
+
+    CPPUNIT_TEST(P_PASS(RunTest<1,1,1,0>)) ;
+    CPPUNIT_TEST(P_PASS(RunTest<1,1,1000,0>)) ;
+    CPPUNIT_TEST(P_PASS(RunTest<1,1,2'000'000,0>)) ;
+    CPPUNIT_TEST(P_PASS(RunTest<2,2,2'000'000,0>)) ;
+    CPPUNIT_TEST(P_PASS(RunTest<2,1,1'000'000,1000>)) ;
+    CPPUNIT_TEST(P_PASS(RunTest<2,5,10'000'000,0>)) ;
+    CPPUNIT_TEST(P_PASS(RunTest<10,10,1'000'000,0>)) ;
+
+    CPPUNIT_TEST_SUITE_END() ;
+
+private:
+    static const unsigned maxcount = counting_semaphore::max_count() ;
+
+    void run(unsigned producers, unsigned consumers, unsigned pcount, unsigned max_pause_nano) ;
 } ;
+
+void SemaphoreFuzzyTests::run(unsigned producers, unsigned consumers,
+                              unsigned pcount, unsigned max_pause_nano)
+{
+    const uint64_t total_volume = pcount*producers ;
+    const nanoseconds max_pause (max_pause_nano) ;
+
+    const nanoseconds consumers_timeout (std::max(4*max_pause, nanoseconds(100ms))) ;
+
+    CPPUNIT_LOG_LINE("Running " << producers << " producers, " << consumers << " consumers, "
+                     << total_volume << " total slotes (" << pcount << " per producer), "
+                     << "max pause "<< (duration<double,std::micro>(max_pause).count()) << "ms") ;
+
+    PRealStopwatch wall_time ;
+    PCpuStopwatch  cpu_time ;
+
+    counting_semaphore semaphore ;
+
+    wall_time.start() ;
+    cpu_time.start() ;
+
+    const auto make_testers = [&](TesterMode mode, auto &testers, size_t count)
+    {
+        CPPUNIT_ASSERT(testers.empty()) ;
+        for (testers.reserve(count) ; count ; --count)
+        {
+            testers.emplace_back(new tester_thread(mode, semaphore, pcount, 0.01, max_pause)) ;
+        }
+    } ;
+
+    make_testers(Consumer, _consumers, consumers) ;
+    make_testers(Producer, _producers, producers) ;
+
+    std::this_thread::sleep_for(consumers_timeout) ;
+
+    join_producers() ;
+
+    for (auto &consumer: _consumers)
+    {
+        std::this_thread::sleep_for(consumers_timeout) ;
+        consumer->_stop = true ;
+        semaphore.release(maxcount - semaphore.borrow(0)) ;
+    }
+    join_consumers() ;
+
+    cpu_time.stop() ;
+    wall_time.stop() ;
+
+    CPPUNIT_LOG_LINE("Finished in " << wall_time << " real time, " << cpu_time << " CPU time.") ;
+}
 
 /*******************************************************************************
  SemaphoreTests
@@ -401,6 +509,10 @@ void SemaphoreTests::Test_Semaphore_EINTR()
     CPPUNIT_LOG(std::endl) ;
     set_sighandler() ;
 }
+
+/*******************************************************************************
+ SemaphoreFuzzyTests
+*******************************************************************************/
 
 #if 0
 void SemaphoreTests::Test_Scoped_ReadWriteLock()
@@ -591,7 +703,8 @@ int main(int argc, char *argv[])
 {
     return pcomn::unit::run_tests
         <
-            SemaphoreTests
+            SemaphoreTests,
+            SemaphoreFuzzyTests
         >
         (argc, argv) ;
 }
