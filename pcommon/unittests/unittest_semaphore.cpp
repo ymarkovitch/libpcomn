@@ -91,7 +91,8 @@ public:
 /*******************************************************************************
                             class SemaphoreFuzzyTests
 *******************************************************************************/
-class SemaphoreFuzzyTests : public SemaphoreMTFixture {
+class SemaphoreFuzzyTests : public ProducerConsumerFixture {
+    typedef ProducerConsumerFixture ancestor ;
 
     template<unsigned producers, unsigned consumers,
              unsigned pcount, unsigned max_pause_nano>
@@ -118,7 +119,103 @@ private:
     static const unsigned maxcount = counting_semaphore::max_count() ;
 
     void run(unsigned producers, unsigned consumers, unsigned pcount, unsigned max_pause_nano) ;
+
+public:
+    SemaphoreFuzzyTests() : ancestor(10s) {}
+
+    /***************************************************************************
+     tester_thread
+    ***************************************************************************/
+    class tester_thread final : public ancestor::tester_thread {
+        typedef ancestor::tester_thread base ;
+    public:
+        std::vector<unsigned>   _produced ; /* <0 means attempt with overflow */
+        std::vector<unsigned>   _consumed ;  /* <0 means borrow */
+        uint64_t                _volume = 0 ;
+        uint64_t                _remains = _volume ;
+        uint64_t                _total = 0 ;
+        counting_semaphore &    _semaphore ;
+        std::atomic_bool        _stop {false} ;
+        std::thread             _thread ;
+
+        tester_thread(TesterMode mode, counting_semaphore &semaphore, unsigned volume, double p,
+                      nanoseconds max_pause = {}) ;
+
+        std::thread &self() final { return _thread ; }
+
+    private:
+        void produce() final ;
+        void consume() final ;
+    } ;
+
+    static tester_thread &tester(const tester_thread_ptr &pt)
+    {
+        PCOMN_VERIFY(pt) ;
+        return *static_cast<tester_thread *>(pt.get()) ;
+    }
 } ;
+
+/*******************************************************************************
+ SemaphoreFuzzyTests::tester_thread
+*******************************************************************************/
+SemaphoreFuzzyTests::tester_thread::tester_thread(TesterMode mode, counting_semaphore &semaphore,
+                                                  unsigned volume, double p, nanoseconds max_pause) :
+    base(p, volume, max_pause),
+    _volume(volume),
+    _semaphore(semaphore)
+{
+    init(mode) ;
+}
+
+void SemaphoreFuzzyTests::tester_thread::produce()
+{
+    CPPUNIT_LOG_LINE("Start producer " << HEXOUT(_thread.get_id()) << ", must produce " << _remains << " items.") ;
+
+    while (_remains && !_stop.load(std::memory_order_acquire))
+    {
+        const nanoseconds pause = generate_pause() ;
+        if (pause != nanoseconds())
+            std::this_thread::sleep_for(pause) ;
+
+        const unsigned count = std::min<uint64_t>(_remains, _generate()) ;
+        PCOMN_VERIFY(count > 0) ;
+
+        _semaphore.release(count) ;
+        _produced.push_back(count) ;
+        _total += count ;
+        _remains -= count ;
+    }
+
+    CPPUNIT_LOG_LINE("Finish producer " << HEXOUT(_thread.get_id())
+                     << ", produced " << _total << " items in " << _produced.size() << " slots, "
+                     << _remains << " remains.") ;
+}
+
+void SemaphoreFuzzyTests::tester_thread::consume()
+{
+    CPPUNIT_LOG_LINE("Start consumer " << HEXOUT(_thread.get_id())) ;
+
+    while (!_stop.load(std::memory_order_acquire))
+    {
+        const unsigned count = std::min<uint64_t>(_volume, _generate()) ;
+        const unsigned consumed = _semaphore.acquire(count) ;
+
+        PCOMN_VERIFY(consumed == count) ;
+
+        if (_stop.load(std::memory_order_acquire))
+            break ;
+
+        _consumed.push_back(consumed) ;
+        _total += consumed ;
+
+        const nanoseconds pause = generate_pause() ;
+        if (pause != nanoseconds())
+            std::this_thread::sleep_for(pause) ;
+    }
+
+    CPPUNIT_LOG_LINE("Finish consumer " << HEXOUT(_thread.get_id())
+                     << ", consumed " << _total << " items in " << _consumed.size() << " slots.") ;
+}
 
 /*******************************************************************************
  SemaphoreTests
@@ -269,7 +366,7 @@ void SemaphoreFuzzyTests::run(unsigned producers, unsigned consumers,
     CPPUNIT_LOG_LINE("Stopping consumers, " << pending << " items pending.") ;
 
     for (auto &consumer: _consumers)
-        consumer->_stop = true ;
+        tester(consumer)._stop = true ;
 
     for (unsigned i = consumers ; i-- ;)
     {
@@ -281,7 +378,7 @@ void SemaphoreFuzzyTests::run(unsigned producers, unsigned consumers,
     const auto eval_total = [](auto &testers, size_t init)
     {
         return std::accumulate(testers.begin(), testers.end(), init,
-                               [](size_t total, const auto &p) { return total + p->_total ; }) ;
+                               [](size_t total, const auto &p) { return total + tester(p)._total ; }) ;
     } ;
 
     cpu_time.stop() ;
