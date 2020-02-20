@@ -11,7 +11,16 @@
  PROGRAMMED BY:   Yakov Markovitch
  CREATION DATE:   6 Feb 2014
 *******************************************************************************/
-#include <pcomn_unittest.h>
+#ifndef CPPUNIT_USE_SYNC_LOGSTREAM
+
+#ifdef CPPUNIT_LOGSTREAM
+#error Ensure pcomn_unittest_mt.h is #included first in the unit test source file.
+#endif /* CPPUNIT_LOGSTREAM */
+
+#define CPPUNIT_USE_SYNC_LOGSTREAM
+#endif
+
+#include "pcomn_unittest.h"
 
 #include <thread>
 #include <mutex>
@@ -26,8 +35,47 @@
 namespace pcomn {
 namespace unit {
 
-/******************************************************************************/
-/** Primitive queue to "feed" test worker; if the queue is empty, the consumer
+/*******************************************************************************
+ watchdog
+*******************************************************************************/
+class watchdog {
+   public:
+    explicit watchdog(std::chrono::milliseconds timeout) :
+         _timeout(timeout)
+      {}
+
+      __noinline void arm()
+      {
+         CPPUNIT_ASSERT(!_watchdog.joinable()) ;
+
+         _armed.lock() ;
+
+         _watchdog = std::thread([&]{
+            if (!_armed.try_lock_for(_timeout))
+            {
+               CPPUNIT_LOG_LINE("ERROR: THE TEST DEADLOCKED") ;
+               exit(3) ;
+            }
+         }) ;
+      }
+
+      __noinline void disarm()
+      {
+         CPPUNIT_ASSERT(_watchdog.joinable()) ;
+
+         _armed.unlock() ;
+         _watchdog.join() ;
+         _watchdog = {} ;
+      }
+
+   private:
+      std::chrono::milliseconds  _timeout ;
+      std::timed_mutex           _armed ;
+      std::thread                _watchdog ;
+} ;
+
+/***************************************************************************//**
+ Primitive queue to "feed" test worker; if the queue is empty, the consumer
  gets T()
 *******************************************************************************/
 template<typename T>
@@ -41,23 +89,26 @@ class consumer_feeder {
       void push_back(const T &value) { (std::unique_lock<std::mutex>(_mutex), _queue.push_back(value)) ; }
       void push_back(T &&value) { (std::unique_lock<std::mutex>(_mutex), _queue.push_back(std::move(value))) ; }
 
-      T pop_front()
-      {
-         std::unique_lock<std::mutex> lock (_mutex) ;
-         if (_queue.empty())
-         {
-            lock.unlock() ;
-            return T() ;
-         }
-         T result (std::move(_queue.front())) ;
-         _queue.pop_front() ;
-         return result ;
-      }
+    T pop_front() ;
 
    private:
       std::mutex   _mutex ;
       std::list<T> _queue ;
 } ;
+
+template<typename T>
+T consumer_feeder<T>::pop_front()
+{
+    std::unique_lock<std::mutex> lock (_mutex) ;
+    if (_queue.empty())
+    {
+        lock.unlock() ;
+        return T() ;
+    }
+    T result (std::move(_queue.front())) ;
+    _queue.pop_front() ;
+    return result ;
+}
 
 /*******************************************************************************
 
