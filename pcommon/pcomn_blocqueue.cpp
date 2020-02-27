@@ -73,6 +73,8 @@ bool blocqueue_controller::try_wait_empty_finalize_queue(TimeoutKind kind,
 {
     const unsigned quiscent_state_slots_count = max_empty_slots() ;
 
+    PCOMN_VERIFY(slots(EMPTY).borrow(0) != (long)quiscent_state_slots_count) ;
+
     // max_empty_slots() can be available at the EMPTY end _only_ in the "quiscent"
     // state, when there are zero FULL slots and there are nobody between semaphores.
     if (!slots(EMPTY).universal_acquire(quiscent_state_slots_count, timeout_mode(kind), timeout))
@@ -154,6 +156,8 @@ unsigned blocqueue_controller::start_pop(unsigned maxcount,
 
     // pop() works both in State::OPEN and State::FINALIZING
     ensure_state_at_most(State::FINALIZING) ;
+
+    PCOMN_VERIFY(slots(EMPTY).borrow(0) != (long)max_empty_slots()) ;
 
     const unsigned acquired_count =
         slots(FULL).universal_acquire_some(maxcount, timeout_mode(kind), timeout) ;

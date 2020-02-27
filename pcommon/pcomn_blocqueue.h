@@ -248,7 +248,13 @@ public:
     void close() { this->close_both_ends() ; }
 
     /// Immediately close the push end of the queue and return.
-    void close_push() { this->close_push_end(TimeoutKind::RELATIVE, {}) ; }
+    ///
+    /// @return true if it is happens so that the queue is empty and close_push() also
+    ///   managed to close the pop end of the queue.
+    ///
+    /// @note This call is equivalent to close_push_wait_empty(0ns).
+    ///
+    bool close_push() { return this->close_push_end(TimeoutKind::RELATIVE, {}) ; }
 
     template<typename Duration>
     bool close_push_wait_empty(std::chrono::time_point<std::chrono::steady_clock, Duration> &abs_timeout)
@@ -530,6 +536,13 @@ auto blocking_queue<T,C>::try_get_item(TimeoutKind kind, std::chrono::nanosecond
     return
         handle_pop(1, [](auto &data, unsigned) { return optional_value(data.pop()) ; },
                    kind, timeout) ;
+}
+
+template<typename T, typename C>
+auto blocking_queue<T,C>::pop_some(unsigned count) -> value_list
+{
+    return
+        handle_pop(1, [](auto &data, unsigned acquired) { return data.pop_many(acquired) ; }) ;
 }
 
 } // end of namespace pcomn

@@ -335,7 +335,7 @@ void BlockingQueueTests::Test_BlockingQueue_SingleThreaded()
 
         CPPUNIT_LOG_EQ(q2.pop(), 2) ;
 
-        CPPUNIT_LOG_RUN(q2.close_push()) ;
+        CPPUNIT_LOG_IS_FALSE(q2.close_push()) ;
 
         CPPUNIT_LOG_EXCEPTION(q2.push(1), sequence_closed) ;
         CPPUNIT_LOG_EXCEPTION(q2.try_push(1), sequence_closed) ;
@@ -344,6 +344,9 @@ void BlockingQueueTests::Test_BlockingQueue_SingleThreaded()
         CPPUNIT_LOG_EQ(cqq2.qdata()._occupied_count, 2) ;
 
         CPPUNIT_LOG_ASSERT(q2.try_pop()) ;
+
+        CPPUNIT_LOG_IS_FALSE(q2.close_push()) ;
+
         CPPUNIT_LOG_EQ(q2.pop(), 4) ;
 
         CPPUNIT_LOG_EQ(cqq2.qdata()._popped_count, 5) ;
@@ -351,10 +354,12 @@ void BlockingQueueTests::Test_BlockingQueue_SingleThreaded()
 
         CPPUNIT_LOG_EXCEPTION(q2.pop(), sequence_closed) ;
         CPPUNIT_LOG_EXCEPTION(q2.try_pop(), sequence_closed) ;
+
+        CPPUNIT_LOG_ASSERT(q2.close_push()) ;
+        CPPUNIT_LOG_RUN(q2.close()) ;
     }
 }
 
-#if 0
 /*******************************************************************************
                             class BlockingQueueFuzzyTests
 *******************************************************************************/
@@ -362,33 +367,34 @@ class BlockingQueueFuzzyTests : public ProducerConsumerFixture {
     typedef ProducerConsumerFixture ancestor ;
 
     template<unsigned producers, unsigned consumers,
-             unsigned pcount, unsigned max_pause_nano>
+             unsigned pcount,
+             unsigned max_pause_nano = 0, unsigned before_closed_milli = 0>
     void RunTest()
     {
-        run(producers, consumers, pcount, max_pause_nano) ;
+        run(producers, consumers, pcount,
+            nanoseconds(max_pause_nano), milliseconds(before_closed_milli)) ;
     }
 
     CPPUNIT_TEST_SUITE(BlockingQueueFuzzyTests) ;
 
-    CPPUNIT_TEST(P_PASS(RunTest<1,1,1,0>)) ;
-    CPPUNIT_TEST(P_PASS(RunTest<1,1,1000,0>)) ;
-    CPPUNIT_TEST(P_PASS(RunTest<1,1,2'000'000,0>)) ;
-    CPPUNIT_TEST(P_PASS(RunTest<2,2,2'000'000,0>)) ;
-    CPPUNIT_TEST(P_PASS(RunTest<2,1,1'000'000,1000>)) ;
-    CPPUNIT_TEST(P_PASS(RunTest<2,2,2'000'000,1000>)) ;
-    CPPUNIT_TEST(P_PASS(RunTest<2,5,10'000'000,0>)) ;
-    CPPUNIT_TEST(P_PASS(RunTest<10,10,1'000'000,0>)) ;
-    CPPUNIT_TEST(P_PASS(RunTest<10,10,1'000'000,100>)) ;
+    //CPPUNIT_TEST(P_PASS(RunTest<1,1,1>)) ;
+    //CPPUNIT_TEST(P_PASS(RunTest<1,1,1000>)) ;
+    //CPPUNIT_TEST(P_PASS(RunTest<1,1,2'000'000>)) ;
+    //CPPUNIT_TEST(P_PASS(RunTest<2,2,2'000'000>)) ;
+    //CPPUNIT_TEST(P_PASS(RunTest<2,1,1'000'000,100>)) ;
+    CPPUNIT_TEST(P_PASS(RunTest<2,2,2'000'000,10,500>)) ;
+    //CPPUNIT_TEST(P_PASS(RunTest<2,5,10'000'000,20,500>)) ;
+    //CPPUNIT_TEST(P_PASS(RunTest<7,5,1'000'000>)) ;
+    //CPPUNIT_TEST(P_PASS(RunTest<5,2,1'000'000,10,500>)) ;
 
     CPPUNIT_TEST_SUITE_END() ;
 
 private:
-    static const unsigned maxsize = counting_semaphore::max_count() ;
-
-    void run(unsigned producers, unsigned consumers, unsigned pcount, unsigned max_pause_nano) ;
+    void run(unsigned producers, unsigned consumers, unsigned pcount,
+             nanoseconds max_pause, milliseconds before_close) ;
 
 public:
-    BlockingQueueFuzzyTests() : ancestor(10s) {}
+    BlockingQueueFuzzyTests() : ancestor(2h) {}
 
     /***************************************************************************
      tester_thread
@@ -396,16 +402,15 @@ public:
     class tester_thread final : public ancestor::tester_thread {
         typedef ancestor::tester_thread base ;
     public:
-        std::vector<unsigned>   _produced ; /* <0 means attempt with overflow */
-        std::vector<unsigned>   _consumed ;  /* <0 means borrow */
-        uint64_t                _volume = 0 ;
+        std::vector<unsigned>   _produced ;
+        std::vector<unsigned>   _consumed ;
+        const uint64_t          _volume = 0 ;
         uint64_t                _remains = _volume ;
         uint64_t                _total = 0 ;
-        counting_semaphore &    _semaphore ;
-        std::atomic_bool        _stop {false} ;
+        counting_blocqueue &    _queue ;
         std::thread             _thread ;
 
-        tester_thread(TesterMode mode, counting_semaphore &semaphore, unsigned volume, double p,
+        tester_thread(TesterMode mode, counting_blocqueue &cbq, unsigned volume, double p,
                       nanoseconds max_pause = {}) ;
 
         std::thread &self() final { return _thread ; }
@@ -425,11 +430,11 @@ public:
 /*******************************************************************************
  BlockingQueueFuzzyTests::tester_thread
 *******************************************************************************/
-BlockingQueueFuzzyTests::tester_thread::tester_thread(TesterMode mode, counting_semaphore &semaphore,
-                                                  unsigned volume, double p, nanoseconds max_pause) :
+BlockingQueueFuzzyTests::tester_thread::tester_thread(TesterMode mode, counting_blocqueue &cbq,
+                                                      unsigned volume, double p, nanoseconds max_pause) :
     base(p, volume, max_pause),
     _volume(volume),
-    _semaphore(semaphore)
+    _queue(cbq)
 {
     init(mode) ;
 }
@@ -438,60 +443,80 @@ void BlockingQueueFuzzyTests::tester_thread::produce()
 {
     CPPUNIT_LOG_LINE("Start producer " << HEXOUT(_thread.get_id()) << ", must produce " << _remains << " items.") ;
 
-    while (_remains && !_stop.load(std::memory_order_acquire))
+    for(int i = 0 ; ++i <= 2 ;) try
     {
-        const nanoseconds pause = generate_pause() ;
-        if (pause != nanoseconds())
-            std::this_thread::sleep_for(pause) ;
+        while (_remains)
+        {
+            for (unsigned count = std::min<uint64_t>({_generate(), _queue.capacity(), _remains}) ; count-- ;)
+            {
+                _queue.push(_total) ;
+                ++_total ;
+                --_remains ;
+            }
+        }
+    }
+    catch (const sequence_closed &)
+    {
+        CPPUNIT_LOG_LINE("Queue closed in producer " << HEXOUT(_thread.get_id())
+                         << ", attempt " << i << ", produced " << _total << " items, "
+                         << _remains << " remains.") ;
 
-        const unsigned count = std::min<uint64_t>(_remains, _generate()) ;
-        PCOMN_VERIFY(count > 0) ;
-
-        _semaphore.release(count) ;
-        _produced.push_back(count) ;
-        _total += count ;
-        _remains -= count ;
+        std::this_thread::sleep_for(generate_pause()) ;
     }
 
     CPPUNIT_LOG_LINE("Finish producer " << HEXOUT(_thread.get_id())
-                     << ", produced " << _total << " items in " << _produced.size() << " slots, "
-                     << _remains << " remains.") ;
+                     << ", produced " << _total << " items, " << _remains << " remains.") ;
 }
 
 void BlockingQueueFuzzyTests::tester_thread::consume()
 {
     CPPUNIT_LOG_LINE("Start consumer " << HEXOUT(_thread.get_id())) ;
 
-    while (!_stop.load(std::memory_order_acquire))
+    for(int i = 0 ; ++i <= 2 ;) try
     {
-        const unsigned count = std::min<uint64_t>(_volume, _generate()) ;
-        const unsigned consumed = _semaphore.acquire(count) ;
+        for (;;)
+        {
+            const unsigned count = std::min((size_t)_generate(), std::max(_queue.capacity()/2, (size_t)1)) ;
 
-        PCOMN_VERIFY(consumed == count) ;
+            if (count == 1)
+            {
+                _consumed.push_back(_queue.pop()) ;
+                ++_total ;
+            }
+            else
+            {
+                const auto &r = _queue.pop_some(count) ;
+                const ptrdiff_t popped_count = std::distance(r.first, r.second) ;
 
-        if (_stop.load(std::memory_order_acquire))
-            break ;
+                PCOMN_VERIFY(popped_count) ;
+                PCOMN_VERIFY(popped_count <= count) ;
 
-        _consumed.push_back(consumed) ;
-        _total += consumed ;
+                _consumed.insert(_consumed.end(), r.first, r.second) ;
+                _total += popped_count ;
+            }
 
-        const nanoseconds pause = generate_pause() ;
-        if (pause != nanoseconds())
-            std::this_thread::sleep_for(pause) ;
+        }
+    }
+    catch (const sequence_closed &)
+    {
+        CPPUNIT_LOG_LINE("Queue closed in consumer " << HEXOUT(_thread.get_id())
+                         << ", attempt " << i << ", consumed " << _total << " items") ;
+
+        std::this_thread::sleep_for(generate_pause()) ;
     }
 
     CPPUNIT_LOG_LINE("Finish consumer " << HEXOUT(_thread.get_id())
-                     << ", consumed " << _total << " items in " << _consumed.size() << " slots.") ;
+                     << ", consumed " << _total << " items.") ;
 }
 
 /*******************************************************************************
  BlockingQueueFuzzyTests
 *******************************************************************************/
 void BlockingQueueFuzzyTests::run(unsigned producers, unsigned consumers,
-                                  unsigned pcount, unsigned max_pause_nano)
+                                  unsigned pcount,
+                                  nanoseconds max_pause, milliseconds before_close)
 {
     const uint64_t total_volume = pcount*producers ;
-    const nanoseconds max_pause (max_pause_nano) ;
 
     const nanoseconds consumers_timeout (std::max(consumers*100*max_pause, nanoseconds(50ms))) ;
 
@@ -502,7 +527,7 @@ void BlockingQueueFuzzyTests::run(unsigned producers, unsigned consumers,
     PRealStopwatch wall_time ;
     PCpuStopwatch  cpu_time ;
 
-    counting_semaphore semaphore ;
+    counting_blocqueue cbq (200) ;
 
     wall_time.start() ;
     cpu_time.start() ;
@@ -512,30 +537,23 @@ void BlockingQueueFuzzyTests::run(unsigned producers, unsigned consumers,
         CPPUNIT_ASSERT(testers.empty()) ;
         for (testers.reserve(count) ; count ; --count)
         {
-            testers.emplace_back(new tester_thread(mode, semaphore, pcount, 0.01, max_pause)) ;
+            testers.emplace_back(new tester_thread(mode, cbq, pcount, 0.01, max_pause)) ;
         }
     } ;
 
     make_testers(Consumer, _consumers, consumers) ;
     make_testers(Producer, _producers, producers) ;
 
+    std::this_thread::sleep_for(before_close) ;
+
+    if (before_close != nanoseconds())
+        CPPUNIT_LOG_LINE("Closing the push end: " << cbq.close_push()) ;
+
     join_producers() ;
 
-    // Wait until the quiescent state
-    unsigned pending = 0 ;
-    for (unsigned p ; (p = semaphore.borrow(0)) != pending ; std::this_thread::sleep_for(consumers_timeout))
-        pending = p ;
+    if (before_close == nanoseconds())
+        CPPUNIT_LOG_LINE("Closing the push end: " << cbq.close_push()) ;
 
-    CPPUNIT_LOG_LINE("Stopping consumers, " << pending << " items pending.") ;
-
-    for (auto &consumer: _consumers)
-        tester(consumer)._stop = true ;
-
-    for (unsigned i = consumers ; i-- ;)
-    {
-        std::this_thread::sleep_for(consumers_timeout) ;
-        semaphore.release(maxsize - semaphore.borrow(0)) ;
-    }
     join_consumers() ;
 
     const auto eval_total = [](auto &testers, size_t init)
@@ -548,16 +566,14 @@ void BlockingQueueFuzzyTests::run(unsigned producers, unsigned consumers,
     wall_time.stop() ;
 
     const size_t total_produced = eval_total(_producers, 0) ;
-    const size_t total_consumed = eval_total(_consumers, pending) ;
+    const size_t total_consumed = eval_total(_consumers, 0) ;
 
     CPPUNIT_LOG_LINE("Finished in " << wall_time << " real time, " << cpu_time << " CPU time.") ;
-    CPPUNIT_LOG_LINE(total_produced << " produced, " <<  total_consumed << " consumed, "
-                     << '(' << pending << " pending), " << total_volume << " expected.") ;
+    CPPUNIT_LOG_LINE(total_produced << " produced, " <<  total_consumed << " consumed") ;
 
-    CPPUNIT_LOG_EQUAL(total_produced, total_volume) ;
+    //CPPUNIT_LOG_EQUAL(total_produced, total_volume) ;
     CPPUNIT_LOG_EQUAL(total_consumed, total_produced) ;
 }
-#endif
 
 /*******************************************************************************
  main
@@ -566,8 +582,8 @@ int main(int argc, char *argv[])
 {
     return pcomn::unit::run_tests
         <
-            BlockingQueueTests//,
-        //BlockingQueueFuzzyTests
+            //BlockingQueueTests,
+            BlockingQueueFuzzyTests
         >
         (argc, argv) ;
 }

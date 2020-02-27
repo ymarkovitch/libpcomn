@@ -166,7 +166,7 @@ void ProducerConsumerFixture::join_tester_threads(const simple_slice<tester_thre
     if (!joinable_count)
         return ;
 
-    CPPUNIT_LOG_LINE("Join " << joinable_count << " " << what << " of " << testers.size()) ;
+    CPPUNIT_LOG_LINE("Joining " << joinable_count << " " << what << " of " << testers.size()) ;
 
     for (const auto &t: testers)
         if (is_joinable(t))
