@@ -12,6 +12,7 @@
 *******************************************************************************/
 #include <pcomn_unittest_mt.h>
 #include <pcomn_semaphore.h>
+#include <pcomn_stopwatch.h>
 
 #include <thread>
 #include <chrono>
@@ -24,6 +25,9 @@
 
 using namespace pcomn ;
 using namespace std::chrono ;
+
+#define CPPUNIT_LOG_ELAPSED_INRANGE(elapsed_duration, min_duration, max_duration) \
+    CPPUNIT_LOG_ASSERT(inrange<dseconds>((elapsed_duration), (min_duration), (max_duration)))
 
 struct geometric_distributed_range {
     geometric_distributed_range(unsigned lo, unsigned hi, double p) :
