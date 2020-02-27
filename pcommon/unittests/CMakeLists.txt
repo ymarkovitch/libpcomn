@@ -65,6 +65,8 @@ unittest_NOAVX(unittest_bitvector)
 unittest_AVX  (unittest_bitvector_AVX)
 unittest_AVX2 (unittest_bitvector_AVX2)
 
+unittest(unittest_blocqueue)
+
 unittest(unittest_buffer)
 unittest(unittest_cacher)
 unittest(unittest_crypthash)

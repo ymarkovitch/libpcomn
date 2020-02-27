@@ -67,6 +67,15 @@ public:
 
     void change_capacity(unsigned new_capacity) ;
 
+    /// Get the (approximate) current size of the queue, i.e. the count of pending
+    /// (pushed but not yet popped) items in the queue.
+    ///
+    size_t size() const
+    {
+        const size_t count = slots(FULL).borrow(0) ;
+        return _state.load(std::memory_order_acquire) == State::CLOSED ? 0 : count ;
+    }
+
 protected:
     struct SlotsKind : bool_value { using bool_value::bool_value ; } ;
     // Slot kinds
@@ -81,8 +90,7 @@ protected:
 
     enum class State : unsigned {
         OPEN,
-        PUSH_CLOSED,
-        POP_CLOSING,
+        FINALIZING,
         CLOSED
     } ;
 
@@ -97,11 +105,12 @@ protected:
     explicit blocqueue_controller(unsigned capacity) ;
     virtual ~blocqueue_controller() = default ;
 
-    counting_semaphore &slots(SlotsKind kind) noexcept { return _slots[(bool)kind] ; }
+    counting_semaphore &slots(SlotsKind kind) const noexcept { return _slots[(bool)kind] ; }
 
-    void ensure_open() const
+    void ensure_state_at_most(State max_allowed_state) const
     {
-        ensure<sequence_closed>(_state.load(std::memory_order_acquire) == State::OPEN) ;
+        if (_state.load(std::memory_order_acquire) > max_allowed_state)
+            raise_closed() ;
     }
 
     bool close_push_end(TimeoutKind kind, std::chrono::nanoseconds d) ;
@@ -110,7 +119,8 @@ protected:
     /// @return the count of actually acquired empty slots.
     unsigned start_pop(unsigned requested_count,
                        TimeoutKind, std::chrono::nanoseconds) ;
-    void finalize_pop(unsigned acquired_count) ;
+
+    bool finalize_pop(unsigned acquired_count) ;
 
     static constexpr TimeoutMode timeout_mode(TimeoutKind kind) noexcept
     {
@@ -148,23 +158,25 @@ protected:
         return count ;
     }
 
+    __noreturn __cold
+    static void invalid_capacity(unsigned capacity, unsigned maxcap = max_capacity()) ;
+
 private:
     virtual void change_data_capacity(unsigned new_capacity) = 0 ;
 
-    // Returns true if State::CLOSED is set by us, false if it has been already set.
-    bool atomic_test_and_set_closed() noexcept ;
-
-    bool wait_until_empty(unsigned full_slots_reserved = 0,
-                          TimeoutKind = {}, std::chrono::nanoseconds = {}) noexcept ;
+    // Returns true if the queue becomes/is finalized.
+    bool try_wait_empty_finalize_queue(TimeoutKind = TimeoutKind::RELATIVE,
+                                       std::chrono::nanoseconds = {}) noexcept ;
 
     unsigned max_empty_slots() const noexcept
     {
         return capacity() + blocqueue_controller::max_capacity() ;
     }
 
-    __noreturn __cold static void invalid_capacity(unsigned capacity) ;
     __noreturn __cold static void invalid_acquire_count(unsigned count,
                                                         const char *queue_end) ;
+    // Note: no __cold
+    __noreturn static void raise_closed() ;
 } ;
 
 /***************************************************************************//**
@@ -214,15 +226,29 @@ public:
 
     typedef std::remove_cvref_t<decltype(std::declval<container_type>().pop_many(1U))> value_list ;
 
-    /// Create a blocking queue with specified capacity.
-    explicit blocking_queue(unsigned capacity) ;
+    /// Create a blocking queue with specified current capacity.
+    /// @note `capacity` is also passed to underlying ConcurrentContainer constructor.
+    explicit blocking_queue(unsigned capacity) :
+        ancestor(capacity),
+        _data(capacity)
+    {}
+
+    /// Create a blocking queue with specified current and maximum capacities.
+    /// @note `capacities` is also passed to underlying ConcurrentContainer constructor.
+    explicit blocking_queue(const unipair<unsigned> &capacities) :
+        ancestor(ensure_le<std::invalid_argument>
+                 (capacities.first, validate_capacity(capacities.second),
+                  "Current capacity exceeds maximum capacity "
+                  "in blocking_queue constructor arguments.")),
+        _data(capacities)
+    {}
 
     /// Immediately close both the push and pop ends of the queue.
     /// All the items still in the queue will be lost.
     void close() { this->close_both_ends() ; }
 
     /// Immediately close the push end of the queue and return.
-    void close_push() { this->close_push_end({}, {}) ; }
+    void close_push() { this->close_push_end(TimeoutKind::RELATIVE, {}) ; }
 
     template<typename Duration>
     bool close_push_wait_empty(std::chrono::time_point<std::chrono::steady_clock, Duration> &abs_timeout)
@@ -242,6 +268,7 @@ public:
     using ancestor::capacity ;
     using ancestor::max_capacity ;
     using ancestor::change_capacity ;
+    using ancestor::size ;
 
     /***************************************************************************
      push
@@ -252,8 +279,8 @@ public:
     template<typename FwdIterator>
     FwdIterator push_some(FwdIterator b, FwdIterator e) ;
 
-    bool try_push(const value_type &value) { return put_item(value, TimeoutKind::RELATIVE, 0) ; }
-    bool try_push(value_type &&value) { return put_item(std::move(value), TimeoutKind::RELATIVE, 0) ; }
+    bool try_push(const value_type &value) { return put_item(value, TimeoutKind::RELATIVE, {}) ; }
+    bool try_push(value_type &&value) { return put_item(std::move(value), TimeoutKind::RELATIVE, {}) ; }
 
     template<typename R, typename P>
     bool try_push_for(const value_type &value, const duration<R, P> &rel_time)
@@ -294,7 +321,7 @@ public:
     value_list pop_some(unsigned count) ;
     value_list try_pop_some(unsigned count) ;
 
-    optional_value try_pop() { return try_get_item(TimeoutKind::RELATIVE, 0) ; }
+    optional_value try_pop() { return try_get_item(TimeoutKind::RELATIVE, {}) ; }
 
     template<typename R, typename P>
     optional_value try_pop_for(const duration<R, P> &rel_time)
@@ -320,10 +347,22 @@ private:
 private:
     void change_data_capacity(unsigned new_capacity) final
     {
+        const size_t maxcap = max_data_capacity<container_type>(0) ;
+
+        if (unlikely(!inrange<size_t>(new_capacity, 1, maxcap)))
+            invalid_capacity(new_capacity, maxcap) ;
+
         _data.change_capacity(new_capacity) ;
     }
 
-    template<typename V>
+	template<typename U>
+    decltype(std::declval<U>().max_size())
+    max_data_capacity(int) const { return _data.max_size() ; }
+
+	template<typename U>
+    auto max_data_capacity(...) const { return max_capacity() ; }
+
+	template<typename V>
     bool put_item(V &&value, TimeoutKind kind = {}, std::chrono::nanoseconds timeout = {}) ;
 
     optional_value try_get_item(TimeoutKind kind, std::chrono::nanoseconds timeout) ;
@@ -335,16 +374,16 @@ private:
     {
         validate_acquire_count(requested_count, "push") ;
 
-        ensure_open() ;
+        ensure_state_at_most(State::OPEN) ;
 
         // Acquire slots empty slots for push()
         const unsigned acquired_count =
             slots(EMPTY).universal_acquire(requested_count, timeout_mode(kind), timeout) ;
 
-        // Take precautions in case ensure_open() or queue handler throws exception.
+        // Take precautions in case ensure_state_at_most() or queue handler throws exception.
         auto checkin_guard (make_finalizer([&]{ slots(EMPTY).release(acquired_count) ; })) ;
 
-        ensure_open() ;
+        ensure_state_at_most(State::OPEN) ;
 
         const auto handle = [&]
         {
@@ -375,27 +414,28 @@ private:
     auto handle_pop(unsigned requested_count, QueueHandler &&queue_handler,
                     TimeoutKind kind = {}, std::chrono::nanoseconds timeout = {})
     {
-        unsigned acquired_count ;
+        typedef decltype(pop_from_data(1U, std::forward<QueueHandler>(queue_handler)))
+            result_type ;
 
-        const auto handle = [&]
-        {
-            return std::forward<QueueHandler>(queue_handler)(_data, acquired_count) ;
-        } ;
-
-        typedef decltype(handle()) result_type ;
-
-        acquired_count = start_pop(requested_count, kind, timeout) ;
+        const unsigned acquired_count = start_pop(requested_count, kind, timeout) ;
 
         if (!acquired_count)
             return result_type() ;
 
-        auto finalizer (make_finalizer([&]
-        {
-            // Add new full slots for push()
-            slots(EMPTY).release(acquired_count) ;
-        })) ;
+        // finalize_pop releases empty slots and, if there is a closing state, attempts
+        // to finalize the queue.
+        const auto finalizer (make_finalizer([&]{ finalize_pop(acquired_count) ; })) ;
 
-        return handle() ;
+        return pop_from_data(acquired_count,
+                             std::forward<QueueHandler>(queue_handler)) ;
+    }
+
+    // Wrap queue_pop_handler with `noexcept`: std::terminate() is way better than the
+    // deadlock.
+    template<typename QueueHandler>
+    auto pop_from_data(unsigned item_count, QueueHandler &&queue_pop_handler) noexcept
+    {
+        return std::forward<QueueHandler>(queue_pop_handler)(_data, item_count) ;
     }
 } ;
 
@@ -434,6 +474,7 @@ public:
     typedef T value_type ;
 
     explicit ring_cbqueue(unsigned init_capacity) ;
+    explicit ring_cbqueue(const unipair<unsigned> &capacities) ;
 
     void push(const value_type &) ;
     void push(value_type &&) ;
@@ -444,16 +485,16 @@ public:
     value_type pop() ;
     std::vector<value_type> pop_many(unsigned count) ;
 
+    size_t max_size() const { return (~_capacity_mask) + 1 ; }
+
     void change_capacity(size_t new_capacity)
     {
-        ensure_le<std::out_of_range>(new_capacity, max_capacity(),
+        ensure_le<std::out_of_range>(new_capacity, max_size(),
                                      "The requested ring_cbqueue capacity is too big.") ;
     }
 
 private:
     const size_t _capacity_mask ;
-
-    const size_t max_capacity() const { return (~_capacity_mask) + 1 ; }
 } ;
 } // end of namespace pcomn::detail
 
