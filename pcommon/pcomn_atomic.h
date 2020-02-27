@@ -424,17 +424,17 @@ check_and_swap(T *target, atomic_value_t<T> newval, C &&compare_values,
  Atomic arithmetic and bit operations
 *******************************************************************************/
 /// Atomic add
-template<typename T>
+template<typename T, typename I>
 inline enable_if_atomic_arithmetic_t<atomic_value_t<T>>
-add(T *value, ptrdiff_t addend, std::memory_order order = std::memory_order_acq_rel)
+add(T *value, I addend, std::memory_order order = std::memory_order_acq_rel)
 {
    return reinterpret_cast<atomic_type_t<T> *>(value)->fetch_add(addend, order) + addend ;
 }
 
 /// Atomic subtract
-template<typename T>
+template<typename T, typename I>
 inline enable_if_atomic_arithmetic_t<atomic_value_t<T>>
-sub(T *value, ptrdiff_t subtrahend, std::memory_order order = std::memory_order_acq_rel)
+sub(T *value, I subtrahend, std::memory_order order = std::memory_order_acq_rel)
 {
    return reinterpret_cast<atomic_type_t<T> *>(value)->fetch_sub(subtrahend, order) - subtrahend ;
 }
