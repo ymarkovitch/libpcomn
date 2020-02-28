@@ -120,6 +120,11 @@ public:
     void change_capacity(unsigned new_capacity)
     {
         PCOMN_VERIFY(new_capacity <= max_size()) ;
+        if (new_capacity > _capacity)
+        {
+            _capacity = new_capacity ;
+            std::atomic_thread_fence(std::memory_order_seq_cst) ;
+        }
     }
 
     unsigned max_size() const { return _max_size ; }
@@ -161,12 +166,14 @@ class BlockingQueueTests : public CppUnit::TestFixture {
     void Test_BlockingQueue_TestFixture() ;
     void Test_BlockingQueue_Limits() ;
     void Test_BlockingQueue_SingleThreaded() ;
+    void Test_BlockingQueue_ChangeCapacity() ;
 
     CPPUNIT_TEST_SUITE(BlockingQueueTests) ;
 
     CPPUNIT_TEST(Test_BlockingQueue_TestFixture) ;
     CPPUNIT_TEST(Test_BlockingQueue_Limits) ;
     CPPUNIT_TEST(Test_BlockingQueue_SingleThreaded) ;
+    CPPUNIT_TEST(Test_BlockingQueue_ChangeCapacity) ;
 
     CPPUNIT_TEST_SUITE_END() ;
 
@@ -360,38 +367,170 @@ void BlockingQueueTests::Test_BlockingQueue_SingleThreaded()
     }
 }
 
+void BlockingQueueTests::Test_BlockingQueue_ChangeCapacity()
+{
+    CPPUNIT_LOG(std::endl) ;
+    {
+        counting_blocqueue q2 (5) ;
+        const counting_quasi_queue &cqq2 = *counting_quasi_queue::last_constructed ;
+
+        CPPUNIT_LOG_ASSERT(q2.try_push(1)) ;
+        CPPUNIT_LOG_ASSERT(q2.try_push(1)) ;
+        CPPUNIT_LOG_RUN(q2.push(1)) ;
+        CPPUNIT_LOG_RUN(q2.push(1)) ;
+        CPPUNIT_LOG_RUN(q2.push(1)) ;
+        CPPUNIT_LOG_IS_FALSE(q2.try_push(1)) ;
+
+        CPPUNIT_LOG_EQ(cqq2.qdata()._popped_count, 0) ;
+        CPPUNIT_LOG_EQ(cqq2.qdata()._occupied_count, 5) ;
+
+        CPPUNIT_LOG_EQ(q2.capacity(), 5) ;
+        CPPUNIT_LOG_RUN(q2.change_capacity(1)) ;
+        CPPUNIT_LOG_EQ(q2.capacity(), 1) ;
+
+        CPPUNIT_LOG_EQ(q2.pop(), 0) ;
+        CPPUNIT_LOG_IS_FALSE(q2.try_push(1)) ;
+        CPPUNIT_LOG_EQ(q2.pop(), 1) ;
+        CPPUNIT_LOG_IS_FALSE(q2.try_push(1)) ;
+        CPPUNIT_LOG_EQ(q2.pop(), 2) ;
+        CPPUNIT_LOG_IS_FALSE(q2.try_push(1)) ;
+
+        CPPUNIT_LOG_EQ(cqq2.qdata()._popped_count, 3) ;
+        CPPUNIT_LOG_EQ(cqq2.qdata()._occupied_count, 2) ;
+
+        CPPUNIT_LOG_RUN(q2.change_capacity(2)) ;
+        CPPUNIT_LOG_EQ(q2.capacity(), 2) ;
+
+        CPPUNIT_LOG_IS_FALSE(q2.try_push(1)) ;
+
+        CPPUNIT_LOG_RUN(q2.change_capacity(3)) ;
+        CPPUNIT_LOG_EQ(q2.capacity(), 3) ;
+
+        CPPUNIT_LOG_ASSERT(q2.try_push(1)) ;
+
+        CPPUNIT_LOG_EQ(cqq2.qdata()._popped_count, 3) ;
+        CPPUNIT_LOG_EQ(cqq2.qdata()._occupied_count, 3) ;
+
+        CPPUNIT_LOG_IS_FALSE(q2.try_push(1)) ;
+
+        CPPUNIT_LOG_RUN(q2.change_capacity(2)) ;
+        CPPUNIT_LOG_EQ(q2.capacity(), 2) ;
+
+        CPPUNIT_LOG_IS_FALSE(q2.try_push(1)) ;
+        CPPUNIT_LOG_EQ(q2.pop(), 3) ;
+        CPPUNIT_LOG_IS_FALSE(q2.try_push(1)) ;
+        CPPUNIT_LOG_EQ(q2.pop(), 4) ;
+
+        CPPUNIT_LOG_EQ(cqq2.qdata()._popped_count, 5) ;
+        CPPUNIT_LOG_EQ(cqq2.qdata()._occupied_count, 1) ;
+
+        CPPUNIT_LOG_ASSERT(q2.try_push(1)) ;
+        CPPUNIT_LOG_IS_FALSE(q2.try_push(1)) ;
+    }
+
+    CPPUNIT_LOG(std::endl) ;
+    {
+        counting_blocqueue q3 (5) ;
+        const counting_quasi_queue &cqq3 = *counting_quasi_queue::last_constructed ;
+
+        CPPUNIT_LOG_ASSERT(q3.try_push(1)) ;
+        CPPUNIT_LOG_ASSERT(q3.try_push(1)) ;
+        CPPUNIT_LOG_RUN(q3.push(1)) ;
+        CPPUNIT_LOG_RUN(q3.push(1)) ;
+        CPPUNIT_LOG_RUN(q3.push(1)) ;
+        CPPUNIT_LOG_IS_FALSE(q3.try_push(1)) ;
+
+        CPPUNIT_LOG_EQ(cqq3.qdata()._popped_count, 0) ;
+        CPPUNIT_LOG_EQ(cqq3.qdata()._occupied_count, 5) ;
+
+        CPPUNIT_LOG_EQ(q3.capacity(), 5) ;
+        CPPUNIT_LOG_RUN(q3.change_capacity(3)) ;
+
+        CPPUNIT_LOG_IS_FALSE(q3.close_push()) ;
+        CPPUNIT_LOG_EQ(q3.pop(), 0) ;
+        CPPUNIT_LOG_EQ(q3.pop(), 1) ;
+        CPPUNIT_LOG_EQ(q3.pop(), 2) ;
+        CPPUNIT_LOG_EQ(q3.pop(), 3) ;
+        CPPUNIT_LOG_EQ(q3.pop(), 4) ;
+
+        CPPUNIT_LOG_EXCEPTION(q3.pop(), sequence_closed) ;
+    }
+}
+
 /*******************************************************************************
                             class BlockingQueueFuzzyTests
 *******************************************************************************/
 class BlockingQueueFuzzyTests : public ProducerConsumerFixture {
     typedef ProducerConsumerFixture ancestor ;
 
+    struct params {
+        unsigned producers = 1 ;
+        unsigned consumers = producers ;
+        unsigned pcount = 1 ;
+        nanoseconds  max_pause ;
+        milliseconds before_close ;
+        unsigned min_qcapacity = 1 ;
+        unsigned max_qcapacity = min_qcapacity ;
+    } ;
+
     template<unsigned producers, unsigned consumers,
              unsigned pcount,
-             unsigned max_pause_nano = 0, unsigned before_closed_milli = 0>
+             unsigned max_pause_nano = 0, unsigned before_close_milli = 0>
     void RunTest()
     {
-        run(producers, consumers, pcount,
-            nanoseconds(max_pause_nano), milliseconds(before_closed_milli)) ;
+        params args ;
+        args.producers = producers ;
+        args.consumers = consumers ;
+        args.pcount = pcount ;
+        args.max_pause = nanoseconds(max_pause_nano) ;
+        args.before_close = milliseconds(before_close_milli) ;
+        args.min_qcapacity = args.max_qcapacity = 200 ;
+
+        run(args) ;
+    }
+
+    template<unsigned producers, unsigned consumers,
+             unsigned pcount,
+             unsigned min_queue_capacity, unsigned max_queue_capacity = min_queue_capacity,
+             unsigned max_pause_nano = 0, unsigned before_close_milli = 0>
+    void RunTestVarCapacity()
+    {
+        PCOMN_STATIC_CHECK(min_queue_capacity > 0) ;
+        PCOMN_STATIC_CHECK(max_queue_capacity >= min_queue_capacity) ;
+
+        params args ;
+        args.producers = producers ;
+        args.consumers = consumers ;
+        args.pcount = pcount ;
+        args.max_pause = nanoseconds(max_pause_nano) ;
+        args.before_close = milliseconds(before_close_milli) ;
+        args.min_qcapacity = min_queue_capacity ;
+        args.max_qcapacity = max_queue_capacity ;
+
+        run(args) ;
     }
 
     CPPUNIT_TEST_SUITE(BlockingQueueFuzzyTests) ;
 
-    CPPUNIT_TEST(P_PASS(RunTest<1,1,1>)) ;
-    CPPUNIT_TEST(P_PASS(RunTest<1,1,1000>)) ;
-    CPPUNIT_TEST(P_PASS(RunTest<1,1,2'000'000>)) ;
-    CPPUNIT_TEST(P_PASS(RunTest<2,2,2'000'000>)) ;
-    CPPUNIT_TEST(P_PASS(RunTest<2,1,1'000'000,100>)) ;
-    CPPUNIT_TEST(P_PASS(RunTest<2,2,2'000'000,10,500>)) ;
-    CPPUNIT_TEST(P_PASS(RunTest<2,5,10'000'000,20,1500>)) ;
-    CPPUNIT_TEST(P_PASS(RunTest<7,5,1'000'000>)) ;
-    CPPUNIT_TEST(P_PASS(RunTest<5,2,1'000'000,10,1000>)) ;
+    CPPUNIT_TEST(P_PASS(RunTest<1, 1, 1>                  )) ;
+    CPPUNIT_TEST(P_PASS(RunTest<1, 1, 1000>               )) ;
+    CPPUNIT_TEST(P_PASS(RunTest<1, 1, 2'000'000>          )) ;
+    CPPUNIT_TEST(P_PASS(RunTest<2, 2, 2'000'000>          )) ;
+    CPPUNIT_TEST(P_PASS(RunTest<2, 1, 1'000'000,      100>)) ;
+    CPPUNIT_TEST(P_PASS(RunTest<2, 2, 2'000'000,  10, 500>)) ;
+    CPPUNIT_TEST(P_PASS(RunTest<2, 5, 10'000'000, 20, 1500>)) ;
+    CPPUNIT_TEST(P_PASS(RunTest<7, 5, 1'000'000>           )) ;
+    CPPUNIT_TEST(P_PASS(RunTest<5, 2, 1'000'000,  10, 1000>)) ;
+
+    CPPUNIT_TEST(P_PASS(RunTestVarCapacity<1, 1, 1000,       1>)) ;
+    CPPUNIT_TEST(P_PASS(RunTestVarCapacity<1, 1, 2'000'000,  100,  10000>)) ;
+    CPPUNIT_TEST(P_PASS(RunTestVarCapacity<2, 2, 10'000'000, 100,  10000,  200, 2000>)) ;
+    CPPUNIT_TEST(P_PASS(RunTestVarCapacity<4, 2, 2'000'000,  1000, 5000,    10, 1000>)) ;
 
     CPPUNIT_TEST_SUITE_END() ;
 
 private:
-    void run(unsigned producers, unsigned consumers, unsigned pcount,
-             nanoseconds max_pause, milliseconds before_close) ;
+    void run(params) ;
 
 public:
     BlockingQueueFuzzyTests() : ancestor(20s) {}
@@ -512,23 +651,26 @@ void BlockingQueueFuzzyTests::tester_thread::consume()
 /*******************************************************************************
  BlockingQueueFuzzyTests
 *******************************************************************************/
-void BlockingQueueFuzzyTests::run(unsigned producers, unsigned consumers,
-                                  unsigned pcount,
-                                  nanoseconds max_pause, milliseconds before_close)
+void BlockingQueueFuzzyTests::run(params a)
 {
-    const uint64_t total_volume = pcount*producers ;
+    const uint64_t total_volume = a.pcount*a.producers ;
 
-    const nanoseconds consumers_timeout (std::max(consumers*100*max_pause, nanoseconds(50ms))) ;
+    const nanoseconds consumers_timeout (std::max(a.consumers*100*a.max_pause, nanoseconds(50ms))) ;
 
-    CPPUNIT_LOG_LINE("Running " << producers << " producers, " << consumers << " consumers, "
-                     << total_volume << " total items (" << pcount << " per producer)"
-                     << ((max_pause != 0ns) ? string_cast(", max pause ", duration<double,std::micro>(max_pause).count(), "us") : "")
-                     << ((before_close != 0ms) ? string_cast(", break after ", dseconds(before_close).count(), "s") : "")) ;
+    CPPUNIT_LOG_LINE("Running " << a.producers << " producers, " << a.consumers << " consumers, "
+                     << total_volume << " total items (" << a.pcount << " per producer)"
+                     << ((a.max_pause != 0ns) ? string_cast(", max pause ", duration<double,std::micro>(a.max_pause).count(), "us") : "")
+                     << ((a.before_close != 0ms) ? string_cast(", break after ", dseconds(a.before_close).count(), "s") : "")) ;
 
     PRealStopwatch wall_time ;
     PCpuStopwatch  cpu_time ;
 
-    counting_blocqueue cbq (200) ;
+    geometric_distributed_range qcapacity (a.min_qcapacity, a.max_qcapacity, 0.001) ;
+    const bool variable_capacity = a.min_qcapacity != a.max_qcapacity ;
+
+    const unsigned init_qcapacity = variable_capacity ? qcapacity() : a.min_qcapacity ;
+    counting_blocqueue cbq (init_qcapacity) ;
+    std::thread queue_resizing_thread ;
 
     wall_time.start() ;
     cpu_time.start() ;
@@ -538,22 +680,49 @@ void BlockingQueueFuzzyTests::run(unsigned producers, unsigned consumers,
         CPPUNIT_ASSERT(testers.empty()) ;
         for (testers.reserve(count) ; count ; --count)
         {
-            testers.emplace_back(new tester_thread(mode, cbq, pcount, 0.01, max_pause)) ;
+            testers.emplace_back(new tester_thread(mode, cbq, a.pcount, 0.01, a.max_pause)) ;
         }
     } ;
 
-    make_testers(Consumer, _consumers, consumers) ;
-    make_testers(Producer, _producers, producers) ;
-
-    std::this_thread::sleep_for(before_close) ;
-
-    if (before_close != nanoseconds())
+    const auto close_queue = [&]
+    {
         CPPUNIT_LOG_LINE("Closing the push end: " << cbq.close_push()) ;
+        if (variable_capacity)
+            queue_resizing_thread.join() ;
+    } ;
+
+    make_testers(Consumer, _consumers, a.consumers) ;
+    make_testers(Producer, _producers, a.producers) ;
+
+    if (variable_capacity)
+    {
+        queue_resizing_thread = std::thread([&]
+        {
+            geometric_distributed_range dur (0, 50, 0.1) ;
+            unsigned long count ;
+            try {
+                for(count = 0 ;; ++count)
+                {
+                    std::this_thread::sleep_for(milliseconds(dur())) ;
+                    cbq.change_capacity(qcapacity()) ;
+                }
+            }
+            catch (const sequence_closed &)
+            {
+                CPPUNIT_LOG_LINE("Finishing the queue resizing thread, changed capacity " << count << " times.") ;
+            }
+        }) ;
+    }
+
+    std::this_thread::sleep_for(a.before_close) ;
+
+    if (a.before_close != 0ms)
+        close_queue() ;
 
     join_producers() ;
 
-    if (before_close == nanoseconds())
-        CPPUNIT_LOG_LINE("Closing the push end: " << cbq.close_push()) ;
+    if (a.before_close == 0ms)
+        close_queue() ;
 
     join_consumers() ;
 
@@ -583,7 +752,7 @@ int main(int argc, char *argv[])
 {
     return pcomn::unit::run_tests
         <
-            //BlockingQueueTests,
+            BlockingQueueTests,
             BlockingQueueFuzzyTests
         >
         (argc, argv) ;

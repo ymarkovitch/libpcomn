@@ -46,7 +46,7 @@ struct geometric_distributed_range {
         return v + _offset ;
     }
 
-    static std::random_device seed_device ;
+    static thread_local std::random_device seed_device ;
 
 private:
     std::mt19937 _random_engine {seed_device()} ;
@@ -55,7 +55,7 @@ private:
     unsigned _hibound ;
 } ;
 
-std::random_device geometric_distributed_range::seed_device ;
+thread_local std::random_device geometric_distributed_range::seed_device ;
 
 /*******************************************************************************
  ProducerConsumerFixture
