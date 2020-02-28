@@ -218,7 +218,7 @@ inline void atomic_process_fence()
 *******************************************************************************/
 /// Ordered load value
 template<typename T>
-inline atomic_value_t<T> load(T *value, std::memory_order order = std::memory_order_acq_rel)
+inline atomic_value_t<T> load(T *value, std::memory_order order = std::memory_order_acquire)
 {
    return reinterpret_cast<const atomic_type_t<T> *>(value)
       ->load(order) ;
@@ -227,7 +227,7 @@ inline atomic_value_t<T> load(T *value, std::memory_order order = std::memory_or
 /// Ordered store value
 template<typename T>
 inline std::void_t<atomic_value_t<T>>
-store(T *value, atomic_value_t<T> new_value, std::memory_order order = std::memory_order_acq_rel)
+store(T *value, atomic_value_t<T> new_value, std::memory_order order = std::memory_order_release)
 {
    reinterpret_cast<atomic_type_t<T> *>(value)->store(new_value, order) ;
 }
