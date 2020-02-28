@@ -387,7 +387,15 @@ private:
             slots(EMPTY).universal_acquire(requested_count, timeout_mode(kind), timeout) ;
 
         // Take precautions in case ensure_state_at_most() or queue handler throws exception.
-        auto checkin_guard (make_finalizer([&]{ slots(EMPTY).release(acquired_count) ; })) ;
+        auto rollback_guard (make_finalizer([&]
+        {
+            // Return the already acquired empty slots.
+            slots(EMPTY).release(acquired_count) ;
+            // We may be in FINALIZING state, check for the "quiscent" state: missing
+            // transition to "quiscent" state during finalization may eventually lead
+            // to deadlock in pop()
+            try_wait_empty_finalize_queue() ;
+        })) ;
 
         ensure_state_at_most(State::OPEN) ;
 
@@ -400,14 +408,14 @@ private:
 
         if (!acquired_count)
         {
-            checkin_guard.release() ;
+            rollback_guard.release() ;
             return result_type() ;
         }
 
         result_type result (handle()) ;
 
         // Make sure slots remain acquired.
-        checkin_guard.release() ;
+        rollback_guard.release() ;
 
         // Add new full slots for push()
         slots(FULL).release(acquired_count) ;
