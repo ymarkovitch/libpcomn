@@ -377,15 +377,15 @@ class BlockingQueueFuzzyTests : public ProducerConsumerFixture {
 
     CPPUNIT_TEST_SUITE(BlockingQueueFuzzyTests) ;
 
-    //CPPUNIT_TEST(P_PASS(RunTest<1,1,1>)) ;
-    //CPPUNIT_TEST(P_PASS(RunTest<1,1,1000>)) ;
-    //CPPUNIT_TEST(P_PASS(RunTest<1,1,2'000'000>)) ;
-    //CPPUNIT_TEST(P_PASS(RunTest<2,2,2'000'000>)) ;
-    //CPPUNIT_TEST(P_PASS(RunTest<2,1,1'000'000,100>)) ;
+    CPPUNIT_TEST(P_PASS(RunTest<1,1,1>)) ;
+    CPPUNIT_TEST(P_PASS(RunTest<1,1,1000>)) ;
+    CPPUNIT_TEST(P_PASS(RunTest<1,1,2'000'000>)) ;
+    CPPUNIT_TEST(P_PASS(RunTest<2,2,2'000'000>)) ;
+    CPPUNIT_TEST(P_PASS(RunTest<2,1,1'000'000,100>)) ;
     CPPUNIT_TEST(P_PASS(RunTest<2,2,2'000'000,10,500>)) ;
-    //CPPUNIT_TEST(P_PASS(RunTest<2,5,10'000'000,20,500>)) ;
-    //CPPUNIT_TEST(P_PASS(RunTest<7,5,1'000'000>)) ;
-    //CPPUNIT_TEST(P_PASS(RunTest<5,2,1'000'000,10,500>)) ;
+    CPPUNIT_TEST(P_PASS(RunTest<2,5,10'000'000,20,1500>)) ;
+    CPPUNIT_TEST(P_PASS(RunTest<7,5,1'000'000>)) ;
+    CPPUNIT_TEST(P_PASS(RunTest<5,2,1'000'000,10,1000>)) ;
 
     CPPUNIT_TEST_SUITE_END() ;
 
@@ -394,7 +394,7 @@ private:
              nanoseconds max_pause, milliseconds before_close) ;
 
 public:
-    BlockingQueueFuzzyTests() : ancestor(2h) {}
+    BlockingQueueFuzzyTests() : ancestor(20s) {}
 
     /***************************************************************************
      tester_thread
@@ -521,8 +521,9 @@ void BlockingQueueFuzzyTests::run(unsigned producers, unsigned consumers,
     const nanoseconds consumers_timeout (std::max(consumers*100*max_pause, nanoseconds(50ms))) ;
 
     CPPUNIT_LOG_LINE("Running " << producers << " producers, " << consumers << " consumers, "
-                     << total_volume << " total items (" << pcount << " per producer), "
-                     << "max pause "<< (duration<double,std::micro>(max_pause).count()) << "ms") ;
+                     << total_volume << " total items (" << pcount << " per producer)"
+                     << ((max_pause != 0ns) ? string_cast(", max pause ", duration<double,std::micro>(max_pause).count(), "us") : "")
+                     << ((before_close != 0ms) ? string_cast(", break after ", dseconds(before_close).count(), "s") : "")) ;
 
     PRealStopwatch wall_time ;
     PCpuStopwatch  cpu_time ;
@@ -569,7 +570,7 @@ void BlockingQueueFuzzyTests::run(unsigned producers, unsigned consumers,
     const size_t total_consumed = eval_total(_consumers, 0) ;
 
     CPPUNIT_LOG_LINE("Finished in " << wall_time << " real time, " << cpu_time << " CPU time.") ;
-    CPPUNIT_LOG_LINE(total_produced << " produced, " <<  total_consumed << " consumed") ;
+    CPPUNIT_LOG_LINE("\n" << total_produced << " produced, " <<  total_consumed << " consumed\n") ;
 
     //CPPUNIT_LOG_EQUAL(total_produced, total_volume) ;
     CPPUNIT_LOG_EQUAL(total_consumed, total_produced) ;

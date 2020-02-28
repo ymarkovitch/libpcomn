@@ -334,7 +334,7 @@ void SemaphoreFuzzyTests::run(unsigned producers, unsigned consumers,
 
     CPPUNIT_LOG_LINE("Running " << producers << " producers, " << consumers << " consumers, "
                      << total_volume << " total items (" << pcount << " per producer), "
-                     << "max pause "<< (duration<double,std::micro>(max_pause).count()) << "ms") ;
+                     << "max pause "<< (duration<double,std::micro>(max_pause).count()) << "us") ;
 
     PRealStopwatch wall_time ;
     PCpuStopwatch  cpu_time ;
