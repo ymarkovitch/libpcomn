@@ -122,6 +122,10 @@ protected:
 
     bool finalize_pop(unsigned acquired_count) ;
 
+    // Returns true if the queue becomes/is finalized.
+    bool try_wait_empty_finalize_queue(TimeoutKind = TimeoutKind::RELATIVE,
+                                       std::chrono::nanoseconds = {}) noexcept ;
+
     static constexpr TimeoutMode timeout_mode(TimeoutKind kind) noexcept
     {
         return
@@ -163,10 +167,6 @@ protected:
 
 private:
     virtual void change_data_capacity(unsigned new_capacity) = 0 ;
-
-    // Returns true if the queue becomes/is finalized.
-    bool try_wait_empty_finalize_queue(TimeoutKind = TimeoutKind::RELATIVE,
-                                       std::chrono::nanoseconds = {}) noexcept ;
 
     unsigned max_empty_slots() const noexcept
     {
