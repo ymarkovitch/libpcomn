@@ -293,14 +293,17 @@ cas2_weak(T *target, T *expected_value, T new_value, std::memory_order = std::me
 
    __int128 * const target128 = reinterpret_cast<__int128 *>(target) ;
    __int128 * const old128 = reinterpret_cast<__int128 *>(expected_value) ;
-   const __int128 * const desired128 = reinterpret_cast<__int128 *>(&new_value) ;
    const __int128 expected128 = *old128 ;
+   #if (!__CLANG_VER__)
+   const __int128 * const desired128 = reinterpret_cast<__int128 *>(&new_value) ;
+   #else
+   const __int128 desired128 = *reinterpret_cast<__int128 *>(&new_value) ;
+   #endif
 
    *old128 = __sync_val_compare_and_swap(target128, expected128, desired128) ;
-
    return *old128 == expected128 ;
 
-   #else
+   #else /*PCOMN_PL_MS*/
 
    __int64 * const begin_target = reinterpret_cast<__int64 *>(target) ;
    __int64 * const begin_expected = reinterpret_cast<__int64 *>(expected_value) ;
@@ -309,7 +312,7 @@ cas2_weak(T *target, T *expected_value, T new_value, std::memory_order = std::me
    return !!_InterlockedCompareExchange128(begin_target,
                                            begin_new[1], begin_new[0],
                                            begin_expected) ;
-   #endif
+   #endif /*PCOMN_PL_MS*/
 }
 
 template<typename T>
@@ -337,11 +340,14 @@ cas2_strong(T *target, T *expected_value, T new_value, std::memory_order = std::
 
    __int128 * const target128 = reinterpret_cast<__int128 *>(target) ;
    __int128 * const old128 = reinterpret_cast<__int128 *>(expected_value) ;
-   const __int128 * const desired128 = reinterpret_cast<__int128 *>(&new_value) ;
    const __int128 expected128 = *old128 ;
+   #if (!__CLANG_VER__)
+   const __int128 * const desired128 = reinterpret_cast<__int128 *>(&new_value) ;
+   #else
+   const __int128 desired128 = *reinterpret_cast<__int128 *>(&new_value) ;
+   #endif
 
    *old128 = __sync_val_compare_and_swap(target128, expected128, desired128) ;
-
    return *old128 == expected128 ;
 }
 

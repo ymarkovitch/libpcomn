@@ -46,12 +46,6 @@ class blocqueue_controller {
         using counting_semaphore::counting_semaphore ;
     } ;
 
-    template<typename R, typename P>
-    using duration = std::chrono::duration<R, P> ;
-
-    template<typename C, typename D>
-    using time_point = std::chrono::time_point<C, D> ;
-
 public:
     size_t capacity() const { return _capacity.load(std::memory_order_relaxed) ; }
 
@@ -100,6 +94,13 @@ private:
     std::atomic<unsigned> _capacity ;
 
     mutable semaphore _slots[2] ;
+
+protected:
+    template<typename R, typename P>
+    using duration = std::chrono::duration<R, P> ;
+
+    template<typename C, typename D>
+    using time_point = std::chrono::time_point<C, D> ;
 
 protected:
     explicit blocqueue_controller(unsigned capacity) ;
