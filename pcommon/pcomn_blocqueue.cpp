@@ -147,20 +147,26 @@ bool blocqueue_controller::close_push_end(TimeoutKind kind, std::chrono::nanosec
     return try_wait_empty_finalize_queue(kind, timeout) ;
 }
 
-unsigned blocqueue_controller::start_pop(unsigned maxcount,
-                                         TimeoutKind kind, std::chrono::nanoseconds timeout)
+int blocqueue_controller::start_pop(unsigned maxcount,
+                                    TimeoutKind kind, std::chrono::nanoseconds timeout,
+                                    RaiseError raise_on_closed)
 {
-    validate_acquire_count(maxcount, "pop") ;
+    if ((int)maxcount == -1)
+        maxcount = max_capacity() ;
+    else
+        validate_acquire_count(maxcount, "pop") ;
 
     // pop() works both in State::OPEN and State::FINALIZING
-    ensure_state_at_most(State::FINALIZING) ;
+    if (!ensure_state_at_most(State::FINALIZING, raise_on_closed))
+        return -1 ;
 
     const unsigned acquired_count =
         slots(FULL).universal_acquire_some(maxcount, timeout_mode(kind), timeout) ;
 
     auto checkin_guard (make_finalizer([&]{ slots(FULL).release(acquired_count) ; })) ;
 
-    ensure_state_at_most(State::FINALIZING) ;
+    if (!ensure_state_at_most(State::FINALIZING, raise_on_closed))
+        return -1 ;
 
     checkin_guard.release() ;
 

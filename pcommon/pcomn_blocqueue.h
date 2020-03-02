@@ -107,18 +107,21 @@ protected:
 
     counting_semaphore &slots(SlotsKind kind) const noexcept { return _slots[(bool)kind] ; }
 
-    void ensure_state_at_most(State max_allowed_state) const
+    bool ensure_state_at_most(State max_allowed_state, RaiseError raise_on_closed = RAISE_ERROR) const
     {
-        if (_state.load(std::memory_order_acquire) > max_allowed_state)
+        const bool state_ok = _state.load(std::memory_order_acquire) <= max_allowed_state ;
+        if (!state_ok && raise_on_closed)
             raise_closed() ;
+        return state_ok ;
     }
 
     bool close_push_end(TimeoutKind kind, std::chrono::nanoseconds d) ;
     void close_both_ends() ;
 
     /// @return the count of actually acquired empty slots.
-    unsigned start_pop(unsigned requested_count,
-                       TimeoutKind, std::chrono::nanoseconds) ;
+    int start_pop(unsigned requested_count,
+                  TimeoutKind, std::chrono::nanoseconds,
+                  RaiseError raise_on_closed) ;
 
     bool finalize_pop(unsigned acquired_count) ;
 
@@ -222,9 +225,10 @@ class blocking_queue : private blocqueue_controller {
 
 public:
     typedef T                           value_type ;
-    typedef fwd::optional<value_type>   optional_value ;
-
     typedef std::remove_cvref_t<decltype(std::declval<container_type>().pop_many(1U))> value_list ;
+
+    typedef fwd::optional<value_type>   optional_value ;
+    typedef fwd::optional<value_list>   optional_vlist ;
 
     /// Create a blocking queue with specified current capacity.
     /// @note `capacity` is also passed to underlying ConcurrentContainer constructor.
@@ -325,6 +329,10 @@ public:
     ***************************************************************************/
     value_type pop() ;
     value_list pop_some(unsigned count) ;
+
+    optional_value pop_opt() ;
+    optional_vlist pop_opt_some(unsigned count) ;
+
     value_list try_pop_some(unsigned count) ;
 
     optional_value try_pop() { return try_get_item(TimeoutKind::RELATIVE, {}) ; }
@@ -425,15 +433,16 @@ private:
 
     // Pop handler
     template<typename QueueHandler>
-    auto handle_pop(unsigned requested_count, QueueHandler &&queue_handler,
+    auto handle_pop(RaiseError raise_on_closed,
+                    unsigned requested_count, QueueHandler &&queue_handler,
                     TimeoutKind kind = {}, std::chrono::nanoseconds timeout = {})
     {
         typedef decltype(pop_from_data(1U, std::forward<QueueHandler>(queue_handler)))
             result_type ;
 
-        const unsigned acquired_count = start_pop(requested_count, kind, timeout) ;
+        const int acquired_count = start_pop(requested_count, kind, timeout, raise_on_closed) ;
 
-        if (!acquired_count)
+        if (acquired_count <= 0)
             return result_type() ;
 
         // finalize_pop releases empty slots and, if there is a closing state, attempts
@@ -534,23 +543,51 @@ template<typename T, typename C>
 auto blocking_queue<T,C>::pop() -> value_type
 {
     return
-        handle_pop(1, [](auto &data, unsigned) { return data.pop() ; }) ;
-}
-
-template<typename T, typename C>
-auto blocking_queue<T,C>::try_get_item(TimeoutKind kind, std::chrono::nanoseconds timeout)
-    -> optional_value
-{
-    return
-        handle_pop(1, [](auto &data, unsigned) { return optional_value(data.pop()) ; },
-                   kind, timeout) ;
+        handle_pop(RAISE_ERROR, 1, [](auto &data, unsigned)
+        {
+            return data.pop() ;
+        }) ;
 }
 
 template<typename T, typename C>
 auto blocking_queue<T,C>::pop_some(unsigned count) -> value_list
 {
     return
-        handle_pop(1, [](auto &data, unsigned acquired) { return data.pop_many(acquired) ; }) ;
+        handle_pop(RAISE_ERROR, count, [](auto &data, unsigned acquired)
+        {
+            return data.pop_many(acquired) ;
+        }) ;
+}
+
+template<typename T, typename C>
+auto blocking_queue<T,C>::pop_opt() -> optional_value
+{
+    return
+        handle_pop(DONT_RAISE_ERROR, 1, [](auto &data, unsigned)
+        {
+            return optional_value(data.pop()) ;
+        }) ;
+}
+
+template<typename T, typename C>
+auto blocking_queue<T,C>::pop_opt_some(unsigned count) -> optional_vlist
+{
+    return
+        handle_pop(DONT_RAISE_ERROR, count, [](auto &data, unsigned acquired)
+        {
+            return optional_vlist(data.pop_many(acquired)) ;
+        }) ;
+}
+
+
+template<typename T, typename C>
+auto blocking_queue<T,C>::try_get_item(TimeoutKind kind, std::chrono::nanoseconds timeout)
+    -> optional_value
+{
+    return
+        handle_pop(RAISE_ERROR,
+                   1, [](auto &data, unsigned) { return optional_value(data.pop()) ; },
+                   kind, timeout) ;
 }
 
 } // end of namespace pcomn

@@ -471,6 +471,7 @@ class BlockingQueueFuzzyTests : public ProducerConsumerFixture {
         milliseconds before_close ;
         unsigned min_qcapacity = 1 ;
         unsigned max_qcapacity = min_qcapacity ;
+        double count_distr_p = 0.5 ;
     } ;
 
     template<unsigned producers, unsigned consumers,
@@ -510,20 +511,44 @@ class BlockingQueueFuzzyTests : public ProducerConsumerFixture {
         run(args) ;
     }
 
+    template<unsigned producers, unsigned consumers,
+             unsigned pcount,
+             unsigned queue_capacity,
+             unsigned max_pause_nano = 0, unsigned before_close_milli = 0>
+    void RunTest1Item()
+    {
+        PCOMN_STATIC_CHECK(queue_capacity > 0) ;
+
+        params args ;
+        args.producers = producers ;
+        args.consumers = consumers ;
+        args.pcount = pcount ;
+        args.max_pause = nanoseconds(max_pause_nano) ;
+        args.before_close = milliseconds(before_close_milli) ;
+        args.min_qcapacity = args.max_qcapacity = queue_capacity ;
+        args.count_distr_p = 1 ;
+
+        run(args) ;
+    }
+
     CPPUNIT_TEST_SUITE(BlockingQueueFuzzyTests) ;
 
     CPPUNIT_TEST(P_PASS(RunTest<1, 1, 1>                  )) ;
     CPPUNIT_TEST(P_PASS(RunTest<1, 1, 1000>               )) ;
     CPPUNIT_TEST(P_PASS(RunTest<1, 1, 2'000'000>          )) ;
     CPPUNIT_TEST(P_PASS(RunTest<2, 2, 2'000'000>          )) ;
-    CPPUNIT_TEST(P_PASS(RunTest<2, 1, 1'000'000,      100>)) ;
+    CPPUNIT_TEST(P_PASS(RunTest<2, 1, 1'000'000,  100>)) ;
     CPPUNIT_TEST(P_PASS(RunTest<2, 2, 2'000'000,  10, 500>)) ;
-    CPPUNIT_TEST(P_PASS(RunTest<2, 5, 10'000'000, 20, 1500>)) ;
+    CPPUNIT_TEST(P_PASS(RunTest<2, 5, 10'000'000, 20, 1000>)) ;
     CPPUNIT_TEST(P_PASS(RunTest<7, 5, 1'000'000>           )) ;
-    CPPUNIT_TEST(P_PASS(RunTest<5, 2, 1'000'000,  10, 1000>)) ;
+    CPPUNIT_TEST(P_PASS(RunTest<5, 2, 1'000'000,  10, 500>)) ;
+
+    CPPUNIT_TEST(P_PASS(RunTest1Item<2, 2, 2'000'000, 200, 20, 500>)) ;
+    CPPUNIT_TEST(P_PASS(RunTest1Item<4, 2, 2'000'000, 100, 20, 1000>)) ;
 
     CPPUNIT_TEST(P_PASS(RunTestVarCapacity<1, 1, 1000,       1>)) ;
     CPPUNIT_TEST(P_PASS(RunTestVarCapacity<1, 1, 2'000'000,  100,  10000>)) ;
+    CPPUNIT_TEST(P_PASS(RunTestVarCapacity<2, 2, 10'000'000, 50,   50,      20, 1000>)) ;
     CPPUNIT_TEST(P_PASS(RunTestVarCapacity<2, 2, 10'000'000, 100,  10000,  200, 2000>)) ;
     CPPUNIT_TEST(P_PASS(RunTestVarCapacity<4, 2, 2'000'000,  1000, 5000,    10, 1000>)) ;
 
@@ -680,7 +705,7 @@ void BlockingQueueFuzzyTests::run(params a)
         CPPUNIT_ASSERT(testers.empty()) ;
         for (testers.reserve(count) ; count ; --count)
         {
-            testers.emplace_back(new tester_thread(mode, cbq, a.pcount, 0.01, a.max_pause)) ;
+            testers.emplace_back(new tester_thread(mode, cbq, a.pcount, a.count_distr_p, a.max_pause)) ;
         }
     } ;
 
