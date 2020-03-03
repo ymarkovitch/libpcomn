@@ -15,6 +15,7 @@
 #include <pcomn_stopwatch.h>
 #include <pcomn_iterator.h>
 #include <pcomn_atomic.h>
+#include <pcomn_calgorithm.h>
 
 #include <thread>
 #include <chrono>
@@ -92,10 +93,8 @@ public:
         const queue_data result (atomic_op::add(&_qdata, queue_data(1, 0)._value)) ;
         PCOMN_VERIFY((uint32_t)result._occupied_count <= _capacity) ;
     }
-    void push(value_type &&v) { push(const_cast<const value_type &>(v)) ; }
 
-    template<typename FwdIterator>
-    FwdIterator push_many(FwdIterator begin, FwdIterator end) ;
+    void push(value_type &&v) { push(const_cast<const value_type &>(v)) ; }
 
     value_type pop()
     {
@@ -168,12 +167,18 @@ class BlockingQueueTests : public CppUnit::TestFixture {
     void Test_BlockingQueue_SingleThreaded() ;
     void Test_BlockingQueue_ChangeCapacity() ;
 
+    template<typename T>
+    void Test_ItemQueue_SingleThreaded() ;
+
     CPPUNIT_TEST_SUITE(BlockingQueueTests) ;
 
     CPPUNIT_TEST(Test_BlockingQueue_TestFixture) ;
     CPPUNIT_TEST(Test_BlockingQueue_Limits) ;
     CPPUNIT_TEST(Test_BlockingQueue_SingleThreaded) ;
     CPPUNIT_TEST(Test_BlockingQueue_ChangeCapacity) ;
+
+    CPPUNIT_TEST(Test_ItemQueue_SingleThreaded<blocking_list_queue<unsigned>>) ;
+    CPPUNIT_TEST(Test_ItemQueue_SingleThreaded<blocking_ring_queue<unsigned>>) ;
 
     CPPUNIT_TEST_SUITE_END() ;
 
@@ -365,6 +370,20 @@ void BlockingQueueTests::Test_BlockingQueue_SingleThreaded()
         CPPUNIT_LOG_ASSERT(q2.close_push()) ;
         CPPUNIT_LOG_RUN(q2.close()) ;
     }
+
+    CPPUNIT_LOG(std::endl) ;
+    {
+        counting_blocqueue q3 (5) ;
+        CPPUNIT_LOG_EXCEPTION(q3.pop_some(0), std::out_of_range) ;
+        CPPUNIT_LOG_EXCEPTION(q3.try_pop_some(0), std::out_of_range) ;
+
+        CPPUNIT_LOG_RUN(q3.close()) ;
+
+        CPPUNIT_LOG_EXCEPTION(q3.pop(), sequence_closed) ;
+        // Non-throwing pop from the closed queue
+        CPPUNIT_LOG_EQUAL(q3.pop_opt(), counting_blocqueue::optional_value()) ;
+        CPPUNIT_LOG_ASSERT(std::empty(q3.pop_opt_some(200))) ;
+    }
 }
 
 void BlockingQueueTests::Test_BlockingQueue_ChangeCapacity()
@@ -454,6 +473,132 @@ void BlockingQueueTests::Test_BlockingQueue_ChangeCapacity()
         CPPUNIT_LOG_EQ(q3.pop(), 4) ;
 
         CPPUNIT_LOG_EXCEPTION(q3.pop(), sequence_closed) ;
+    }
+}
+
+template<typename Q>
+void BlockingQueueTests::Test_ItemQueue_SingleThreaded()
+{
+    typedef std::vector<unsigned> vvec ;
+
+    typedef Q uint_blocqueue ;
+    typedef typename Q::optional_value optional_value ;
+    typedef typename Q::value_list value_list ;
+
+    {
+        uint_blocqueue q1 (1) ;
+
+        CPPUNIT_LOG_RUN(q1.push(1)) ;
+        CPPUNIT_LOG_EQ(q1.size(), 1) ;
+        CPPUNIT_LOG_EQ(q1.pop(), 1) ;
+        CPPUNIT_LOG_EQ(q1.size(), 0) ;
+
+        CPPUNIT_LOG_RUN(q1.push(20)) ;
+        CPPUNIT_LOG_EQ(q1.size(), 1) ;
+        CPPUNIT_LOG_EQ(q1.pop(), 20) ;
+
+        CPPUNIT_LOG_EQ(q1.size(), 0) ;
+        CPPUNIT_LOG_EQUAL(q1.try_pop(), optional_value()) ;
+        CPPUNIT_LOG_IS_FALSE(q1.try_pop()) ;
+
+        CPPUNIT_LOG_RUN(q1.close()) ;
+        CPPUNIT_LOG_EXCEPTION(q1.push(777), sequence_closed) ;
+        CPPUNIT_LOG_EXCEPTION(q1.try_pop(), sequence_closed) ;
+        CPPUNIT_LOG_EXCEPTION(q1.pop(), sequence_closed) ;
+    }
+
+    CPPUNIT_LOG(std::endl) ;
+    {
+        uint_blocqueue q2 (5) ;
+
+        CPPUNIT_LOG_ASSERT(q2.try_push(25)) ;
+        CPPUNIT_LOG_ASSERT(q2.try_push(35)) ;
+        CPPUNIT_LOG_RUN(q2.push(45)) ;
+        CPPUNIT_LOG_RUN(q2.push(55)) ;
+        CPPUNIT_LOG_RUN(q2.push(65)) ;
+        CPPUNIT_LOG_IS_FALSE(q2.try_push(1)) ;
+
+        CPPUNIT_LOG_EQUAL(q2.try_pop(), optional_value(25)) ;
+        CPPUNIT_LOG_EQUAL(q2.try_pop(), optional_value(35)) ;
+
+        CPPUNIT_LOG_EQ(q2.pop(), 45) ;
+
+        CPPUNIT_LOG_IS_FALSE(q2.close_push()) ;
+
+        CPPUNIT_LOG_EXCEPTION(q2.push(1), sequence_closed) ;
+        CPPUNIT_LOG_EXCEPTION(q2.try_push(1), sequence_closed) ;
+
+        CPPUNIT_LOG_ASSERT(q2.try_pop()) ;
+
+        CPPUNIT_LOG_IS_FALSE(q2.close_push()) ;
+
+        CPPUNIT_LOG_EQ(q2.pop(), 65) ;
+
+        CPPUNIT_LOG_EXCEPTION(q2.pop(), sequence_closed) ;
+        CPPUNIT_LOG_EXCEPTION(q2.try_pop(), sequence_closed) ;
+
+        CPPUNIT_LOG_ASSERT(q2.close_push()) ;
+        CPPUNIT_LOG_RUN(q2.close()) ;
+    }
+
+    CPPUNIT_LOG(std::endl) ;
+    {
+        uint_blocqueue q3 ({12, 15}) ;
+
+        CPPUNIT_LOG_ASSERT(q3.try_push(25)) ;
+        CPPUNIT_LOG_ASSERT(q3.try_push(35)) ;
+        CPPUNIT_LOG_RUN(q3.push(45)) ;
+        CPPUNIT_LOG_RUN(q3.push(55)) ;
+        CPPUNIT_LOG_RUN(q3.push(65)) ;
+
+        CPPUNIT_LOG_EQUAL(make_container<vvec>(q3.pop_some(120)),
+                          (vvec{25, 35, 45, 55, 65})) ;
+
+        CPPUNIT_LOG_RUN(q3.push(100)) ;
+        CPPUNIT_LOG_RUN(q3.push(200)) ;
+        CPPUNIT_LOG_RUN(q3.push(300)) ;
+        CPPUNIT_LOG_RUN(q3.push(400)) ;
+        CPPUNIT_LOG_RUN(q3.push(500)) ;
+        CPPUNIT_LOG_RUN(q3.push(600)) ;
+        CPPUNIT_LOG_RUN(q3.push(700)) ;
+        CPPUNIT_LOG_RUN(q3.push(800)) ;
+        CPPUNIT_LOG_RUN(q3.push(900)) ;
+        CPPUNIT_LOG_RUN(q3.push(910)) ;
+        CPPUNIT_LOG_RUN(q3.push(920)) ;
+        CPPUNIT_LOG_RUN(q3.push(930)) ;
+
+        CPPUNIT_LOG_RUN(q3.change_capacity(4)) ;
+
+        CPPUNIT_LOG_IS_FALSE(q3.try_push(21)) ;
+
+        CPPUNIT_LOG_EQUAL(make_container<vvec>(q3.pop_some(4)),
+                          (vvec{100, 200, 300, 400})) ;
+
+        CPPUNIT_LOG_IS_FALSE(q3.try_push(21)) ;
+
+        CPPUNIT_LOG_EQUAL(make_container<vvec>(q3.pop_some(4)),
+                          (vvec{500, 600, 700, 800})) ;
+
+        CPPUNIT_LOG_IS_FALSE(q3.try_push(21)) ;
+
+        CPPUNIT_LOG_EQUAL(q3.pop(), 900U) ;
+
+        CPPUNIT_LOG_ASSERT(q3.try_push(21)) ;
+
+        CPPUNIT_LOG_EQUAL(q3.try_pop_some(4), (value_list{910, 920, 930, 21})) ;
+
+        CPPUNIT_LOG_EQUAL(q3.try_pop(), optional_value()) ;
+
+        CPPUNIT_LOG_ASSERT(q3.try_push(31)) ;
+        CPPUNIT_LOG_ASSERT(q3.try_push(41)) ;
+        CPPUNIT_LOG_EQUAL(q3.pop_opt(), optional_value(31)) ;
+        CPPUNIT_LOG_EQUAL(q3.pop_opt_some(100), (value_list{41})) ;
+
+
+        CPPUNIT_LOG_ASSERT(q3.close_push()) ;
+
+        CPPUNIT_LOG_EQUAL(q3.pop_opt(), optional_value()) ;
+        CPPUNIT_LOG_EQUAL(q3.pop_opt_some(100), value_list()) ;
     }
 }
 

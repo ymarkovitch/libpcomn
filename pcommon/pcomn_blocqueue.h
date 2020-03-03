@@ -15,8 +15,11 @@
 #include "pcomn_semaphore.h"
 #include "pcomn_utils.h"
 #include "pcomn_except.h"
+#include "pcomn_bitops.h"
+#include "pcomn_safeptr.h"
 
 #include <list>
+#include <new>
 
 namespace pcomn {
 
@@ -34,6 +37,9 @@ template<typename> class ring_cbqueue ;
 *******************************************************************************/
 template<typename T, typename ConcurrentContainer = detail::list_cbqueue<T>>
 class blocking_queue ;
+
+template<typename T>
+using blocking_list_queue = blocking_queue<T> ;
 
 template<typename T>
 using blocking_ring_queue = blocking_queue<T, detail::ring_cbqueue<T>> ;
@@ -205,14 +211,13 @@ private:
  The container must provide the following functions:
 
     - push(T): return value ignored
-    - push_many(Iterator begin, Iterator end): return value ignored
     - pop(): return value must be ConvertibleTo(T)
     - pop_many(unsigned): return value must be SequenceContainer(T)
     - change_capacity(unsigned): return value ignored
 
- push(), push_many(), pop(), pop_many() must be thread-safe with respect both
- to each other, to change_capacity(), _and_ to itself (so that e.g. pop() must
- be safe called from different threads concurrently).
+ push(), pop(), pop_many() must be thread-safe with respect to each other,
+ and to change_capacity(), _and_ to itself (so that e.g. pop() shall be safely
+ called from different threads concurrently).
 
  change_capacity() must be thread-safe wrt all other functions but needn't be
  thread-safe to itself.
@@ -227,9 +232,7 @@ class blocking_queue : private blocqueue_controller {
 public:
     typedef T                           value_type ;
     typedef std::remove_cvref_t<decltype(std::declval<container_type>().pop_many(1U))> value_list ;
-
     typedef fwd::optional<value_type>   optional_value ;
-    typedef fwd::optional<value_list>   optional_vlist ;
 
     /// Create a blocking queue with specified current capacity.
     /// @note `capacity` is also passed to underlying ConcurrentContainer constructor.
@@ -287,9 +290,6 @@ public:
     void push(const value_type &value) { put_item(value) ; }
     void push(value_type &&value) { put_item(std::move(value)) ; }
 
-    template<typename FwdIterator>
-    FwdIterator push_some(FwdIterator b, FwdIterator e) ;
-
     bool try_push(const value_type &value) { return put_item(value, TimeoutKind::RELATIVE, {}) ; }
     bool try_push(value_type &&value) { return put_item(std::move(value), TimeoutKind::RELATIVE, {}) ; }
 
@@ -317,22 +317,14 @@ public:
         return put_item(std::move(value), timeout_kind(abs_time), abs_time.time_since_epoch()) ;
     }
 
-    template<typename FwdIterator, typename R, typename P>
-    FwdIterator try_push_some_for(FwdIterator b, FwdIterator e,
-                                  const duration<R, P> &rel_time) ;
-
-    template<typename FwdIterator, typename Clock, typename Duration>
-    FwdIterator try_push_some_until(FwdIterator b, FwdIterator e,
-                                    const time_point<Clock, Duration> &abs_time) ;
-
     /***************************************************************************
      pop
     ***************************************************************************/
     value_type pop() ;
-    value_list pop_some(unsigned count) ;
-
     optional_value pop_opt() ;
-    optional_vlist pop_opt_some(unsigned count) ;
+
+    value_list pop_some(unsigned count)     { return get_some_items(count, RAISE_ERROR) ; }
+    value_list pop_opt_some(unsigned count) { return get_some_items(count, DONT_RAISE_ERROR) ; }
 
     value_list try_pop_some(unsigned count) ;
 
@@ -351,10 +343,10 @@ public:
     }
 
     template<typename R, typename P>
-    value_list try_pop_some_for(const duration<R, P> &rel_time) ;
+    value_list try_pop_some_for(unsigned count, const duration<R, P> &rel_time) ;
 
     template<typename Clock, typename Duration>
-    value_list try_pop_some_until(const time_point<Clock, Duration> &abs_time) ;
+    value_list try_pop_some_until(unsigned count, const time_point<Clock, Duration> &abs_time) ;
 
 private:
     container_type _data ;
@@ -381,6 +373,7 @@ private:
     bool put_item(V &&value, TimeoutKind kind = {}, std::chrono::nanoseconds timeout = {}) ;
 
     optional_value try_get_item(TimeoutKind kind, std::chrono::nanoseconds timeout) ;
+    value_list get_some_items(unsigned count, RaiseError raise_on_closed) ;
 
     // Push handler
     template<typename QueueHandler>
@@ -471,54 +464,149 @@ template<typename T>
 class list_cbqueue {
 public:
     typedef T value_type ;
+    typedef std::list<value_type> value_list ;
 
     explicit list_cbqueue(unsigned /*initial capacity: ignored*/) {}
+    explicit list_cbqueue(const unipair<unsigned> &capacities) :
+        _max_size(capacities.second)
+    {
+        NOXCHECK(capacities.first <= capacities.second) ;
+        NOXCHECK(_max_size) ;
+    }
 
-    void push(const value_type &) ;
-    void push(value_type &&) ;
+    void push(const value_type &v)
+    {
+        append_values(value_list(1, v)) ;
+    }
 
-    template<typename FwdIterator>
-    FwdIterator push_many(FwdIterator begin, FwdIterator end) ;
+    void push(value_type &&v)
+    {
+        value_list vlist ;
+        vlist.emplace_back(std::move(v)) ;
+        append_values(std::move(vlist)) ;
+    }
 
-    value_type pop() ;
-    std::list<value_type> pop_many(unsigned count) ;
+    value_type pop() { return std::move(pop_many(1).front()) ; }
+
+    value_list pop_many(unsigned count)
+    {
+        // No allocations, no throws, no need for scoped lock
+        _data_mutex.lock() ;
+
+        NOXCHECK(count <= _data.size()) ;
+
+        value_list result ;
+
+        auto range_end = _data.begin() ;
+        std::advance(range_end, count) ;
+
+        // Splice from the front (two pointer assignments, that's all!)
+        result.splice(result.end(), _data, _data.begin(), range_end) ;
+
+        _data_mutex.unlock() ;
+
+        return result ;
+    }
 
     void change_capacity(unsigned /*new capacity: ignored*/) {}
 
+    size_t max_size() const { return _max_size ; }
+
 private:
-    std::list<value_type> _data ;
+    std::mutex   _data_mutex ;
+    value_list   _data ;
+    const size_t _max_size = _data.max_size() ;
+
+private:
+    void append_values(value_list &&values)
+    {
+        // list::splice throws nothing, no need for scoped lock
+        _data_mutex.lock() ;
+        _data.splice(_data.end(), std::move(values), values.begin(), values.end()) ;
+        _data_mutex.unlock() ;
+    }
 } ;
 
-/*******************************************************************************
+/***************************************************************************//**
+ Nonblocking bounded-capacity MPMC ring-buffer queue for use with blocking_queue
+ template.
 
+ @note This is not a full-featured queue: since the blocking_queue wrapper enures no
+ overflow/underflow takes place it never checks whether the queue is sufficiently
+ full (for pop()/pop_many()) or sufficiently empty (for push()).
 *******************************************************************************/
 template<typename T>
-class ring_cbqueue {
+class ring_cbqueue final : private std::allocator<T> {
+    typedef std::allocator<T> allocator_type ;
 public:
     typedef T value_type ;
 
-    explicit ring_cbqueue(unsigned init_capacity) ;
-    explicit ring_cbqueue(const unipair<unsigned> &capacities) ;
+    explicit ring_cbqueue(unsigned init_capacity) :
+        _capacity_mask((PCOMN_VERIFY(init_capacity), (1U << bitop::log2ceil(init_capacity)) - 1))
+    {}
 
-    void push(const value_type &) ;
-    void push(value_type &&) ;
+    explicit ring_cbqueue(const unipair<unsigned> &capacities) :
+        ring_cbqueue((PCOMN_VERIFY(capacities.second >= capacities.first), capacities.second))
+    {}
 
-    template<typename FwdIterator>
-    FwdIterator push_many(FwdIterator begin, FwdIterator end) ;
+    ~ring_cbqueue()
+    {
+        uint64_t i = _deq_pos.load(std::memory_order_acquire) ;
+        const uint64_t e = _enq_pos ;
 
-    value_type pop() ;
+        NOXCHECK(i <= e) ;
+        NOXCHECK(e - i <= max_size()) ;
+
+        while (i < e)
+            destroy(item(i++)) ;
+
+        allocator_type::deallocate(_items, max_size()) ;
+    }
+
+    void push(const value_type &v) { push_item(value_type(v)) ; }
+
+    void push(value_type &&v) noexcept { push_item(std::move(v)) ; }
+
+    value_type pop() noexcept
+    {
+        value_type * const v = item(_deq_pos.fetch_add(1, std::memory_order_acq_rel)) ;
+        value_type result (std::move(*v)) ;
+
+        destroy(v) ;
+        return result ;
+    }
+
     std::vector<value_type> pop_many(unsigned count) ;
 
-    size_t max_size() const { return (~_capacity_mask) + 1 ; }
+    uint64_t max_size() const noexcept { return _capacity_mask + 1 ; }
 
-    void change_capacity(size_t new_capacity)
+    void change_capacity(uint64_t new_capacity)
     {
         ensure_le<std::out_of_range>(new_capacity, max_size(),
                                      "The requested ring_cbqueue capacity is too big.") ;
     }
 
 private:
-    const size_t _capacity_mask ;
+    const uint64_t      _capacity_mask ;
+    value_type * const  _items = allocator_type::allocate(max_size()) ;
+
+    alignas(cacheline_t) std::atomic<uint64_t> _deq_pos {0} ;
+    std::mutex _enq_mutex ;
+    uint64_t   _enq_pos {0} ;
+
+private:
+    value_type *item(uint64_t index) const noexcept
+    {
+        return &_items[index & _capacity_mask] ;
+    }
+
+    void push_item(value_type &&v) noexcept
+    {
+        _enq_mutex.lock() ;
+        new (item(_enq_pos++)) value_type(std::move(v)) ;
+        _enq_mutex.unlock() ;
+    }
+
 } ;
 } // end of namespace pcomn::detail
 
@@ -551,16 +639,6 @@ auto blocking_queue<T,C>::pop() -> value_type
 }
 
 template<typename T, typename C>
-auto blocking_queue<T,C>::pop_some(unsigned count) -> value_list
-{
-    return
-        handle_pop(RAISE_ERROR, count, [](auto &data, unsigned acquired)
-        {
-            return data.pop_many(acquired) ;
-        }) ;
-}
-
-template<typename T, typename C>
 auto blocking_queue<T,C>::pop_opt() -> optional_value
 {
     return
@@ -571,15 +649,25 @@ auto blocking_queue<T,C>::pop_opt() -> optional_value
 }
 
 template<typename T, typename C>
-auto blocking_queue<T,C>::pop_opt_some(unsigned count) -> optional_vlist
+auto blocking_queue<T,C>::get_some_items(unsigned count, RaiseError raise_on_closed) -> value_list
 {
     return
-        handle_pop(DONT_RAISE_ERROR, count, [](auto &data, unsigned acquired)
+        handle_pop(raise_on_closed, count, [](auto &data, unsigned acquired)
         {
-            return optional_vlist(data.pop_many(acquired)) ;
+            return data.pop_many(acquired) ;
         }) ;
 }
 
+template<typename T, typename C>
+auto blocking_queue<T,C>::try_pop_some(unsigned count) -> value_list
+{
+    return
+        handle_pop(RAISE_ERROR, count, [](auto &data, unsigned acquired)
+        {
+            return data.pop_many(acquired) ;
+        },
+        TimeoutKind::RELATIVE, {}) ;
+}
 
 template<typename T, typename C>
 auto blocking_queue<T,C>::try_get_item(TimeoutKind kind, std::chrono::nanoseconds timeout)
@@ -590,6 +678,30 @@ auto blocking_queue<T,C>::try_get_item(TimeoutKind kind, std::chrono::nanosecond
                    1, [](auto &data, unsigned) { return optional_value(data.pop()) ; },
                    kind, timeout) ;
 }
+
+/*******************************************************************************
+ detail::ring_cbqueue
+*******************************************************************************/
+template<typename T>
+auto detail::ring_cbqueue<T>::pop_many(unsigned count) -> std::vector<value_type>
+{
+    NOXCHECK(count) ;
+
+    std::vector<value_type> result ;
+    result.reserve(count) ;
+
+    const uint64_t start_index = _deq_pos.fetch_add(count, std::memory_order_acq_rel) ;
+    const uint64_t end_index = start_index + count ;
+
+    for (uint64_t i = start_index ; i < end_index ; ++i)
+    {
+        value_type * const v = item(i) ;
+        result.emplace_back(std::move(*v)) ;
+        destroy(v) ;
+    }
+    return result ;
+}
+
 
 } // end of namespace pcomn
 
