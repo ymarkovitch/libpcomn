@@ -154,7 +154,10 @@ int blocqueue_controller::start_pop(unsigned maxcount,
     if ((int)maxcount == -1)
         maxcount = max_capacity() ;
     else
+    {
+        ensure<std::out_of_range>(maxcount, "Zero count is not valid for pop_some()/try_pop_some() operations.") ;
         validate_acquire_count(maxcount, "pop") ;
+    }
 
     // pop() works both in State::OPEN and State::FINALIZING
     if (!ensure_state_at_most(State::FINALIZING, raise_on_closed))
