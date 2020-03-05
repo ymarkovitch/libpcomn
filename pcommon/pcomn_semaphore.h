@@ -12,7 +12,8 @@
 *******************************************************************************/
 /** @file
 
- Process-private fast counting semaphore.
+ Process-private fast counting semaphore and classic binary Dijkstra semaphore
+ (AKA benafore).
 *******************************************************************************/
 #include "pcomn_platform.h"
 
@@ -27,6 +28,9 @@
 #include <atomic>
 
 namespace pcomn {
+
+class counting_semaphore ;
+class binary_semaphore ;
 
 /***************************************************************************//**
  Unlike a mutex a counting_semaphore is not tied to a thread - acquiring a
@@ -47,7 +51,7 @@ class counting_semaphore {
 
 public:
     explicit counting_semaphore(unsigned init_count = 0) :
-        _data(init_count)
+        _value(init_count)
     {
         check_overflow(init_count, "counting_semaphore") ;
     }
@@ -188,10 +192,10 @@ public:
     }
 
 private:
-    union sem_data {
-        constexpr sem_data(uint64_t v = 0) noexcept : _value(v) {}
+    union data {
+        constexpr data(uint64_t v = 0) noexcept : _value(v) {}
 
-        constexpr sem_data(int32_t count, uint32_t wcount) noexcept :
+        constexpr data(int32_t count, uint32_t wcount) noexcept :
             _token_count(count),
             _waiting_count(wcount)
         {}
@@ -210,8 +214,8 @@ private:
     } ;
 private:
     union {
-        std::atomic<uint64_t> _data {} ;
-        sem_data              _sdata ;
+        data                  _data ;
+        std::atomic<uint64_t> _value {} ;
     } ;
 
 private:
@@ -227,19 +231,117 @@ private:
     unsigned try_acquire_in_userspace(unsigned mincount, unsigned maxcount) ;
     unsigned acquire_with_lock(int32_t mincount, int32_t maxcount,
                                TimeoutMode mode, std::chrono::nanoseconds timeout) ;
-    bool data_cas(sem_data &expected, const sem_data &desired) noexcept ;
+    bool data_cas(data &expected, const data &desired) noexcept ;
 
     template<typename Clock>
-    constexpr static TimeoutMode timeout_mode()
-    {
-        static_assert(is_one_of<Clock,
-                      std::chrono::steady_clock,
-                      std::chrono::system_clock>::value,
-                      "Only steady_clock and system_clock are supported for timeout specification.") ;
+    constexpr static TimeoutMode timeout_mode() { return timeout_mode_from_clock<Clock>() ; }
+} ;
 
-        return std::is_same_v<Clock, std::chrono::steady_clock> ?
-            TimeoutMode::SteadyClock : TimeoutMode::SystemClock ;
+/***************************************************************************//**
+ Classic Dijkstra binary semaphore AKA benaphore: nonrecursive lock, which
+ in contrast to mutex allows calling lock() and uinlock() from different threads
+ (the thread that acquired the lock is not its "owner"), also allows self-locking.
+
+ Provides the usual set of methods:
+   - lock()
+   - try_lock()
+   - try_lock_for()
+   - try_lock_until()
+   - unlock()
+
+ The unlock() is idempotent, calling it on unlocked benafore is no-op.
+*******************************************************************************/
+class binary_semaphore {
+    PCOMN_NONCOPYABLE(binary_semaphore) ;
+    PCOMN_NONASSIGNABLE(binary_semaphore) ;
+public:
+    /// Default constructor, creates an unlocked benaphore.
+    constexpr binary_semaphore() noexcept : _data{} {}
+
+    /// Create a benaphore with expicitly specified initial acquirement state.
+    explicit constexpr binary_semaphore(bool acquired) noexcept : _data(acquired, 0) {}
+
+    ~binary_semaphore() { NOXCHECK(_data._wcount == 0) ; }
+
+    /// Acquire lock.
+    /// If the lock is held by @em any thread (including itself), wait for it to be
+    /// released.
+    void lock() { try_lock() || lock_with_timeout({}, {}) ; }
+
+    /// Try to acquire the lock.
+    /// This call never blocks and never takes a kernel call.
+    /// @return true, if this thread has successfully acquired the lock; false, if the
+    /// lock is already held by any thread, including itself.
+    bool try_lock() noexcept
+    {
+        return data_cas(as_mutable(data(false, 0)), data(true, 0)) ;
     }
+
+    /// Release the lock.
+    /// Idempotent, calling it on unlocked benafore is valid and no-op.
+    ///
+    void unlock() ;
+
+    /// Try to acquire the lock, block until specified timeout_duration has elapsed
+    /// or the lock is acquired, whichever comes first.
+    ///
+    /// Uses std::chrono::steady_clock to measure a duration, thus immune to clock
+    /// adjusments. May block for longer than timeout_duration due to scheduling or
+    /// resource contention delays.
+    ///
+    /// If timeout_duration is zero, behaves like try_lock().
+    ///
+    /// @return true on successful lock acquisition, false when the timeout expired.
+    ///
+    template<typename R, typename P>
+    bool try_lock_for(const std::chrono::duration<R, P> &timeout_duration)
+    {
+        return lock_with_timeout(TimeoutMode::Period, timeout_duration) ;
+    }
+
+    /// Try to acquire the lock, block until specified `abs_time` has been reached or
+    /// the lock is acquired, whichever comes first.
+    ///
+    /// Only allows std::chrono::steady_clock or std::chrono::system_clock to specify
+    /// `abs_time`.
+    /// If `abs_time` has already passed, behaves like try_lock() but still
+    /// can make a system call in the presence of contention.
+    ///
+    /// @return true on successful lock acquisition, false when the timeout reached.
+    ///
+    template<typename Clock, typename Duration>
+    bool try_lock_until(const std::chrono::time_point<Clock, Duration> &abs_time)
+    {
+        return lock_with_timeout(timeout_mode_from_clock<Clock>(), abs_time.time_since_epoch()) ;
+    }
+
+protected:
+    bool lock_with_timeout(TimeoutMode mode, std::chrono::nanoseconds timeout) ;
+
+private:
+    union data {
+        constexpr data() : _value(0) {}
+        explicit constexpr data(bool locked, uint32_t wcount) noexcept :
+            _locked(locked),
+            _wcount(wcount)
+        {}
+
+        uint64_t _value ;
+        struct {
+            int32_t  _locked ; /* Bool value, 0 or 1, address is used as a futex. */
+            uint32_t _wcount ; /* The count of (potentially) blocked threads.
+                                * We can avoid futex_wake when _wcount is 0. */
+        } ;
+    } ;
+
+private:
+    union {
+        data                  _data ;
+        std::atomic<uint64_t> _value ;
+    } ;
+
+private:
+    bool data_cas(data &expected, const data &desired) noexcept ;
 } ;
 
 }  // end of namespace pcomn

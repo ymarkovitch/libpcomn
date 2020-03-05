@@ -75,10 +75,10 @@ struct is_atomic : std::bool_constant
 
 *******************************************************************************/
 template<typename C, bool=is_atomic<C>::value>
-struct atomic_type_traits {} ;
+struct atomic_type_traits : std::false_type {} ;
 
 template<typename C>
-struct atomic_type_traits<C, true> {
+struct atomic_type_traits<C, true> : std::true_type {
       typedef typename std::remove_cv<C>::type  value_type ;
       typedef std::atomic<value_type>           type ;
 } ;
@@ -99,6 +99,8 @@ template<typename C>
 using atomic_type_t = typename atomic_type<C>::type ;
 template<typename C>
 using atomic_value_t = typename atomic_type<C>::value_type ;
+template<typename C>
+constexpr bool atomic_type_v = atomic_type<C>::value ;
 
 template<typename T, typename R = T>
 using enable_if_atomic_t =
@@ -111,6 +113,7 @@ using enable_if_atomic_arithmetic_t =
 template<typename T, typename R = T>
 using enable_if_atomic_ptr_t =
    std::enable_if_t<is_atomic<atomic_value_t<T>>::value && std::is_pointer<atomic_value_t<T>>::value, R> ;
+
 
 /******************************************************************************/
 /** Check if the type is eligible for CAS2 or double-witdth LL/SC.

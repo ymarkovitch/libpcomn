@@ -275,11 +275,10 @@ void PromiseLockTests::Test_Promise_MultiThreaded()
 
 int main(int argc, char *argv[])
 {
-   pcomn::unit::TestRunner runner ;
-   runner.addTest(MutexTests::suite()) ;
-   runner.addTest(PromiseLockTests::suite()) ;
-
-   return
-      pcomn::unit::run_tests(runner, argc, argv,
-                             "sync.diag.ini", "Tests of various synchronization primitives") ;
+    return pcomn::unit::run_tests
+        <
+            MutexTests,
+            PromiseLockTests
+        >
+        (argc, argv) ;
 }

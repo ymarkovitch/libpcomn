@@ -1,4 +1,4 @@
-/*-*- mode: c++; tab-width: 3; indent-tabs-mode: nil; c-file-style: "ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
+/*-*- mode:c++;tab-width:3;indent-tabs-mode:nil;c-file-style:"ellemtel";c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 #ifndef __PCOMN_SYNCOBJ_H
 #define __PCOMN_SYNCOBJ_H
 /*******************************************************************************
@@ -81,6 +81,39 @@ enum class TimeoutMode {
    SteadyClock,
    SystemClock
 } ;
+
+/// Convert timeout specified as std::chrono::duration to struct timespec.
+/// The timeout can be relative (period), or absolute (time point).
+inline
+struct timespec timeout_timespec(TimeoutMode mode, std::chrono::nanoseconds timeout)
+{
+   switch (mode)
+   {
+      case TimeoutMode::None: return {} ;
+      case TimeoutMode::Period:
+         return sys::nsec_to_timespec(std::chrono::steady_clock::now().time_since_epoch() + timeout) ;
+      default: break ;
+   }
+   return sys::nsec_to_timespec(timeout) ;
+} ;
+
+/// Get the TimeoutMode from the clock type from std::chrono.
+///
+/// @tparam Clock std::chrono::steady_clock or std::chrono::system_clock; the function
+/// verifies this parameter.
+/// @return TimeoutMode::SteadyClock or TimeoutMode::SystemClock
+///
+template<typename Clock>
+constexpr TimeoutMode timeout_mode_from_clock()
+{
+   static_assert(is_one_of<Clock,
+                 std::chrono::steady_clock,
+                 std::chrono::system_clock>::value,
+                 "Only steady_clock and system_clock are supported for timeout specification.") ;
+
+   return std::is_same_v<Clock, std::chrono::steady_clock> ?
+      TimeoutMode::SteadyClock : TimeoutMode::SystemClock ;
+}
 
 /***************************************************************************//**
  Get the logical CPU(core) which the calling thread is running on.
@@ -252,20 +285,80 @@ class shared_lock {
  @note The promise lock is @em not mutex in the sense there is no "ownership" of
  the lock: @em any thread may call unlock().
 *******************************************************************************/
-class promise_lock : private sys::native_promise_lock {
-      typedef sys::native_promise_lock ancestor ;
+class promise_lock {
       PCOMN_NONCOPYABLE(promise_lock) ;
       PCOMN_NONASSIGNABLE(promise_lock) ;
    public:
-      /// Create a promise lock, initially locked by default.
-      explicit constexpr promise_lock(bool initially_locked = true) :
-         ancestor(initially_locked)
+      /// Create an initially locked promise lock.
+      constexpr promise_lock() noexcept : promise_lock(true) {}
+
+      /// Create a lock with explicitly specified initial state.
+      explicit constexpr promise_lock(bool initially_locked) noexcept :
+         _locked(initially_locked)
       {}
 
-      ~promise_lock() = default ;
+      /// Destruction is OK for both locked and unlocked promise_lock objects,
+      /// except for then the object is locked _and_ somebody is waiting on it.
+      ~promise_lock()
+      {
+         PCOMN_VERIFY(_locked.load(std::memory_order_relaxed) < 2) ;
+      }
 
-      using ancestor::wait ;
-      using ancestor::unlock ;
+      void unlock() ;
+
+      /// Block until the lock is unlocked.
+      /// @note This function *does not* reacquire the lock, and if the lock is not
+      /// locked does not make system calls.
+      ///
+      void wait() ;
+
+      /// Check if the lock is unlocked.
+      /// Never blocks and never takes a kernel call.
+      ///
+      /// @return true if unlocked, false otherwise.
+      /// @note *Does not* reacquire the lock.
+      ///
+      bool try_wait() noexcept { return wait_with_timeout(TimeoutMode::Period, {}) ; }
+
+      /// Check if the lock is unlocked, block until specified `timeout_duration` has
+      /// elapsed or the lock becomes unlocked, whichever comes first.
+      ///
+      /// Uses std::chrono::steady_clock to measure a duration, thus immune to clock
+      /// adjusments.
+      /// If `timeout_duration` is zero, behaves like try_wait().
+      ///
+      /// @return true if unlocked, false if timeout expired.
+      ///
+      template<typename R, typename P>
+      bool wait_for(const std::chrono::duration<R, P> &timeout_duration)
+      {
+         return wait_with_timeout(TimeoutMode::Period, timeout_duration) ;
+      }
+
+      /// Check if the lock is unlocked, block until specified `abs_time` has been
+      /// reached or the lock becomes unlocked, whichever comes first.
+      ///
+      /// Only allows std::chrono::steady_clock or std::chrono::system_clock to specify
+      /// `abs_time`.
+      /// If `abs_time` has already passed, behaves like try_wait() but still
+      /// can make a system call in the presence of contention.
+      ///
+      /// @return true if unlocked, false if timeout expired.
+      ///
+      template<typename Clock, typename Duration>
+      bool wait_until(const std::chrono::time_point<Clock, Duration> &abs_time)
+      {
+         return wait_with_timeout(timeout_mode_from_clock<Clock>(),
+                                  abs_time.time_since_epoch()) ;
+      }
+
+   private:
+      std::atomic<int32_t> _locked ; /* 0:unlocked,
+                                        1:locked, nobody waiting,
+                                        2:locked, somebody waiting */
+
+   private:
+      bool wait_with_timeout(TimeoutMode, std::chrono::nanoseconds timeout) ;
 } ;
 
 /***************************************************************************//**

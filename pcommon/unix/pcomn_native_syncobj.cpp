@@ -1,4 +1,4 @@
-/*-*- mode:c++;tab-width:3;indent-tabs-mode:nil;c-file-style:"ellemtel";c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
+/*-*- tab-width:4;indent-tabs-mode:nil;c-file-style:"ellemtel";c-basic-offset:4;c-file-offsets:((innamespace . 0)(inlambda . 0)) -*-*/
 /*******************************************************************************
  FILE         :   pcomn_native_syncobj.cpp
  COPYRIGHT    :   Yakov Markovitch, 2020. All rights reserved.
@@ -19,16 +19,16 @@ namespace sys {
 /*******************************************************************************
  Futex
 *******************************************************************************/
-int futex_wait(int32_t *self, int32_t expected_value, FutexWait flags, struct timespec timeout)
+int futex_wait_with_timeout(void *self, int32_t expected_value, FutexWait flags, struct timespec timeout)
 {
-   if (!(flags & FutexWait::AbsTime))
-      return futex(self, FUTEX_WAIT_PRIVATE, expected_value, &timeout, NULL, 0) ;
+    if (!(flags & FutexWait::AbsTime))
+        return futex(self, FUTEX_WAIT_PRIVATE, expected_value, &timeout, NULL, 0) ;
 
-   // To wait until the specified point in time (i.e. to absolute time), use
-   // FUTEX_WAIT_BITSET operation: FUTEX_WAIT is for _relative_ time (i.e., period).
-   const int32_t op = FUTEX_WAIT_BITSET_PRIVATE | flags_if(FUTEX_CLOCK_REALTIME, !!(flags & FutexWait::SystemClock)) ;
+    // To wait until the specified point in time (i.e. to absolute time), use
+    // FUTEX_WAIT_BITSET operation: FUTEX_WAIT is for _relative_ time (i.e., period).
+    const int32_t op = FUTEX_WAIT_BITSET_PRIVATE | flags_if(FUTEX_CLOCK_REALTIME, !!(flags & FutexWait::SystemClock)) ;
 
-   return futex(self, op, expected_value, &timeout, NULL, FUTEX_BITSET_MATCH_ANY) ;
+    return futex(self, op, expected_value, &timeout, NULL, FUTEX_BITSET_MATCH_ANY) ;
 }
 
 } // end of namespace pcomn::sys

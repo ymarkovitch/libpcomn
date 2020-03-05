@@ -50,11 +50,17 @@ class SemaphoreTests : public CppUnit::TestFixture {
     void Test_Semaphore_EINTR() ;
     void Test_Semaphore_SingleThreaded() ;
 
+    void Test_Benaphore_SingleThreaded() ;
+    void Test_Benaphore_MultiThreaded() ;
+
     CPPUNIT_TEST_SUITE(SemaphoreTests) ;
 
     CPPUNIT_TEST(Test_Semaphore_Limits) ;
     CPPUNIT_TEST(Test_Semaphore_SingleThreaded) ;
     CPPUNIT_TEST(Test_Semaphore_EINTR) ;
+
+    CPPUNIT_TEST(Test_Benaphore_SingleThreaded) ;
+    CPPUNIT_TEST(Test_Benaphore_MultiThreaded) ;
 
     CPPUNIT_TEST_SUITE_END() ;
 
@@ -87,6 +93,7 @@ public:
         PCOMN_ENSURE_ENOERR(pthread_kill(tid, SIGUSR2), "pthread_kill") ;
     }
 } ;
+
 
 /*******************************************************************************
                             class SemaphoreFuzzyTests
@@ -319,6 +326,80 @@ void SemaphoreTests::Test_Semaphore_EINTR()
 
     CPPUNIT_LOG(std::endl) ;
     set_sighandler() ;
+}
+
+void SemaphoreTests::Test_Benaphore_SingleThreaded()
+{
+   using namespace std ;
+   binary_semaphore lock0 ;
+
+   CPPUNIT_LOG_RUN(lock0.lock()) ;
+   CPPUNIT_LOG_RUN(lock0.unlock()) ;
+   CPPUNIT_LOG_RUN(lock0.unlock()) ;
+   CPPUNIT_LOG_RUN(lock0.lock()) ;
+   CPPUNIT_LOG_IS_FALSE(lock0.try_lock()) ;
+   CPPUNIT_LOG_IS_FALSE(lock0.try_lock()) ;
+   CPPUNIT_LOG_IS_FALSE(lock0.try_lock_for(0s)) ;
+   CPPUNIT_LOG_IS_FALSE(lock0.try_lock_for(50ms)) ;
+   CPPUNIT_LOG_RUN(lock0.unlock()) ;
+   CPPUNIT_LOG_ASSERT(lock0.try_lock_for(1h)) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   binary_semaphore lock2 {true} ;
+   CPPUNIT_LOG_IS_FALSE(lock2.try_lock()) ;
+   CPPUNIT_LOG_RUN(lock2.unlock()) ;
+   CPPUNIT_LOG_RUN(lock2.lock()) ;
+   CPPUNIT_LOG_IS_FALSE(lock2.try_lock()) ;
+   CPPUNIT_LOG_RUN(lock2.unlock()) ;
+   CPPUNIT_LOG_ASSERT(lock2.try_lock()) ;
+}
+
+void SemaphoreTests::Test_Benaphore_MultiThreaded()
+{
+   using namespace std ;
+   vector<int> v1, v2, v3, v4 ;
+   for (vector<int> *v: {&v1, &v2, &v3, &v4})
+      v->reserve(100) ;
+
+   std::thread t1, t2, t3, t4 ;
+   binary_semaphore lock1 (true) ;
+   t1 = thread([&]{
+      v1.push_back(10001) ;
+      lock1.lock() ;
+      v1.push_back(10002) ;
+      CPPUNIT_LOG_RUN(this_thread::sleep_for(50ms)) ;
+      lock1.unlock() ;
+      v1.push_back(10003) ;
+      CPPUNIT_LOG_RUN(this_thread::sleep_for(50ms)) ;
+      lock1.lock() ;
+      v1.push_back(10004) ;
+      CPPUNIT_LOG_RUN(this_thread::sleep_for(200ms)) ;
+      lock1.unlock() ;
+   }) ;
+
+   CPPUNIT_LOG_RUN(this_thread::sleep_for(100ms)) ;
+   CPPUNIT_LOG_EQ(v1.size(), 1) ;
+   CPPUNIT_LOG_EQ(v1.front(), 10001) ;
+   CPPUNIT_LOG_RUN(this_thread::sleep_for(100ms)) ;
+   CPPUNIT_LOG_EQ(v1.size(), 1) ;
+   CPPUNIT_LOG_EQ(v1.front(), 10001) ;
+   CPPUNIT_LOG_RUN(v1.push_back(20001)) ;
+
+   CPPUNIT_LOG_RUN(lock1.unlock()) ;
+   CPPUNIT_LOG_RUN(this_thread::sleep_for(200ms)) ;
+
+   CPPUNIT_LOG_EQUAL(v1, (std::vector<int>{10001, 20001, 10002, 10003})) ;
+
+   CPPUNIT_LOG_RUN(lock1.unlock()) ;
+   CPPUNIT_LOG_RUN(this_thread::sleep_for(50ms)) ;
+   CPPUNIT_LOG_EQUAL(v1, (std::vector<int>{10001, 20001, 10002, 10003, 10004})) ;
+
+   CPPUNIT_LOG_IS_FALSE(lock1.try_lock_for(20ms)) ;
+   CPPUNIT_LOG_ASSERT(lock1.try_lock_for(300ms)) ;
+
+   CPPUNIT_LOG_RUN(t1.join()) ;
+   CPPUNIT_LOG_EQUAL(v1, (std::vector<int>{10001, 20001, 10002, 10003, 10004})) ;
 }
 
 /*******************************************************************************

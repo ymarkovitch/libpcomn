@@ -307,10 +307,11 @@ inline T ensure_posix(T result, const char *message)
    return result ;
 }
 
-inline void ensure_enoerr(int result, const char *function_name, const char *call_name_or_message)
+inline bool ensure_enoerr(int result, const char *function_name, const char *call_name_or_message)
 {
    if (unlikely(result))
       throw_syserror<true>(function_name, call_name_or_message, result) ;
+   return true ;
 }
 
 template<class X>

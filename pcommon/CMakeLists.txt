@@ -174,6 +174,7 @@ add_library(pcommon STATIC
   pcomn_crypthash.cpp
   pcomn_pthread.cpp
   pcomn_semaphore.cpp
+  pcomn_syncobj.cpp
   $<$<BOOL:${ZSTD_FOUND}>:pcomn_zstd.cpp>
   unix/pcomn_native_syncobj.cpp
   unix/pcomn_posix_exec.cpp

@@ -17,14 +17,22 @@ using namespace pcomn::sys ;
 
 namespace pcomn {
 
+static constexpr inline FutexWait futex_wait_mode(TimeoutMode mode)
+{
+    // Always use absolute timeout to compensate for EINTR possibility.
+    return FutexWait::AbsTime |
+        ((mode == TimeoutMode::SystemClock) ? FutexWait::SystemClock : FutexWait::SteadyClock) ;
+}
+
 /*******************************************************************************
  counting_semaphore
 *******************************************************************************/
-inline bool counting_semaphore::data_cas(sem_data &expected, const sem_data &desired) noexcept
+inline
+bool counting_semaphore::data_cas(data &expected, const data &desired) noexcept
 {
     // Use release MO to ensure a thread acquiring/releasing tokens synchronizes
     // with us and other threads that manipulate tokens before.
-    return _data.compare_exchange_strong(expected._value, desired._value, std::memory_order_acq_rel) ;
+    return _value.compare_exchange_strong(expected._value, desired._value, std::memory_order_acq_rel) ;
 }
 
 // Try to capture `count` tokens w/o blocking.
@@ -38,8 +46,8 @@ unsigned counting_semaphore::try_acquire_in_userspace(unsigned minc, unsigned ma
     const int32_t mincount = minc ;
     const int32_t maxcount = maxc ;
 
-    sem_data old_data (_data.load(std::memory_order_relaxed)) ;
-    sem_data new_data ;
+    data old_data (_value.load(std::memory_order_relaxed)) ;
+    data new_data ;
     unsigned acquired_count ;
 
     do
@@ -60,30 +68,16 @@ unsigned counting_semaphore::try_acquire_in_userspace(unsigned minc, unsigned ma
 unsigned counting_semaphore::acquire_with_lock(int32_t mincount, int32_t maxcount,
                                                TimeoutMode mode, std::chrono::nanoseconds timeout)
 {
-    // Convert relative timeout to absolute
-    const auto make_timepoint = [mode, timeout]() -> struct timespec
-    {
-        switch (mode)
-        {
-            case TimeoutMode::None: return {} ;
-            case TimeoutMode::Period:
-                return nsec_to_timespec(std::chrono::steady_clock::now().time_since_epoch() + timeout) ;
-            default: break ;
-        }
-        return nsec_to_timespec(timeout) ;
-    } ;
+    const uint64_t waiting_one = data(0, 1)._value ;
 
+    // Convert relative timeout to absolute: calculate the end of timeout period.
     // Always use absolute timeout to compensate for EINTR possibility.
-    const FutexWait wait_mode = FutexWait::AbsTime |
-        ((mode == TimeoutMode::SteadyClock) ? FutexWait::SteadyClock : FutexWait::SystemClock) ;
-    // Calculate the end of timeout period.
-    struct timespec timeout_point = make_timepoint() ;
-
-    const uint64_t waiting_one = sem_data(0, 1)._value ;
+    struct timespec timeout_point = timeout_timespec(mode, timeout) ;
+    const FutexWait wait_mode = futex_wait_mode(mode) ;
 
     // Check in to the set of waiting threads, we're going to sleep.
     // Note we need a new value (preincrement, not postincrement).
-    sem_data old_data (_data.fetch_add(waiting_one, std::memory_order_acq_rel) + waiting_one) ;
+    data old_data (_value.fetch_add(waiting_one, std::memory_order_acq_rel) + waiting_one) ;
 
     for(;;)
     {
@@ -96,7 +90,7 @@ unsigned counting_semaphore::acquire_with_lock(int32_t mincount, int32_t maxcoun
 
             // Probably enough available tokens: try both to grab the tokens _and_ check
             // out from the set of waiting threads.
-            const sem_data new_data (old_data._token_count - desired_count, old_data._waiting_count - 1) ;
+            const data new_data (old_data._token_count - desired_count, old_data._waiting_count - 1) ;
 
             if (data_cas(old_data, new_data))
             {
@@ -111,9 +105,8 @@ unsigned counting_semaphore::acquire_with_lock(int32_t mincount, int32_t maxcoun
 
         // If not enough tokens available, go to sleep.
         const int result = mode == TimeoutMode::None
-            ? futex_wait(&_sdata._token_count, old_data._token_count)
-            : futex_wait(&_sdata._token_count, old_data._token_count,
-                         wait_mode|FutexWait::AbsTime, timeout_point) ;
+            ? futex_wait(&_data._token_count, old_data._token_count)
+            : futex_wait(&_data._token_count, old_data._token_count, wait_mode, timeout_point) ;
 
         if (result < 0)
             switch(errno)
@@ -121,13 +114,19 @@ unsigned counting_semaphore::acquire_with_lock(int32_t mincount, int32_t maxcoun
                 // Repeat an attempt.
                 case EAGAIN: case EINTR: break ;
                 // The wait is timed out, it's OK if timeout possibility is assumed.
-                case ETIMEDOUT: if (mode != TimeoutMode::None) return 0 ;
+                case ETIMEDOUT: if (mode != TimeoutMode::None)
+                {
+                    // Timeout, don't try more, check out from the set of waiting threads.
+                    _value.fetch_sub(waiting_one, std::memory_order_acq_rel) ;
+                    return 0 ;
+                }
+
                 // Error
                 default: PCOMN_ENSURE_POSIX(-1, "FUTEX_WAIT") ;
             }
 
         // Reload the data value
-        old_data = _data.load(std::memory_order_relaxed) ;
+        old_data = _value.load(std::memory_order_relaxed) ;
     }
 }
 
@@ -148,8 +147,8 @@ unsigned counting_semaphore::acquire_with_timeout(unsigned mincount, unsigned ma
 int32_t counting_semaphore::borrow(unsigned count)
 {
     // borrow() ensures at least `acquire` MO
-    sem_data old_data (_data.load(std::memory_order_acquire)) ;
-    sem_data new_data ;
+    data old_data (_value.load(std::memory_order_acquire)) ;
+    data new_data ;
 
     if (!count)
         return old_data._token_count ;
@@ -172,8 +171,8 @@ void counting_semaphore::release(unsigned count)
     if (!count)
         return ;
 
-    sem_data old_data (_data.load(std::memory_order_relaxed)) ;
-    sem_data new_data ;
+    data old_data (_value.load(std::memory_order_relaxed)) ;
+    data new_data ;
 
     do
     {
@@ -188,7 +187,94 @@ void counting_semaphore::release(unsigned count)
 
     // If there is any potentially waiting threads, wake at most count of them
     if (old_data._waiting_count)
-        futex_wake(&_sdata._token_count, std::min<unsigned>(count, old_data._waiting_count)) ;
+        futex_wake(&_data._token_count, std::min<unsigned>(count, old_data._waiting_count)) ;
+}
+
+/*******************************************************************************
+ binary_semaphore
+*******************************************************************************/
+inline
+bool binary_semaphore::data_cas(data &expected, const data &desired) noexcept
+{
+    return _value.compare_exchange_strong(expected._value, desired._value, std::memory_order_acq_rel) ;
+}
+
+bool binary_semaphore::lock_with_timeout(TimeoutMode mode, std::chrono::nanoseconds timeout)
+{
+    const uint64_t waiting_one = data(false, 1)._value ;
+
+    // Convert relative timeout to absolute: calculate the end of timeout period.
+    // Always use absolute timeout to compensate for EINTR possibility.
+    struct timespec timeout_point = timeout_timespec(mode, timeout) ;
+    const FutexWait wait_mode = futex_wait_mode(mode) ;
+
+    data old_data ;
+    // Check in to the set of waiting threads, we're going to sleep.
+    old_data._value = _value.fetch_add(waiting_one, std::memory_order_acq_rel) + waiting_one ;
+
+    do {
+
+        while (old_data._locked)
+        {
+            // Benaphore is locked by someone else, go to sleep.
+            const int result = mode == TimeoutMode::None
+                ? futex_wait(&_data._locked, 1)
+                : futex_wait(&_data._locked, 1, wait_mode, timeout_point) ;
+
+            if (result < 0)
+                switch(errno)
+                {
+                    // Repeat an attempt.
+                    case EAGAIN: case EINTR: break ;
+
+                    // The wait is timed out: it's OK if timeout possibility is assumed,
+                    // otherwise this code is an error.
+                    case ETIMEDOUT: if (mode != TimeoutMode::None)
+                    {
+                        // Check out from the set of waiting threads.
+                        _value.fetch_sub(waiting_one, std::memory_order_acq_rel) ;
+                        return false ;
+                    }
+
+                    // Error
+                    default: PCOMN_ENSURE_POSIX(-1, "FUTEX_WAIT") ;
+                }
+
+            // Reload the data value
+            old_data._value = _value.load(std::memory_order_relaxed) ;
+            // Loop to while(old_data._locked)
+        }
+
+        // At least our thread is waiting.
+        NOXCHECK(old_data._wcount) ;
+    }
+    // Get the lock _and_ check out from the set of waiting threads.
+    while (!data_cas(old_data, data(true, old_data._wcount - 1))) ;
+
+    return true ;
+}
+
+void binary_semaphore::unlock()
+{
+    data old_data (true, 0) ;
+
+    // Load data through "optimistic" CAS
+    if (data_cas(old_data, data(false, 0)))
+        return ;
+
+    while(old_data._locked)
+    {
+        const uint32_t wcount = old_data._wcount ;
+
+        if (!data_cas(old_data, data(false, wcount)))
+            continue ;
+
+        if (wcount)
+            // There are (potentially) waiting threads, wake one
+            futex_wake(&_data._locked, 1) ;
+
+        break ;
+    }
 }
 
 }  // end of namespace pcomn
