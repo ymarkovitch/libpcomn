@@ -405,13 +405,9 @@ function_type_t<Callable> make_function(Callable &&fn)
    return {std::forward<Callable>(fn)} ;
 }
 
-template<typename, typename>
-struct is_callable : bool_constant<false> {} ;
-
 template<typename T, typename R, typename...Args>
-struct is_callable<T, R(Args...)> :
-         bool_constant<(!is_same_unqualified<T, nullptr_t>::value &&
-                        std::is_constructible<std::function<R(Args...)>, T>::value)> {} ;
+struct is_callable_as : bool_constant<(!is_same_unqualified<T, nullptr_t>::value &&
+                                       std::is_constructible<std::function<R(Args...)>, T>::value)> {} ;
 
 } // end of namespace pcomn
 
