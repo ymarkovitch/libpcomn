@@ -15,6 +15,17 @@ namespace pcomn {
 /*******************************************************************************
  pthread
 *******************************************************************************/
+inline
+void pthread::ensure_running(const char *attempted_action)
+{
+    if (joinable())
+        return ;
+
+    throw_exception<std::system_error>
+        (std::make_error_code(std::errc::invalid_argument),
+         string_cast("Attempt to ", attempted_action, " a pcomn::pthread in non-joinable state")) ;
+}
+
 void pthread::join()
 {
     ensure_running("join") ;

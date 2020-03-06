@@ -40,7 +40,7 @@ class pthread {
     PCOMN_NONASSIGNABLE(pthread) ;
 
     template<typename F, typename... Args>
-    using valid_callable = std::enable_if_t<is_callable<valtype_t<F>, Args...>::value> ;
+    using valid_callable = std::enable_if_t<is_callable_as<valtype_t<F>, void, Args...>::value> ;
 
 public:
     struct id ;
@@ -61,7 +61,7 @@ public:
         pthread(F_NONE, std::forward<F>(callable), std::forward<Args>(args)...)
     {}
 
-    ~pthread() ;
+    ~pthread() { finalize() ; }
 
     bool joinable() const noexcept { return !!_id ; }
 
@@ -152,7 +152,7 @@ private:
 private:
     struct thread_state {
         virtual void run() = 0 ;
-        virtual ~thread_state() = 0 ;
+        virtual ~thread_state() = default ;
     } ;
 
     template<typename F, typename... Args>
