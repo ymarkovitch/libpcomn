@@ -13,6 +13,7 @@
 
 #include <pcomn_semaphore.h>
 #include <pcomn_stopwatch.h>
+#include <pcomn_pthread.h>
 
 #include <thread>
 #include <chrono>
@@ -362,9 +363,9 @@ void SemaphoreTests::Test_Benaphore_MultiThreaded()
    for (vector<int> *v: {&v1, &v2, &v3, &v4})
       v->reserve(100) ;
 
-   std::thread t1, t2, t3, t4 ;
+   pthread t1, t2, t3, t4 ;
    binary_semaphore lock1 (true) ;
-   t1 = thread([&]{
+   t1 = pthread(pthread::F_AUTOJOIN, [&]{
       v1.push_back(10001) ;
       lock1.lock() ;
       v1.push_back(10002) ;
@@ -372,6 +373,7 @@ void SemaphoreTests::Test_Benaphore_MultiThreaded()
       lock1.unlock() ;
       v1.push_back(10003) ;
       CPPUNIT_LOG_RUN(this_thread::sleep_for(50ms)) ;
+      lock1.lock() ;
       lock1.lock() ;
       v1.push_back(10004) ;
       CPPUNIT_LOG_RUN(this_thread::sleep_for(200ms)) ;
@@ -381,10 +383,14 @@ void SemaphoreTests::Test_Benaphore_MultiThreaded()
    CPPUNIT_LOG_RUN(this_thread::sleep_for(100ms)) ;
    CPPUNIT_LOG_EQ(v1.size(), 1) ;
    CPPUNIT_LOG_EQ(v1.front(), 10001) ;
+
    CPPUNIT_LOG_RUN(this_thread::sleep_for(100ms)) ;
    CPPUNIT_LOG_EQ(v1.size(), 1) ;
    CPPUNIT_LOG_EQ(v1.front(), 10001) ;
+
    CPPUNIT_LOG_RUN(v1.push_back(20001)) ;
+
+   CPPUNIT_LOG_EQUAL(v1, (std::vector<int>{10001, 20001})) ;
 
    CPPUNIT_LOG_RUN(lock1.unlock()) ;
    CPPUNIT_LOG_RUN(this_thread::sleep_for(200ms)) ;
