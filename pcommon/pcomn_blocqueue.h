@@ -11,6 +11,8 @@
  CREATION DATE:   6 Feb 2020
 *******************************************************************************/
 /** @file
+ Thread-safe multi-producer multi-consumer queue capable to block threads on attempt
+ to take elements from an empty queue or to put into a full queue.
 *******************************************************************************/
 #include "pcomn_semaphore.h"
 #include "pcomn_utils.h"
@@ -29,20 +31,31 @@ template<typename> class ring_cbqueue ;
 } // end of namespace pcomn::detail
 
 /*******************************************************************************
- blocking_queue<T>: the underlying container is based on std::list and implies
-                    (very short) locking.
-
- blocking_ring_queue<T>: the underlying container is lock-free ring queue
-                         (not wait-free!).
+ Forward declaration
 *******************************************************************************/
 template<typename T, typename ConcurrentContainer = detail::list_cbqueue<T>>
 class blocking_queue ;
+
+/***************************************************************************//**
+ Template aliases for the blocking_queue vith various underlying containers.
+
+ blocking_queue<T>: the underlying container is based on std::list and implies
+                    (very short) locking.
+
+ blocking_list_queue<T>: alias of blocking_queue<T>.
+
+ blocking_ring_queue<T>: the underlying container is a ring queue with locking
+                         (still extremely fast) push and lock-free pop.
+*******************************************************************************/
+/**@{*/
 
 template<typename T>
 using blocking_list_queue = blocking_queue<T> ;
 
 template<typename T>
 using blocking_ring_queue = blocking_queue<T, detail::ring_cbqueue<T>> ;
+
+/**@}*/
 
 /***************************************************************************//**
  Base non-template class of the MPMC blocking queue template.
@@ -200,10 +213,15 @@ private:
  One can *close* the queue either partially (the sending end) or completely (both
  ends). close() can be called multiple times, once a closed queue remains closed.
 
- As the sending end of the queue is closed, the queue throws sequence_closed
- exception on any attempt to push an item. Once the queue is empty, sequence_closed
- is thrown also on any attempt to pull an item. Closing both ends is amounting to
- closing the sending end and clearing the queue at the same time.
+ As the pushing end of the queue is closed, the queue throws sequence_closed
+ exception on any attempt to push an item. Once after that the queue is empty,
+ _any_ popping function except for pop_opt() and pop_opt_some() will throw
+ pcomn::sequence_closed. Note that this also applies to all try_... functions,
+ so e.g. try_pop() for a _closed_ queue will not return false but will throw
+ pcomn::sequence_closed instead.
+
+ Closing both ends is amounting to closing the sending end and clearing the queue at the
+ same time.
 
  @param T The type of the stored elements.
  @param ConcurrentContainer The type of the underlying container to use to store the elements.
@@ -255,7 +273,7 @@ public:
     /// All the items still in the queue will be lost.
     void close() { this->close_both_ends() ; }
 
-    /// Immediately close the push end of the queue and return.
+    /// Immediately close the pushing end of the queue and return.
     ///
     /// @return true if it is happens so that the queue is empty and close_push() also
     ///   managed to close the pop end of the queue.
@@ -264,16 +282,27 @@ public:
     ///
     bool close_push() { return this->close_push_end(TimeoutKind::RELATIVE, {}) ; }
 
+    /// Close the pushing end of the queue and block until specified `abs_time` has been
+    /// reached or the queue is empty, whichever comes first.
+    ///
+    /// @return true if the queue is empty, false if the timeout is reached.
+    ///
     template<typename Duration>
     bool close_push_wait_empty(std::chrono::time_point<std::chrono::steady_clock, Duration> &abs_timeout)
     {
         return this->close_push_end(TimeoutKind::ABSOLUTE, abs_timeout.time_since_epoch()) ;
     }
 
+    /// Close the pushing end of the queue and block block until specified
+    /// `timeout_duration` has elapsed or the queue becomes empty, whichever
+    /// comes first.
+    ///
+    /// @return true if the queue is empty, false if the timeout is reached.
+    ///
     template<typename R, typename P>
-    bool close_push_wait_empty(const duration<R, P> &rel_timeout)
+    bool close_push_wait_empty(const duration<R, P> &timeout_duration)
     {
-        return this->close_push_end(TimeoutKind::RELATIVE, rel_timeout) ;
+        return this->close_push_end(TimeoutKind::RELATIVE, timeout_duration) ;
     }
 
     /***************************************************************************
@@ -320,13 +349,38 @@ public:
     /***************************************************************************
      pop
     ***************************************************************************/
+    /// Atomically remove and return an item from the front of the queue.
+    ///
+    /// Blocks if the queue is empty until either an item is pushed into the queue
+    /// or the queue is closed.
+    /// @throws pcomn::sequence_closed when the queue is closed.
+    ///
     value_type pop() ;
+
+    /// Atomically remove and return an item from the front of the queue.
+    ///
+    /// Blocks if the queue is empty until either an item is pushed into the queue
+    /// or the queue is closed.
+    /// In contrast to pop(), does _not_ throw exception when the queue is closed,
+    /// instead returns empty optional_value().
+    ///
     optional_value pop_opt() ;
 
-    value_list pop_some(unsigned count)     { return get_some_items(count, RAISE_ERROR) ; }
-    value_list pop_opt_some(unsigned count) { return get_some_items(count, DONT_RAISE_ERROR) ; }
+    /// Pop several items at once, between 1 and (greedily) `maxcount`.
+    ///
+    /// Blocks if the queue is empty until either items are pushed into the queue
+    /// or the queue is closed.
+    ///
+    /// @param maxcount The maximum count of items to pop from the queue; must be >0, or
+    ///  std::invalid_argument will be thrown.
+    ///
+    /// @throws pcomn::sequence_closed when the queue is closed.
+    /// @throws std::invalid_argument when maxcount==0.
+    ///
+    value_list pop_some(unsigned maxcount)     { return get_some_items(maxcount, RAISE_ERROR) ; }
+    value_list pop_opt_some(unsigned maxcount) { return get_some_items(maxcount, DONT_RAISE_ERROR) ; }
 
-    value_list try_pop_some(unsigned count) ;
+    value_list try_pop_some(unsigned maxcount) ;
 
     optional_value try_pop() { return try_get_item(TimeoutKind::RELATIVE, {}) ; }
 

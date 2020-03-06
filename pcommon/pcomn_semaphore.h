@@ -307,7 +307,7 @@ public:
     /// If `abs_time` has already passed, behaves like try_lock() but still
     /// can make a system call in the presence of contention.
     ///
-    /// @return true on successful lock acquisition, false when the timeout reached.
+    /// @return true on successful lock acquisition, false when the timeout is reached.
     ///
     template<typename Clock, typename Duration>
     bool try_lock_until(const std::chrono::time_point<Clock, Duration> &abs_time)
