@@ -30,9 +30,9 @@ namespace pcomn {
  jobs after the start of processing. The workflow is as follows:
 
   1. Create job_batch object with a specified number of threads.
-  2. Form a batch of jobs, submitting _all_ tasks to be performed.
-  3. Start processing either by calling either start() or wait() function.
-  4. After start() or wait() no new jobs can be submitted, i.e. job_batch is "one-off".
+  2. Form a batch of jobs by submitting _all_ the tasks to be performed.
+  3. Start processing either by calling either run() or wait() function.
+  4. After run() or wait() no new jobs can be submitted, i.e. job_batch is "one-off".
 
  A job can be submitted with add_task() or add_job(). The difference is add_task()
  returns std::future<> object, thus allowing to obtain the result of execution,
@@ -41,21 +41,75 @@ namespace pcomn {
 class job_batch {
     PCOMN_NONCOPYABLE(job_batch) ;
     PCOMN_NONASSIGNABLE(job_batch) ;
+    // Give threadpool access to job_batch::job and job_batch::task
+    friend class threadpool ;
 public:
-    job_batch() ;
-    explicit job_batch(unsigned threadcount) ;
+    /// Create a batch with at most `threadcount` worker threads.
+    ///
+    /// Actual worker threads count depends on the count of added task/jobs and
+    /// is finally decided at the run() call as `min(threadcount,taskcount)`.
+    ///
+    /// @note Worker threads are actually started at the first run() call or at first
+    /// call of any of wait(), try_wait(), wit_for(), wait_until().
+    ///
+    explicit job_batch(unsigned threadcount) : job_batch(threadcount, 1) {}
+
+    job_batch(unsigned max_threadcount, unsigned jobs_per_thread) ;
 
     /// Wait until all the pending tasks from the queue have been completed.
     ~job_batch() ;
 
-    /// Get the number of threads in the pool.
-    size_t size() const ;
-
-    /// Drop all the pending tasks from the task queue.
+    /// Start processing jobs.
     ///
-    unsigned clear_queue() ;
+    /// It is safe and relatively cheap to call run() for already running batch,
+    /// it is no-op then.
+    ///
+    /// @return true if all the jobs are completed upon return from run(), false
+    /// otherwise.
+    ///
+    bool run() ;
 
-    /// Immediately stop the pool, drop all the pending jobs.
+    void wait() ;
+
+    /// Check if all the jobs are completed.
+    /// Never blocks.
+    ///
+    bool try_wait() { return wait_with_timeout(TimeoutMode::Period, {}) ; }
+
+    /// Block until all the jobs become completed or `timeout_duration` has elapsed,
+    /// whichever comes first.
+    ///
+    /// Uses std::chrono::steady_clock to measure a duration, thus immune to clock
+    /// adjusments.
+    /// If `timeout_duration` is zero, behaves like try_wait().
+    ///
+    /// @return true if all the jobs have been completed, false if timeout expired.
+    ///
+    template<typename R, typename P>
+    bool wait_for(const std::chrono::duration<R, P> &timeout_duration)
+    {
+        return wait_with_timeout(TimeoutMode::Period, timeout_duration) ;
+    }
+
+    /// Block until all the jobs become completed or until specified `abs_time`
+    /// has been reached, whichever comes first.
+    ///
+    /// Only allows std::chrono::steady_clock or std::chrono::system_clock to specify
+    /// `abs_time`.
+    /// If `abs_time` has already passed, behaves like try_wait().
+    ///
+    /// @return true if all the jobs have been completed, false if timeout expired.
+    ///
+    template<typename Clock, typename Duration>
+    bool wait_until(const std::chrono::time_point<Clock, Duration> &abs_time)
+    {
+        return wait_with_timeout(timeout_mode_from_clock<Clock>(), abs_time.time_since_epoch()) ;
+    }
+
+    /// Get the number of threads in the pool.
+    size_t size() const { return _threads.size() ; }
+
+    /// Immediately drop all the pending jobs and stop threads.
     /// All threads are joined and deleted.
     ///
     void stop() ;
@@ -63,48 +117,127 @@ public:
     /// Append the callable object to the batch and get std::future<> to allow obtaining
     /// the result of execution.
     ///
-    template<typename F>
-    auto add_task(F &&task) ->std::future<decltype(task())>
+    template<typename F, typename... Args>
+    auto add_task(F &&callable, Args &&... args)
     {
-        typedef decltype(task()) task_result ;
+        using namespace std ;
+        typedef task<decay_t<F>, decay_t<Args>...> task_type ;
 
-        auto ptask = std::packaged_task<task_result()>(std::forward<F>(task)) ;
-        std::future<task_result> result (ptask.get_future()) ;
+        _jobs.reserve(_jobs.size() + 1) ;
+        task_type *new_task = new task_type(forward<F>(callable), forward<Args>(args)...) ;
+        _jobs.emplace_back(new_task) ;
 
-        _task_queue.push(std::move(ptask)) ;
-
-        return result ;
+        return new_task->get_future() ;
     }
 
     /// Append the callable object to the batch.
     ///
-    template<typename F>
-    auto add_job(F &&job) ->std::void_t<decltype(job())>
+    template<typename F, typename... Args>
+    void add_job(F &&callable, Args &&... args)
     {
-        _task_queue.push(packed_job(std::packaged_task<void()>(std::forward<F>(job)))) ;
+        using namespace std ;
+
+        _jobs.reserve(_jobs.size() + 1) ;
+        _jobs.emplace_back(new job<decay_t<F>, decay_t<Args>...>
+                           (forward<F>(callable), forward<Args>(args)...)) ;
     }
 
 private:
-    class alignas(cacheline_t) packed_job final : std::function<void()> {
-        typedef std::function<void()> ancestor ;
+    struct assignment {
+        virtual void run() = 0 ;
+        virtual void set_exception(std::exception_ptr &&) = 0 ;
+        virtual ~assignment() = default ;
+    } ;
+
+    template<typename F, typename... Args>
+    struct packaged_job : assignment {
+
+        template<typename A0, typename... An>
+        packaged_job(A0 &&fn, An &&...args) :
+            _function(std::forward<A0>(fn)),
+            _args(std::forward<An>(args)...)
+        {}
+
+    protected:
+        decltype(auto) invoke()
+        {
+            return invoke_function(std::index_sequence_for<Args...>()) ;
+        }
+
+    private:
+        template<size_t... I>
+        decltype(auto) invoke_function(std::index_sequence<I...>)
+        {
+            return _function(std::get<I>(_args)...) ;
+        }
+
+    private:
+        F                     _function ;
+        std::tuple<Args...>   _args ;
+    } ;
+
+    /***************************************************************************
+     job
+    ***************************************************************************/
+    template<typename F, typename... Args>
+    class alignas(cacheline_t) job final : public packaged_job<F, Args...> {
+        typedef packaged_job<F, Args...> ancestor ;
+
     public:
         using ancestor::ancestor ;
+        void run() override { this->invoke() ; }
+
+        void set_exception(std::exception_ptr &&x) override
+        {
+        }
+    } ;
+
+    /***************************************************************************
+     task
+    ***************************************************************************/
+    template<typename F, typename... Args>
+    class alignas(cacheline_t) task final : public packaged_job<F, Args...> {
+        typedef packaged_job<F, Args...> ancestor ;
+
+    public:
+        using ancestor::ancestor ;
+
+        auto get_future() { return _promise.get_future() ; }
+
+        void run() override { _promise.set_value(this->invoke()) ; }
+
+        void set_exception(std::exception_ptr &&x) override
+        {
+            _promise.set_exception(std::move(x)) ;
+        }
+
+    private:
+        std::promise<decltype(std::declval<ancestor>().invoke())> _promise ;
     } ;
 
 private:
-    std::atomic<unsigned> _idle_count {0} ;  /* Count of idle threads. */
-    atomic_flag           _retire {false} ;
-    atomic_flag           _stop   {false} ;
+    mutable shared_mutex _pool_mutex ;
 
-    mutable std::mutex _pool_mutex ;
+    const unsigned _max_threadcount ;
+    const unsigned _jobs_per_thread = 1 ;
 
-    std::vector<packed_job>
-    blocking_ring_queue<packed_job> _task_queue {4096} ;
-    std::list<std::pair<pthread, atomic_flag_ptr>> _threads ;
+    promise_lock             _finished ;
+
+    std::atomic<ssize_t>     _jobndx {-1} ;
+    std::atomic<ssize_t>     _pending {0} ;
+
+    alignas(cacheline_t) std::vector<pthread> _threads ;
+    std::vector<std::unique_ptr<assignment>>  _jobs ;
 
 private:
-    void start_thread() ;
-    void flush_task_queue() ;
+    unsigned jobcount() const { return _jobs.size() ; }
+
+    bool wait_with_timeout(TimeoutMode mode, std::chrono::nanoseconds timeout)
+    {
+        return run() || _finished.wait_with_timeout(mode, timeout) ;
+    }
+
+    void worker_thread_function(bool join_others) ;
 } ;
 
 /***************************************************************************//**
@@ -120,9 +253,6 @@ private:
 class threadpool {
     PCOMN_NONCOPYABLE(threadpool) ;
     PCOMN_NONASSIGNABLE(threadpool) ;
-
-    typedef std::atomic<bool>               atomic_flag ;
-    typedef std::shared_ptr<atomic_flag>    atomic_flag_ptr ;
 
     // Threadpool's task queue item
     class packed_job final {
@@ -167,20 +297,41 @@ public:
     /// Wait until all the pending tasks from the queue have been completed.
     ~threadpool() ;
 
-    /// Get the number of threads in the pool.
+    /// Get the count of threads in the pool.
     size_t size() const
     {
-        PCOMN_SCOPE_LOCK(lock, _pool_mutex) ;
+        PCOMN_SCOPE_R_LOCK(lock, _pool_mutex) ;
         return _threads.size() ;
     }
 
+    /// Get the pool capacitiy, which is the sum of thread count and task queue capacity.
+    ///
+    size_t capacity() const
+    {
+        PCOMN_SCOPE_R_LOCK(lock, _pool_mutex) ;
+        return _threads.size() + _task_queue.capacity() ;
+    }
+
     /// Get the count of currently idle threads.
-    int idle_count() { return _idle_count ; }
+    size_t idle_count() { return _idle_count.load(std::memory_order_relaxed) ; }
+
+    /// Get the (approximate) count of pending (pushed but not yet popped) items
+    /// in the queue.
+    ///
+    size_t pending_count() const { return _task_queue.size() ; }
+
+    void set_queue_capacity(unsigned new_capacity) ;
+
+    size_t max_queue_capacity() const { return _task_queue.max_capacity() ; }
 
     /// Change the count of threads in the pool.
     void resize(size_t threadcount) ;
 
     /// Drop all the pending tasks from the task queue.
+    ///
+    /// After calling this function the thread pool is intact and ready to handle
+    /// new tasks.
+    /// @return Dropped tasks count.
     ///
     unsigned clear_queue() ;
 
@@ -198,7 +349,7 @@ public:
     ///
     /// @note After this call the pool cannot be restarted.
     ///
-    void stop(bool complete_pending_tasks = false) ;
+    unsigned stop(bool complete_pending_tasks = false) ;
 
     /// Put the callable object into the task queue for subsequent execution.
     /// The result of execution (return value or exception) is available through the
@@ -229,14 +380,11 @@ public:
     }
 
 private:
-    std::atomic<unsigned> _idle_count {0} ;  /* Count of idle threads. */
-    atomic_flag           _retire {false} ;
-    atomic_flag           _stop   {false} ;
-
-    mutable std::mutex _pool_mutex ;
+    mutable shared_mutex _pool_mutex ;
+    std::vector<pthread> _threads ;
 
     blocking_ring_queue<packed_job> _task_queue {4096} ;
-    std::list<std::pair<pthread, atomic_flag_ptr>> _threads ;
+    std::atomic<size_t>             _idle_count ;
 
 private:
     void start_thread() ;
