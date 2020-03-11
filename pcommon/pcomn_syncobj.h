@@ -352,13 +352,12 @@ class promise_lock {
                                   abs_time.time_since_epoch()) ;
       }
 
+      bool wait_with_timeout(TimeoutMode, std::chrono::nanoseconds timeout) ;
+
    private:
       std::atomic<int32_t> _locked ; /* 0:unlocked,
                                         1:locked, nobody waiting,
                                         2:locked, somebody waiting */
-
-   private:
-      bool wait_with_timeout(TimeoutMode, std::chrono::nanoseconds timeout) ;
 } ;
 
 /***************************************************************************//**
