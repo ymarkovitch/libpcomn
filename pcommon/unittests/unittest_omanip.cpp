@@ -25,12 +25,14 @@ class OmanipTests : public CppUnit::TestFixture {
       void Test_OSequence() ;
       void Test_OContainer() ;
       void Test_OHRSize() ;
+      void Test_OException() ;
 
       CPPUNIT_TEST_SUITE(OmanipTests) ;
 
       CPPUNIT_TEST(Test_OSequence) ;
       CPPUNIT_TEST(Test_OHRSize) ;
       CPPUNIT_TEST(Test_OContainer) ;
+      CPPUNIT_TEST(Test_OException) ;
 
       CPPUNIT_TEST_SUITE_END() ;
    protected:
@@ -148,6 +150,25 @@ void OmanipTests::Test_OHRSize()
    CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsizex(1024*MiB)), "1G") ;
    CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsizex(1024*MiB + 1)), "1073741825") ;
    CPPUNIT_LOG_EQ(string_cast(pcomn::ohrsizex(1100*MiB)), "1100M") ;
+}
+
+void OmanipTests::Test_OException()
+{
+   using namespace pcomn ;
+   std::exception_ptr xptr ;
+
+   try { throw std::runtime_error("Hello!") ; }
+   catch(...)
+   {
+      CPPUNIT_LOG_EQ(string_cast(oexception({})), "") ;
+      CPPUNIT_LOG_EQ(string_cast(oexception()), "std::runtime_error: Hello!") ;
+      CPPUNIT_LOG_RUN(xptr = std::current_exception()) ;
+   }
+   CPPUNIT_LOG_ASSERT(xptr) ;
+   CPPUNIT_LOG_EQ(string_cast(oexception(xptr)), "std::runtime_error: Hello!") ;
+
+   CPPUNIT_LOG_EQ(string_cast(oexception({})), "") ;
+   CPPUNIT_LOG_EQ(string_cast(oexception()), "") ;
 }
 
 int main(int argc, char *argv[])

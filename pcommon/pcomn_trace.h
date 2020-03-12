@@ -714,24 +714,10 @@ std::ostream &print_dereferenced(std::ostream &os, const P &ptr)
       : os << *ptr ;
 }
 
-inline std::ostream &print_file(std::ostream &os, FILE *file)
-{
-   if (!file || feof(file) || ferror(file))
-      return os ;
-   const long pos = ftell(file) ;
-   if (pos < 0)
-      return os ;
+std::ostream &print_file(std::ostream &os, FILE *file) ;
 
-   char buf[4096] ;
-   do os.write(buf, fread(buf, 1, sizeof buf, file)) ;
-   while (!feof(file) && !ferror(file)) ;
-
-   if (pos)
-      fseek(file, pos, SEEK_SET) ;
-   else
-      rewind(file) ;
-   return os ;
-}
+std::ostream &print_exception(std::ostream &, const std::exception_ptr &) ;
+std::ostream &print_current_exception(std::ostream &) ;
 
 /*******************************************************************************
 
@@ -749,6 +735,9 @@ template<typename P>
 inline auto oderef(const P &ptr) PCOMN_MAKE_OMANIP(print_dereferenced<P>, std::cref(ptr)) ;
 
 inline auto ofile(FILE *file) PCOMN_MAKE_OMANIP(&print_file, file) ;
+
+inline auto oexception(const std::exception_ptr &xptr) PCOMN_MAKE_OMANIP(&print_exception, xptr) ;
+inline auto oexception() PCOMN_MAKE_OMANIP(&print_current_exception) ;
 
 enum EndArgs { endargs } ;
 
@@ -811,6 +800,8 @@ namespace pcomn {
 using diag::oderef ;
 using diag::otptr ;
 using diag::ofncall ;
+using diag::ofile ;
+using diag::oexception ;
 using diag::EndArgs ;
 using diag::ostrerror ;
 } ;
