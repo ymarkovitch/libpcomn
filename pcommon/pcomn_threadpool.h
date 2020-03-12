@@ -174,6 +174,9 @@ private:
     private:
         F                     _function ;
         std::tuple<Args...>   _args ;
+
+    public:
+        typedef decltype(std::declval<packaged_job>().invoke()) result_type ;
     } ;
 
     /***************************************************************************
@@ -209,7 +212,7 @@ private:
         }
 
     private:
-        std::promise<decltype(std::declval<ancestor>().invoke())> _promise ;
+        std::promise<typename ancestor::result_type> _promise ;
     } ;
 
 private:
@@ -251,43 +254,31 @@ class threadpool {
     PCOMN_NONCOPYABLE(threadpool) ;
     PCOMN_NONASSIGNABLE(threadpool) ;
 
-    // Threadpool's task queue item
-    class packed_job final {
-        template<typename=void, std::nullptr_t=nullptr> struct make ;
+    template<typename F, typename... A> class task ;
 
-        template<std::nullptr_t dummy>
-        struct make<void, dummy> {
-            virtual ~make() = 0 ;
-            virtual void operator()() = 0 ;
-        } ;
+    using assignment   = job_batch::assignment  ;
 
-        template<typename Function, std::nullptr_t dummy>
-        struct make final : make<void> {
-            make(Function &&f) : _f(std::move(f)) {}
-            ~make() = default ;
-            void operator()() { _f() ; }
+    template<typename F, typename... A>
+    using packaged_job = job_batch::packaged_job<F, A...> ;
 
-        private:
-            Function _f ;
-            PCOMN_NONCOPYABLE(make) ;
-        } ;
+    template<typename F, typename... A>
+    using job          = job_batch::job<F, A...> ;
 
-    public:
-        template<typename R>
-        packed_job(std::packaged_task<R()> &&task) :
-            _make(new make<std::packaged_task<R()>>(std::move(task)))
-        {}
-
-        packed_job(packed_job &&) = default ;
-        packed_job &operator=(packed_job &&) = default ;
-
-        void operator()() const { (*_make)() ; }
-
-    private:
-        std::unique_ptr<make<>> _make ;
-    } ;
+    template<typename F, typename... A>
+    using task_result_t = typename task<F, A...>::result_type ;
 
 public:
+    template<typename T> class task_result ;
+
+    template<typename T>
+    using task_result_ptr  = std::unique_ptr<task_result<T>> ;
+
+    template<typename T>
+    using result_queue = blocking_list_queue<task_result_ptr<T>> ;
+
+    template<typename T>
+    using result_queue_ptr = std::shared_ptr<result_queue<T>> ;
+
     threadpool() ;
     explicit threadpool(int threadcount) { resize(threadcount) ; }
 
@@ -348,45 +339,130 @@ public:
     ///
     unsigned stop(bool complete_pending_tasks = false) ;
 
+    template<typename F, typename... Args>
+    void enqueue_job(F &&callable, Args &&... args)
+    {
+        _task_queue.push(task_ptr(new job<std::decay_t<F>, std::decay_t<Args>...>
+                                  (std::forward<F>(callable), std::forward<Args>(args)...))) ;
+    }
+
     /// Put the callable object into the task queue for subsequent execution.
     /// The result of execution (return value or exception) is available through the
     /// returned std::future<> object.
-    template<typename F>
-    auto enqueue_task(F &&task) ->std::future<decltype(task())>
+    template<typename F, typename... Args>
+    std::future<task_result_t<F, Args...>> enqueue_task(F &&call, Args &&... args)
     {
-        typedef decltype(task()) task_result ;
+        typedef task<std::decay_t<F>, std::decay_t<Args>...> task_type ;
 
-        auto ptask = std::packaged_task<task_result()>(std::forward<F>(task)) ;
-        std::future<task_result> result (ptask.get_future()) ;
+        task_type *new_task = new task_type(std::forward<F>(call), std::forward<Args>(args)...) ;
+        auto future_result (new_task->get_future()) ;
 
-        _task_queue.push(std::move(ptask)) ;
-
-        return result ;
+        _task_queue.push(task_ptr(new_task)) ;
+        return future_result ;
     }
 
-    template<typename F>
-    auto enqueue_job(F &&job) ->std::void_t<decltype(job())>
+    template<typename F, typename... Args>
+    void enqueue_task(const result_queue_ptr<task_result_t<F, Args...>> &output_funnel,
+                      F &&call, Args &&... args)
     {
-        _task_queue.push(packed_job(std::packaged_task<void()>(std::forward<F>(job)))) ;
+        typedef task<std::decay_t<F>, std::decay_t<Args>...> task_type ;
+
+        task_type *new_task = new task_type(std::forward<F>(call), std::forward<Args>(args)...) ;
+        auto future_result (new_task->get_future()) ;
+
+        _task_queue.push(task_ptr(new_task)) ;
     }
 
-    auto qq()
-    {
-        enqueue_job([]{ return 2*2 ; }) ;
-        return enqueue_task([]{ return 2*2 ; }) ;
-    }
+    std::future<int> qq() ;
+
+public:
+    /***********************************************************************//**
+     Custom future class.
+    ***************************************************************************/
+    template<typename T>
+    class task_result : public std::future<T> {
+        typedef std::future<T> ancestor ;
+        template<typename F, typename... A> friend class task ;
+    public:
+        task_result() = default ;
+        task_result(task_result &&) = default ;
+
+        task_result(std::future<T> &&result, result_queue_ptr<T> &&result_queue = {}) :
+            ancestor(std::move(result)),
+            _queue_anchor(std::move(result_queue))
+        {}
+
+        task_result &operator=(task_result &&) = default ;
+
+    private:
+        result_queue_ptr<T> _queue_anchor ;
+    } ;
+
+private:
+    // Threadpool's task queue item
+    typedef std::unique_ptr<assignment> task_ptr ;
+
+    /***************************************************************************
+     task
+    ***************************************************************************/
+    template<typename F, typename... Args>
+    class alignas(cacheline_t) task final : public packaged_job<F, Args...> {
+        typedef packaged_job<F, Args...> ancestor ;
+    public:
+        using ancestor::ancestor ;
+        typedef typename ancestor::result_type result_type ;
+
+        auto get_future() { return _promise.get_future() ; }
+
+        void run() override
+        {
+            _promise.set_value(this->invoke()) ;
+            enqueue_result() ;
+        }
+
+        void set_exception(std::exception_ptr &&x) override
+        {
+            _promise.set_exception(x) ;
+            ancestor::set_exception(std::move(x)) ;
+            enqueue_result() ;
+        }
+
+    private:
+        std::promise<result_type>      _promise ;
+        result_queue_ptr<result_type>  _result_queue ;
+
+    private:
+        void enqueue_result()
+        {
+            if (!_result_queue)
+                return ;
+
+            auto result (std::make_unique<task_result<result_type>>(get_future(), std::move(_result_queue))) ;
+
+            NOXCHECK(!_result_queue) ;
+
+            result->_queue_anchor->push(std::move(result)) ;
+            NOXCHECK(!result) ;
+        }
+    } ;
 
 private:
     mutable shared_mutex _pool_mutex ;
     std::vector<pthread> _threads ;
 
-    blocking_ring_queue<packed_job> _task_queue {4096} ;
-    std::atomic<size_t>             _idle_count ;
+    blocking_ring_queue<task_ptr> _task_queue {4096} ;
+    std::atomic<size_t>           _idle_count ;
 
 private:
     void start_thread() ;
     void flush_task_queue() ;
 } ;
+
+inline std::future<int> threadpool::qq()
+{
+    enqueue_job([]{ return 2*2 ; }) ;
+    return enqueue_task([]{ return 2*2 ; }) ;
+}
 
 } // end of namespace pcomn
 
