@@ -64,9 +64,7 @@ bool job_batch::run()
 
     for (unsigned ndx = 0 ; ndx < threadcount ; ++ndx)
     {
-        // The first worker thread will join all other worker threads.
-        const bool join_others = !ndx ;
-        _threads.emplace_back([this, join_others] { worker_thread_function(join_others) ; }) ;
+        _threads.emplace_back([this, ndx] { worker_thread_function(ndx) ; }) ;
     }
 
   end:
@@ -74,7 +72,11 @@ bool job_batch::run()
     return _finished.try_wait() ;
 }
 
-void job_batch::worker_thread_function(bool join_others)
+// Rather than joining all the workers somewhere in destructor after completing
+// all the jobs, delegate (the most of) this work to one of the worker threads,
+// namely the thread with index 0.
+// Then, only joining with this thread is needed.
+void job_batch::worker_thread_function(unsigned threadndx)
 {
     ssize_t pending = 1 ;
     ssize_t job_index ;
@@ -96,11 +98,24 @@ void job_batch::worker_thread_function(bool join_others)
     if (!pending)
         _finished.unlock() ;
 
-    if (join_others)
+    if (!threadndx)
     {
+        // The zeroth worker joins others.
         PCOMN_SCOPE_R_LOCK(lock, _pool_mutex) ;
-        for (size_t i = size() ; --i ; _threads[i].join()) ;
+        for (size_t ndx = size() ; --ndx ; _threads[ndx].join()) ;
     }
+}
+
+/*******************************************************************************
+ job_batch::assignment
+*******************************************************************************/
+void job_batch::assignment::set_exception(std::exception_ptr &&xptr)
+{
+    const char * const kind = str::endswith(PCOMN_TYPENAME(*this), "task") ? "task" : "job" ;
+
+    LOGPXERR(PCOMN_ThreadPool,
+             "Exception in a worker thread of a job batch or thread pool. "
+             "The " << kind << " is aborted. The exception is " << oexception(xptr)) ;
 }
 
 /*******************************************************************************

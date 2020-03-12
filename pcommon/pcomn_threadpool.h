@@ -144,9 +144,9 @@ public:
 
 private:
     struct assignment {
-        virtual void run() = 0 ;
-        virtual void set_exception(std::exception_ptr &&) = 0 ;
         virtual ~assignment() = default ;
+        virtual void run() = 0 ;
+        virtual void set_exception(std::exception_ptr &&) ;
     } ;
 
     template<typename F, typename... Args>
@@ -186,10 +186,6 @@ private:
     public:
         using ancestor::ancestor ;
         void run() override { this->invoke() ; }
-
-        void set_exception(std::exception_ptr &&x) override
-        {
-        }
     } ;
 
     /***************************************************************************
@@ -208,7 +204,8 @@ private:
 
         void set_exception(std::exception_ptr &&x) override
         {
-            _promise.set_exception(std::move(x)) ;
+            _promise.set_exception(x) ;
+            ancestor::set_exception(std::move(x)) ;
         }
 
     private:
@@ -237,7 +234,7 @@ private:
         return run() || _finished.wait_with_timeout(mode, timeout) ;
     }
 
-    void worker_thread_function(bool join_others) ;
+    void worker_thread_function(unsigned threadndx) ;
 } ;
 
 /***************************************************************************//**
