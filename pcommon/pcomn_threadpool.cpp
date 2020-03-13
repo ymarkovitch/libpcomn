@@ -26,9 +26,7 @@ job_batch::~job_batch()
     if (!jobcount())
         return ;
 
-    _pending.store(0, std::memory_order_release) ;
-    _jobndx.store(-1, std::memory_order_release) ;
-
+    stop() ;
     _finished.wait() ;
 
     PCOMN_VERIFY(!_threads.empty()) ;
@@ -70,6 +68,21 @@ bool job_batch::run()
   end:
     lock.unlock() ;
     return _finished.try_wait() ;
+}
+
+void job_batch::stop()
+{
+    PCOMN_SCOPE_W_XLOCK(lock, _pool_mutex) ;
+    if (!size())
+        return ;
+
+    const ssize_t latest_jobndx =
+        _jobndx.fetch_sub(_jobndx.load(std::memory_order_relaxed) + 1, std::memory_order_acq_rel) ;
+
+    const ssize_t pending = std::min(ssize_t(), latest_jobndx + 1) ;
+
+    if (_pending.fetch_sub(pending, std::memory_order_acq_rel))
+        _finished.unlock() ;
 }
 
 // Rather than joining all the workers somewhere in destructor after completing
@@ -128,6 +141,15 @@ threadpool::~threadpool() { stop() ; }
 unsigned threadpool::clear_queue()
 {
     return _task_queue.try_pop_some(std::numeric_limits<int32_t>::max()).size() ;
+}
+
+void threadpool::resize(size_t threadcount)
+{
+}
+
+unsigned threadpool::stop(bool complete_pending_tasks)
+{
+    return 0 ;
 }
 
 } // end of namespace pcomn
