@@ -13,6 +13,7 @@
 #include "pcomn_pthread.h"
 #include "pcomn_blocqueue.h"
 #include "pcomn_meta.h"
+#include "pcomn_strslice.h"
 
 #include <functional>
 #include <atomic>
@@ -52,9 +53,11 @@ public:
     /// @note Worker threads are actually started at the first run() call or at first
     /// call of any of wait(), try_wait(), wit_for(), wait_until().
     ///
-    explicit job_batch(unsigned threadcount) : job_batch(threadcount, 1) {}
+    explicit job_batch(unsigned threadcount, const strslice &name = {}) :
+        job_batch(threadcount, 1, name)
+    {}
 
-    job_batch(unsigned max_threadcount, unsigned jobs_per_thread) ;
+    job_batch(unsigned max_threadcount, unsigned jobs_per_thread, const strslice &name = {}) ;
 
     /// Wait until all the pending tasks from the queue have been completed.
     ~job_batch() ;
@@ -216,10 +219,11 @@ private:
     } ;
 
 private:
-    mutable shared_mutex _pool_mutex ;
-
+    const char     _name[16] = {} ;
     const unsigned _max_threadcount ;
     const unsigned _jobs_per_thread = 1 ;
+
+    mutable shared_mutex _pool_mutex ;
 
     promise_lock             _finished ;
 
@@ -457,12 +461,6 @@ private:
     void start_thread() ;
     void flush_task_queue() ;
 } ;
-
-inline std::future<int> threadpool::qq()
-{
-    enqueue_job([]{ return 2*2 ; }) ;
-    return enqueue_task([]{ return 2*2 ; }) ;
-}
 
 } // end of namespace pcomn
 

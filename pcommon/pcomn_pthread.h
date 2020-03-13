@@ -46,7 +46,7 @@ public:
     struct id ;
 
     enum Flags : unsigned {
-        F_NONE      = 0, /**< Default behaviour */
+        F_DEFAULT   = 0, /**< Default behaviour */
         F_AUTOJOIN  = 1  /**< Automatically rejoin on destruction, if in joinable state */
     } ;
 
@@ -54,11 +54,11 @@ public:
     pthread(pthread &&other) noexcept { swap(other) ; }
 
     template<typename F, typename... Args, typename = valid_callable<F, Args...>>
-    pthread(Flags flags, F &&callable, Args &&... args) ;
+    pthread(Flags flags, const strslice &name, F &&callable, Args &&... args) ;
 
     template<typename F, typename... Args, typename = valid_callable<F, Args...>>
     explicit pthread(F &&callable, Args &&... args) :
-        pthread(F_NONE, std::forward<F>(callable), std::forward<Args>(args)...)
+        pthread(F_DEFAULT, {}, std::forward<F>(callable), std::forward<Args>(args)...)
     {}
 
     ~pthread() { finalize() ; }
@@ -137,9 +137,9 @@ private:
     struct thread_state ;
     typedef std::unique_ptr<thread_state> thread_state_ptr ;
 
-    pthread(Flags flags, thread_state_ptr &&state) :
+    pthread(Flags flags, const strslice &name, thread_state_ptr &&state) :
         _flags(flags),
-        _id(start_native_thread(std::move(state)))
+        _id(start_native_thread(std::move(state), name))
     {}
 
     // If the state is not joinable, no-op.
@@ -147,12 +147,14 @@ private:
     void finalize() ;
     void ensure_running(const char *attempted_action) ;
 
-    static id start_native_thread(thread_state_ptr &&) ;
+    static id start_native_thread(thread_state_ptr &&, const strslice &name = {}) ;
 
 private:
     struct thread_state {
         virtual void run() = 0 ;
         virtual ~thread_state() = default ;
+
+        char _name[16] = {} ; /* Thread name, if specified */
     } ;
 
     template<typename F, typename... Args>
@@ -187,10 +189,10 @@ private:
 PCOMN_DEFINE_FLAG_ENUM(pthread::Flags) ;
 
 template<typename F, typename... Args, typename>
-pthread::pthread(Flags flags, F &&callable, Args &&... args) :
-    pthread(flags, thread_state_ptr(new state_data<std::decay_t<F>, std::decay_t<Args>...>
-                                    (std::forward<F>(callable),
-                                     std::forward<Args>(args)...)))
+pthread::pthread(Flags flags, const strslice &name, F &&callable, Args &&... args) :
+    pthread(flags, name, thread_state_ptr(new state_data<std::decay_t<F>, std::decay_t<Args>...>
+                                          (std::forward<F>(callable),
+                                           std::forward<Args>(args)...)))
 {}
 
 /*******************************************************************************
@@ -198,6 +200,15 @@ pthread::pthread(Flags flags, F &&callable, Args &&... args) :
 *******************************************************************************/
 PCOMN_DEFINE_RELOP_FUNCTIONS(, pthread::id) ;
 PCOMN_DEFINE_SWAP(pthread) ;
+
+/// Set current thread name (useful for debugging/monitoring).
+void set_thread_name(const strslice &name) ;
+
+/// Set thread name for specified thread (useful for debugging/monitoring).
+void set_thread_name(const std::thread &, const strslice &name) ;
+
+/// Set thread name for specified thread (useful for debugging/monitoring).
+void set_thread_name(const pthread &, const strslice &name) ;
 
 inline std::ostream &operator<<(std::ostream &os, const pthread::id &v)
 {

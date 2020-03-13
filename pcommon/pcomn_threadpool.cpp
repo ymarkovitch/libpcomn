@@ -16,10 +16,16 @@ namespace pcomn {
 /*******************************************************************************
  job_batch
 *******************************************************************************/
-job_batch::job_batch(unsigned max_threadcount, unsigned jobs_per_thread) :
+job_batch::job_batch(unsigned max_threadcount, unsigned jobs_per_thread, const strslice &name) :
     _max_threadcount(PCOMN_ENSURE_ARG(max_threadcount)),
     _jobs_per_thread(PCOMN_ENSURE_ARG(jobs_per_thread))
-{}
+{
+    PCOMN_THROW_IF(name.size() >= sizeof(_name), std::out_of_range,
+                   "Job batch name " P_STRSLICEQF " is too long, maximum allowed length is %u.",
+                   P_STRSLICEV(name), unsigned(sizeof(_name) - 1)) ;
+
+    memslicemove(const_cast<char *>(_name), name) ;
+}
 
 job_batch::~job_batch()
 {
@@ -62,7 +68,8 @@ bool job_batch::run()
 
     for (unsigned ndx = 0 ; ndx < threadcount ; ++ndx)
     {
-        _threads.emplace_back([this, ndx] { worker_thread_function(ndx) ; }) ;
+        _threads.emplace_back(pthread::F_DEFAULT, _name,
+                              [this, ndx] { worker_thread_function(ndx) ; }) ;
     }
 
   end:

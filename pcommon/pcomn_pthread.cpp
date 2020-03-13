@@ -53,25 +53,59 @@ void pthread::finalize()
         PCOMN_FAIL("Attempt to destroy running pcomn::pthread with disabled autojoin") ;
 }
 
-pthread::id pthread::start_native_thread(thread_state_ptr &&state_ptr)
+pthread::id pthread::start_native_thread(thread_state_ptr &&state_ptr, const strslice &name)
 {
     PCOMN_VERIFY(state_ptr) ;
 
     const auto exec_native_thread_function = [](void *sp) -> void*
     {
         const thread_state_ptr state (static_cast<thread_state *>(sp)) ;
+        if (*state->_name)
+            set_thread_name(state->_name) ;
+
         state->run() ;
         return NULL ;
     } ;
 
     pthread_t phandle {} ;
 
+    strslicecpy(state_ptr->_name, name) ;
     PCOMN_ENSURE_ENOERR(pthread_create(&phandle, nullptr, exec_native_thread_function, state_ptr.get()),
                         "pthread_create") ;
 
     state_ptr.release() ;
 
     return id(phandle) ;
+}
+
+/*******************************************************************************
+ Global functions
+*******************************************************************************/
+static __noinline void thread_setname(pthread_t pt, const strslice &name)
+{
+    char namebuf[16] ;
+    strslicecpy(namebuf, name) ;
+
+    PCOMN_ENSURE_ENOERR(pthread_setname_np(pt, namebuf), "pthread_setname_np") ;
+}
+
+void set_thread_name(const strslice &name)
+{
+    thread_setname(pthread_self(), name) ;
+}
+
+/// Set thread name for specified thread (useful for debugging/monitoring).
+void set_thread_name(const std::thread &th, const strslice &name)
+{
+    if (th.joinable())
+        thread_setname((pthread_t)const_cast<std::thread &>(th).native_handle(), name) ;
+}
+
+/// Set thread name for specified thread (useful for debugging/monitoring).
+void set_thread_name(const pthread &th, const strslice &name)
+{
+    if (th.joinable())
+        thread_setname(th.native_handle(), name) ;
 }
 
 } // namespace pcomn
