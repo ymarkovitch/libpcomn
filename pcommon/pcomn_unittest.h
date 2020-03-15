@@ -88,7 +88,7 @@ constexpr DiffOptions DF_SENSE_ALL = DF_SENSE_TRAIL_SPACE|DF_SENSE_SPACE_CHANGE|
 /*******************************************************************************
  Test environment
 *******************************************************************************/
-template<novalue = {}>
+template<novalue = NaV>
 struct test_environment {
 
       friend std::string resolve_test_path(const CppUnit::Test &, const std::string &, bool) ;
@@ -340,7 +340,7 @@ struct unique_locked_ostream {
 
 template<typename Tag>
 unique_locked_ostream<Tag>::unique_locked_ostream(std::ostream *owned_stream) :
-   _streamp(owned_stream), _lock(_streamp.get())
+   _streamp(owned_stream, {}), _lock(_streamp.get())
 {}
 
 template<typename Tag>
@@ -361,7 +361,7 @@ unique_locked_ostream<Tag>::~unique_locked_ostream() = default ;
 /*******************************************************************************
                      class TestProgressListener
 *******************************************************************************/
-template<novalue = {}>
+template<novalue = NaV>
 class TestListener : public CppUnit::TextTestProgressListener {
    public:
       void startTest(CppUnit::Test *test)

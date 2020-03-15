@@ -329,7 +329,7 @@ inline const char *demangle(const char *mangled)
 }
 #endif
 
-template<X::nval = {}>
+template<X::nval = X::nval::_>
 struct Logger {
       /// Set global stream for CPPUnit test logging.
       /// The CPPUnit does not own the passed pointer, i.e. does not ever delete
@@ -498,7 +498,7 @@ void logExceptionWhat(S &&msg, ...)
    CPPUNIT_LOG_LINE(std::forward<S>(msg)) ;
 }
 
-template<X::nval n = {}>
+template<X::nval n = X::nval::_>
 void logFailure(const Exception &x)
 {
    auto &&stream = CPPUNIT_LOGSTREAM ;

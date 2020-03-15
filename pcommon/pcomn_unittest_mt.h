@@ -158,7 +158,7 @@ class ThreadPack {
 
       void submit_work(unsigned thread_idx, const work_type &fn)
       {
-         submit_work(thread_idx, std::move(fn)) ;
+         submit_work(thread_idx, work_type(fn)) ;
       }
 
       void launch()

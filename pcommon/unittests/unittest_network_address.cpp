@@ -324,9 +324,6 @@ void IPAddressTests::Test_IPv6_Subnet_Address()
     const ipv6_addr addr_2001_food (0x2001, 0x0DB8, 0xAC10, 0xFE01, 0xFEED, 0xBABE, 0xCAFE, 0xF00D) ;
     const ipv6_addr addr_00_food   (0,      0,      0xAC10, 0xFE01, 0xFEED, 0xBABE, 0xCAFE, 0xF00D) ;
 
-    const ipv6_addr addr_pre_1 (1, 0, 0, 0, 0, 0, 0, 0) ;
-    const ipv6_addr addr_post_1 (0, 0, 0, 0, 0, 0, 0, 1) ;
-
     CPPUNIT_LOG_EQUAL(ipv6_subnet(addr_2001_food, 64), ipv6_subnet(addr_2001_food, 64)) ;
 
     CPPUNIT_LOG_NOT_EQUAL(ipv6_subnet(addr_2001_food, 65), ipv6_subnet(addr_2001_food, 64)) ;

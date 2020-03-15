@@ -574,7 +574,6 @@ public:
     size_t hash() const { return t1ha0_bin128(*(idata()+0), *(idata()+1), pfxlen()) ; }
 
     constexpr const ipv6_addr &addr() const { return *this ; }
-    constexpr operator ipv6_addr() const { return addr() ; }
 
     constexpr binary128_t netmask() const
     {

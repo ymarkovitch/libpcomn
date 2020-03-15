@@ -309,27 +309,16 @@ mem_data_ptr_t<R, T *> mem_data_ptr(R T::*p) { return mem_data_ptr_t<R, T *>(p) 
  make_function
  bind_thisptr
 *******************************************************************************/
-template<typename R, typename T>
-std::function<R()> bind_thisptr(R (T::*memfn)(), T *thisptr)
+template<typename R, typename T, typename E>
+std::function<R()> bind_thisptr(R (E::*memfn)(), T &&thisptr)
 {
-   return {std::bind(memfn, thisptr)} ;
-}
-template<typename R, typename T>
-std::function<R()> bind_thisptr(R (T::*memfn)() const, const T *thisptr)
-{
-   return {std::bind(memfn, thisptr)} ;
+   return {std::bind(memfn, std::forward<T>(thisptr))} ;
 }
 
-template<typename R, typename T>
-std::function<R()> bind_thisptr(R (T::element_type::*memfn)(), T thisptr)
+template<typename R, typename T, typename E>
+std::function<R()> bind_thisptr(R (E::*memfn)() const, T &&thisptr)
 {
-   return {std::bind(memfn, thisptr)} ;
-}
-
-template<typename R, typename T>
-std::function<R()> bind_thisptr(R (T::element_type::*memfn)() const, T thisptr)
-{
-   return {std::bind(memfn, thisptr)} ;
+   return {std::bind(memfn, std::forward<T>(thisptr))} ;
 }
 
 #define P_PLACEHOLDER_(num, ...)  std::placeholders::_##num

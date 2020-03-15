@@ -33,18 +33,17 @@
 #include <experimental/type_traits>
 #endif /* PCOMN_STL_CXX17 */
 
+// Avoid including the whole <string>
+#if defined(__GLIBCXX__)
+#include <bits/stringfwd.h>
+#endif
+
 #include <stdlib.h>
 #include <stddef.h>
 
 #ifndef PCOMN_STL_CXX17
 
 namespace std {
-
-// Forward declaration of std::basic_string: we don't require <string> header for
-// pcomn_meta
-PCOMN_BEGIN_NAMESPACE_CXX11
-template<typename, typename, typename> class basic_string ;
-PCOMN_END_NAMESPACE_CXX11
 
 template<class C>
 inline constexpr auto size(const C &container) -> decltype(container.size()) { return container.size() ; }

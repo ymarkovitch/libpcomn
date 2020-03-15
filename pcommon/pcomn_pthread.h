@@ -57,6 +57,11 @@ public:
     pthread(Flags flags, const strslice &name, F &&callable, Args &&... args) ;
 
     template<typename F, typename... Args, typename = valid_callable<F, Args...>>
+    pthread(Flags flags, F &&callable, Args &&... args) :
+        pthread(flags, {}, std::forward<F>(callable), std::forward<Args>(args)...)
+    {}
+
+    template<typename F, typename... Args, typename = valid_callable<F, Args...>>
     explicit pthread(F &&callable, Args &&... args) :
         pthread(F_DEFAULT, {}, std::forward<F>(callable), std::forward<Args>(args)...)
     {}

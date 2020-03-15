@@ -190,7 +190,6 @@ void SimpleVectorTests::Test_Simple_Vector_Construct()
 
    int_slice IntSlice1 (IntArrayVec)  ;
    cint_slice CIntSlice1 (IntArrayVec) ;
-   cint_slice CIntSlice2 (CIntArrayVec) ;
 
    auto f1 = [](const simple_cslice<int> &){} ;
    auto f2 = [](simple_slice<int>) {} ;

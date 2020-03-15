@@ -407,7 +407,11 @@ constexpr inline binary128_t operator~(const binary128_t &x)
  256-bit binary
 *******************************************************************************/
 struct binary256_t {
+   protected:
+      template<typename T>
+      static constexpr T be(T value) { return value_to_big_endian(value) ; }
 
+   public:
       constexpr binary256_t() : _idata() {}
       constexpr binary256_t(uint64_t q0, uint64_t q1, uint64_t q2, uint64_t q3) :
          _idata{q0, q1, q2, q3}
@@ -450,7 +454,7 @@ struct binary256_t {
       size_t hash() const
       {
          return t1ha0_bin128(_idata[0], _idata[1],
-                             t1ha0_bin128(_idata[3], _idata[4])) ;
+                             t1ha0_bin128(_idata[2], _idata[3])) ;
       }
 
       _PCOMNEXP std::string to_string() const ;
@@ -520,10 +524,6 @@ struct binary256_t {
             uint64_t       _idata[4] ;
             unsigned char  _cdata[32] ;
       } ;
-
-   protected:
-      template<typename T>
-      static constexpr T be(T value) { return value_to_big_endian(value) ; }
 } ;
 
 // Define !=, >, <=, >= for binary256_t

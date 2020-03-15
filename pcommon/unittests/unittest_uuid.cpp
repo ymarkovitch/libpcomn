@@ -221,7 +221,6 @@ void MACFixture::Test_MAC()
    const MAC other_mac  ("e0:CB:4E:8C:4f:5C") ;
    const MAC small_mac  ("E0:CB:4E:8C:4f:50") ;
    const MAC other_mac_2 (0xE0, 0xCB, 0x4E, 0x8C, 0x4f, 0x5C) ;
-   const MAC other_mac_3 (0xE0CB4E8C4f5CULL) ;
 
    union raw_mac {
          constexpr raw_mac() : _u64() {}
