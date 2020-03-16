@@ -126,6 +126,11 @@ void job_batch::worker_thread_function(unsigned threadndx)
     }
 }
 
+void job_batch::wait()
+{
+    NOXFAIL("not implemented") ;
+}
+
 /*******************************************************************************
  job_batch::assignment
 *******************************************************************************/
