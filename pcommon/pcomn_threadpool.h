@@ -161,7 +161,6 @@ private:
             _args(std::forward<An>(args)...)
         {}
 
-    protected:
         decltype(auto) invoke()
         {
             return invoke_function(std::index_sequence_for<Args...>()) ;
@@ -177,9 +176,6 @@ private:
     private:
         F                     _function ;
         std::tuple<Args...>   _args ;
-
-    public:
-        typedef decltype(std::declval<packaged_job>().invoke()) result_type ;
     } ;
 
     /***************************************************************************
@@ -200,8 +196,9 @@ private:
     template<typename F, typename... Args>
     class alignas(cacheline_t) task final : public packaged_job<F, Args...> {
         typedef packaged_job<F, Args...> ancestor ;
-
     public:
+        typedef decltype(std::declval<ancestor>().invoke()) result_type ;
+
         using ancestor::ancestor ;
 
         auto get_future() { return _promise.get_future() ; }
@@ -215,7 +212,7 @@ private:
         }
 
     private:
-        std::promise<typename ancestor::result_type> _promise ;
+        std::promise<result_type> _promise ;
     } ;
 
 private:
@@ -413,8 +410,9 @@ private:
     class alignas(cacheline_t) task final : public packaged_job<F, Args...> {
         typedef packaged_job<F, Args...> ancestor ;
     public:
+        typedef decltype(std::declval<ancestor>().invoke()) result_type ;
+
         using ancestor::ancestor ;
-        typedef typename ancestor::result_type result_type ;
 
         auto get_future() { return _promise.get_future() ; }
 

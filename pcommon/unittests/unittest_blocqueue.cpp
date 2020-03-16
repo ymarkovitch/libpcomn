@@ -826,6 +826,7 @@ void BlockingQueueFuzzyTests::run(params a)
     const uint64_t total_volume = a.pcount*a.producers ;
 
     const nanoseconds consumers_timeout (std::max(a.consumers*100*a.max_pause, nanoseconds(50ms))) ;
+    (void)consumers_timeout ;
 
     CPPUNIT_LOG_LINE("Running " << a.producers << " producers, " << a.consumers << " consumers, "
                      << total_volume << " total items (" << a.pcount << " per producer)"

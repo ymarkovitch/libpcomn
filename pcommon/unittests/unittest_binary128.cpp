@@ -46,6 +46,9 @@ void LargeBinaryTests::Test_Binary128()
 
     const binary128_t binary128_3 (0x123456780a0b0c0dULL,
                                    0x1a1b1c1d2a2b2c2dULL) ;
+    (void)binary128_1 ;
+    (void)binary128_2 ;
+    (void)binary128_3 ;
 }
 
 void LargeBinaryTests::Test_Binary128_Operators()

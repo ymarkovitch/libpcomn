@@ -30,6 +30,7 @@ shortest_netprefix_set::shortest_netprefix_set(std::false_type, const simple_csl
 
 template<typename Subnet>
 shortest_netprefix_set::shortest_netprefix_set(std::true_type, std::vector<Subnet> &&data) :
+    _nodes(),
     _depth(pack_nodes(compile_nodes(make_simple_slice(prepare_source_data(data)),
                                     std::array<unsigned,trie_maxdepth>().data()))),
 
