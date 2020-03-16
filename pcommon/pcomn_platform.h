@@ -708,6 +708,17 @@
 #define GCC_DIAGNOSTIC_PUSH_SETERR(warn) GCC_DIAGNOSTIC_PUSH() GCC_SETERR_WARNING(warn)
 #define GCC_DIAGNOSTIC_POP() GCC_MAKE_PRAGMA(GCC diagnostic pop)
 
+// Clang warning control
+#if (__CLANG_VER__)
+#define CLANG_MAKE_PRAGMA(text) GCC_MAKE_PRAGMA(text)
+#else
+#define CLANG_MAKE_PRAGMA(text)
+#endif
+
+#define CLANG_IGNORE_WARNING(warn) CLANG_MAKE_PRAGMA(clang diagnostic ignored "-W"#warn)
+#define CLANG_ENABLE_WARNING(warn) CLANG_MAKE_PRAGMA(clang diagnostic warning "-W"#warn)
+#define CLANG_SETERR_WARNING(warn) CLANG_MAKE_PRAGMA(clang diagnostic error "-W"#warn)
+
 // MS warning control
 #define MS_IGNORE_WARNING(warnlist) MS_MAKE_PRAGMA(warning(disable : warnlist))
 #define MS_ENABLE_WARNING(warnlist) MS_MAKE_PRAGMA(warning(default : warnlist))
