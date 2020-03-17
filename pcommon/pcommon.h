@@ -138,7 +138,7 @@ struct bool_value {
       explicit constexpr bool_value(bool value) : _value(value) {}
       explicit constexpr operator bool() const { return _value ; }
    private:
-      const bool _value ;
+      bool _value ;
 } ;
 
 /******************************************************************************/
