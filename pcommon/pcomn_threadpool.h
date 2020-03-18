@@ -336,7 +336,10 @@ public:
     ///  invoked and completed before the stop; otherwise the queue is cleared
     ///  immediately and only already running tasks are completed.
     ///
+    /// @return Dropped tasks count.
+    ///
     /// @note After this call the pool cannot be restarted.
+    /// @note By default, stop() _drops_ all noncompleted tasks/jobs.
     ///
     unsigned stop(bool complete_pending_tasks = false) ;
 
@@ -418,7 +421,7 @@ private:
 
         void run() override
         {
-            _promise.set_value(this->invoke()) ;
+            invoke_set_result(std::bool_constant<std::is_void_v<result_type>>()) ;
             enqueue_result() ;
         }
 
@@ -434,6 +437,17 @@ private:
         result_queue_ptr<result_type>  _result_queue ;
 
     private:
+        void invoke_set_result(std::false_type)
+        {
+            _promise.set_value(this->invoke()) ;
+        }
+
+        void invoke_set_result(std::true_type)
+        {
+            this->invoke() ;
+            _promise.set_value() ;
+        }
+
         void enqueue_result()
         {
             if (!_result_queue)
