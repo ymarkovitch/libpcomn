@@ -144,7 +144,7 @@ DIR *listdir(DIR *d, const char *dirname, unsigned flags, OutputIterator &filena
 {
    if (!d)
    {
-      PCOMN_CHECK_POSIX(-!!raise, *dirname ? "Cannot open directory '%s'" : "Cannot open directory", dirname) ;
+      PCOMN_CHECK_POSIX(-raise, *dirname ? "Cannot open directory '%s'" : "Cannot open directory", dirname) ;
       return NULL ;
    }
 
@@ -161,7 +161,7 @@ DIR *listdir(DIR *d, const char *dirname, unsigned flags, OutputIterator &filena
       if (!err)
          return NaP ;
 
-      PCOMN_CHECK_POSIX(-!!raise, *dirname ? "Cannot open directory '%s'" : "Cannot open directory", dirname) ;
+      PCOMN_CHECK_POSIX(-raise, *dirname ? "Cannot open directory '%s'" : "Cannot open directory", dirname) ;
       return NULL ;
    }
 

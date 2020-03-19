@@ -130,25 +130,29 @@ class implimit_error : public std::logic_error {
       {}
 } ;
 
-/******************************************************************************/
-/** Base class for boolean tags
+/***************************************************************************//**
+ Base class for boolean tags
 *******************************************************************************/
+template<typename Derived>
 struct bool_value {
-      constexpr bool_value() : _value(false) {}
+      constexpr bool_value() = default ;
       explicit constexpr bool_value(bool value) : _value(value) {}
-      explicit constexpr operator bool() const { return _value ; }
+      constexpr operator bool() const { return _value ; }
+
+      constexpr Derived operator!() const { return Derived(!_value) ; }
+
    private:
-      bool _value ;
+      bool _value = false ;
 } ;
 
-/******************************************************************************/
-/** A tag type to specify whether to raise exception on error for functions
+/***************************************************************************//**
+ A tag type to specify whether to raise exception on error for functions
  that allow to indicate failure with a special return value.
 *******************************************************************************/
-struct RaiseError : bool_value { using bool_value::bool_value ; } ;
+struct RaiseError : bool_value<RaiseError> { using bool_value::bool_value ; } ;
 
-constexpr const RaiseError DONT_RAISE_ERROR (false) ;
-constexpr const RaiseError RAISE_ERROR      (true) ;
+constexpr const RaiseError DONT_RAISE_ERROR {false} ;
+constexpr const RaiseError RAISE_ERROR      {true} ;
 
 /******************************************************************************/
 /** Not-a-pointer: something, which is both not NULL and is not a valid pointer

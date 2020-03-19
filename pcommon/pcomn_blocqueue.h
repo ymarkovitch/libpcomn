@@ -90,7 +90,7 @@ public:
     }
 
 protected:
-    struct SlotsKind : bool_value { using bool_value::bool_value ; } ;
+    struct SlotsKind : bool_value<SlotsKind> { using bool_value::bool_value ; } ;
     // Slot kinds
     constexpr static SlotsKind EMPTY {false} ;
     constexpr static SlotsKind FULL  {!EMPTY} ;
