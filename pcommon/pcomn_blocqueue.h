@@ -724,6 +724,18 @@ auto blocking_queue<T,C>::try_pop_some(unsigned count) -> value_list
 }
 
 template<typename T, typename C>
+template<typename R, typename P>
+auto blocking_queue<T,C>::try_pop_some_for(unsigned count, const duration<R, P> &rel_time) -> value_list
+{
+    return
+        handle_pop(RAISE_ERROR, count, [](auto &data, unsigned acquired)
+        {
+            return data.pop_many(acquired) ;
+        },
+        TimeoutKind::RELATIVE, rel_time) ;
+}
+
+template<typename T, typename C>
 auto blocking_queue<T,C>::try_get_item(TimeoutKind kind, std::chrono::nanoseconds timeout)
     -> optional_value
 {
