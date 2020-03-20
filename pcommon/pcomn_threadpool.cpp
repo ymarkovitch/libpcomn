@@ -13,6 +13,19 @@
 
 namespace pcomn {
 
+template<size_t n>
+static __noinline void init_threadname(char (&dest)[n], const strslice &name, const char *msghead)
+{
+    if (!name)
+        return ;
+
+    PCOMN_THROW_IF(name.size() >= n, std::out_of_range,
+                   "%s " P_STRSLICEQF " is too long, maximum allowed length is %u.",
+                   msghead, P_STRSLICEV(name), unsigned(n - 1)) ;
+
+    memslicemove(dest + 0, name) ;
+}
+
 /*******************************************************************************
  job_batch
 *******************************************************************************/
@@ -20,11 +33,7 @@ job_batch::job_batch(unsigned max_threadcount, unsigned jobs_per_thread, const s
     _max_threadcount(PCOMN_ENSURE_ARG(max_threadcount)),
     _jobs_per_thread(PCOMN_ENSURE_ARG(jobs_per_thread))
 {
-    PCOMN_THROW_IF(name.size() >= sizeof(_name), std::out_of_range,
-                   "Job batch name " P_STRSLICEQF " is too long, maximum allowed length is %u.",
-                   P_STRSLICEV(name), unsigned(sizeof(_name) - 1)) ;
-
-    memslicemove(const_cast<char *>(_name), name) ;
+    init_threadname(as_mutable(_name), name, "Job batch name") ;
 }
 
 job_batch::~job_batch()
@@ -147,6 +156,14 @@ void job_batch::assignment::set_exception(std::exception_ptr &&xptr)
  threadpool
 *******************************************************************************/
 threadpool::threadpool() = default ;
+
+threadpool::threadpool(int threadcount) : threadpool(threadcount, {}) {}
+
+threadpool::threadpool(int threadcount, const strslice &name)
+{
+    init_threadname(as_mutable(_name), name, "Thread pool name") ;
+    resize(threadcount) ;
+}
 
 threadpool::~threadpool() { stop() ; }
 

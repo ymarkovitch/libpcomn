@@ -59,7 +59,7 @@ public:
 
     job_batch(unsigned max_threadcount, unsigned jobs_per_thread, const strslice &name = {}) ;
 
-    /// Wait until all the pending tasks from the queue have been completed.
+    /// Destructor waits until all the pending tasks from the queue have been completed.
     ~job_batch() ;
 
     /// Start processing jobs.
@@ -296,9 +296,11 @@ public:
     using result_queue_ptr = std::shared_ptr<result_queue<T>> ;
 
     threadpool() ;
-    explicit threadpool(int threadcount) { resize(threadcount) ; }
+    explicit threadpool(int threadcount) ;
+    threadpool(int threadcount, const strslice &name) ;
 
-    /// Wait until all the pending tasks from the queue have been completed.
+    /// Close the pushing edn of the task/job queue and wait until all the pending tasks
+    /// from the queue have been completed.
     ~threadpool() ;
 
     /// Get the count of threads in the pool.
@@ -478,6 +480,8 @@ private:
     } ;
 
 private:
+    const char _name[16] = {} ;
+
     mutable shared_mutex _pool_mutex ;
     std::vector<pthread> _threads ;
 
