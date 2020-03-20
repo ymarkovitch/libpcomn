@@ -203,7 +203,10 @@ private:
 
         auto get_future() { return _promise.get_future() ; }
 
-        void run() override { _promise.set_value(this->invoke()) ; }
+        void run() override
+        {
+            invoke_set_result(std::bool_constant<std::is_void_v<result_type>>()) ;
+        }
 
         void set_exception(std::exception_ptr &&x) override
         {
@@ -213,6 +216,18 @@ private:
 
     private:
         std::promise<result_type> _promise ;
+
+    private:
+        void invoke_set_result(std::false_type)
+        {
+            _promise.set_value(this->invoke()) ;
+        }
+
+        void invoke_set_result(std::true_type)
+        {
+            this->invoke() ;
+            _promise.set_value() ;
+        }
     } ;
 
 private:
