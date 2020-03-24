@@ -5,14 +5,14 @@
  FILE         :   pcomn_blocqueue.h
  COPYRIGHT    :   Yakov Markovitch, 2020
 
- DESCRIPTION  :   Blocking concurrent queues.
+ DESCRIPTION  :   Bounded blocking concurrent queues.
 
  PROGRAMMED BY:   Yakov Markovitch
  CREATION DATE:   6 Feb 2020
 *******************************************************************************/
 /** @file
- Thread-safe multi-producer multi-consumer queue capable to block threads on attempt
- to take elements from an empty queue or to put into a full queue.
+ Thread-safe multi-producer multi-consumer bounded queue capable to block threads on
+ attempt to take elements from an empty queue or to put into a full queue.
 *******************************************************************************/
 #include "pcomn_semaphore.h"
 #include "pcomn_utils.h"
@@ -203,9 +203,8 @@ private:
 } ;
 
 /***************************************************************************//**
- The blocking_queue is thread-safe to put elements into and take out of from,
- and capable to block threads on attempt to take elements from an empty queue
- or to put into a full queue.
+ Thread-safe multi-producer multi-consumer bounded queue, capable to block threads
+ on taking elements from an empty queue or putting into a full queue.
 
  This is a multiple-producer-multi-consumer queue with optionally specified
  maximum capacity.
@@ -229,11 +228,12 @@ private:
  The container must provide the following functions:
 
     - push(T): return value ignored
+    - emplace(A...): return value ignored
     - pop(): return value must be ConvertibleTo(T)
     - pop_many(unsigned): return value must be SequenceContainer(T)
     - change_capacity(unsigned): return value ignored
 
- push(), pop(), pop_many() must be thread-safe with respect to each other,
+ push(), emplace(), pop(), pop_many() must be thread-safe with respect to each other,
  and to change_capacity(), _and_ to itself (so that e.g. pop() shall be safely
  called from different threads concurrently).
 
@@ -316,34 +316,37 @@ public:
     /***************************************************************************
      push
     ***************************************************************************/
-    void push(const value_type &value) { put_item(value) ; }
-    void push(value_type &&value) { put_item(std::move(value)) ; }
+    void push(const value_type &value) { put_item({}, {}, value) ; }
+    void push(value_type &&value) { put_item({}, {}, std::move(value)) ; }
 
-    bool try_push(const value_type &value) { return put_item(value, TimeoutKind::RELATIVE, {}) ; }
-    bool try_push(value_type &&value) { return put_item(std::move(value), TimeoutKind::RELATIVE, {}) ; }
+    template<typename... Args>
+    void emplace(Args &&...a)  { emplace_item({}, {}, std::forward<Args>(a)...) ; }
+
+    bool try_push(const value_type &value) { return put_item(TimeoutKind::RELATIVE, {}, value) ; }
+    bool try_push(value_type &&value) { return put_item(TimeoutKind::RELATIVE, {}, std::move(value)) ; }
 
     template<typename R, typename P>
     bool try_push_for(const value_type &value, const duration<R, P> &rel_time)
     {
-        return put_item(value, timeout_kind(rel_time), rel_time) ;
+        return put_item(timeout_kind(rel_time), rel_time, value) ;
     }
 
     template<typename R, typename P>
     bool try_push_for(value_type &&value, const duration<R, P> &rel_time)
     {
-        return put_item(std::move(value), timeout_kind(rel_time), rel_time) ;
+        return put_item(timeout_kind(rel_time), rel_time, std::move(value)) ;
     }
 
     template<typename Clock, typename Duration>
     bool try_push_until(const value_type &value, const time_point<Clock, Duration> &abs_time)
     {
-        return put_item(value, timeout_kind(abs_time), abs_time.time_since_epoch()) ;
+        return put_item(timeout_kind(abs_time), abs_time.time_since_epoch(), value) ;
     }
 
     template<typename Clock, typename Duration>
     bool try_push_until(value_type &&value, const time_point<Clock, Duration> &abs_time)
     {
-        return put_item(std::move(value), timeout_kind(abs_time), abs_time.time_since_epoch()) ;
+        return put_item(timeout_kind(abs_time), abs_time.time_since_epoch(), std::move(value)) ;
     }
 
     /***************************************************************************
@@ -424,7 +427,10 @@ private:
     auto max_data_capacity(...) const { return max_capacity() ; }
 
 	template<typename V>
-    bool put_item(V &&value, TimeoutKind kind = {}, std::chrono::nanoseconds timeout = {}) ;
+    bool put_item(TimeoutKind kind, std::chrono::nanoseconds timeout, V &&value) ;
+
+	template<typename... Args>
+    bool emplace_item(TimeoutKind kind, std::chrono::nanoseconds timeout, Args &&...args) ;
 
     optional_value try_get_item(TimeoutKind kind, std::chrono::nanoseconds timeout) ;
     value_list get_some_items(unsigned count, RaiseError raise_on_closed) ;
@@ -535,32 +541,20 @@ public:
 
     void push(value_type &&v)
     {
+        emplace(std::move(v)) ;
+    }
+
+    template<typename... Args>
+    void emplace(Args &&...a)
+    {
         value_list vlist ;
-        vlist.emplace_back(std::move(v)) ;
+        vlist.emplace_back(std::forward<Args>(a)...) ;
         append_values(std::move(vlist)) ;
     }
 
     value_type pop() { return std::move(pop_many(1).front()) ; }
 
-    value_list pop_many(unsigned count)
-    {
-        // No allocations, no throws, no need for scoped lock
-        _data_mutex.lock() ;
-
-        NOXCHECK(count <= _data.size()) ;
-
-        value_list result ;
-
-        auto range_end = _data.begin() ;
-        std::advance(range_end, count) ;
-
-        // Splice from the front (two pointer assignments, that's all!)
-        result.splice(result.end(), _data, _data.begin(), range_end) ;
-
-        _data_mutex.unlock() ;
-
-        return result ;
-    }
+    value_list pop_many(unsigned count) ;
 
     void change_capacity(unsigned /*new capacity: ignored*/) {}
 
@@ -621,6 +615,9 @@ public:
 
     void push(value_type &&v) noexcept { push_item(std::move(v)) ; }
 
+    template<typename... Args>
+    void emplace(Args &&...a) { push_item(value_type(std::forward<Args>(a)...)) ; }
+
     value_type pop() noexcept
     {
         value_type * const v = item(_deq_pos.fetch_add(1, std::memory_order_acq_rel)) ;
@@ -670,13 +667,27 @@ private:
 *******************************************************************************/
 template<typename T, typename C>
 template<typename V>
-bool blocking_queue<T,C>::put_item(V &&value, TimeoutKind kind, std::chrono::nanoseconds timeout)
+bool blocking_queue<T,C>::put_item(TimeoutKind kind, std::chrono::nanoseconds timeout, V &&value)
 {
     return
         handle_push(1,
                     [&](auto &data, unsigned)
                     {
                         data.push(std::forward<V>(value)) ;
+                        return true ;
+                    },
+                    kind, timeout) ;
+}
+
+template<typename T, typename C>
+template<typename... Args>
+bool blocking_queue<T,C>::emplace_item(TimeoutKind kind, std::chrono::nanoseconds timeout, Args &&...args)
+{
+    return
+        handle_push(1,
+                    [&](auto &data, unsigned)
+                    {
+                        data.emplace(std::forward<Args>(args)...) ;
                         return true ;
                     },
                     kind, timeout) ;
@@ -746,6 +757,43 @@ auto blocking_queue<T,C>::try_get_item(TimeoutKind kind, std::chrono::nanosecond
 }
 
 /*******************************************************************************
+ detail::list_cbqueue
+*******************************************************************************/
+template<typename T>
+auto detail::list_cbqueue<T>::pop_many(unsigned count) -> value_list
+{
+    value_list result ;
+
+    // No allocations, no throws, no need for scoped lock
+    _data_mutex.lock() ;
+
+    const size_t data_size = _data.size() ;
+    NOXCHECK(count <= data_size) ;
+
+    if (count == data_size)
+        result = std::move(_data) ;
+
+    else
+    {
+        size_t tail_count = data_size - count ;
+        decltype(_data.begin()) range_end ;
+
+        // Minimize list traversing steps count
+        if (count <= tail_count)
+            std::advance(range_end = _data.begin(), count) ;
+        else
+            for (range_end = _data.end() ; tail_count-- ; --range_end) ;
+
+        // Splice from the front (two pointer assignments, that's all!)
+        result.splice(result.end(), _data, _data.begin(), range_end) ;
+    }
+
+    _data_mutex.unlock() ;
+
+    return result ;
+}
+
+/*******************************************************************************
  detail::ring_cbqueue
 *******************************************************************************/
 template<typename T>
@@ -767,7 +815,6 @@ auto detail::ring_cbqueue<T>::pop_many(unsigned count) -> std::vector<value_type
     }
     return result ;
 }
-
 
 } // end of namespace pcomn
 
