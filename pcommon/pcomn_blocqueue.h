@@ -374,11 +374,13 @@ public:
     /// Blocks if the queue is empty until either items are pushed into the queue
     /// or the queue is closed.
     ///
-    /// @param maxcount The maximum count of items to pop from the queue; must be >0, or
+    /// @param maxcount The maximum count of items to pop from the queue; must be !=0, or
     ///  std::invalid_argument will be thrown.
     ///
     /// @throws pcomn::sequence_closed when the queue is closed.
     /// @throws std::invalid_argument when maxcount==0.
+    ///
+    /// @note To get all the items currently in the queue pass -1.
     ///
     value_list pop_some(unsigned maxcount)     { return get_some_items(maxcount, RAISE_ERROR) ; }
     value_list pop_opt_some(unsigned maxcount) { return get_some_items(maxcount, DONT_RAISE_ERROR) ; }
