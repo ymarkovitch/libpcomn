@@ -325,11 +325,7 @@ public:
 
     /// Get the pool capacitiy, which is the sum of thread count and task queue capacity.
     ///
-    size_t capacity() const
-    {
-        PCOMN_SCOPE_R_LOCK(lock, _pool_mutex) ;
-        return _threads.size() + _task_queue.capacity() ;
-    }
+    size_t capacity() const { return size() + _task_queue.capacity() ; }
 
     /// Get the count of currently idle threads.
     size_t idle_count() { return _idle_count.load(std::memory_order_relaxed) ; }
@@ -370,12 +366,10 @@ public:
     ///  invoked and completed before the stop; otherwise the queue is cleared
     ///  immediately and only already running tasks are completed.
     ///
-    /// @return Dropped tasks count.
-    ///
     /// @note After this call the pool cannot be restarted.
     /// @note By default, stop() _drops_ all noncompleted tasks/jobs.
     ///
-    unsigned stop(bool complete_pending_tasks = false) ;
+    void stop(bool complete_pending_tasks = false) ;
 
     template<typename F, typename... Args>
     void enqueue_job(F &&callable, Args &&... args)
@@ -501,9 +495,20 @@ private:
     } ;
 
     union thread_count {
-        constexpr thread_count(uint64_t data = 0) noexcept : _data(data) {}
+        constexpr thread_count() noexcept : _data(0) {}
+        constexpr thread_count(int32_t running, int32_t diff) noexcept :
+            _diff(diff), _running(running)
+        {}
 
         int64_t expected_count() const { return (int64_t)_running + _diff ; }
+
+        thread_count &operator+=(int threads)
+        {
+            _diff -= threads ;
+            _running += threads ;
+            return *this ;
+        }
+        thread_count &operator-=(int threads) { return operator+=(-threads) ; }
 
         uint64_t _data ;
 
@@ -517,20 +522,30 @@ private:
         } ;
     } ;
 
+    static constexpr thread_count _stopped {-1, 0} ;
+
 private:
     const char _name[16] = {} ;
 
-    mutable shared_mutex        _pool_mutex ;
-    std::list<pthread>          _threads ;
-    std::atomic<thread_count>   _thread_count {} ;
+    mutable mutex _pool_mutex ;
+
+    std::atomic<thread_count> _thread_count {} ;
+
+    thread_list        _threads ;
+    thread_list        _dropped_thread ; /* Single-item list, a thread being dismissed is
+                                          * moved here first. */
+    std::atomic<bool>  _dropped {false} ; /* Indicates there is a _dropped_thread */
 
     blocking_ring_queue<task_ptr> _task_queue {estimate_max_capacity(0, 0)} ;
 
 private:
-    void worker_thread_function(std::list<pthread>::iterator) ;
+    void worker_thread_function(thread_list::iterator) ;
     void start_thread() ;
+
     // Returns true if the thread must stop.
-    bool handle_pool_resize() noexcept ;
+    bool handle_pool_resize(thread_list::iterator self) noexcept ;
+    std::pair<bool, thread_count> check_dismiss_itself(thread_list::iterator self) noexcept ;
+    bool check_launch_new_thread(thread_count current_count) ;
 
     void flush_task_queue() ;
 
