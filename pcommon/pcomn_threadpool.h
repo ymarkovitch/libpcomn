@@ -145,6 +145,12 @@ public:
                            (forward<F>(callable), forward<Args>(args)...)) ;
     }
 
+    friend std::ostream &operator<<(std::ostream &os, const job_batch &v)
+    {
+        v.print(os) ;
+        return os ;
+    }
+
 private:
     struct assignment {
         virtual ~assignment() = default ;
@@ -254,6 +260,10 @@ private:
     }
 
     void worker_thread_function(unsigned threadndx) ;
+
+    void print(std::ostream &) const ;
+
+    static void exec_task(assignment &) noexcept ;
 } ;
 
 /***************************************************************************//**
@@ -296,8 +306,12 @@ public:
     using result_queue_ptr = std::shared_ptr<result_queue<T>> ;
 
     threadpool() ;
-    explicit threadpool(int threadcount) ;
-    threadpool(int threadcount, const strslice &name) ;
+
+    threadpool(size_t threadcount, const strslice &name, size_t max_capacity = 0) ;
+
+    explicit threadpool(size_t threadcount, size_t max_capacity = 0) :
+        threadpool(threadcount, {}, max_capacity)
+    {}
 
     /// Close the pushing edn of the task/job queue and wait until all the pending tasks
     /// from the queue have been completed.
@@ -306,8 +320,7 @@ public:
     /// Get the count of threads in the pool.
     size_t size() const
     {
-        PCOMN_SCOPE_R_LOCK(lock, _pool_mutex) ;
-        return _threads.size() ;
+        return _thread_count.load(std::memory_order_relaxed).expected_count() ;
     }
 
     /// Get the pool capacitiy, which is the sum of thread count and task queue capacity.
@@ -329,6 +342,10 @@ public:
     void set_queue_capacity(unsigned new_capacity) ;
 
     size_t max_queue_capacity() const { return _task_queue.max_capacity() ; }
+
+    /// Get the implementation-defined maximum thread count for a threadpool.
+    /// Sanity constraint. Power of 2.
+    static constexpr size_t max_threadcount() const { return 2048 ; }
 
     /// Change the count of threads in the pool.
     void resize(size_t threadcount) ;
@@ -394,7 +411,11 @@ public:
         _task_queue.push(task_ptr(new_task)) ;
     }
 
-    std::future<int> qq() ;
+    friend std::ostream &operator<<(std::ostream &os, const threadpool &v)
+    {
+        v.print(os) ;
+        return os ;
+    }
 
 public:
     /***********************************************************************//**
@@ -479,18 +500,42 @@ private:
         }
     } ;
 
+    union thread_count {
+        constexpr thread_count(uint64_t data = 0) noexcept : _data(data) {}
+
+        int64_t expected_count() const { return (int64_t)_running + _diff ; }
+
+        uint64_t _data ;
+
+        struct {
+            int32_t _diff ;    /* The difference between the expected and current
+                                * threads counts. */
+            int32_t _running ; /* The actual count of currently running threads.
+                                * When the pool is in the steady state it is equal to
+                                * the size set by the last resize() or by the constructor,
+                                * whatever is called last. */
+        } ;
+    } ;
+
 private:
     const char _name[16] = {} ;
 
-    mutable shared_mutex _pool_mutex ;
-    std::vector<pthread> _threads ;
+    mutable shared_mutex        _pool_mutex ;
+    std::list<pthread>          _threads ;
+    std::atomic<thread_count>   _thread_count {} ;
 
-    blocking_ring_queue<task_ptr> _task_queue {4096} ;
-    std::atomic<size_t>           _idle_count ;
+    blocking_ring_queue<task_ptr> _task_queue {estimate_max_capacity(0, 0)} ;
 
 private:
+    void worker_thread_function(std::list<pthread>::iterator) ;
     void start_thread() ;
+    // Returns true if the thread must stop.
+    bool handle_pool_resize() noexcept ;
+
     void flush_task_queue() ;
+
+    static unsigned estimate_max_capacity(size_t threadcount, size_t max_capacity) ;
+    void print(std::ostream &) const ;
 } ;
 
 } // end of namespace pcomn

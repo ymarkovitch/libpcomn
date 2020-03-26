@@ -45,12 +45,14 @@ job_batch::~job_batch()
     _finished.wait() ;
 
     PCOMN_VERIFY(!_threads.empty()) ;
-    // _threads.front() joins other threads
+    // Join only _threads.front(), it will joins other threads.
     _threads.front().join() ;
 }
 
 bool job_batch::run()
 {
+    PCOMN_SCOPE_W_XLOCK(lock, _pool_mutex) ;
+
     if (!jobcount())
     {
         _finished.unlock() ;
@@ -64,8 +66,6 @@ bool job_batch::run()
         std::min(_max_threadcount, (jobcount() + _jobs_per_thread - 1)/_jobs_per_thread) ;
 
     NOXCHECK(threadcount) ;
-
-    PCOMN_SCOPE_W_XLOCK(lock, _pool_mutex) ;
 
     if (size())
         goto end ;
@@ -88,17 +88,36 @@ bool job_batch::run()
 
 void job_batch::stop()
 {
-    PCOMN_SCOPE_W_XLOCK(lock, _pool_mutex) ;
-    if (!size())
-        return ;
+    PCOMN_SCOPE_W_LOCK(lock, _pool_mutex) ;
 
-    const ssize_t latest_jobndx =
+    TRACEPX(PCOMN_ThreadPool, DBGL_ALWAYS, "Stop requested for the"
+            << (size() ? " started " : " not started ") << *this) ;
+
+    if (!size())
+    {
+        if (jobcount())
+            _jobs.clear() ;
+        _finished.unlock() ;
+        return ;
+    }
+
+    // Prevent all not-yet-started jobs from starting and get the count of unstarted
+    // jobs. Note after this statement _jobndx is <0.
+    const ssize_t unstarted_count =
         _jobndx.fetch_sub(_jobndx.load(std::memory_order_relaxed) + 1, std::memory_order_acq_rel) ;
 
-    const ssize_t pending = std::min(ssize_t(), latest_jobndx + 1) ;
-
-    if (_pending.fetch_sub(pending, std::memory_order_acq_rel))
+    if (_pending.fetch_sub(std::min((ssize_t)0, unstarted_count + 1), std::memory_order_acq_rel))
         _finished.unlock() ;
+}
+
+void job_batch::exec_task(assignment &job) noexcept
+{
+    try { job.run() ; }
+
+    catch(...)
+    {
+        try { job.set_exception(std::current_exception()) ; } catch(...) {}
+    }
 }
 
 // Rather than joining all the workers somewhere in destructor after completing
@@ -110,16 +129,18 @@ void job_batch::worker_thread_function(unsigned threadndx)
     ssize_t pending = 1 ;
     ssize_t job_index ;
 
-    while ((job_index = _jobndx.fetch_sub(1, std::memory_order_acq_rel)) >= 0)
+    // The initial value of _jobndx is jobcount(), the final value is 0.
+    // Note it is decremented at each started job, but we start jobs in submission order
+    // (i.e. from 0 to `jobcount()-1`).
+    // Note the order:
+    //  decrement _jobndx ;
+    //  make corresponding job done ;
+    //  decrement _pending ;
+    //
+    while ((job_index = _jobndx.fetch_sub(1, std::memory_order_acq_rel)) > 0)
     {
-        auto job (std::move(_jobs[job_index])) ;
-
-        try { job->run() ; }
-
-        catch(...)
-        {
-            try { job->set_exception(std::current_exception()) ; } catch(...) {}
-        }
+        auto current_job (std::move(_jobs[jobcount() - job_index])) ;
+        exec_task(*current_job) ;
 
         pending = _pending.fetch_sub(1, std::memory_order_acq_rel) - 1 ;
     }
@@ -127,9 +148,9 @@ void job_batch::worker_thread_function(unsigned threadndx)
     if (!pending)
         _finished.unlock() ;
 
+    // The 0th worker joins others.
     if (!threadndx)
     {
-        // The zeroth worker joins others.
         PCOMN_SCOPE_R_LOCK(lock, _pool_mutex) ;
         for (size_t ndx = size() ; --ndx ; _threads[ndx].join()) ;
     }
@@ -137,7 +158,15 @@ void job_batch::worker_thread_function(unsigned threadndx)
 
 void job_batch::wait()
 {
-    NOXFAIL("not implemented") ;
+    if (!run())
+        _finished.wait() ;
+}
+
+void job_batch::print(std::ostream &os)
+{
+    os << "job_batch(" << squote(_name)
+       << ", unstarted=" << _jobndx.load(std::memory_order_relaxed)
+       << ", pending=" << _pending.load(std::memory_order_relaxed) << ')' ;
 }
 
 /*******************************************************************************
@@ -155,11 +184,12 @@ void job_batch::assignment::set_exception(std::exception_ptr &&xptr)
 /*******************************************************************************
  threadpool
 *******************************************************************************/
+static constexpr size_t default_queue_capacity_per_thread = 16 ;
+
 threadpool::threadpool() = default ;
 
-threadpool::threadpool(int threadcount) : threadpool(threadcount, {}) {}
-
-threadpool::threadpool(int threadcount, const strslice &name)
+threadpool::threadpool(size_t threadcount, const strslice &name, size_t max_capacity) :
+    _task_queue(estimate_max_capacity(threadcount, max_capacity))
 {
     init_threadname(as_mutable(_name), name, "Thread pool name") ;
     resize(threadcount) ;
@@ -167,18 +197,74 @@ threadpool::threadpool(int threadcount, const strslice &name)
 
 threadpool::~threadpool() { stop() ; }
 
+unsigned threadpool::estimate_max_capacity(size_t threadcount, size_t max_capacity)
+{
+    static const size_t hardware_threads = sys::hw_threads_count() ;
+
+    const size_t maxthreads = std::max(std::min(threadcount, max_threadcount()), hardware_threads) ;
+
+    return std::max(std::min(max_capacity, 0x1000000), maxthreads*default_queue_capacity_per_thread) ;
+}
+
 unsigned threadpool::clear_queue()
 {
-    return _task_queue.try_pop_some(std::numeric_limits<int32_t>::max()).size() ;
+    return _task_queue.try_pop_some(-1).size() ;
 }
 
 void threadpool::resize(size_t threadcount)
 {
+    const int32_t new_count = std::min(threadcount, max_threadcount()) ;
+
+    PCOMN_SCOPE_W_LOCK(lock, _pool_mutex) ;
+
+    const int32_t current_count = size() ;
+    if (current_count == new_count)
+        return ;
+
+    const int32_t increment = new_count - current_count ;
+
+    thread_count prev_count =
+        atomic_op::fetch_and_F(&_thread_count, [increment](thread_count old_count)
+        {
+            old_count._diff += increment ;
+            return old_count ;
+        }) ;
+
+    prev_count._diff += increment ;
+
+    // If we need a new thread, make single attempt to start one.
+    // This
+    if (prev_count._diff > 0)
+    {
+        thread_count next_count = prev_count ;
+        --next_count._diff ;
+        ++next_count._running ;
+
+         if (_thread_count.compare_exchange_strong(prev_count, next_count, std::memory_order_acq_rel)) ;
+    }
+}
+
+void threadpool::worker_thread_function(std::list<pthread>::iterator self)
+{
+    for(fwd::optional task_opt ; handle_pool_resize() && (task_opt = _task_queue.pop_opt()) ;)
+    {
+        if (const task_ptr current_task = std::move(*task_opt))
+        {
+            job_batch::exec_task(*current_task) ;
+        }
+    }
+
+    PCOMN_SCOPE_W_LOCK(lock, _pool_mutex) ;
+    _threads.erase(self) ;
 }
 
 unsigned threadpool::stop(bool complete_pending_tasks)
 {
     return 0 ;
+}
+
+void threadpool::print(std::ostream &os)
+{
 }
 
 } // end of namespace pcomn
