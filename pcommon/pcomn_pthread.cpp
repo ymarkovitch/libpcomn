@@ -10,6 +10,8 @@
 *******************************************************************************/
 #include "pcomn_pthread.h"
 
+#include <stdio.h>
+
 namespace pcomn {
 
 /*******************************************************************************
@@ -106,6 +108,30 @@ void set_thread_name(const pthread &th, const strslice &name)
 {
     if (th.joinable())
         thread_setname(th.native_handle(), name) ;
+}
+
+std::string get_thread_name() noexcept
+{
+    char namebuf[16] = {} ;
+    pthread_getname_np(pthread_self(), namebuf, sizeof namebuf) ;
+    return namebuf ;
+}
+
+size_t get_threadcount() noexcept
+{
+    FILE *status = fopen("/proc/self/status", "r") ;
+    if (!status)
+        return 1 ;
+
+    unsigned result ;
+    int linesize ;
+
+    while (fscanf(status, "Threads: %u\n", &(result = 1)) == 0 &&
+           fscanf(status, "%*[^\n]\n%n", &(linesize = 0)) >= 0 &&
+           linesize > 0) ;
+
+    fclose(status) ;
+    return result ;
 }
 
 } // namespace pcomn

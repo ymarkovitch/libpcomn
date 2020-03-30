@@ -21,6 +21,7 @@
 #include "pcomn_syncobj.h"
 #include "pcomn_hash.h"
 #include "pcomn_function.h"
+#include "pcomn_strslice.h"
 
 #include <thread>
 #include <memory>
@@ -114,6 +115,8 @@ public:
 
         size_t hash() const { return valhash((uint64_t)_handle) ; }
 
+        static id this_thread() { return id(pthread_self()) ; }
+
         friend bool operator==(id x, id y) noexcept
         {
             return x._handle == y._handle ;
@@ -206,14 +209,21 @@ pthread::pthread(Flags flags, const strslice &name, F &&callable, Args &&... arg
 PCOMN_DEFINE_RELOP_FUNCTIONS(, pthread::id) ;
 PCOMN_DEFINE_SWAP(pthread) ;
 
-/// Set current thread name (useful for debugging/monitoring).
+/// Set current thread name (handy for debugging/monitoring).
 void set_thread_name(const strslice &name) ;
 
-/// Set thread name for specified thread (useful for debugging/monitoring).
+/// Set thread name for specified thread (handy for debugging/monitoring).
 void set_thread_name(const std::thread &, const strslice &name) ;
 
-/// Set thread name for specified thread (useful for debugging/monitoring).
+/// Set thread name for specified thread (handy for debugging/monitoring).
 void set_thread_name(const pthread &, const strslice &name) ;
+
+/// Get the name for the current thread (handy for debugging/monitoring).
+std::string get_thread_name() noexcept ;
+
+/// Get the count of threads in the current process.
+/// @note The return value is never 0.
+size_t get_threadcount() noexcept ;
 
 inline std::ostream &operator<<(std::ostream &os, const pthread::id &v)
 {
