@@ -50,6 +50,11 @@ public:
     /// Actual worker threads count depends on the count of added task/jobs and
     /// is finally decided at the run() call as `min(threadcount,taskcount)`.
     ///
+    /// @param threadcount Maximal thread count.
+    /// @param name Facilitates debugging/profiling/monitoring: every OS thread launched
+    ///   by the batch will get this name (set by e.g. pthread_setname_np); note the
+    ///   maximum name length is 15.
+    ///
     /// @note Worker threads are actually started at the first run() call or at first
     /// call of any of wait(), try_wait(), wit_for(), wait_until().
     ///
@@ -57,21 +62,35 @@ public:
         job_batch(threadcount, 1, name)
     {}
 
+    /// Create a batch with at most `max_threadcount` worker threads.
+    ///
+    /// Actual worker threads count depends on the count of added task/jobs and
+    /// is finally decided at the run() call as `min(max_threadcount,taskcount/jobs_per_thread)`.
+    ///
     job_batch(unsigned max_threadcount, unsigned jobs_per_thread, const strslice &name = {}) ;
 
     /// Destructor waits until all the pending tasks from the queue have been completed.
     ~job_batch() ;
 
+    /// Get the batch name, set by the constructor.
+    /// Never NULL, may be empty.
+    const char *name() const { return _name ; } ;
+
     /// Start processing jobs.
     ///
     /// It is safe and relatively cheap to call run() for already running batch,
-    /// it is no-op then.
+    /// it is no-op then. Calling run() for an already finished batch or for
+    /// an empty batch is also OK and immediately returns true.
     ///
     /// @return true if all the jobs are completed upon return from run(), false
     /// otherwise.
     ///
     bool run() ;
 
+    /// Wait until all the jobs are finished.
+    /// Automatically starts batch, i.e. calls run(), if the batch is not started.
+    /// Can be called multtiple times incl. in parallel incl. with run().
+    ///
     void wait() ;
 
     /// Check if all the jobs are completed.
@@ -110,6 +129,8 @@ public:
     }
 
     /// Get the number of threads in the pool.
+    /// Not thread-safe wrt run().
+    /// Before run() call is always 0.
     size_t size() const { return _threads.size() ; }
 
     /// Immediately drop all the pending jobs and stop threads.
@@ -245,7 +266,7 @@ private:
 
     promise_lock             _finished ;
 
-    std::atomic<ssize_t>     _jobndx {-1} ;
+    std::atomic<ssize_t>     _jobndx {0} ;
     std::atomic<ssize_t>     _pending {0} ;
 
     alignas(cacheline_t) std::vector<pthread> _threads ;
@@ -327,13 +348,14 @@ public:
     ///
     size_t capacity() const { return size() + _task_queue.capacity() ; }
 
-    /// Get the count of currently idle threads.
-    size_t idle_count() { return _idle_count.load(std::memory_order_relaxed) ; }
-
     /// Get the (approximate) count of pending (pushed but not yet popped) items
     /// in the queue.
     ///
     size_t pending_count() const { return _task_queue.size() ; }
+
+    /// Get the pool name, set by the constructor.
+    /// Never NULL, may be empty.
+    const char *name() const { return _name ; } ;
 
     void set_queue_capacity(unsigned new_capacity) ;
 
@@ -341,7 +363,7 @@ public:
 
     /// Get the implementation-defined maximum thread count for a threadpool.
     /// Sanity constraint. Power of 2.
-    static constexpr size_t max_threadcount() const { return 2048 ; }
+    static constexpr size_t max_threadcount() { return 2048 ; }
 
     /// Change the count of threads in the pool.
     void resize(size_t threadcount) ;
@@ -437,6 +459,7 @@ public:
 private:
     // Threadpool's task queue item
     typedef std::unique_ptr<assignment> task_ptr ;
+    typedef std::list<pthread> thread_list ;
 
     /***************************************************************************
      task
@@ -502,6 +525,7 @@ private:
 
         int64_t expected_count() const { return (int64_t)_running + _diff ; }
 
+        // Increment running threads count keeping expected_count() unchanged.
         thread_count &operator+=(int threads)
         {
             _diff -= threads ;
@@ -509,6 +533,8 @@ private:
             return *this ;
         }
         thread_count &operator-=(int threads) { return operator+=(-threads) ; }
+
+        static constexpr thread_count stopped() { return {-1, 0} ; }
 
         uint64_t _data ;
 
@@ -522,12 +548,10 @@ private:
         } ;
     } ;
 
-    static constexpr thread_count _stopped {-1, 0} ;
-
 private:
     const char _name[16] = {} ;
 
-    mutable mutex _pool_mutex ;
+    mutable std::mutex _pool_mutex ;
 
     std::atomic<thread_count> _thread_count {} ;
 
