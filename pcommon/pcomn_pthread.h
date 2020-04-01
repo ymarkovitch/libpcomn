@@ -127,8 +127,6 @@ public:
             return x._handle < y._handle ;
         }
 
-        friend std::ostream &operator<<(std::ostream &, const id &) ;
-
     private:
         pthread_t _handle = {} ;
     } ;
@@ -225,12 +223,7 @@ std::string get_thread_name() noexcept ;
 /// @note The return value is never 0.
 size_t get_threadcount() noexcept ;
 
-inline std::ostream &operator<<(std::ostream &os, const pthread::id &v)
-{
-    if (!v)
-        return os << "NON_RUNNING_PTHREAD" ;
-    return os << v._handle ;
-}
+std::ostream &operator<<(std::ostream &, const pthread::id &) ;
 
 } // end of namespace pcomn
 

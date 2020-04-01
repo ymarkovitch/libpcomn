@@ -9,6 +9,7 @@
  CREATION DATE:   28 Jan 2020
 *******************************************************************************/
 #include "pcomn_pthread.h"
+#include "pcomn_omanip.h"
 
 #include <stdio.h>
 
@@ -132,6 +133,13 @@ size_t get_threadcount() noexcept
 
     fclose(status) ;
     return result ;
+}
+
+std::ostream &operator<<(std::ostream &os, const pthread::id &v)
+{
+    return !v
+        ? (os << "NON_RUNNING_PTHREAD")
+        : (os << ohex(v.native_handle())) ;
 }
 
 } // namespace pcomn
