@@ -29,9 +29,6 @@
    tdef
    principal_type_t
 
-   vsaver
-   bitsaver
-   finalizer
    auto_buffer
    imemstream
    omemstream
@@ -65,124 +62,6 @@
 namespace pcomn {
 
 template<typename> struct basic_strslice ;
-
-/***************************************************************************//**
- Saves the current value of a variable before it is changed and automatically
- restores upon exiting from the block.
-*******************************************************************************/
-template<typename T>
-class vsaver {
-      PCOMN_NONCOPYABLE(vsaver) ;
-   public:
-      explicit vsaver(T &variable) :
-         _saved(variable),
-         _var(&variable)
-      {}
-
-      vsaver(T &variable, const T &new_value) :
-         _saved(variable),
-         _var(&variable)
-      {
-         variable = new_value ;
-      }
-
-      ~vsaver()
-      {
-         if (_var) *_var = _saved ;
-      }
-
-      const T &release() noexcept
-      {
-         _var = NULL ;
-         return _saved ;
-      }
-
-      const T &restore()
-      {
-         if (_var)
-         {
-            *_var = _saved ;
-            _var = NULL ;
-         }
-         return _saved ;
-      }
-
-      const T &saved() const noexcept { return _saved ; }
-
-   private:
-      const T  _saved ;
-      T *      _var ;
-} ;
-
-/***************************************************************************//**
- Temporarily sets a bit mask and then in the destructor automatically restores
- the saved settings.
-*******************************************************************************/
-template<typename T>
-class bitsaver {
-      PCOMN_NONCOPYABLE(bitsaver) ;
-   public:
-      bitsaver(T &flags, T mask) :
-        _flags(flags),
-        _mask(mask),
-        _status(flags & mask)
-      {}
-
-      ~bitsaver()
-      {
-         (_flags &= ~_mask) |= _status ;
-      }
-
-   private:
-      T &      _flags ;
-      const T  _mask ;
-      const T  _status ;
-} ;
-
-/***************************************************************************//**
- Automatically calls the functor passed into the constructor upon destructor call
- (usually at the scope exit).
-*******************************************************************************/
-template<typename F>
-class finalizer {
-      PCOMN_NONCOPYABLE(finalizer) ;
-      PCOMN_NONASSIGNABLE(finalizer) ;
-   public:
-      explicit constexpr finalizer(const F &on_finish) : _finalize(on_finish) {}
-      explicit constexpr finalizer(F &&on_finish) : _finalize(std::move(on_finish)) {}
-
-      finalizer(finalizer &&other) :
-         _finalize(std::move(other._finalize)),
-         _released(std::exchange(other._released, true))
-      {}
-
-      ~finalizer() { finalize() ; }
-
-      /// Prevent finalizer function from being called.
-      /// Can be called arbitrary number of times, idempotent.
-      void release() { _released = true ; }
-
-      /// Explicitly call the finalizer if it hasn't yet been called or released.
-      /// Can be called arbitrary number of times: after the first call all the
-      /// subsequent are ignored.
-      void finalize()
-      {
-         if (_released)
-            return ;
-
-         release() ;
-         _finalize() ;
-      }
-   private:
-      F     _finalize ;         /* Call this in the destructor. */
-      bool  _released = false ; /* Don't call _finalize if true. */
-} ;
-
-template<typename F>
-inline finalizer<std::remove_cvref_t<F>> make_finalizer(F &&on_finish)
-{
-   return finalizer<std::remove_cvref_t<F>>(std::forward<F>(on_finish)) ;
-}
 
 /*******************************************************************************
  Utility functions
@@ -515,7 +394,7 @@ inline std::ostream &operator<<(std::ostream &os, const tdef<P,G> &v) { return o
  as long as the size requested in the constructor does not exceed the threshold,
  does not dynamically allocate memory.
 
- Intended to be used as a stack variable.
+ Use as a stack variable type.
 *******************************************************************************/
 template<size_t threshold, size_t alignment = 0>
 struct auto_buffer final {
