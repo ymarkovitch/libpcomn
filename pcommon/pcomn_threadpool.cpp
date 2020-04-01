@@ -197,8 +197,7 @@ void job_batch::assignment::set_exception(std::exception_ptr &&xptr)
  threadpool
 *******************************************************************************/
 static constexpr size_t default_queue_capacity_per_thread = 16 ;
-
-threadpool::threadpool() = default ;
+static constexpr size_t max_sane_queue_capacity = 0x1000000 ; /* 16M tasks, 128MiB */
 
 threadpool::threadpool(size_t threadcount, const strslice &name, size_t max_capacity) :
     _thread_count(thread_count(0, std::min(threadcount, max_threadcount()))),
@@ -219,11 +218,11 @@ threadpool::~threadpool()
 unsigned threadpool::estimate_max_capacity(size_t threadcount, size_t max_capacity)
 {
     static const size_t hardware_threads = sys::hw_threads_count() ;
-    static constexpr size_t max_sane_capacity = 0x1000000 ;
 
     const size_t maxthreads = std::max(std::min(threadcount, max_threadcount()), hardware_threads) ;
 
-    return std::max(std::min(max_capacity, max_sane_capacity), maxthreads*default_queue_capacity_per_thread) ;
+    return std::max(std::min(max_capacity, max_sane_queue_capacity),
+                    maxthreads*default_queue_capacity_per_thread) ;
 }
 
 unsigned threadpool::clear_queue()
@@ -265,7 +264,9 @@ void threadpool::worker_thread_function(thread_list::iterator self)
 {
     while(check_launch_new_thread(_thread_count.load(std::memory_order_acquire))) ;
 
-    for(fwd::optional<task_ptr> task_opt ; handle_pool_resize(self) && (task_opt = _task_queue.pop_opt()) ;)
+    fwd::optional<task_ptr> task_opt ;
+
+    while (handle_pool_resize(self) == CONTINUE && (task_opt = _task_queue.pop_opt()))
     {
         if (const task_ptr current_task = std::move(*task_opt))
         {
@@ -274,7 +275,7 @@ void threadpool::worker_thread_function(thread_list::iterator self)
     }
 }
 
-bool threadpool::handle_pool_resize(thread_list::iterator self) noexcept
+threadpool::Dismiss threadpool::handle_pool_resize(thread_list::iterator self) noexcept
 {
     // Check if there are too many threads, and if so, dismiss itself.
     auto dismissed = check_dismiss_itself(self) ;
@@ -302,7 +303,7 @@ bool threadpool::handle_pool_resize(thread_list::iterator self) noexcept
         _pool_mutex.unlock() ;
     }
 
-    return std::get<bool>(dismissed) ;
+    return Dismiss(std::get<bool>(dismissed)) ;
 }
 
 std::pair<bool, threadpool::thread_count> threadpool::check_dismiss_itself(thread_list::iterator self) noexcept
@@ -323,6 +324,9 @@ std::pair<bool, threadpool::thread_count> threadpool::check_dismiss_itself(threa
 
     if (!std::get<bool>(dismissed))
         return dismissed ;
+
+    TRACEPX(PCOMN_ThreadPool, DBGL_NORMAL, "Worker thread " << pthread::id::this_thread()
+            << " dismisses itself as thread count is " << std::get<thread_count>(dismissed)) ;
 
     // Allow prev_dropped to call destructor out of scoped lock scope, to avoid holding
     // _pool_mutex during (potentially time-consuming) join with the dropped thread.
@@ -348,6 +352,9 @@ bool threadpool::check_launch_new_thread(thread_count current_count)
 {
     if (current_count._diff <= 0)
         return false ;
+
+    TRACEPX(PCOMN_ThreadPool, DBGL_NORMAL, "Worker thread " << pthread::id::this_thread()
+            << " attempts to start a new worker thread as current thread count is " << current_count) ;
 
     // Prepare allocated list item before entering critical section:
     // reduce potential exception points.
@@ -383,6 +390,9 @@ bool threadpool::check_launch_new_thread(thread_count current_count)
         on_launch_thread_failure.release() ;
 
         current_count = newcount ;
+
+        TRACEPX(PCOMN_ThreadPool, DBGL_NORMAL, "Worker thread " << pthread::id::this_thread()
+                << " started a new worker thread, new thread count is " << newcount) ;
     }
 
     return current_count._diff > 0 ;
@@ -423,17 +433,18 @@ void threadpool::stop(bool complete_pending_tasks)
 void threadpool::print(std::ostream &os) const
 {
     const thread_count c = _thread_count.load(std::memory_order_relaxed) ;
-    const bool d = _dropped.load(std::memory_order_relaxed) ;
+    const bool dropped_present = _dropped.load(std::memory_order_relaxed) ;
     const size_t qcapacity = _task_queue.capacity() ;
     const size_t qsize = _task_queue.size() ;
 
     os << "threadpool{" << squote(_name) ;
     if (c._data == thread_count::stopped()._data)
-        os << " stopped " ;
+        os << " stopped, " ;
     else
-        os << " running " << c._running << '/' << c.expected_count() << " threads" << (d ? "* " : " ") ;
+        os << " running, "
+           << c._running << '/' << c.expected_count() << " threads" << (dropped_present ? "*, " : ", ") ;
 
-    os << qsize << '/' << qcapacity << " pending}" ;
+    os << qsize << '/' << qcapacity << '/' << max_queue_capacity() << " pending}" ;
 }
 
 } // end of namespace pcomn

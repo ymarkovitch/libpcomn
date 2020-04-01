@@ -292,11 +292,22 @@ private:
 
  The resulting task value or exception is available through std::future<ret>.
 
- There are two kinds of work that can be submitted into the pool: a *task* and a *job*.
+ Two kinds of work can be submitted into the pool: a *task* and a *job*.
  The difference is we don't care about the resut of a job ("fire and forget"),
  so enqueue_job() returns void, while the result of the task can be obtained
  through std::future object returned by enqueue_task().
- ******************************************************************************/
+
+ When jobs/task are submitted they are placed into the task queue, from which
+ worker threads extract them. The task queue is a blocking MPMC bounded queue
+ with ring storage (blocking_ring_queue), so its *maximum* capacity must be
+ initially specified in the threadpool constructor.
+
+ @note While *all* the underlying ring queue memory is allocated in the constructor,
+  it is not initialized immediately but on demand, entry by entry when tasks are
+  actually added, so specifying large maximum capacity does not compromize performance.
+
+ @note The size of a task queue entry is 8 bytes.
+*******************************************************************************/
 class threadpool {
     PCOMN_NONCOPYABLE(threadpool) ;
     PCOMN_NONASSIGNABLE(threadpool) ;
@@ -326,8 +337,9 @@ public:
     template<typename T>
     using result_queue_ptr = std::shared_ptr<result_queue<T>> ;
 
-    threadpool() ;
-
+    /// Create a threadpool with specified thread count, name, and maximum task queue
+    /// capacity.
+    ///
     threadpool(size_t threadcount, const strslice &name, size_t max_capacity = 0) ;
 
     explicit threadpool(size_t threadcount, size_t max_capacity = 0) :
@@ -548,6 +560,15 @@ private:
         } ;
     } ;
 
+    friend std::ostream &operator<<(std::ostream &os, const thread_count &v)
+    {
+        if (v._data == thread_count::stopped()._data)
+            os << "{stopped}" ;
+        else
+            os << '{' << v.expected_count() << '/' << v._running << '/' << v._diff << '}' ;
+        return os ;
+    }
+
 private:
     const char _name[16] = {} ;
 
@@ -563,11 +584,12 @@ private:
     blocking_ring_queue<task_ptr> _task_queue {estimate_max_capacity(0, 0)} ;
 
 private:
+    enum Dismiss : bool { CONTINUE, DISMISS } ;
+
     void worker_thread_function(thread_list::iterator) ;
     void start_thread() ;
 
-    // Returns true if the thread must stop.
-    bool handle_pool_resize(thread_list::iterator self) noexcept ;
+    Dismiss handle_pool_resize(thread_list::iterator self) noexcept ;
     std::pair<bool, thread_count> check_dismiss_itself(thread_list::iterator self) noexcept ;
     bool check_launch_new_thread(thread_count current_count) ;
 

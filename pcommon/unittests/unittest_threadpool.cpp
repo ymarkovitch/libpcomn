@@ -60,17 +60,11 @@ public:
 *******************************************************************************/
 class ThreadPoolTests : public CppUnit::TestFixture {
 
-    void Test_JobBatch_Init() ;
-    void Test_JobBatch_Run() ;
-
     void Test_ThreadPool_Init() ;
     void Test_ThreadPool_SingleThreaded() ;
     void Test_ThreadPool_MultiThreaded() ;
 
     CPPUNIT_TEST_SUITE(ThreadPoolTests) ;
-
-    CPPUNIT_TEST(Test_ThreadPool_Init) ;
-    CPPUNIT_TEST(Test_ThreadPool_SingleThreaded) ;
 
     CPPUNIT_TEST(Test_ThreadPool_Init) ;
     CPPUNIT_TEST(Test_ThreadPool_SingleThreaded) ;
@@ -102,7 +96,7 @@ void JobBatchTests::Test_JobBatch_Init()
     CPPUNIT_LOG_EXCEPTION(job_batch(0, 0), std::invalid_argument) ;
     CPPUNIT_LOG_EXCEPTION(job_batch(0, 5), std::invalid_argument) ;
 
-    CPPUNIT_LOG_EXCEPTION(job_batch(1, "TooLngThreadName"), std::out_of_range) ;
+    CPPUNIT_LOG_EXCEPTION(job_batch(1, "TooLongBatchName"), std::out_of_range) ;
 
     job_batch b1 (1) ;
     job_batch b2 (5, 3) ;
@@ -269,9 +263,22 @@ void JobBatchTests::Test_JobBatch_Run()
 *******************************************************************************/
 void ThreadPoolTests::Test_ThreadPool_Init()
 {
-    threadpool p0 ;
-    threadpool p1 (1) ;
-    threadpool p4 (4) ;
+    CPPUNIT_LOG_EQUAL(get_threadcount(), INIT_THREADCOUNT) ;
+    CPPUNIT_LOG_EXCEPTION(threadpool(1, "TooLongTPoolName"), std::out_of_range) ;
+    CPPUNIT_LOG_EQUAL(get_threadcount(), INIT_THREADCOUNT) ;
+
+    {
+        threadpool p1 (1) ;
+
+        CPPUNIT_LOG_EXPRESSION(p1) ;
+        CPPUNIT_LOG_EQ(p1.size(), 1) ;
+        CPPUNIT_LOG_EQUAL(strslice(p1.name()), strslice()) ;
+        // At least the first thread of the pool is started by the constructor
+        CPPUNIT_LOG_EQUAL(get_threadcount(), INIT_THREADCOUNT + 1U) ;
+    }
+    CPPUNIT_LOG_EQUAL(get_threadcount(), INIT_THREADCOUNT) ;
+
+    //threadpool p4 (4, "Pool4") ;
 }
 
 void ThreadPoolTests::Test_ThreadPool_SingleThreaded()
