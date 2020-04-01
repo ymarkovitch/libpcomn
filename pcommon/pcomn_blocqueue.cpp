@@ -12,7 +12,7 @@
 
 namespace pcomn {
 
-PCOMN_STATIC_CHECK(2*blocqueue_controller::max_capacity() < counting_semaphore::max_count()) ;
+PCOMN_STATIC_CHECK(2*blocqueue_controller::max_allowed_capacity() < counting_semaphore::max_count()) ;
 
 /*******************************************************************************
  blocqueue_controller
@@ -39,7 +39,7 @@ void blocqueue_controller::invalid_acquire_count(unsigned count, const char *que
 {
     throwf<std::out_of_range>
         ("Too big count %u is specified for %s operation on blocking_queue, maximum allowed is %u",
-         count, queue_end, (unsigned)max_capacity()) ;
+         count, queue_end, (unsigned)max_allowed_capacity()) ;
 }
 
 void blocqueue_controller::change_capacity(unsigned new_capacity)
@@ -85,7 +85,7 @@ bool blocqueue_controller::try_wait_empty_finalize_queue(TimeoutKind kind,
     if (_state.compare_exchange_strong(s, State::CLOSED))
     {
         slots(EMPTY).release(quiscent_state_slots_count) ;
-        slots(FULL).release(blocqueue_controller::max_capacity()) ;
+        slots(FULL).release(max_allowed_capacity()) ;
         return true ;
     }
 
@@ -108,7 +108,7 @@ void blocqueue_controller::close_both_ends()
     {
         if (_state.compare_exchange_strong(s, State::CLOSED))
         {
-            slots(FULL).release(blocqueue_controller::max_capacity()) ;
+            slots(FULL).release(max_allowed_capacity()) ;
             break ;
         }
     }
@@ -135,11 +135,11 @@ bool blocqueue_controller::close_push_end(TimeoutKind kind, std::chrono::nanosec
         // the producing end is already closed, release(n), and to throw sequence_closed
         // (see start_pop()).
         //
-        // A practical analogue of resizing by expanding by
-        // blocqueue_controller::max_capacity(): the slots(EMPTY) count when the queue is
-        // empty becomes capacity() + blocqueue_controller::max_capacity().
+        // A practical analogue of resizing by expanding by max_allowed_capacity():
+        // the slots(EMPTY) count when the queue is empty becomes
+        // capacity() + max_allowed_capacity().
 
-        slots(EMPTY).release(blocqueue_controller::max_capacity()) ;
+        slots(EMPTY).release(max_allowed_capacity()) ;
     }
 
     PCOMN_VERIFY(s == State::FINALIZING) ;
@@ -152,7 +152,7 @@ int blocqueue_controller::start_pop(unsigned maxcount,
                                     RaiseError raise_on_closed)
 {
     ensure<std::out_of_range>(maxcount, "Zero count is not valid for pop_some()/try_pop_some() operations.") ;
-    maxcount = std::min(size_t(maxcount), max_capacity()) ;
+    maxcount = std::min(size_t(maxcount), max_allowed_capacity()) ;
 
     // pop() works both in State::OPEN and State::FINALIZING
     if (!ensure_state_at_most(State::FINALIZING, raise_on_closed))
@@ -173,7 +173,7 @@ int blocqueue_controller::start_pop(unsigned maxcount,
 
 bool blocqueue_controller::finalize_pop(unsigned acquired_count)
 {
-    NOXCHECK(acquired_count <= max_capacity()) ;
+    NOXCHECK(acquired_count <= max_allowed_capacity()) ;
 
     // Release popped slots
     slots(EMPTY).release(acquired_count) ;

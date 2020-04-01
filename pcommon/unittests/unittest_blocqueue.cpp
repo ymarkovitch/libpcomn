@@ -65,7 +65,7 @@ public:
     typedef count_iterator<value_type> iterator ;
 
     explicit counting_quasi_queue(unsigned current_capacity) :
-        _max_size(blocqueue_controller::max_capacity()),
+        _max_size(blocqueue_controller::max_allowed_capacity()),
         _capacity(current_capacity)
     {
         PCOMN_VERIFY(_capacity) ;
@@ -77,7 +77,7 @@ public:
         _max_size(capacities.second),
         _capacity(capacities.first)
     {
-        PCOMN_VERIFY(capacities.second <= blocqueue_controller::max_capacity()) ;
+        PCOMN_VERIFY(capacities.second <= blocqueue_controller::max_allowed_capacity()) ;
         PCOMN_VERIFY(capacities.first <= capacities.second) ;
         last_constructed = this ;
     }
@@ -185,7 +185,7 @@ class BlockingQueueTests : public CppUnit::TestFixture {
 private:
     unit::watchdog watchdog {5s} ;
 
-    static const unsigned maxsize = counting_blocqueue::max_capacity() ;
+    static const unsigned maxsize = blocqueue_controller::max_allowed_capacity() ;
 
 public:
     void setUp()
@@ -209,7 +209,7 @@ void BlockingQueueTests::Test_BlockingQueue_TestFixture()
     typedef counting_quasi_queue::iterator citerator ;
 
     CPPUNIT_LOG_EQ(counting_quasi_queue(5).current_capacity(), 5) ;
-    CPPUNIT_LOG_EQ(counting_quasi_queue(5).max_size(), blocqueue_controller::max_capacity()) ;
+    CPPUNIT_LOG_EQ(counting_quasi_queue(5).max_size(), blocqueue_controller::max_allowed_capacity()) ;
     CPPUNIT_LOG_EQ(counting_quasi_queue({10, 20}).current_capacity(), 10) ;
     CPPUNIT_LOG_EQ(counting_quasi_queue({10, 20}).max_size(), 20) ;
 
@@ -284,6 +284,7 @@ void BlockingQueueTests::Test_BlockingQueue_Limits()
     counting_blocqueue q11 ({5, 100}) ;
 
     CPPUNIT_LOG_EQ(q11.capacity(), 5) ;
+    CPPUNIT_LOG_EQ(q11.max_capacity(), 100) ;
     CPPUNIT_LOG_EXCEPTION(q11.change_capacity(101), std::out_of_range) ;
     CPPUNIT_LOG_EQ(q11.capacity(), 5) ;
     CPPUNIT_LOG_RUN(q11.change_capacity(100)) ;

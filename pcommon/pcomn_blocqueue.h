@@ -69,9 +69,11 @@ public:
     size_t capacity() const { return _capacity.load(std::memory_order_relaxed) ; }
 
     /// Get the maximum allowed queue capacity.
+    /// This value is the absolute maximum the queue can support, even if underlying
+    /// container suports larger max_size().
     ///
     /// @note Circa 1G slots.
-    constexpr static size_t max_capacity()
+    constexpr static size_t max_allowed_capacity()
     {
         // Reserve half of available range to ensure close() won't deadlock
         // (see close() source code)
@@ -173,27 +175,27 @@ protected:
 
     static unsigned validate_capacity(unsigned new_capacity)
     {
-        if (unlikely(!inrange(new_capacity, 1U, (unsigned)max_capacity())))
+        if (unlikely(!inrange(new_capacity, 1U, (unsigned)max_allowed_capacity())))
             invalid_capacity(new_capacity) ;
         return new_capacity ;
     }
 
     static unsigned validate_acquire_count(unsigned count, const char *queue_end)
     {
-        if (unlikely(count > max_capacity()))
+        if (unlikely(count > max_allowed_capacity()))
             invalid_acquire_count(count, queue_end) ;
         return count ;
     }
 
     __noreturn __cold
-    static void invalid_capacity(unsigned capacity, unsigned maxcap = max_capacity()) ;
+    static void invalid_capacity(unsigned capacity, unsigned maxcap = max_allowed_capacity()) ;
 
 private:
     virtual void change_data_capacity(unsigned new_capacity) = 0 ;
 
     unsigned max_empty_slots() const noexcept
     {
-        return capacity() + blocqueue_controller::max_capacity() ;
+        return capacity() + blocqueue_controller::max_allowed_capacity() ;
     }
 
     __noreturn __cold static void invalid_acquire_count(unsigned count,
@@ -269,6 +271,22 @@ public:
         _data(capacities)
     {}
 
+    /***************************************************************************
+     capacity
+    ***************************************************************************/
+    using ancestor::capacity ;
+    using ancestor::change_capacity ;
+    using ancestor::size ;
+
+    size_t max_capacity() const
+    {
+        return std::min<size_t>(max_data_capacity<container_type>(0),
+                                ancestor::max_allowed_capacity()) ;
+    }
+
+    /***************************************************************************
+     close
+    ***************************************************************************/
     /// Immediately close both the push and pop ends of the queue.
     /// All the items still in the queue will be lost.
     void close() { this->close_both_ends() ; }
@@ -304,14 +322,6 @@ public:
     {
         return this->close_push_end(TimeoutKind::RELATIVE, timeout_duration) ;
     }
-
-    /***************************************************************************
-     capacity
-    ***************************************************************************/
-    using ancestor::capacity ;
-    using ancestor::max_capacity ;
-    using ancestor::change_capacity ;
-    using ancestor::size ;
 
     /***************************************************************************
      push
@@ -426,7 +436,7 @@ private:
     max_data_capacity(int) const { return _data.max_size() ; }
 
 	template<typename U>
-    auto max_data_capacity(...) const { return max_capacity() ; }
+    auto max_data_capacity(...) const { return max_allowed_capacity() ; }
 
 	template<typename V>
     bool put_item(TimeoutKind kind, std::chrono::nanoseconds timeout, V &&value) ;
@@ -631,7 +641,7 @@ public:
 
     std::vector<value_type> pop_many(unsigned count) ;
 
-    uint64_t max_size() const noexcept { return _capacity_mask + 1 ; }
+    size_t max_size() const noexcept { return _capacity_mask + 1 ; }
 
     void change_capacity(uint64_t new_capacity)
     {
