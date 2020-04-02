@@ -262,12 +262,11 @@ private:
     const unsigned _max_threadcount ;
     const unsigned _jobs_per_thread = 1 ;
 
-    mutable shared_mutex _pool_mutex ;
+    std::mutex   _pool_mutex ;
+    promise_lock _finished ;
 
-    promise_lock             _finished ;
-
-    std::atomic<ssize_t>     _jobndx {0} ;
-    std::atomic<ssize_t>     _pending {0} ;
+    std::atomic<ssize_t> _jobndx {0} ;
+    std::atomic<ssize_t> _pending {0} ;
 
     alignas(cacheline_t) std::vector<pthread> _threads ;
     std::vector<std::unique_ptr<assignment>>  _jobs ;
@@ -369,9 +368,14 @@ public:
     /// Never NULL, may be empty.
     const char *name() const { return _name ; } ;
 
-    void set_queue_capacity(unsigned new_capacity) ;
+    void set_queue_capacity(unsigned new_capacity)
+    {
+        _task_queue.change_capacity(new_capacity) ;
+    }
 
     size_t max_queue_capacity() const { return _task_queue.max_capacity() ; }
+
+    size_t queue_capacity() const { return _task_queue.capacity() ; }
 
     /// Get the implementation-defined maximum thread count for a threadpool.
     /// Sanity constraint. Power of 2.
@@ -580,6 +584,7 @@ private:
     thread_list        _dropped_thread ; /* Single-item list, a thread being dismissed is
                                           * moved here first. */
     std::atomic<bool>  _dropped {false} ; /* Indicates there is a _dropped_thread */
+    bool               _destroying = false ; /* Not atomic, access only under _pool_mutex */
 
     blocking_ring_queue<task_ptr> _task_queue {estimate_max_capacity(0, 0)} ;
 
@@ -592,6 +597,7 @@ private:
     Dismiss handle_pool_resize(thread_list::iterator self) noexcept ;
     std::pair<bool, thread_count> check_dismiss_itself(thread_list::iterator self) noexcept ;
     bool check_launch_new_thread(thread_count current_count) ;
+    void try_force_dismiss_spare_threads() ;
 
     void flush_task_queue() ;
 

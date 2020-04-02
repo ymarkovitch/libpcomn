@@ -24,7 +24,7 @@
 using namespace pcomn ;
 using namespace std::chrono ;
 
-static constexpr size_t INIT_THREADCOUNT = 2 ;
+static size_t INIT_THREADCOUNT ;
 
 /*******************************************************************************
                             class JobBatchTests
@@ -48,6 +48,7 @@ public:
     void setUp()
     {
         watchdog.arm() ;
+        INIT_THREADCOUNT = get_threadcount() ;
     }
     void tearDown()
     {
@@ -79,6 +80,7 @@ public:
     void setUp()
     {
         watchdog.arm() ;
+        INIT_THREADCOUNT = get_threadcount() ;
     }
     void tearDown()
     {
@@ -148,8 +150,6 @@ void JobBatchTests::Test_JobBatch_Run()
 
     CPPUNIT_LOG(std::endl) ;
     {
-        CPPUNIT_LOG_EQ(get_threadcount(), INIT_THREADCOUNT) ;
-
         job_batch b3 (2, "Hello") ;
         CPPUNIT_LOG_EQ(b3.size(), 0) ;
 
@@ -187,8 +187,6 @@ void JobBatchTests::Test_JobBatch_Run()
 
     CPPUNIT_LOG(std::endl) ;
     {
-        CPPUNIT_LOG_EQ(get_threadcount(), INIT_THREADCOUNT) ;
-
         job_batch b4 (6, 3, "Multi") ;
 
         counting_semaphore sem ;
@@ -254,8 +252,6 @@ void JobBatchTests::Test_JobBatch_Run()
         if (finished > 4)
             CPPUNIT_LOG_EXCEPTION_MSG(results[4].get(), test_error, "011") ;
     }
-
-    CPPUNIT_LOG_EQ(get_threadcount(), INIT_THREADCOUNT) ;
 }
 
 /*******************************************************************************
@@ -276,9 +272,43 @@ void ThreadPoolTests::Test_ThreadPool_Init()
         // At least the first thread of the pool is started by the constructor
         CPPUNIT_LOG_EQUAL(get_threadcount(), INIT_THREADCOUNT + 1U) ;
     }
-    CPPUNIT_LOG_EQUAL(get_threadcount(), INIT_THREADCOUNT) ;
 
-    //threadpool p4 (4, "Pool4") ;
+    CPPUNIT_LOG(std::endl) ;
+    {
+        threadpool p4 (4, "Pool4", 8192) ;
+
+        CPPUNIT_LOG_EXPRESSION(p4) ;
+
+        CPPUNIT_LOG_EQ(p4.size(), 4) ;
+        CPPUNIT_LOG_EQ(strslice(p4.name()), "Pool4") ;
+
+        CPPUNIT_LOG_EQ(p4.max_queue_capacity(), 8192) ;
+        CPPUNIT_LOG_EQ(p4.queue_capacity(), 8192) ;
+        CPPUNIT_LOG_EQ(p4.capacity(), 8196) ;
+
+        CPPUNIT_LOG_EXCEPTION(p4.set_queue_capacity(0), std::out_of_range) ;
+        CPPUNIT_LOG_EQ(p4.queue_capacity(), 8192) ;
+        CPPUNIT_LOG_EXCEPTION(p4.set_queue_capacity(8193), std::out_of_range) ;
+
+        CPPUNIT_LOG_RUN(std::this_thread::sleep_for(20ms)) ;
+        CPPUNIT_LOG_EXPRESSION(p4) ;
+        CPPUNIT_LOG_EQUAL(get_threadcount(), INIT_THREADCOUNT + 4U) ;
+
+        CPPUNIT_LOG(std::endl) ;
+        CPPUNIT_LOG_RUN(p4.resize(20)) ;
+        CPPUNIT_LOG_EQ(p4.size(), 20) ;
+        CPPUNIT_LOG_EXPRESSION(p4) ;
+        CPPUNIT_LOG_RUN(std::this_thread::sleep_for(20ms)) ;
+        CPPUNIT_LOG_EXPRESSION(p4) ;
+        CPPUNIT_LOG_EQUAL(get_threadcount(), INIT_THREADCOUNT + 20U) ;
+
+        CPPUNIT_LOG(std::endl) ;
+        CPPUNIT_LOG_RUN(p4.resize(1)) ;
+        CPPUNIT_LOG_EQ(p4.size(), 1) ;
+        CPPUNIT_LOG_EXPRESSION(p4) ;
+        CPPUNIT_LOG_RUN(std::this_thread::sleep_for(20ms)) ;
+        CPPUNIT_LOG_EXPRESSION(p4) ;
+    }
 }
 
 void ThreadPoolTests::Test_ThreadPool_SingleThreaded()
