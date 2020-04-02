@@ -93,6 +93,11 @@ public:
 
     id get_id() const noexcept { return _id ; }
 
+    bool is_current() const noexcept
+    {
+        return get_id() == id::this_thread() ;
+    }
+
     /***********************************************************************//**
      Thread identifier.
     ***************************************************************************/
@@ -109,13 +114,13 @@ public:
 
         id(const pthread &th) noexcept : id(th._id._handle) {}
 
-        constexpr pthread_t native_handle() const { return _handle ; }
+        constexpr pthread_t native_handle() const noexcept { return _handle ; }
 
-        constexpr explicit operator bool() const { return !!_handle ; }
+        constexpr explicit operator bool() const noexcept { return !!_handle ; }
 
-        size_t hash() const { return valhash((uint64_t)_handle) ; }
+        size_t hash() const noexcept { return valhash((uint64_t)_handle) ; }
 
-        static id this_thread() { return id(pthread_self()) ; }
+        static id this_thread() noexcept { return id(pthread_self()) ; }
 
         friend bool operator==(id x, id y) noexcept
         {
