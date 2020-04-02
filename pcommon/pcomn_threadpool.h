@@ -328,10 +328,10 @@ public:
     template<typename T> class task_result ;
 
     template<typename T>
-    using task_result_ptr  = std::unique_ptr<task_result<T>> ;
+    using result_ptr  = std::unique_ptr<task_result<T>> ;
 
     template<typename T>
-    using result_queue = blocking_list_queue<task_result_ptr<T>> ;
+    using result_queue = blocking_list_queue<result_ptr<T>> ;
 
     template<typename T>
     using result_queue_ptr = std::shared_ptr<result_queue<T>> ;

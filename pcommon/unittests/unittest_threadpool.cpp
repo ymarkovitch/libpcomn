@@ -108,6 +108,18 @@ void JobBatchTests::Test_JobBatch_Init()
     CPPUNIT_LOG_EQ(strslice(b1.name()), "") ;
     CPPUNIT_LOG_EQ(strslice(b3.name()), "Name3") ;
     CPPUNIT_LOG_EQ(strslice(b4.name()), "NameOfMaxLength") ;
+
+    CPPUNIT_LOG(std::endl) ;
+    unsigned counter = 2 ;
+    {
+        job_batch b5 (1) ;
+        CPPUNIT_LOG_EQ(b5.size(), 0) ;
+
+        // Add a job but do not run
+        CPPUNIT_LOG_RUN(b5.add_job([&counter](unsigned inc) { counter += inc ; }, 9)) ;
+        CPPUNIT_LOG_EQ(b5.size(), 0) ;
+    }
+    CPPUNIT_LOG_EQUAL(counter, 2U) ;
 }
 
 struct test_error : std::runtime_error {

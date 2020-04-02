@@ -49,9 +49,11 @@ job_batch::~job_batch()
     stop() ;
     _finished.wait() ;
 
-    PCOMN_VERIFY(!_threads.empty()) ;
-    // Join only _threads.front(), it will joins other threads.
-    _threads.front().join() ;
+    // It's possible there's no threads to join with: jobs are added but job_batch::run()
+    // is not called.
+    if (!_threads.empty())
+        // If there are threads, join only _threads.front(): it will joins others.
+        _threads.front().join() ;
 }
 
 bool job_batch::run()

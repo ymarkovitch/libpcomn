@@ -39,39 +39,41 @@ namespace unit {
  watchdog
 *******************************************************************************/
 class watchdog {
-   public:
+public:
     explicit watchdog(std::chrono::milliseconds timeout) :
-         _timeout(timeout)
-      {}
+        _timeout(timeout)
+    {}
 
-      __noinline void arm()
-      {
-         CPPUNIT_ASSERT(!_watchdog.joinable()) ;
+    __noinline void arm()
+    {
+        CPPUNIT_ASSERT(!_watchdog.joinable()) ;
 
-         _armed.lock() ;
+        _armed.lock() ;
 
-         _watchdog = std::thread([&]{
+        _watchdog = std::thread([&]{
             if (!_armed.try_lock_for(_timeout))
             {
                 CPPUNIT_LOG_LINE("ERROR: THE TEST DEADLOCKED") ;
                 PCOMN_FAIL("ERROR: THE TEST DEADLOCKED") ;
             }
-         }) ;
-      }
+        }) ;
+    }
 
-      __noinline void disarm()
-      {
-         CPPUNIT_ASSERT(_watchdog.joinable()) ;
+    __noinline void disarm()
+    {
+        CPPUNIT_ASSERT(_watchdog.joinable()) ;
 
-         _armed.unlock() ;
-         _watchdog.join() ;
-         _watchdog = {} ;
-      }
+        _armed.unlock() ;
+        _watchdog.join() ;
+        _watchdog = {} ;
+    }
 
-   private:
-      std::chrono::milliseconds  _timeout ;
-      std::timed_mutex           _armed ;
-      std::thread                _watchdog ;
+    std::chrono::milliseconds timeout() const { return  _timeout ; }
+
+private:
+    std::chrono::milliseconds  _timeout ;
+    std::timed_mutex           _armed ;
+    std::thread                _watchdog ;
 } ;
 
 /***************************************************************************//**

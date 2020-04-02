@@ -95,7 +95,10 @@ unittest(unittest_sys)
 unittest(unittest_socket_address)
 unittest(unittest_ternary)
 unittest(unittest_textio)
+
 unittest(unittest_threadpool)
+unittest(fuzzytest_threadpool)
+
 unittest(unittest_timespec)
 unittest(unittest_uri)
 unittest(unittest_uuid)
