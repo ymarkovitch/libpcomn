@@ -53,8 +53,8 @@ class watchdog {
          _watchdog = std::thread([&]{
             if (!_armed.try_lock_for(_timeout))
             {
-               CPPUNIT_LOG_LINE("ERROR: THE TEST DEADLOCKED") ;
-               exit(3) ;
+                CPPUNIT_LOG_LINE("ERROR: THE TEST DEADLOCKED") ;
+                PCOMN_FAIL("ERROR: THE TEST DEADLOCKED") ;
             }
          }) ;
       }
