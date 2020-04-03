@@ -328,10 +328,7 @@ public:
     template<typename T> class task_result ;
 
     template<typename T>
-    using result_ptr  = std::unique_ptr<task_result<T>> ;
-
-    template<typename T>
-    using result_queue = blocking_list_queue<result_ptr<T>> ;
+    using result_queue = blocking_list_queue<task_result<T>> ;
 
     template<typename T>
     using result_queue_ptr = std::shared_ptr<result_queue<T>> ;
@@ -409,6 +406,8 @@ public:
     ///
     void stop(bool complete_pending_tasks = false) ;
 
+    /// Put the callable object into the task queue for subsequent execution.
+    /// The result of execution (return value or exception) is ignored.
     template<typename F, typename... Args>
     void enqueue_job(F &&callable, Args &&... args)
     {
@@ -431,14 +430,16 @@ public:
         return future_result ;
     }
 
-    template<typename F, typename... Args>
-    void enqueue_task(const result_queue_ptr<task_result_t<F, Args...>> &output_funnel,
-                      F &&call, Args &&... args)
+    /// Put the callable object into the task queue for subsequent execution and register
+    /// the queue into which to put the result.
+    ///
+    template<typename R, typename F, typename... Args>
+    void enqueue_linked_task(const result_queue_ptr<R> &output_funnel, F &&call, Args &&... args)
     {
         typedef task<std::decay_t<F>, std::decay_t<Args>...> task_type ;
 
         task_type *new_task = new task_type(std::forward<F>(call), std::forward<Args>(args)...) ;
-        auto future_result (new_task->get_future()) ;
+        new_task->_result_queue = output_funnel ;
 
         _task_queue.push(task_ptr(new_task)) ;
     }
@@ -483,6 +484,7 @@ private:
     template<typename F, typename... Args>
     class alignas(cacheline_t) task final : public packaged_job<F, Args...> {
         typedef packaged_job<F, Args...> ancestor ;
+        friend threadpool ;
     public:
         typedef decltype(std::declval<ancestor>().invoke()) result_type ;
 
@@ -523,13 +525,8 @@ private:
         {
             if (!_result_queue)
                 return ;
-
-            auto result (std::make_unique<task_result<result_type>>(get_future(), std::move(_result_queue))) ;
-
+            _result_queue->emplace(get_future(), std::move(_result_queue)) ;
             NOXCHECK(!_result_queue) ;
-
-            result->_queue_anchor->push(std::move(result)) ;
-            NOXCHECK(!result) ;
         }
     } ;
 

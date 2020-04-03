@@ -26,8 +26,6 @@
 using namespace pcomn ;
 using namespace std::chrono ;
 
-static size_t INIT_THREADCOUNT ;
-
 /*******************************************************************************
                             class ThreadPoolFuzzyTests
 *******************************************************************************/
@@ -42,13 +40,12 @@ class ThreadPoolFuzzyTests : public CppUnit::TestFixture {
     CPPUNIT_TEST_SUITE_END() ;
 
 private:
-    unit::watchdog watchdog {5s} ;
+    unit::watchdog watchdog {2min} ;
 
 public:
     void setUp()
     {
         watchdog.arm() ;
-        INIT_THREADCOUNT = get_threadcount() ;
     }
     void tearDown()
     {
@@ -79,7 +76,6 @@ struct test_plan {
     }
 } ;
 
-typedef threadpool::result_ptr<test_result>   test_result_ptr ;
 typedef threadpool::result_queue<test_result> test_result_queue ;
 
 template<typename T>
@@ -158,6 +154,12 @@ void ThreadPoolFuzzyTests::MultiDynamicResize(milliseconds test_duration,
             if (mask & 2)
                 pool.set_queue_capacity(select_queue_capacity()) ;
         }
+        if (!pool.size())
+        {
+            CPPUNIT_LOG_EXPRESSION(pool) ;
+            CPPUNIT_LOG_RUN(pool.resize(1)) ;
+        }
+
         CPPUNIT_LOG_RUN(pool.stop(true)) ;
         stop_test = true ;
 
@@ -174,27 +176,48 @@ void ThreadPoolFuzzyTests::MultiDynamicResize(milliseconds test_duration,
     std::vector<std::shared_ptr<test_result_queue>> outputs ;
     std::multimap<size_t, std::vector<long>> results ;
 
+    job_batch submitters (submitters_count, "Submitter") ;
+
+    auto get_results = [&]
+    {
+        CPPUNIT_LOG_LINE("---- Get results from " << pool) ;
+
+        const size_t oldcount = results.size() ;
+
+        for (auto &qptr: outputs)
+        {
+            auto result_list = qptr->try_pop_some(-1) ;
+            for (auto &taskret: result_list)
+            {
+                test_result r (taskret.get()) ;
+                results.emplace(r.ndx, std::move(r.data)) ;
+            }
+        }
+        const size_t newcount = results.size() ;
+
+        CPPUNIT_LOG_LINE("++++ Total " << newcount << " results, " << newcount - oldcount << " appended") ;
+    } ;
+
     // Create output queues
     for (size_t i = 0 ; i < submitters_count ; ++i)
         outputs.push_back(std::make_shared<test_result_queue>(result_queue_capacity)) ;
 
-    // Task submitter threads
-    job_batch submitters (submitters_count, "Submitter") ;
-
+    // Add submitter jobs
     for (unsigned i = 0 ; i < submitters_count ; ++i)
     {
-        submitters.add_job([&,i,out=outputs[i]]
+        submitters.add_job([&,i,output_funnel=outputs[i]]
         {
             CPPUNIT_LOG_LINE("Submitter " << i << " started") ;
 
-            auto select_wait_interval = [dist=uniform_distributed_range<int>(-10, 100)]() mutable
+            auto select_wait_interval = [dist=uniform_distributed_range<int>(-50, 50)]() mutable
             {
                 return microseconds(std::clamp(dist(), 0, 100)) ;
             } ;
 
             uniform_distributed_range<long> select_start (-1000'000, 999'999) ;
-            uniform_distributed_range<unsigned> select_count (1, 256*1024) ;
+            uniform_distributed_range<unsigned> select_count (1, 16*1024) ;
 
+            PRealStopwatch w ;
             try {
                 for(;;)
                 {
@@ -202,13 +225,14 @@ void ThreadPoolFuzzyTests::MultiDynamicResize(milliseconds test_duration,
                     std::vector<long> source (test.length) ;
 
                     std::iota(source.begin(), source.end(), test.start) ;
-                    std::random_shuffle(source.begin(), source.end()) ;
+                    for (int i = source.size() - 2 ; i >= 0 ; i -= 2)
+                        std::swap(source[i], source[i + 1]) ;
 
-                    pool.enqueue_job(&test_plan::test_job, test.ndx, std::move(source)) ;
-
-                    PCOMN_SCOPE_LOCK(lock, plans_mutex) ;
-                    plans.push_back(test) ;
-
+                    pool.enqueue_linked_task(output_funnel, &test_plan::test_job, test.ndx, std::move(source)) ;
+                    {
+                        PCOMN_SCOPE_LOCK(lock, plans_mutex) ;
+                        plans.push_back(test) ;
+                    }
                     std::this_thread::sleep_for(select_wait_interval()) ;
                 }
             }
@@ -221,10 +245,10 @@ void ThreadPoolFuzzyTests::MultiDynamicResize(milliseconds test_duration,
         }) ;
     }
 
-    auto get_results = [&]
-    {
-    } ;
+    // Start submitters
+    submitters.run() ;
 
+    // Extract results from the output funnels until the test finishes
     do {
         std::this_thread::sleep_for(50ms) ;
         get_results() ;
@@ -233,6 +257,9 @@ void ThreadPoolFuzzyTests::MultiDynamicResize(milliseconds test_duration,
 
     CPPUNIT_LOG_LINE("Stop requested") ;
     CPPUNIT_LOG_EXPRESSION(pool) ;
+    CPPUNIT_LOG_RUN(pool.stop(true)) ;
+
+    CPPUNIT_LOG_RUN(submitters.wait()) ;
 
     std::this_thread::sleep_for(50ms) ;
     get_results() ;
@@ -243,11 +270,16 @@ void ThreadPoolFuzzyTests::MultiDynamicResize(milliseconds test_duration,
     CPPUNIT_LOG_RUN(pool.stop(true)) ;
 
     CPPUNIT_LOG_RUN(fuzzer.join()) ;
+
+    CPPUNIT_LOG_LINE(next_ndx << " tests generated, " << plans.size() << " submitted, " << results.size() << " handled") ;
 }
 
 void ThreadPoolFuzzyTests::Test_ThreadPool_MultiDynamicResize()
 {
-    MultiDynamicResize(300ms, 2, 1, 1024, 1'000'000) ;
+    MultiDynamicResize(300ms, 2, 1,  2048, 1'000'000) ;
+    MultiDynamicResize(1s,    16, 8, 32*KiB, 1'000'000) ;
+    MultiDynamicResize(500ms, 16, 4, 4, 1'000'000) ;
+    MultiDynamicResize(500ms,  4, 4, 16384, 1'000'000) ;
 }
 
 
