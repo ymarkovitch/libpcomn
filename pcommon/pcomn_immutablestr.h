@@ -112,7 +112,8 @@ class refcounted_storage {
          incref(str_data()) ;
       }
 
-      refcounted_storage(refcounted_storage &&source) noexcept
+      refcounted_storage(refcounted_storage &&source) noexcept :
+            _data(const_cast<value_type *>(data_type::zero.begin()))
       {
          swap(source) ;
       }
