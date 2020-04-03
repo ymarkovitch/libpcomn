@@ -341,7 +341,10 @@ private:
     } ;
 
 private:
-    bool data_cas(data &expected, const data &desired) noexcept ;
+    bool data_cas(data &expected, const data &desired) noexcept
+    {
+        return _value.compare_exchange_strong(expected._value, desired._value, std::memory_order_acq_rel) ;
+    }
 } ;
 
 }  // end of namespace pcomn

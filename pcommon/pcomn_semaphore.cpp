@@ -193,12 +193,6 @@ void counting_semaphore::release(unsigned count)
 /*******************************************************************************
  binary_semaphore
 *******************************************************************************/
-inline
-bool binary_semaphore::data_cas(data &expected, const data &desired) noexcept
-{
-    return _value.compare_exchange_strong(expected._value, desired._value, std::memory_order_acq_rel) ;
-}
-
 bool binary_semaphore::lock_with_timeout(TimeoutMode mode, std::chrono::nanoseconds timeout)
 {
     const uint64_t waiting_one = data(false, 1)._value ;
