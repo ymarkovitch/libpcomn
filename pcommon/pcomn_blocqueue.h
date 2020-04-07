@@ -395,27 +395,53 @@ public:
     value_list pop_some(unsigned maxcount)     { return get_some_items(maxcount, RAISE_ERROR) ; }
     value_list pop_opt_some(unsigned maxcount) { return get_some_items(maxcount, DONT_RAISE_ERROR) ; }
 
-    value_list try_pop_some(unsigned maxcount) ;
-
-    optional_value try_pop() { return try_get_item(TimeoutKind::RELATIVE, {}) ; }
+    optional_value try_pop() { return get_item(TimeoutKind::RELATIVE, {}) ; }
 
     template<typename R, typename P>
     optional_value try_pop_for(const duration<R, P> &rel_time)
     {
-        return try_get_item(timeout_kind(rel_time), rel_time) ;
+        return get_item(timeout_kind(rel_time), rel_time) ;
     }
 
     template<typename Clock, typename Duration>
     optional_value try_pop_until(const time_point<Clock, Duration> &abs_time)
     {
-        return try_get_item(timeout_kind(abs_time), abs_time.time_since_epoch()) ;
+        return get_item(timeout_kind(abs_time), abs_time.time_since_epoch()) ;
+    }
+
+    value_list try_pop_some(unsigned maxcount)
+    {
+        return get_some_items(maxcount, TimeoutKind::RELATIVE, {}, RAISE_ERROR) ;
     }
 
     template<typename R, typename P>
-    value_list try_pop_some_for(unsigned count, const duration<R, P> &rel_time) ;
+    value_list try_pop_some_for(unsigned maxcount, const duration<R, P> &rel_time)
+    {
+        return get_some_items(maxcount, TimeoutKind::RELATIVE, rel_time, RAISE_ERROR) ;
+    }
 
     template<typename Clock, typename Duration>
-    value_list try_pop_some_until(unsigned count, const time_point<Clock, Duration> &abs_time) ;
+    value_list try_pop_some_until(unsigned maxcount, const time_point<Clock, Duration> &abs_time)
+    {
+        return get_some_items(maxcount, timeout_kind(abs_time), abs_time.time_since_epoch(), RAISE_ERROR) ;
+    }
+
+    value_list try_pop_opt_some(unsigned maxcount)
+    {
+        return get_some_items(maxcount, TimeoutKind::RELATIVE, {}, DONT_RAISE_ERROR) ;
+    }
+
+    template<typename R, typename P>
+    value_list try_pop_opt_some_for(unsigned maxcount, const duration<R, P> &rel_time)
+    {
+        return get_some_items(maxcount, TimeoutKind::RELATIVE, rel_time, DONT_RAISE_ERROR) ;
+    }
+
+    template<typename Clock, typename Duration>
+    value_list try_pop_opt_some_until(unsigned maxcount, const time_point<Clock, Duration> &abs_time)
+    {
+        return get_some_items(maxcount, timeout_kind(abs_time), abs_time.time_since_epoch(), DONT_RAISE_ERROR) ;
+    }
 
 private:
     container_type _data ;
@@ -444,8 +470,10 @@ private:
 	template<typename... Args>
     bool emplace_item(TimeoutKind kind, std::chrono::nanoseconds timeout, Args &&...args) ;
 
-    optional_value try_get_item(TimeoutKind kind, std::chrono::nanoseconds timeout) ;
+    optional_value get_item(TimeoutKind kind, std::chrono::nanoseconds timeout) ;
     value_list get_some_items(unsigned count, RaiseError raise_on_closed) ;
+    value_list get_some_items(unsigned count, TimeoutKind kind, std::chrono::nanoseconds timeout,
+                              RaiseError raise_on_closed) ;
 
     // Push handler
     template<typename QueueHandler>
@@ -736,31 +764,20 @@ auto blocking_queue<T,C>::get_some_items(unsigned count, RaiseError raise_on_clo
 }
 
 template<typename T, typename C>
-auto blocking_queue<T,C>::try_pop_some(unsigned count) -> value_list
+auto blocking_queue<T,C>::get_some_items(unsigned count,
+                                         TimeoutKind kind, std::chrono::nanoseconds timeout,
+                                         RaiseError raise_on_closed)  -> value_list
 {
     return
-        handle_pop(RAISE_ERROR, count, [](auto &data, unsigned acquired)
+        handle_pop(raise_on_closed, count, [](auto &data, unsigned acquired)
         {
             return data.pop_many(acquired) ;
         },
-        TimeoutKind::RELATIVE, {}) ;
+        kind, timeout) ;
 }
 
 template<typename T, typename C>
-template<typename R, typename P>
-auto blocking_queue<T,C>::try_pop_some_for(unsigned count, const duration<R, P> &rel_time) -> value_list
-{
-    return
-        handle_pop(RAISE_ERROR, count, [](auto &data, unsigned acquired)
-        {
-            return data.pop_many(acquired) ;
-        },
-        TimeoutKind::RELATIVE, rel_time) ;
-}
-
-template<typename T, typename C>
-auto blocking_queue<T,C>::try_get_item(TimeoutKind kind, std::chrono::nanoseconds timeout)
-    -> optional_value
+auto blocking_queue<T,C>::get_item(TimeoutKind kind, std::chrono::nanoseconds timeout) -> optional_value
 {
     return
         handle_pop(RAISE_ERROR,
