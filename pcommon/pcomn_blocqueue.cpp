@@ -12,7 +12,7 @@
 
 namespace pcomn {
 
-PCOMN_STATIC_CHECK(2*blocqueue_controller::max_allowed_capacity() < counting_semaphore::max_count()) ;
+PCOMN_STATIC_CHECK(2*blocqueue_controller::max_allowed_capacity() < (size_t)counting_semaphore::max_count()) ;
 
 /*******************************************************************************
  blocqueue_controller
