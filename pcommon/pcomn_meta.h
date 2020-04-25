@@ -454,10 +454,20 @@ struct is_trivially_swappable<std::pair<T1, T2>> :
          ct_and<is_trivially_swappable<T1>, is_trivially_swappable<T2>>
 {} ;
 
+/***************************************************************************//**
+ Type trait for types that allow memcpy()/memmove() construction and assignment.
+
+ This is the equivalent of `std::is_trivially_copyable` - and, by default,
+ is implemented as `std::is_trivially_copyable` - except that it can be overloaded
+ to return `true` for types that _are_, in fact, trivially copyable, but for which
+ `std::is_trivially_copyable` returns `false` due to collateral restrictions,
+ e.g. `std::pair<int,unsigned>`
+*******************************************************************************/
 template<typename T>
-struct is_memmovable : std::bool_constant<std::is_trivially_copyable<T>::value &&
-                                          std::is_trivially_destructible<T>::value>
-{} ;
+struct is_memmovable : std::bool_constant<std::is_trivially_copyable<T>::value> {} ;
+
+template<typename T, typename U>
+struct is_memmovable<std::pair<T, U>> : ct_and<is_memmovable<T>, is_memmovable<U> > {} ;
 
 template<typename T>
 constexpr bool is_trivially_swappable_v = is_trivially_swappable<T>::value ;
@@ -548,7 +558,6 @@ PCOMN_DEFINE_TYPE_MEMBER_TEST(iterator) ;
 PCOMN_DEFINE_TYPE_MEMBER_TEST(const_iterator) ;
 PCOMN_DEFINE_TYPE_MEMBER_TEST(pointer) ;
 
-/// @cond
 // Intentionally create an inconsistent name pcomn::has_type_type
 // has_type is too generic a name, even for pcomn namespace.
 namespace detail { PCOMN_DEFINE_TYPE_MEMBER_TEST(type) ; }
@@ -644,21 +653,5 @@ underlying_int(I value)
 }
 
 } // end of namespace pcomn
-/// @endcond
-
-/*******************************************************************************
- Ersatz C++11 type taits: even GCC 4.9 does not provide is_trivially_something
- traits, and we desperately need is_trivially_copyable.
-
- Note this contrived trait class is not a complete equivalent of the standard
- one: it does not consider move constructor/assignment.
-*******************************************************************************/
-#if !defined(__clang__) && PCOMN_WORKAROUND(__GNUC_VER__, < 700)
-namespace std {
-template<typename T, typename U>
-struct is_trivially_copyable<pair<T, U> > :
-         pcomn::ct_and<is_trivially_copyable<T>, is_trivially_copyable<U> > {} ;
-}
-#endif // PCOMN_WORKAROUND(__GNUC_VER__, < 700)
 
 #endif /* __PCOMN_META_H */
