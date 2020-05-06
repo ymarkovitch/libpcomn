@@ -97,6 +97,17 @@ struct MAC {
       constexpr MAC(uint8_t o1, uint8_t o2, uint8_t o3, uint8_t o4, uint8_t o5, uint8_t o6) :
          _data{o6, o5, o4, o3, o2, o1, 0, 0} {}
 
+      /// Converting constructor from text representation.
+      ///
+      /// The following formats are supported:
+      ///   1. a1-b2-c3-d4-e5-f6 (AKA "canonical IEEE802 text representation")
+      ///   2. a1:b2:c3:d4:e5:f6
+      ///   3. a1 b2 c3 d4 e5 f6
+      ///   4. a1.b2.c3.d4.e5.f6
+      ///
+      /// Hexadecimal letters may mix upper- and lower-case, so "a1:b2:c3:d4:e5:f6",
+      /// "A1:B2:C3:D4:E5:F6", "a1:B2:c3:D4:e5:f6" are allowed.
+      ///
       MAC(const char *str, RaiseError raise_error = RAISE_ERROR) :
          MAC(str ? strslice(str) : strslice(), raise_error)
       {}

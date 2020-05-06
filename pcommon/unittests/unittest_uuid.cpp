@@ -267,6 +267,17 @@ void MACFixture::Test_MAC()
    CPPUNIT_LOG_EXCEPTION(MAC("E0:CB:4E:8CFFFF5C", RAISE_ERROR), std::invalid_argument) ;
 
    CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_EQUAL(MAC("e0-cb-4e-8c-ff-5c"), random_mac) ;
+   CPPUNIT_LOG_EQUAL(MAC("e0.cb.4e.8c.4f.5c"), other_mac) ;
+   CPPUNIT_LOG_EQUAL(MAC("e0 cb 4e 8c 4f 50"), small_mac) ;
+
+   CPPUNIT_LOG_EQUAL(MAC("e0-cb-4e-8c-ff-5c"), MAC("e0.cb.4e.8c.ff.5c")) ;
+   CPPUNIT_LOG_EQUAL(MAC("e0-cb-4e-8c-ff-5c"), MAC("e0 cb 4e 8c ff 5c")) ;
+
+   CPPUNIT_LOG_EXCEPTION(MAC("e0-cb-4e-8c-ff:5c", RAISE_ERROR), std::invalid_argument) ;
+   CPPUNIT_LOG_EXCEPTION(MAC("e0 cb-4e-8c-ff-5c", RAISE_ERROR), std::invalid_argument) ;
+
+   CPPUNIT_LOG(std::endl) ;
    CPPUNIT_LOG_ASSERT(other_mac < random_mac) ;
    CPPUNIT_LOG_ASSERT(small_mac < other_mac) ;
    CPPUNIT_LOG_IS_FALSE(random_mac < small_mac) ;

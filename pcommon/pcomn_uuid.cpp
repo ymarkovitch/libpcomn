@@ -80,8 +80,15 @@ MAC::MAC(const strslice &str, RaiseError raise_error)
 
    char buf[slen() + 1] ;
    int64_t result ;
-   if (str.size() != slen()
-       || strslicecpy(buf, str)[2] != ':' || buf[5] != ':' || buf[8] != ':' || buf[11] != ':' || buf[14] != ':'
+
+   buf[2] = 0 ;
+   strslicecpy(buf, str) ;
+
+   const char delim = buf[2] ;
+
+   if (!is_in(delim, '-', ':', '.', ' ')
+       || str.size() != slen()
+       || buf[5] != delim || buf[8] != delim || buf[11] != delim || buf[14] != delim
        || (result = cvt(std::begin(buf), std::end(buf))) < 0)
    {
       PCOMN_THROW_IF(raise_error, invalid_str_repr, "Invalid MAC format " P_STRSLICEQF, P_STRSLICEV(str)) ;
