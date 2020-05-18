@@ -24,7 +24,7 @@ namespace pcomn {
 *******************************************************************************/
 struct identity {
       template<typename T>
-      T &&operator() (T &&t) const { return std::forward<T>(t) ; }
+      constexpr T &&operator() (T &&t) const { return std::forward<T>(t) ; }
 } ;
 
 /***************************************************************************//**
