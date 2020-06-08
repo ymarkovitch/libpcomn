@@ -9,6 +9,7 @@
  PROGRAMMED BY:   Yakov Markovitch
  CREATION DATE:   18 Mar 2009
 *******************************************************************************/
+#include <iostream>
 #include <pcomn_simplematrix.h>
 #include <pcomn_unittest.h>
 

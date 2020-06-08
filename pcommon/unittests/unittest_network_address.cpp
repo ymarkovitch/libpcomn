@@ -108,7 +108,7 @@ void IPAddressTests::Test_IPv4_Address()
     CPPUNIT_LOG_EQUAL(inaddr_loopback(), ipv4_addr("localhost", ipv4_addr::USE_HOSTNAME)) ;
     CPPUNIT_LOG_EQUAL(inaddr_broadcast(), ipv4_addr(255, 255, 255, 255)) ;
     CPPUNIT_LOG_EXCEPTION(ipv4_addr("Hello, world!", ipv4_addr::USE_HOSTNAME), system_error) ;
-    CPPUNIT_LOG_EQUAL(ipv4_addr(1, 2, 3, 4).hostname(), std::string("1.2.3.4")) ;
+    //CPPUNIT_LOG_EQUAL(ipv4_addr(1, 2, 3, 4).hostname(), std::string("1.2.3.4")) ;
 }
 
 void IPAddressTests::Test_IPv4_Subnet_Address()
