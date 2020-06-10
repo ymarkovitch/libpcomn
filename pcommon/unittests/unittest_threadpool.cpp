@@ -172,7 +172,7 @@ void JobBatchTests::Test_JobBatch_Run()
         {
             auto test_job = [&tid=*tid]
             {
-                std::this_thread::sleep_for(20ms) ;
+                std::this_thread::sleep_for(30ms) ;
 
                 CPPUNIT_LOG_EXPRESSION(get_threadcount()) ;
                 PCOMN_VERIFY(get_threadcount() == INIT_THREADCOUNT + 2) ;
