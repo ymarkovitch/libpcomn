@@ -1058,20 +1058,36 @@ namespace pcomn {
 
 /// @note This function never returns NULL and and the returned string is always
 /// null-terminated.
-inline const char *demangle(const char *mangled, char *buf, size_t buflen)
+template<Instantiate = instantiate>
+__noinline const char *demangle__(const char *mangled, char *buf, size_t buflen)
 {
    if (!buflen || !buf)
       return "" ;
    *buf = 0 ;
-   if (mangled && *mangled)
+   if (mangled && *mangled && buflen > 1)
    {
+      static thread_local char *demangled = nullptr ;
+      static thread_local size_t maxlen = 0 ;
+
       int status = 0 ;
-      size_t len = buflen ;
+      size_t len = 0 ;
+      char *result = abi::__cxa_demangle(mangled, demangled, &len, &status) ;
+
+      if (result)
+      {
+         demangled = result ;
+         maxlen = std::max(maxlen, len) ;
+      }
+
       // On failure, return the source name
-      if (!abi::__cxa_demangle(mangled, buf, &len, &status))
-         strncpy(buf, mangled, buflen - 1)[buflen - 1] = 0 ;
+      strncpyz(buf, result ? result : mangled, buflen) ;
    }
    return buf ;
+}
+
+inline const char *demangle(const char *mangled, char *buf, size_t buflen)
+{
+   return demangle__<>(mangled, buf, buflen) ;
 }
 
 template<typename T>
