@@ -401,6 +401,13 @@ class static_vector {
          static_vector(src.begin(), src.end())
       {}
 
+      static_vector& operator=(const static_vector &src)
+      {
+         _size = src.size() ;
+         std::copy(src.begin(), src.end(), mutable_data()) ;
+         return *this ;
+      }
+
       size_t size() const { return _size ; }
 
       size_t max_size() const { return maxsize ; }
@@ -514,7 +521,7 @@ class static_stack {
       static_stack() : _top(_data) {}
 
       static_stack(const static_stack<T, max_size> &src) :
-         _data(_data),
+         _data(src._data),
          _top(_data + src.size())
       {}
 
