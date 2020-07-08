@@ -148,6 +148,12 @@ class PTRefCounter : public active_counter<C> {
 typedef PTRefCounter<> PRefCount ;
 
 /***************************************************************************//**
+ Intrusive reference-counted pointer to anything based on PRefCount
+*******************************************************************************/
+typedef shared_intrusive_ptr<PRefCount>       refcounted_ptr ;
+typedef shared_intrusive_ptr<const PRefCount> refcounted_cptr ;
+
+/***************************************************************************//**
  Intrusive reference-counted pointer policy for objects based on PTRefCounter
  (or PRefCount)
 *******************************************************************************/
