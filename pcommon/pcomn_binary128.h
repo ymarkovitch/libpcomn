@@ -21,9 +21,11 @@
 
 namespace pcomn {
 
-struct b128_t ;
 struct binary128_t ;
 struct binary256_t ;
+
+struct b128_t ;
+typedef binary256_t b256_t ;
 
 std::ostream &operator<<(std::ostream &, const b128_t &) ;
 std::ostream &operator<<(std::ostream &, const binary128_t &) ;
