@@ -72,6 +72,7 @@ struct combine_bigbinary_bits {
 constexpr uint64_t t1ha_prime_0 = 0xEC99BF0D8372CAABull ;
 constexpr uint64_t t1ha_prime_1 = 0x82434FE90EDCEF39ull ;
 constexpr uint64_t t1ha_prime_2 = 0xD4F06DB99D67BE4Bull ;
+constexpr uint64_t t1ha_prime_3 = 0xBD9CACC22C6E9571ull ;
 constexpr uint64_t t1ha_prime_4 = 0x9C06FAF4D023E3ABull ;
 constexpr uint64_t t1ha_prime_5 = 0xC060724A8424F345ull ;
 constexpr uint64_t t1ha_prime_6 = 0xCB5AF53AE3AAAC31ull ;
@@ -160,6 +161,19 @@ inline uint64_t t1ha0_bin128(uint64_t lo, uint64_t hi, uint64_t seed)
 inline uint64_t t1ha0_bin128(uint64_t lo, uint64_t hi)
 {
    return t1ha0_bin128(lo, hi, 0) ;
+}
+
+inline uint64_t t1ha0_bin256(uint64_t lo0, uint64_t hi0,
+                             uint64_t lo1, uint64_t hi1)
+{
+   uint64_t a = 0, b = 0 ;
+   detail::t1ha2_mixup64(&a, &b, lo0, detail::t1ha_prime_5) ;
+   detail::t1ha2_mixup64(&b, &a, hi0, detail::t1ha_prime_3) ;
+   detail::t1ha2_mixup64(&a, &b, lo1, detail::t1ha_prime_2) ;
+   detail::t1ha2_mixup64(&b, &a, hi1, detail::t1ha_prime_1) ;
+   return
+      detail::t1ha_mux64(detail::t1ha_rotr64(a + b, 17), detail::t1ha_prime_4) +
+      detail::t1ha_mix64(a ^ b, detail::t1ha_prime_0) ;
 }
 /**@}*/
 
@@ -453,8 +467,7 @@ struct binary256_t {
 
       size_t hash() const
       {
-         return t1ha0_bin128(_idata[0], _idata[1],
-                             t1ha0_bin128(_idata[2], _idata[3])) ;
+         return t1ha0_bin256(_idata[0], _idata[1], _idata[2], _idata[3]) ;
       }
 
       _PCOMNEXP std::string to_string() const ;
