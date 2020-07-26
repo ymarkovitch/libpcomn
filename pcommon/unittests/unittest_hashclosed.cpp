@@ -38,7 +38,7 @@ class ClosedHashTests : public CppUnit::TestFixture {
    protected:
       // A hashtable with a hash function that allows to create predictable collisions,
       // which enables testing of a hash table behaviour in the presence of collisions.
-      typedef pcomn::closed_hashtable<long, pcomn::identity, pcomn::hash_identity<long> > test_inthashtable ;
+      typedef pcomn::closed_hashtable<long, pcomn::identity, pcomn::hash_identity> test_inthashtable ;
 
    private:
       void Test_Hashtable_Bucket() ;

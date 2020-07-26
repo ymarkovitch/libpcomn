@@ -240,11 +240,11 @@ inline size_t hash_bytes(const void *data, size_t length)
 
 /*******************************************************************************
  Hasher functors
+****************************************************************************//**
+ Functor returning its parameter unchanged (but converted to size_t).
 *******************************************************************************/
-/** Functor returning its parameter unchanged (but converted to size_t).
-*******************************************************************************/
-template<typename T>
-struct hash_identity : public std::unary_function<T, size_t> {
+struct hash_identity {
+      template<typename T>
       size_t operator() (const T &val) const { return static_cast<size_t>(val) ; }
 } ;
 
