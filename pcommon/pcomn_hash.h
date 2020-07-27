@@ -141,12 +141,12 @@ inline size_t hashFNV(const void *data, size_t size, size_t init)
 constexpr inline uint64_t wang_hash64to64(uint64_t x)
 {
   x = ~x + (x << 21) ; // x = (x << 21) - x - 1
-  x = x ^ (x >> 24) ;
-  x = x + (x << 3) + (x << 8) ; // x * 265
-  x = x ^ (x >> 14) ;
-  x = x + (x << 2) + (x << 4) ; // x * 21
-  x = x ^ (x >> 28) ;
-  x = x + (x << 31) ;
+  x ^= (x >> 24) ;
+  x += (x << 3) + (x << 8) ; // x * 265
+  x ^= (x >> 14) ;
+  x += (x << 2) + (x << 4) ; // x * 21
+  x ^= (x >> 28) ;
+  x += (x << 31) ;
   return x ;
 }
 
@@ -156,11 +156,11 @@ constexpr inline uint64_t wang_hash64to64(uint64_t x)
 constexpr inline uint32_t wang_hash64to32(uint64_t x)
 {
   x = ~x + (x << 18) ; // x = (x << 18) - x - 1
-  x = x ^ (x >> 31) ;
-  x = x + (x << 2) + (x << 4) ; // x * 21
-  x = x ^ (x >> 11) ;
-  x = x + (x << 6) ;
-  x = x ^ (x >> 22) ;
+  x ^= (x >> 31) ;
+  x += (x << 2) + (x << 4) ; // x * 21
+  x ^= (x >> 11) ;
+  x += (x << 6) ;
+  x ^= (x >> 22) ;
   return (uint32_t)x ;
 }
 
