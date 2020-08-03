@@ -520,6 +520,36 @@ struct rebind___t {
 template<typename C, typename T, typename... A>
 using rebind_t = decltype(rebind___t<T, A...>::eval(autoval<C *>())) ;
 
+/***************************************************************************//**
+ Facilitates specifying the default parameters-types for a template with type `void`;
+ i.e., the possibility to use void as a tag "use the default type for this parameter".
+
+ There are lots of templates with several defaulted type parameters, e.g.:
+
+ @code
+ template<class Key, class T,
+          class Hash = std::hash<Key>,
+          class KeyEqual = std::equal_to<Key>,
+          class Allocator = std::allocator<std::pair<const Key, T>>>
+ class unordered_map ;
+ @endcode
+
+ If we need to specify a non-default value for one of the defaulted parameters, there is
+ a problem: if the parameter to be specified is not the first in the sequence of
+ parameters with defaults, all the previous parameters must be specified explicitly,
+ even if you want to keep using their default values.
+*******************************************************************************/
+/**@{*/
+template<typename Specified, typename Default>
+struct select_type {
+      typedef Specified type ;
+} ;
+
+template<typename Default>
+struct select_type<void, Default> {
+      typedef Default type ;
+} ;
+
 template<typename Functor, typename Argtype, template<class> class Default>
 struct select_functor {
       typedef Functor type ;
@@ -530,8 +560,12 @@ struct select_functor<void, Argtype, Default> {
       typedef Default<Argtype> type ;
 } ;
 
+template<typename Specified, typename Default>
+using select_type_t = typename select_type<Specified, Default>::type ;
+
 template<typename Functor, typename Argtype, template<class> class Default>
 using select_functor_t = typename select_functor<Functor, Argtype, Default>::type ;
+/**@}*/
 
 /******************************************************************************/
 /** Macro to define member type metatesters
