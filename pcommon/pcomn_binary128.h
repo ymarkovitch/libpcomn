@@ -376,7 +376,14 @@ struct binary128_t : protected b128_t {
 
       friend constexpr bool operator<(const binary128_t &l, const binary128_t &r)
       {
-         return (l.hi() < r.hi()) | (l._idata[0] == r._idata[0]) & (l.lo() < r.lo()) ;
+         return
+            #if defined(PCOMN_COMPILER_GNU) && defined(__SIZEOF_INT128__)
+            // GCC nicely optimizes this
+            l.as_uint128() < r.as_uint128()
+            #else
+            (l.hi() < r.hi()) | (l._idata[0] == r._idata[0]) & (l.lo() < r.lo())
+            #endif
+            ;
       }
 
       friend std::ostream &operator<<(std::ostream &os, const binary128_t &v)
@@ -390,6 +397,14 @@ struct binary128_t : protected b128_t {
    protected:
       b128_t *bdata() { return this ; }
       constexpr const b128_t *bdata() const { return this ; }
+
+   private:
+      #if defined(PCOMN_COMPILER_GNU) && defined(__SIZEOF_INT128__)
+      constexpr unsigned __int128 as_uint128() const
+      {
+         return ((unsigned __int128)hi() << 64) | lo() ;
+      }
+      #endif
 } ;
 
 PCOMN_STATIC_CHECK(sizeof(binary128_t) == sizeof(b128_t)) ;
