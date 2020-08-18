@@ -580,7 +580,11 @@
 #define __noreturn      __attribute__((__noreturn__))
 #define __noinline      __attribute__((__noinline__))
 #define __cold          __attribute__((__noinline__, __cold__))
+#ifndef __NO_INLINE__
 #define __forceinline   inline __attribute__((__always_inline__))
+#else
+#define __forceinline   inline
+#endif
 #define __restrict      __restrict__
 #define __may_alias     __attribute__((__may_alias__))
 
