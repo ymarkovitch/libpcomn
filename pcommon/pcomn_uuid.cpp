@@ -17,8 +17,11 @@ namespace pcomn {
 /*******************************************************************************
  uuid
 *******************************************************************************/
-uuid::uuid(const strslice &str, RaiseError raise_error)
+uuid::uuid(const strslice &str, std::errc *ec)
 {
+   if (ec)
+      *ec = {} ;
+
    if (!str)
    {
       _idata[1] = _idata[0] = 0 ;
@@ -39,7 +42,8 @@ uuid::uuid(const strslice &str, RaiseError raise_error)
 
        || !cvt(buf, buf + 18, _idata[0]) || !cvt(buf + 19, std::end(buf), _idata[1]))
    {
-      PCOMN_THROW_IF(raise_error, invalid_str_repr, "Invalid UUID format " P_STRSLICEQF, P_STRSLICEV(str)) ;
+      PCOMN_THROW_IF(!ec, invalid_str_repr, "Invalid UUID format " P_STRSLICEQF, P_STRSLICEV(str)) ;
+      *ec = std::errc::invalid_argument ;
       _idata[1] = _idata[0] = 0 ;
    }
    else
@@ -64,8 +68,11 @@ char *uuid::to_strbuf(char *buf) const
 /*******************************************************************************
  MAC
 *******************************************************************************/
-MAC::MAC(const strslice &str, RaiseError raise_error)
+MAC::MAC(const strslice &str, std::errc *ec)
 {
+   if (ec)
+      *ec = {} ;
+
    if (!str)
    {
       _idata = 0 ;
@@ -91,7 +98,8 @@ MAC::MAC(const strslice &str, RaiseError raise_error)
        || buf[5] != delim || buf[8] != delim || buf[11] != delim || buf[14] != delim
        || (result = cvt(std::begin(buf), std::end(buf))) < 0)
    {
-      PCOMN_THROW_IF(raise_error, invalid_str_repr, "Invalid MAC format " P_STRSLICEQF, P_STRSLICEV(str)) ;
+      PCOMN_THROW_IF(!ec, invalid_str_repr, "Invalid MAC format " P_STRSLICEQF, P_STRSLICEV(str)) ;
+      *ec = std::errc::invalid_argument ;
       _idata = 0 ;
    }
    else
