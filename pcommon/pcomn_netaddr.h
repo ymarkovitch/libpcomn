@@ -26,6 +26,7 @@
 #include <pcomn_strslice.h>
 
 #include <string>
+#include <system_error>
 
 #ifdef PCOMN_PL_POSIX
 #include <netinet/in.h>
@@ -110,7 +111,11 @@ public:
     /// @return Resolved IP address. If cannot resolve, throws system_error or constructs
     /// an empty ipv4_addr (i.e. ipaddr()==0), depending on NO_EXCEPTION flag.
     ipv4_addr(const strslice &address_string, CFlags flags = ONLY_DOTDEC) :
-        _addr(from_string(address_string, flags))
+        _addr(from_string(address_string, nullptr, flags))
+    {}
+
+    ipv4_addr(const strslice &address_string, std::errc &ec, CFlags flags = ONLY_DOTDEC) :
+        _addr(from_string(address_string, &ec, flags))
     {}
 
     explicit constexpr operator bool() const { return !!_addr ; }
@@ -188,7 +193,7 @@ private:
 private:
     typedef char addr_strbuf[INET_ADDRSTRLEN] ;
 
-    static uint32_t from_string(const strslice &address_string, CFlags flags) ;
+    static uint32_t from_string(const strslice &address_string, std::errc *, CFlags) ;
 
     const char *to_strbuf(char *buf) const
     {
