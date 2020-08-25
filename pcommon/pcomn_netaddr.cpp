@@ -233,10 +233,12 @@ ipv4_subnet::ipv4_subnet(const strslice &subnet_string, RaiseError raise_error)
 /*******************************************************************************
  ipv6_addr
 *******************************************************************************/
-binary128_t ipv6_addr::from_string(const strslice &address_string, CFlags flags)
+binary128_t ipv6_addr::from_string(const strslice &address_string, std::errc *ec, CFlags flags)
 {
-    #define IPV6_STRING_ERROR() do { if (raise_error) invalid_address_string(address_string) ; return {} ; } while(false)
-    #define IPV6_STRING_ENSURE(cond) while (unlikely(!(cond))) { IPV6_STRING_ERROR() ; }
+    #define IPV6_STRING_ENSURE(cond) while (!(cond)) do {                   \
+            if (ec) *ec = std::errc::invalid_argument ;                     \
+            else if (raise_error) invalid_address_string(address_string) ;  \
+            return {} ; } while(false)
 
     enum State {
         Begin,
@@ -249,6 +251,8 @@ binary128_t ipv6_addr::from_string(const strslice &address_string, CFlags flags)
 
     const bool raise_error = !(flags & NO_EXCEPTION) ;
     const bool allow_dotdec = !(flags & IGNORE_DOTDEC) ;
+    if (ec)
+        *ec = {} ;
 
     ipv6_addr result ;
     result_ptr dest = {result._hdata} ;

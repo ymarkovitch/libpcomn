@@ -440,7 +440,11 @@ public:
     /// address (@see is_ipv4_mapped()).
     ///
     ipv6_addr(const strslice &address_string, CFlags flags = {}) :
-        ancestor(from_string(address_string, flags))
+        ancestor(from_string(address_string, nullptr, flags))
+    {}
+
+    ipv6_addr(const strslice &address_string, std::errc &ec, CFlags flags = {}) :
+        ancestor(from_string(address_string, &ec, flags))
     {}
 
     explicit constexpr operator bool() const { return static_cast<bool>(data()) ; }
@@ -524,7 +528,7 @@ private:
 
     constexpr const binary128_t &data() const { return *this ; }
 
-    static binary128_t from_string(const strslice &address_string, CFlags flags) ;
+    static binary128_t from_string(const strslice &address_string, std::errc *ec, CFlags flags) ;
 
     const char *to_strbuf(addr_strbuf) const ;
 

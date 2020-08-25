@@ -330,6 +330,25 @@ void IPAddressTests::Test_IPv6_Address_Parser()
     CPPUNIT_LOG_EXCEPTION_MSG(ipv6_addr("::ffff:127.0.0.1", ipv6_addr::IGNORE_DOTDEC), invalid_str_repr, "address") ;
 
     CPPUNIT_LOG_EXCEPTION_MSG(ipv6_addr("172.16.9.100", ipv6_addr::IGNORE_DOTDEC), invalid_str_repr, "address") ;
+
+
+    CPPUNIT_LOG(std::endl) ;
+    CPPUNIT_LOG(std::endl) ;
+
+    std::errc errcode = {} ;
+
+    CPPUNIT_LOG_EQUAL(ipv6_addr("::ffff:127.0.0.1", errcode, ipv6_addr::IGNORE_DOTDEC), ipv6_addr()) ;
+    CPPUNIT_LOG_EQUAL(errcode, std::errc::invalid_argument) ;
+
+    CPPUNIT_LOG_EQUAL(ipv6_addr("1::fe01:feed:babe:cafe:f00d", errcode, ipv6_addr::IGNORE_DOTDEC),
+                      ipv6_addr(1, 0, 0, 0xFE01, 0xFEED, 0xBABE, 0xCAFE, 0xF00D)) ;
+    CPPUNIT_LOG_EQUAL(errcode, std::errc()) ;
+
+    CPPUNIT_LOG_EQUAL(ipv6_addr("", errcode), ipv6_addr()) ;
+    CPPUNIT_LOG_EQUAL(errcode, std::errc::invalid_argument) ;
+
+    CPPUNIT_LOG_EQUAL(ipv6_addr("", errcode, ipv6_addr::ALLOW_EMPTY), ipv6_addr()) ;
+    CPPUNIT_LOG_EQUAL(errcode, std::errc()) ;
 }
 
 void IPAddressTests::Test_IPv6_Subnet_Address()
