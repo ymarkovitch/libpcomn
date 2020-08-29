@@ -34,13 +34,13 @@
 #define PARANOID_NOXCHECK(condition)  PARANOID_NOXCHECKX((condition), #condition)
 
 #define PCOMN_FAIL(msg)                                                 \
-   ((void)(pcomn_fail("Failure: %s, file %s, line %d\n", (char *)(msg), __FILE__, __LINE__)))
+   ((void)(pcomn_fail("Failure: %s\n", (char *)(msg), __FILE__, __LINE__)))
 
 #define PCOMN_ENSURE(p, s) (likely(!!(p)) ? (1) : (PCOMN_FAIL(s), 0))
 
 #define PCOMN_VERIFY(p)                                                 \
    (unlikely(!(p)) ? (pcomn_fail(                                       \
-                         "Verify failed: %s, file %s, line %d\n",       \
+                         "Verify failed: %s\n",                         \
                          (char *)#p, __FILE__, __LINE__), 0) : (1))
 
 #define NOXFAIL(msg) PCOMN_FAIL(msg)
@@ -58,9 +58,8 @@
 #else
 
 #define _NOXCHECKX(condition, message, type)                            \
-   (!(condition) ? (pcomn_fail(                                         \
-                       (#type " violated: %s, file %s, line %d\n"),     \
-                       (char *)message, __FILE__, __LINE__)) : (void)0)
+   (!(condition) ? (pcomn_fail((#type " violated: %s\n"),               \
+                               (char *)message, __FILE__, __LINE__)) : (void)0)
 
 #define NOXPRECONDITIONX(condition, message) _NOXCHECKX((condition), message, Precondition)
 #define NOXCHECKX(condition, message) _NOXCHECKX((condition), message, Check)
