@@ -26,11 +26,9 @@ class StrNumTests : public CppUnit::TestFixture {
 
       CPPUNIT_TEST_SUITE(StrNumTests) ;
 
-      /*
       CPPUNIT_TEST(Test_NumToStr) ;
       CPPUNIT_TEST(Test_NumToIter) ;
       CPPUNIT_TEST(Test_StrToNum) ;
-      */
       CPPUNIT_TEST(Test_StrToNum_Safe) ;
 
       CPPUNIT_TEST_SUITE_END() ;
