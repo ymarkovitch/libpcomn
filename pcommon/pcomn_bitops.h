@@ -133,7 +133,7 @@ template<> struct bit_traits<64> {
 
       const int result = 63 - __builtin_clzll(value) ;
       return
-         #ifndef __BMI2__
+         #ifndef PCOMN_PL_BMI2
          !value ? -1 :
          #endif
          result ;
@@ -188,7 +188,7 @@ template<> struct bit_traits<32> {
 
       const int result = 31 - __builtin_clz(value) ;
       return
-         #ifndef __BMI2__
+         #ifndef PCOMN_PL_BMI2
          !value ? -1 :
          #endif
          result ;
@@ -507,11 +507,11 @@ constexpr inline if_integer_t<I, unsigned> rzcnt(I v)
 
    const size_t count = bitsizeof(v) <= 32 ? __builtin_ctz(v) : __builtin_ctzl(v) ;
    return
-      #ifndef __BMI2__
+      #ifndef PCOMN_PL_BMI2
       !v ? bitsizeof(v) :
       #endif
 
-      count ;
+      bitsizeof(v) >= 32 ? count : std::min(count, bitsizeof(v)) ;
 
    #else
 
