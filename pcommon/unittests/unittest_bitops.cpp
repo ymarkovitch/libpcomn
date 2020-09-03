@@ -16,6 +16,9 @@
 
 using namespace pcomn ;
 
+template<size_t n>
+using barray = std::array<bool, n> ;
+
 /*******************************************************************************
  BitOperationsTests
 *******************************************************************************/
@@ -33,6 +36,7 @@ class BitOperationsTests : public CppUnit::TestFixture {
       void Test_BitRangeBoundary() ;
       void Test_OneOf() ;
       void Test_Log2() ;
+      void Test_BoolsToBits() ;
 
       CPPUNIT_TEST_SUITE(BitOperationsTests) ;
 
@@ -48,6 +52,7 @@ class BitOperationsTests : public CppUnit::TestFixture {
       CPPUNIT_TEST(Test_BitRangeBoundary) ;
       CPPUNIT_TEST(Test_OneOf) ;
       CPPUNIT_TEST(Test_Log2) ;
+      CPPUNIT_TEST(Test_BoolsToBits) ;
 
       CPPUNIT_TEST_SUITE_END() ;
 
@@ -456,6 +461,142 @@ void BitOperationsTests::Test_Log2()
 
    CPPUNIT_LOG_EQUAL(bitop::round2z((uint8_t)0), uint8_t(0)) ;
    CPPUNIT_LOG_EQUAL(bitop::round2z((uint8_t)9), uint8_t(16)) ;
+}
+
+void BitOperationsTests::Test_BoolsToBits()
+{
+   using namespace bitop ;
+
+   #define CPPUNIT_LOG_BOOLS_TO_BITS(bools, bits) \
+      CPPUNIT_LOG_EQUAL(bitop::array_bools_to_bits((bools)), (bits)) ; \
+      CPPUNIT_LOG_EQUAL(bitop::bits_to_array_bools((bits)), (bools))
+
+   CPPUNIT_LOG_IS_FALSE(bit_test(uint8_t(0b10010), 0)) ;
+   CPPUNIT_LOG_ASSERT(bit_test(uint8_t(0b10010), 1)) ;
+   CPPUNIT_LOG_IS_FALSE(bit_test(uint8_t(0b10010), 2)) ;
+   CPPUNIT_LOG_IS_FALSE(bit_test(uint8_t(0b10010), 3)) ;
+   CPPUNIT_LOG_ASSERT(bit_test(uint8_t(0b10010), 4)) ;
+   CPPUNIT_LOG_IS_FALSE(bit_test(uint8_t(0b10010), 6)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<8>()), uint8_t(0)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<8>{1,1,1,1,1,1,1,1}), uint8_t(0xff)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<8>{0,1,1,1,1,1,1,1}), uint8_t(0b11111110)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<8>{0,1,0,0,1,0,0,0}), uint8_t(0b00010010)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<8>{1,0,0,0,0,0,0,0}), uint8_t(0b00000001)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<8>{0,0,0,0,0,0,0,1}), uint8_t(0b10000000)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<8>{1,0,1,0,1,0,1,0}), uint8_t(0b01010101)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<8>{0,1,0,1,0,1,0,1}), uint8_t(0b10101010)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<8>{1,0,0,0,0,0,0,1}), uint8_t(0b10000001)) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_IS_FALSE(bit_test(uint16_t(0b10010), 0)) ;
+   CPPUNIT_LOG_ASSERT(bit_test(uint16_t(0b10010), 1)) ;
+   CPPUNIT_LOG_IS_FALSE(bit_test(uint16_t(0b10010), 2)) ;
+   CPPUNIT_LOG_IS_FALSE(bit_test(uint16_t(0b10010), 3)) ;
+   CPPUNIT_LOG_ASSERT(bit_test(uint16_t(0b10010), 4)) ;
+   CPPUNIT_LOG_IS_FALSE(bit_test(uint16_t(0b10010), 6)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<16>()), uint16_t(0)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<16>{1,1,1,1,1,1,1,1}), uint16_t(0xff)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<16>{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}), uint16_t(0xffff)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<16>{0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}), uint16_t(0b11111111'11111110)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<16>{0,1,0,0,1,0,0,0}), uint16_t(0b00010010)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<16>{1,0,0,0,0,0,0,0}), uint16_t(0b00000001)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<16>{0,0,0,0,0,0,0,1}), uint16_t(0b10000000)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<16>{1,0,1,0,1,0,1,0}), uint16_t(0b01010101)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<16>{0,1,0,1,0,1,0,1}), uint16_t(0b10101010)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<16>{1,0,0,0,0,0,0,1}), uint16_t(0b10000001)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<16>{0,1,0,1,1,1,1,1,1,1,1,1,1,1,1,1}), uint16_t(0b11111111'11111010)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<16>{0,1,0,1,1,1,1,1,1,1,1,1,0,1,1,1}), uint16_t(0b11101111'11111010)) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_IS_FALSE(bit_test(uint32_t(0b10010), 0)) ;
+   CPPUNIT_LOG_ASSERT(bit_test(uint32_t(0b10010), 1)) ;
+   CPPUNIT_LOG_IS_FALSE(bit_test(uint32_t(0b10010), 2)) ;
+   CPPUNIT_LOG_IS_FALSE(bit_test(uint32_t(0b10010), 3)) ;
+   CPPUNIT_LOG_ASSERT(bit_test(uint32_t(0b10010), 4)) ;
+   CPPUNIT_LOG_IS_FALSE(bit_test(uint32_t(0b10010), 6)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<32>()), uint32_t(0)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<32>{1,1,1,1,1,1,1,1}), uint32_t(0xff)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<32>{0,1,1,1,1,1,1,1}), uint32_t(0b11111110)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<32>{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}), uint32_t(0xffff)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<32>{0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}), uint32_t(0b11111111'11111110)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<32>{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+                                         1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}),
+      uint32_t(0xffffffff)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<32>{0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+                                         1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}),
+      uint32_t(0b11111111'11111111'11111111'11111110)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<32>{0,1,0,0,1,0,0,0}), uint32_t(0b00010010)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<32>{1,0,0,0,0,0,0,0}), uint32_t(0b00000001)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<32>{0,0,0,0,0,0,0,1}), uint32_t(0b10000000)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<32>{1,0,1,0,1,0,1,0}), uint32_t(0b01010101)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<32>{0,1,0,1,0,1,0,1}), uint32_t(0b10101010)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<32>{1,0,0,0,0,0,0,1}), uint32_t(0b10000001)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<32>{0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+                                         1,1,1,1,1,0,1,1,1,1,1,1,1,1,0,1}),
+      uint32_t(0b10111111'11011111'11111111'11111110)) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_IS_FALSE(bit_test(uint64_t(0b10010), 0)) ;
+   CPPUNIT_LOG_ASSERT(bit_test(uint64_t(0b10010), 1)) ;
+   CPPUNIT_LOG_IS_FALSE(bit_test(uint64_t(0b10010), 2)) ;
+   CPPUNIT_LOG_IS_FALSE(bit_test(uint64_t(0b10010), 3)) ;
+   CPPUNIT_LOG_ASSERT(bit_test(uint64_t(0b10010), 4)) ;
+   CPPUNIT_LOG_IS_FALSE(bit_test(uint64_t(0b10010), 6)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<64>()), uint64_t(0)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<64>{1,1,1,1,1,1,1,1}), uint64_t(0xff)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<64>{0,1,1,1,1,1,1,1}), uint64_t(0b11111110)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<64>{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}), uint64_t(0xffff)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<64>{0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}), uint64_t(0b11111111'11111110)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<64>{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+                                         1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}),
+      uint64_t(0xffffffff)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<64>{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+                                         1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+                                         1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+                                         1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}),
+      uint64_t(0xffffffffffffffffULL)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<64>{0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+                                         1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+                                         1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+                                         1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}),
+      uint64_t(0b11111111'11111111'11111111'11111111'11111111'11111111'11111111'11111110)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<64>{0,1,0,0,1,0,0,0}), uint64_t(0b00010010)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<64>{1,0,0,0,0,0,0,0}), uint64_t(0b00000001)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<64>{0,0,0,0,0,0,0,1}), uint64_t(0b10000000)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<64>{1,0,1,0,1,0,1,0}), uint64_t(0b01010101)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<64>{0,1,0,1,0,1,0,1}), uint64_t(0b10101010)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<64>{1,0,0,0,0,0,0,1}), uint64_t(0b10000001)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<64>{0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,
+                                         0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+                                         1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+                                         0,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1}),
+      uint64_t(0b11101111'11111110'11111111'11111111'11111111'11111110'00011111'11111110)) ;
+
 }
 
 /*******************************************************************************

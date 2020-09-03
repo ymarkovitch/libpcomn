@@ -16,10 +16,15 @@ unittests_project(libpcommon_unittests)
 
 set_project_link_libraries(pcommon)
 
-function(unittest_NOAVX NAME)
+function(unittest_NOSIMD NAME)
+    unittest(${ARGV})
+    set_source_files_properties("${NAME}.cpp" PROPERTIES COMPILE_OPTIONS "-march=x86-64")
+endfunction(unittest_NOSIMD)
+
+function(unittest_SSE42 NAME)
     unittest(${ARGV})
     set_source_files_properties("${NAME}.cpp" PROPERTIES COMPILE_OPTIONS "-march=westmere")
-endfunction(unittest_NOAVX)
+endfunction(unittest_SSE42)
 
 function(unittest_AVX NAME)
     if (PCOMN_HOST_HAS_AVX)
@@ -53,15 +58,16 @@ unittest(unittest_algorithms)
 unittest(unittest_base64)
 unittest(unittest_binary128)
 
-unittest_NOAVX(unittest_bitops)
+unittest_NOSIMD(unittest_bitops)
+unittest_SSE42(unittest_bitops_SSE42)
 unittest_AVX  (unittest_bitops_AVX)
 unittest_AVX2 (unittest_bitops_AVX2)
 
-unittest_NOAVX(unittest_bitarray)
+unittest_SSE42(unittest_bitarray)
 unittest_AVX  (unittest_bitarray_AVX)
 unittest_AVX2 (unittest_bitarray_AVX2)
 
-unittest_NOAVX(unittest_bitvector)
+unittest_SSE42(unittest_bitvector)
 unittest_AVX  (unittest_bitvector_AVX)
 unittest_AVX2 (unittest_bitvector_AVX2)
 

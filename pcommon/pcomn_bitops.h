@@ -42,6 +42,7 @@
 #include <pcomn_assert.h>
 #include <pcommon.h>
 
+#include <array>
 #include <functional>
 #include <iterator>
 #include <limits>
@@ -49,13 +50,19 @@
 #include <limits.h>
 
 #ifdef PCOMN_GCC86_INTRINSICS
-#  include <x86intrin.h>
+#  include <immintrin.h>
 #endif
 
 namespace pcomn {
 
 /// Calculate at compile-time the number of bits in a type or value.
 #define bitsizeof(t) (sizeof(t) * CHAR_BIT)
+
+#if (__CLANG_VER__)
+#define shuffle_simd_vector(v, ...) __builtin_shufflevector(v, v, __VA_ARGS__)
+#elif (__GNUC_VER__)
+#define shuffle_simd_vector(v, ...) __builtin_shuffle(v, decltype(v){__VA_ARGS__})
+#endif
 
 /*******************************************************************************
  Istruction Set Architecture variant tags
@@ -558,6 +565,42 @@ constexpr inline if_unsigned_int_t<I> rotr(I x, int r)
    return (x >> r) | (x << (int_traits<I>::bitsize - r)) ;
 }
 
+/// Broadcast integral operand into integral value.
+/// sizeof(result) must be >= sizeof(operand).
+/// E.g.
+///   - `broadcasti<uint16_t>('\xAB')` == `uint16_t(0xABAB)`
+///   - `broadcasti<uint64_t>('\xAB')` == `uint64_t(0xABAB'ABAB'ABAB'ABAB)`
+///   - `broadcasti<uint64_t>((uint32_t)0xF00DFEED)` == `uint64_t(0xF00DFEED'F00DFEED)`
+///
+template<typename R, typename I>
+constexpr inline std::enable_if_t<(is_integer<R>() &&
+                                   is_integer<I>() &&
+                                   sizeof(R)>=sizeof(I)),
+                                  R>
+broadcasti(I value)
+{
+   return ((std::make_unsigned_t<R>)~0ULL/(std::make_unsigned_t<I>)~0ULL) * value ;
+}
+
+/// Set bits in the @a target selected by the @a mask to corresponding bits from the
+/// second arguments (@a bits).
+///
+template<typename T>
+constexpr inline std::enable_if_t<ct_and<std::is_integral<T>, ct_not<is_same_unqualified<T, bool>>>::value, T>
+set_bits_masked(T target, T bits, T mask)
+{
+   return target &~ mask | bits & mask ;
+}
+
+template<typename I>
+constexpr inline if_integer_t<I, bool> bit_test(I word, uint8_t pos)
+{
+   return (word >> pos) & 1 ;
+}
+
+/*******************************************************************************
+ Bit manipulations for bitvectors
+*******************************************************************************/
 /// Given a bit position, get the position of a cell containing specified bit in the
 /// array of integral-type items.
 template<typename I>
@@ -584,33 +627,6 @@ template<typename I>
 constexpr inline if_integer_t<I> tailmask(size_t bitcnt)
 {
    return ~(~I(1) << bitndx<I>(bitcnt - 1)) ;
-}
-
-/// Broadcast integral operand into integral value.
-/// sizeof(result) must be >= sizeof(operand).
-/// E.g.
-///   - `broadcasti<uint16_t>('\xAB')` == `uint16_t(0xABAB)`
-///   - `broadcasti<uint64_t>('\xAB')` == `uint64_t(0xABAB'ABAB'ABAB'ABAB)`
-///   - `broadcasti<uint64_t>((uint32_t)0xF00DFEED)` == `uint64_t(0xF00DFEED'F00DFEED)`
-///
-template<typename R, typename I>
-constexpr inline std::enable_if_t<(is_integer<R>() &&
-                                   is_integer<I>() &&
-                                   sizeof(R)>=sizeof(I)),
-                                  R>
-broadcasti(I value)
-{
-   return ((std::make_unsigned_t<R>)~0ULL/(std::make_unsigned_t<I>)~0ULL) * value ;
-}
-
-/// Set bits in the @a target selected by the @a mask to corresponding bits from the
-/// second arguments (@a bits).
-///
-template<typename T>
-constexpr inline std::enable_if_t<ct_and<std::is_integral<T>, ct_not<is_same_unqualified<T, bool>>>::value, T>
-set_bits_masked(T target, T bits, T mask)
-{
-   return target &~ mask | bits & mask ;
 }
 
 /// Get the end of the range of equal bits starting from the given position of specified
@@ -783,6 +799,157 @@ constexpr inline if_integer_t<T, nzbitpos_iterator<T>> bitpos_end(T)
 {
    return nzbitpos_iterator<T>() ;
 }
+
+/***************************************************************************//**
+ Convert array<bool> <-> bitword
+*******************************************************************************/
+/**@{*/
+uint8_t  array_bools_to_bits(const std::array<bool, 8> &) ;
+uint16_t array_bools_to_bits(const std::array<bool, 16> &) ;
+uint32_t array_bools_to_bits(const std::array<bool, 32> &) ;
+uint64_t array_bools_to_bits(const std::array<bool, 64> &) ;
+
+std::array<bool, 8>  bits_to_array_bools(uint8_t) ;
+std::array<bool, 16> bits_to_array_bools(uint16_t) ;
+std::array<bool, 32> bits_to_array_bools(uint32_t) ;
+std::array<bool, 64> bits_to_array_bools(uint64_t) ;
+
+inline uint8_t array_bools_to_bits(const std::array<bool, 8> &ab)
+{
+   const union { std::array<bool, 8> a ; uint64_t data ; } _ = {ab} ;
+
+   #ifndef PCOMN_PL_BMI2
+   return _.data * 0x0102040810204080ULL >> 56 ;
+   #else
+   return _pext_u64(_.data, 0x0101010101010101ULL) ;
+   #endif
+}
+
+inline std::array<bool, 8> bits_to_array_bools(uint8_t bits)
+{
+   #ifndef PCOMN_PL_BMI2
+   const uint64_t rawdata = value_to_big_endian(bits * 0x8040201008040201ULL) ;
+   const union { uint64_t data ; std::array<bool, 8> a ; } _ = {(rawdata & 0x8080808080808080ULL) >> 7} ;
+   #else
+   const union { uint64_t data ; std::array<bool, 8> a ; } _ = {_pdep_u64(bits, 0x0101010101010101ULL)} ;
+   #endif
+   return _.a ;
+}
+
+template<size_t bitsize>
+inline bit_utype_t<bitsize> array_bools_to_bits_generic(const std::array<bool, bitsize> &ab)
+{
+   const union { std::array<bool, bitsize> a ; std::array<bool, bitsize/2>  data[2] ; } _ = {ab} ;
+   return
+      array_bools_to_bits(_.data[0]) |
+      ((bit_utype_t<bitsize>)array_bools_to_bits(_.data[1]) << (bitsize/2)) ;
+}
+
+template<typename I>
+inline std::array<bool, bitsizeof(I)> bits_to_array_bools_generic(I bits)
+{
+   PCOMN_STATIC_CHECK(is_integer<I>() && sizeof(I) >= 2) ;
+
+   constexpr size_t bitsize = bitsizeof(I) ;
+   constexpr size_t halfsize = bitsize/2 ;
+
+   const union { std::array<bool, halfsize> data[2] ; std::array<bool, bitsize> a ; } _ =
+   {{
+         bits_to_array_bools(bit_utype_t<halfsize>(bits)),
+         bits_to_array_bools(bit_utype_t<halfsize>(bits >> halfsize))
+   }} ;
+
+   return _.a ;
+}
+
+inline uint16_t array_bools_to_bits(const std::array<bool, 16> &ab)
+{
+   #ifndef PCOMN_PL_SIMD_SSE42
+   return array_bools_to_bits_generic(ab) ;
+
+   #else
+   typedef uint64_t v2x8  __attribute__ ((vector_size(16))) ;
+   typedef char v1x16     __attribute__ ((vector_size(16))) ;
+   const union { std::array<bool, 16> a ; v2x8 data ; } _ = {ab} ;
+
+   return __builtin_ia32_pmovmskb128((v1x16)(_.data << 7)) ;
+
+   #endif
+}
+
+inline std::array<bool, 16> bits_to_array_bools(uint16_t bits)
+{
+   #ifndef PCOMN_PL_SIMD_AVX
+   return bits_to_array_bools_generic(bits) ;
+
+   #else
+   typedef int8_t v16i8  __attribute__ ((vector_size(16))) ;
+   union {
+         uint16_t vv8u16 __attribute__ ((vector_size(16))) ;
+         uint64_t vv2u64 __attribute__ ((vector_size(16))) ;
+         v16i8    vv16i8 ;
+         std::array<bool, 16> a ;
+   } result = {bits} ;
+
+   result.vv16i8 = shuffle_simd_vector(result.vv16i8, 0,0,0,0,0,0,0,0, 1,1,1,1,1,1,1,1) ;
+   result.vv2u64 |= uint64_t(0b01111111'10111111'11011111'11101111'11110111'11111011'11111101'11111110) ;
+   result.vv16i8 = (result.vv16i8 == -1) & 1 ;
+
+   return result.a ;
+
+   #endif
+}
+
+inline uint32_t array_bools_to_bits(const std::array<bool, 32> &ab)
+{
+   #ifndef PCOMN_PL_SIMD_AVX2
+   return array_bools_to_bits_generic(ab) ;
+
+   #else
+   typedef uint64_t v4u64  __attribute__ ((vector_size(32))) ;
+   typedef char v1x32     __attribute__ ((vector_size(32))) ;
+   const union { std::array<bool, 32> a ; v4u64 data ; } _ = {ab} ;
+
+   return __builtin_ia32_pmovmskb256((v1x32)(_.data << 7)) ;
+
+   #endif
+}
+
+inline std::array<bool, 32> bits_to_array_bools(uint32_t bits)
+{
+   #ifndef PCOMN_PL_SIMD_AVX2
+   return bits_to_array_bools_generic(bits) ;
+
+   #else
+   typedef int8_t v32i8  __attribute__ ((vector_size(32))) ;
+   union {
+         uint32_t vv8u32 __attribute__ ((vector_size(32))) ;
+         uint64_t vv4u64 __attribute__ ((vector_size(32))) ;
+         v32i8    vv32i8 ;
+         std::array<bool, 32> a ;
+   } result = {bits} ;
+
+   result.vv32i8 = shuffle_simd_vector(result.vv32i8,
+                                       0,0,0,0,0,0,0,0, 1,1,1,1,1,1,1,1, 2,2,2,2,2,2,2,2, 3,3,3,3,3,3,3,3) ;
+   result.vv4u64 |= uint64_t(0b01111111'10111111'11011111'11101111'11110111'11111011'11111101'11111110) ;
+   result.vv32i8 = (result.vv32i8 == -1) & 1 ;
+
+   return result.a ;
+
+   #endif
+}
+
+inline uint64_t array_bools_to_bits(const std::array<bool, 64> &ab)
+{
+   return array_bools_to_bits_generic(ab) ;
+}
+
+inline std::array<bool, 64> bits_to_array_bools(uint64_t bits)
+{
+   return bits_to_array_bools_generic(bits) ;
+}
+
+/**@}*/
 
 /*******************************************************************************
  Compile-time calculations
