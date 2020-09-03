@@ -57,6 +57,7 @@ GCC_DIAGNOSTIC_PUSH_IGNORE(unused-result)
 #include <list>
 #include <map>
 #include <set>
+#include <array>
 #include <stdexcept>
 #include <mutex>
 #include <chrono>
@@ -862,6 +863,9 @@ _CPPUNIT_ASSERTION_TRAITS_SEQUENCE(pcomn::simple_slice) ;
 template<typename T, size_t maxsize>
 struct assertion_traits<pcomn::static_vector<T, maxsize>> :
          assertion_traits_sequence<pcomn::static_vector<T, maxsize>> {} ;
+
+template<typename T, size_t size>
+struct assertion_traits<std::array<T,size>> : assertion_traits_sequence<std::array<T,size>> {} ;
 
 #undef _CPPUNIT_ASSERTION_TRAITS_SEQUENCE
 
