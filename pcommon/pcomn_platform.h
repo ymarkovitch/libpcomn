@@ -429,6 +429,12 @@
 #     ifdef __AVX2__
 #        define PCOMN_PL_SIMD_AVX2  1
 #     endif
+#     ifdef __BMI1__
+#        define PCOMN_PL_BMI1       1
+#     endif
+#     ifdef __BMI2__
+#        define PCOMN_PL_BMI2       1
+#     endif
 
 #  endif /* PCOMN_COMPILER_GNU && PCOMN_PL_X86 */
 #endif /* PCOMN_PL_X86 */
