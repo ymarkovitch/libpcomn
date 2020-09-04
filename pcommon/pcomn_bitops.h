@@ -598,6 +598,15 @@ constexpr inline if_integer_t<I, bool> bit_test(I word, uint8_t pos)
    return (word >> pos) & 1 ;
 }
 
+template<typename I>
+constexpr inline if_integer_t<I> bit_set(I word, uint8_t pos, bool bit)
+{
+   const I mask = I(1) << pos ;
+   const I on = word | mask ;
+   const I off = word &~ mask ;
+   return bit ? on : off ;
+}
+
 /*******************************************************************************
  Bit manipulations for bitvectors
 *******************************************************************************/
