@@ -917,6 +917,9 @@ template<typename T>
 constexpr inline T *as_ptr_mutable(const T *p) { return const_cast<T *>(p) ; }
 
 template<typename T>
+constexpr inline const T *as_ptr_const(T *p) { return p ; }
+
+template<typename T>
 constexpr inline T &as_mutable(const T &v) { return const_cast<T &>(v) ; }
 
 template<typename T>
