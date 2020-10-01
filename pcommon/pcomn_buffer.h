@@ -3,7 +3,7 @@
 #define __PCOMN_BUFFER_H
 /*******************************************************************************
  FILE         :   pcomn_buffer.h
- COPYRIGHT    :   Yakov Markovitch, 1996-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1996-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Raw memory buffers (copy-on-write buffer and always shared
@@ -32,7 +32,7 @@ struct iovec {
 
 namespace pcomn {
 
-typedef struct iovec iovec_t ;
+typedef struct iovec iovec_t ;  //
 typedef std::pair<const void *, size_t> cmemvec_t ;
 typedef std::pair<void *, size_t>       memvec_t ;
 
@@ -415,19 +415,33 @@ template<size_t n> struct membuf_traits<char[n]> : membuf_traits<const char[n]> 
 namespace buf {
 
 template<typename T>
-constexpr inline const void *cdata(const T &buffer)
+constexpr inline auto cdata(const T &buffer)
+   ->decltype(pcomn::membuf_traits<T>::cdata(buffer))
 {
-   return ::pcomn::membuf_traits<T>::cdata(buffer) ;
+   return pcomn::membuf_traits<T>::cdata(buffer) ;
 }
 
 template<typename T>
-constexpr inline void *data(T &buffer)
+constexpr inline auto data(T &buffer)
+   ->decltype(pcomn::membuf_traits<std::remove_const_t<T>>::data(buffer))
 {
-   return ::pcomn::membuf_traits<typename std::remove_const<T>::type>::data(buffer) ;
+   return pcomn::membuf_traits<std::remove_const_t<T>>::data(buffer) ;
 }
 
 template<typename T>
-constexpr inline size_t size(const T &buffer) { return ::pcomn::membuf_traits<T>::size(buffer) ; }
+constexpr inline auto size(const T &buffer)
+   ->decltype(pcomn::membuf_traits<T>::size(buffer))
+{
+   return pcomn::membuf_traits<T>::size(buffer) ;
+}
+
+template<typename T>
+constexpr inline auto size(const T &buffer)
+   ->std::enable_if_t<std::is_fundamental<std::remove_cvref_t<decltype(*std::data(buffer))>>::value,
+                      decltype(sizeof(*std::data(buffer))*std::size(buffer))>
+{
+   return sizeof(*std::data(buffer))*std::size(buffer) ;
+}
 
 template<typename T1, typename T2>
 inline bool eq(const T1 &left, const T2 &right)
@@ -438,6 +452,13 @@ inline bool eq(const T1 &left, const T2 &right)
    const void * const lp = ::pcomn::buf::cdata(left) ;
    const void * const rp = ::pcomn::buf::cdata(right) ;
    return lp == rp || !memcmp(lp, rp, sz) ;
+}
+
+template<typename T>
+inline unipair<ptrdiff_t> offsets(const void *base, const T &buffer)
+{
+   const ptrdiff_t baseoffs = pdiff(buf::cdata(buffer), base) ;
+   return {baseoffs, baseoffs + buf::size(buffer)} ;
 }
 
 template<typename T>
@@ -481,7 +502,7 @@ inline std::ostream &operator<<(std::ostream &os, const pcomn::iovec_t &v)
 namespace std {
 
 constexpr inline size_t size(const pcomn::iovec_t &v) { return pcomn::buf::size(v) ; }
-constexpr inline const void *data(const pcomn::iovec_t &v) { return pcomn::buf::cdata(v) ; }
+constexpr inline void *data(const pcomn::iovec_t &v) { return pcomn::buf::data(v) ; }
 
 constexpr inline size_t size(const pcomn::cmemvec_t &v) { return pcomn::buf::size(v) ; }
 constexpr inline const void *data(const pcomn::cmemvec_t &v) { return pcomn::buf::cdata(v) ; }

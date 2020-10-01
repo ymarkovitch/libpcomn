@@ -3,7 +3,7 @@
 #define __PCOMN_TUPLE_H
 /*******************************************************************************
  FILE         :   pcomn_tuple.h
- COPYRIGHT    :   Yakov Markovitch, 2006-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2006-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   std::tuple manipulation routines.
@@ -52,6 +52,9 @@ using tsingle = tlist<T> ;
 
 template<typename T1, typename T2 = T1>
 using tpair = tlist<T1, T2> ;
+
+template<typename... TLists>
+using tlists_cat = std::add_pointer_t<decltype(std::tuple_cat(*std::declval<TLists>()...))> ;
 
 /******************************************************************************/
 /** Visit every item of any object compatible with std::get<n> function (this

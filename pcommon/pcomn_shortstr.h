@@ -3,7 +3,7 @@
 #define __PCOMN_SHORTSTR_H
 /*******************************************************************************
  FILE         :   pcomn_shortstr.h
- COPYRIGHT    :   Yakov Markovitch, 2008-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2008-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   The short string template.
@@ -131,6 +131,7 @@ class short_string {
       short_string &operator=(const short_string &src)
       {
          memcpy(_buf, src._buf, sizeof _buf) ;
+         return *this ;
       }
 
       short_string &operator=(char_type c)

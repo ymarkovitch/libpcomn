@@ -1,7 +1,7 @@
 /*-*- tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   pcomn_fileutils.cpp
- COPYRIGHT    :   Yakov Markovitch, 2008-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2008-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Assortment of file routines: readfile, etc.
@@ -26,7 +26,7 @@ ssize_t readfile(int fd, void *buf, size_t size, void **allocbuf)
    if (unlikely(!size))
       return 0 ;
 
-   if (size > std::numeric_limits<long>::max())
+   if (size > (size_t)std::numeric_limits<long>::max())
    {
       errno = E2BIG ;
       return -1 ;

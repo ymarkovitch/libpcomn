@@ -3,7 +3,7 @@
 #define __PCOMN_EXEC_H
 /*******************************************************************************
  FILE         :   pcomn_exec.h
- COPYRIGHT    :   Yakov Markovitch, 2011-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2011-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Process exec/spawn/popen.
@@ -23,27 +23,27 @@
 
 namespace pcomn {
 
-/******************************************************************************/
-/** Indicates shell command execution error.
+/***************************************************************************//**
+ Indicates shell command execution error.
 *******************************************************************************/
-class _PCOMNEXP shell_error : public virtual environment_error {
+class _PCOMNEXP shell_error : public std::runtime_error {
+      typedef std::runtime_error ancestor ;
    public:
       explicit shell_error(int exitcode) :
+         ancestor("Nonzero exit status"),
          _exit_code(exitcode)
-      {
-         set_message("Nonzero exit status") ;
-      }
+      {}
+
       explicit shell_error(int exitcode, const std::string &message) :
+         ancestor(message),
          _exit_code(exitcode)
-      {
-         set_message(message) ;
-      }
+      {}
 
       int exit_code() const { return _exit_code ; }
       int exit_status() const ;
 
    private:
-      int _exit_code ;
+      const int _exit_code ;
 } ;
 
 namespace sys {

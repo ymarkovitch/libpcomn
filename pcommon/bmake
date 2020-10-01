@@ -1,0 +1,21 @@
+#! /bin/bash
+
+BUILDDIR=build
+
+ROOT="$PWD"
+TAIL=""
+
+until [[ "$ROOT" == '/' || -d "$ROOT/$BUILDDIR" ]]
+do
+    TAIL="$(basename "$ROOT")/$TAIL"
+    ROOT="$(dirname "$ROOT")"
+done
+
+[[ "$ROOT" == '/' ]] && echo "Cannot find build subdirectory" >&2 && exit 1
+
+DIR="$ROOT/$BUILDDIR/${TAIL#$BUILDDIR/}"
+echo "cd $DIR"
+
+cd "$DIR"
+
+nice make "$@"

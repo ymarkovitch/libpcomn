@@ -37,6 +37,7 @@ TAGS
 *.diag.ini
 *#
 .#*
+.gdb_history*
 
 # Compiled Object files
 *.slo

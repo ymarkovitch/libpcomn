@@ -3,7 +3,7 @@
 #define __PCOMN_ZSTREAM_H
 /*******************************************************************************
  FILE         :   pcomn_zstream.h
- COPYRIGHT    :   Yakov Markovitch, 2004-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2004-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   ZLib wrappers over raw_stream and raw_stream wrappers over

@@ -3,7 +3,7 @@
 #define __PCOMN_BITVECTOR_H
 /*******************************************************************************
  FILE         :   pcomn_bitvector.h
- COPYRIGHT    :   Yakov Markovitch, 2000-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2000-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Interpret an array of integral types as a bit vector.
@@ -39,8 +39,8 @@
 
 namespace pcomn {
 
-/******************************************************************************/
-/** Pointer to an array of integral types interpreted as a bit vector.
+/***************************************************************************//**
+ Pointer to an array of integral types interpreted as a bit vector.
 *******************************************************************************/
 template<typename E>
 struct basic_bitvector ;
@@ -55,18 +55,46 @@ struct basic_bitvector<const E> {
 
       constexpr basic_bitvector() = default ;
 
-      constexpr basic_bitvector(element_type *e, size_t n) : _elements(e), _nelements(n) {}
+      /// Create a bitvector over an element array.
+      /// Neither allocates memory nor initializes array.
+      ///
+      /// @param words_memory  Array data
+      /// @param words_count   Count of @a words_memory items (not a bit count!)
+      ///
+      /// @note The size (i.e. bitcount) of the new array is
+      /// words_count*bitsizeof(*words_memory).
+      ///
+      constexpr basic_bitvector(element_type *words_memory, size_t words_count) :
+         _elements(words_memory),
+         _nelements(words_count),
+         _size(_nelements*bits_per_element())
+      {}
 
-      template<size_t n>
-      constexpr basic_bitvector(element_type (&e)[n]) : _elements(e), _nelements(n) {}
+      /// @overload
+      template<size_t words_count>
+      constexpr basic_bitvector(element_type (&words_memory)[words_count]) :
+         basic_bitvector(words_memory, words_count)
+      {}
+
+      constexpr basic_bitvector(size_t bitcount_size, element_type *memory) :
+         _elements(memory),
+         _nelements((bitcount_size + bits_per_element() - 1)/bits_per_element()),
+         _size(bitcount_size)
+      {}
+
+      constexpr basic_bitvector(const basic_bitvector<E> &mutable_bitvec) :
+         _elements(mutable_bitvec.cdata()),
+         _nelements(mutable_bitvec.nelements()),
+         _size(mutable_bitvec.size())
+      {}
 
       static constexpr size_t bits_per_element() { return bitsizeof(element_type) ; }
 
-      /// Get the number of elements in of this vector.
+      /// Get the number of elements in this vector.
       constexpr size_t nelements() const { return _nelements ; }
 
       /// Get the size of this vector in bits.
-      constexpr size_t size() const { return nelements()*bits_per_element() ; }
+      constexpr size_t size() const { return _size ; }
 
       constexpr element_type *data() const { return _elements ; }
       constexpr element_type *cdata() const { return _elements ; }
@@ -74,7 +102,14 @@ struct basic_bitvector<const E> {
       /// Get the count of 1 or 0 bit in vector
       size_t count(bool bitval = true) const
       {
-         const size_t c = bitop::bitcount(cdata(), nelements()) ;
+         if (!size())
+            return 0 ;
+
+         const size_t tailndx = nelements() - 1 ;
+         const size_t c =
+            bitop::popcount(*(cdata() + tailndx) & tailmask()) +
+            bitop::popcount(cdata(), tailndx) ;
+
          return bitval ? c : size() - c ;
       }
 
@@ -113,10 +148,12 @@ struct basic_bitvector<const E> {
 
       static constexpr element_type bitextend(bool bit) { return bitop::bitextend<element_type>(bit) ; }
 
-      /************************************************************************/
-      /** Random-access constant iterator over bits
+      constexpr element_type tailmask() const { return bitop::tailmask<element_type>(_size) ; }
+
+      /*********************************************************************//**
+       Random-access constant iterator over bits.
       *************************************************************************/
-      struct iterator : std::iterator<std::random_access_iterator_tag, bool, ptrdiff_t, void, void> {
+      struct iterator final : std::iterator<std::random_access_iterator_tag, bool, ptrdiff_t, void, void> {
             constexpr iterator() = default ;
             constexpr iterator(const basic_bitvector &v, size_t pos) :
                _elements(v._elements),
@@ -152,27 +189,29 @@ struct basic_bitvector<const E> {
             ptrdiff_t pos() const { return _pos ; }
       } ;
 
-      /************************************************************************/
-      /** A constant iterator over a bit set, which traverses bit @em positions
+      /*********************************************************************//**
+       A constant iterator over a bit set, which traverses bit @em positions
        instead of bit @em values.
 
        The iterator successively returns positions of 1-bits or 0-bits in a vector,
        depending on @a bitval template argument (1-bits fore true, 0-bits for false)
       *************************************************************************/
       template<bool bitval>
-      struct positional_iterator : std::iterator<std::forward_iterator_tag, ptrdiff_t, ptrdiff_t> {
+      struct positional_iterator final : std::iterator<std::forward_iterator_tag, ptrdiff_t, ptrdiff_t> {
+
+            static constexpr bool value = bitval ;
 
             constexpr positional_iterator() = default ;
             constexpr positional_iterator(const basic_bitvector &v, size_t pos) :
                _vec(&v),
-               _pos(v.find_first_bit<bitval>(pos))
+               _pos(v.find_first_bit<value>(pos))
             {}
 
             ptrdiff_t operator*() const { return _pos ; }
 
             positional_iterator &operator++()
             {
-               _pos = _vec->find_first_bit<bitval>(_pos + 1) ;
+               _pos = _vec->find_first_bit<value>(_pos + 1) ;
                return *this ;
             }
             PCOMN_DEFINE_POSTCREMENT(positional_iterator, ++) ;
@@ -184,11 +223,55 @@ struct basic_bitvector<const E> {
             }
             bool operator!=(const positional_iterator &rhs) const { return !(*this == rhs) ; }
 
+            constexpr bool operator()() const { return value ; }
+
          private:
-            const basic_bitvector * _vec ;
-            ptrdiff_t               _pos ;
+            const basic_bitvector * _vec = nullptr ;
+            ptrdiff_t               _pos = 0 ;
       } ;
 
+      /*********************************************************************//**
+       A constant iterator which traverses starts of equal bits ranges.
+
+       E.g., given a bit vector `01000011000000001111` the iterator will
+       successively return 0, 1, 2, 6, 8, 16.
+      *************************************************************************/
+      struct boundary_iterator final : std::iterator<std::forward_iterator_tag, ptrdiff_t, ptrdiff_t> {
+
+            constexpr boundary_iterator() = default ;
+            constexpr boundary_iterator(const basic_bitvector &v, size_t pos) :
+               _vec(&v),
+               _pos(pos)
+            {}
+
+            /// @note The boundary iterator is _always_ dereferenceable.
+            constexpr ptrdiff_t operator*() const { return _pos ; }
+
+            boundary_iterator &operator++() ;
+            PCOMN_DEFINE_POSTCREMENT(boundary_iterator, ++) ;
+
+            bool operator==(const boundary_iterator &rhs) const
+            {
+               NOXCHECK(_vec == rhs._vec) ;
+               return _pos == rhs._pos ;
+            }
+            bool operator!=(const boundary_iterator &rhs) const { return !(*this == rhs) ; }
+
+            bool operator()() const
+            {
+               NOXCHECK(_vec) ;
+               NOXCHECK((size_t)_pos < _vec->size()) ;
+               return _vec->test(_pos) ;
+            }
+
+         private:
+            const basic_bitvector * _vec = nullptr ;
+            ptrdiff_t               _pos = 0 ;
+      } ;
+
+      /*************************************************************************
+       Iteration
+      *************************************************************************/
       typedef iterator const_iterator ;
 
       iterator begin() const { return iterator(*this, 0) ; }
@@ -210,6 +293,9 @@ struct basic_bitvector<const E> {
       positional_iterator<true> begin_positional() const { return begin_positional(std::true_type()) ; }
       positional_iterator<true> end_positional() const { return end_positional(std::true_type()) ; }
 
+      boundary_iterator begin_boundary() const { return boundary_iterator(*this, 0) ; }
+      boundary_iterator end_boundary() const { return boundary_iterator(*this, size()) ; }
+
    protected:
       element_type &elem(size_t bitpos) const
       {
@@ -225,10 +311,11 @@ struct basic_bitvector<const E> {
    private:
       element_type * _elements  = nullptr ;
       size_t         _nelements = 0 ;
+      size_t         _size = 0 ;
 } ;
 
-/******************************************************************************/
-/** Pointer to an array of integral types interpreted as a bit vector.
+/***************************************************************************//**
+ Pointer to an array of integral types interpreted as a bit vector.
 *******************************************************************************/
 template<typename E>
 struct basic_bitvector : basic_bitvector<const E> {
@@ -248,6 +335,7 @@ struct basic_bitvector : basic_bitvector<const E> {
       constexpr basic_bitvector(element_type *e, size_t n) : ancestor(e, n) {}
       template<size_t n>
       constexpr basic_bitvector(element_type (&e)[n]) : ancestor(e) {}
+      constexpr basic_bitvector(size_t bitcount, element_type *e) : ancestor(bitcount, e) {}
 
       constexpr element_type *data() const
       {
@@ -352,7 +440,45 @@ struct basic_bitvector : basic_bitvector<const E> {
 } ;
 
 /*******************************************************************************
- bitvector
+ basic_bitvector::boundary_iterator
+*******************************************************************************/
+template<typename E>
+auto basic_bitvector<const E>::boundary_iterator::operator++() -> boundary_iterator &
+{
+   NOXCHECK((size_t)_pos < _vec->size()) ;
+   PCOMN_STATIC_CHECK(std::is_unsigned<element_type>::value) ;
+
+   using namespace bitop ;
+
+   element_type *word ;
+
+   const auto range_crosses_word_boundary = [&]
+   {
+      return
+         // Is _pos at the word boundary?
+         !(_pos & (bits_per_element() - 1)) &&
+          // Does the last bit of the previous word match the first bit of the next word?
+         !((word[0] >> (bits_per_element() - 1)) ^ (word[1] & 1)) ;
+   } ;
+
+   do
+   {
+      word = &_vec->elem(_pos) ;
+      _pos = bitop::find_range_boundary(*word, _pos) ;
+
+      if ((size_t)_pos >= _vec->size())
+      {
+         _pos = _vec->size() ;
+         break ;
+      }
+   }
+   while (range_crosses_word_boundary()) ;
+
+   return *this ;
+}
+
+/*******************************************************************************
+ basic_bitvector
 *******************************************************************************/
 template<typename E>
 void basic_bitvector<E>::flip() const
@@ -376,6 +502,12 @@ template<typename E, size_t n>
 inline basic_bitvector<E> make_bitvector(E (&data)[n])
 {
    return {data} ;
+}
+
+template<typename E>
+inline basic_bitvector<E> make_bitvector(size_t sz, E *data)
+{
+   return {sz, data} ;
 }
 
 /*******************************************************************************

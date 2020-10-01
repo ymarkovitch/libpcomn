@@ -1,7 +1,7 @@
 /*-*- tab-width:3;indent-tabs-mode:nil;c-file-style:"ellemtel";c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   pcomn_trace.cpp
- COPYRIGHT    :   Yakov Markovitch, 1995-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1995-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Tracing engine
@@ -783,6 +783,68 @@ void tee_syslog(LogLevel level, int fd, const char *s)
    if (fd >= 0 && ctx::syslog_write != output_fdlog_msg && (intptr_t)ctx::syslog_data != fd)
       output_fdlog_msg((void *)(intptr_t)fd, level, "%s", s) ;
 }
+
+/*******************************************************************************
+ print_exception
+*******************************************************************************/
+__noinline static std::ostream &print_exception(std::ostream &os, const std::exception_ptr *xptr)
+{
+   const auto run_noexcept = [](const auto &fn) { try { fn() ; } catch (...) {} ; } ;
+
+   #ifdef PCOMN_COMPILER_GNU
+   const auto print_unknown = [&] { os << PCOMN_DEMANGLE(abi::__cxa_current_exception_type()->name()) ; } ;
+   #else
+   const auto print_unknown = [&] { os << "UNKNOWN" ; } ;
+   #endif
+
+	try {
+      if (xptr) { if (*xptr) std::rethrow_exception(*xptr) ; }
+      else if (std::current_exception()) throw ;
+   }
+	catch (const std::exception &x)
+	{
+		run_noexcept([&] { os << PCOMN_TYPENAME(x) << ": " << x.what() ; }) ;
+	}
+	catch (...)
+	{
+      run_noexcept(print_unknown) ;
+	}
+
+   return os ;
+}
+
+std::ostream &print_exception(std::ostream &os, const std::exception_ptr &xptr)
+{
+   return print_exception(os, &xptr) ;
+}
+
+std::ostream &print_current_exception(std::ostream &os)
+{
+   return print_exception(os, nullptr) ;
+}
+
+/*******************************************************************************
+ print_file
+*******************************************************************************/
+std::ostream &print_file(std::ostream &os, FILE *file)
+{
+   if (!file || feof(file) || ferror(file))
+      return os ;
+   const long pos = ftell(file) ;
+   if (pos < 0)
+      return os ;
+
+   char buf[4096] ;
+   do os.write(buf, fread(buf, 1, sizeof buf, file)) ;
+   while (!feof(file) && !ferror(file)) ;
+
+   if (pos)
+      fseek(file, pos, SEEK_SET) ;
+   else
+      rewind(file) ;
+   return os ;
+}
+
 } // end of namespace diag
 
 /*******************************************************************************

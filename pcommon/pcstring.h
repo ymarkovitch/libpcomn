@@ -3,7 +3,7 @@
 #define __PCSTRING_H
 /*******************************************************************************
  FILE         :   pcstring.h
- COPYRIGHT    :   Yakov Markovitch, 1998-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1998-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Memory- and string-processing functions, unhappily missed in

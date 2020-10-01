@@ -1,7 +1,7 @@
 /*-*- tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   unittest_iterator.cpp
- COPYRIGHT    :   Yakov Markovitch, 2003-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2003-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Test of pcomn::mapped_iterator and pcomn::xform_iterator
@@ -10,7 +10,7 @@
  CREATION DATE:   3 Apr 2003
 *******************************************************************************/
 #include <pcomn_iterator.h>
-#include <pcomn_simplematrix.h>
+#include <pcomn_vector.h>
 #include <pcomn_unittest.h>
 
 #include <iostream>

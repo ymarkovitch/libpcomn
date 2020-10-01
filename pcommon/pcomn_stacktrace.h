@@ -9,7 +9,7 @@
 
                   See LICENSE for information on usage/redistribution.
 *******************************************************************************/
-#include <pcomn_simplematrix.h>
+#include <pcomn_vector.h>
 #include <pcomn_strslice.h>
 #include <iostream>
 

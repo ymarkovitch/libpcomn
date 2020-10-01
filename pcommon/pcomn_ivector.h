@@ -3,7 +3,7 @@
 #define __PCOMN_IVECTOR_H
 /*******************************************************************************
  FILE         :   pcomn_ivector.h
- COPYRIGHT    :   Yakov Markovitch, 1996-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1996-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   STL-like vector of pointers with the "object owning" logic
@@ -182,8 +182,8 @@ struct i_less {
       template<typename P1, typename P2>
       auto operator()(const P1 &p1, const P2 &p2) const->decltype(*p1 < *p2)
       {
-         PCOMN_STATIC_CHECK(std::is_convertible<decltype(*p1), arg_type>() ||
-                            std::is_convertible<decltype(*p2), arg_type>()) ;
+         PCOMN_STATIC_CHECK(std::is_convertible<decltype(*p1), const arg_type&>() ||
+                            std::is_convertible<decltype(*p2), const arg_type&>()) ;
          return *p1 < *p2 ;
       }
       template<typename P>
@@ -212,8 +212,8 @@ struct i_equal {
       template<typename P1, typename P2>
       auto operator()(const P1 &p1, const P2 &p2) const->decltype(*p1 == *p2)
       {
-         PCOMN_STATIC_CHECK(std::is_convertible<decltype(*p1), arg_type>() ||
-                            std::is_convertible<decltype(*p2), arg_type>()) ;
+         PCOMN_STATIC_CHECK(std::is_convertible<decltype(*p1), const arg_type&>() ||
+                            std::is_convertible<decltype(*p2), const arg_type&>()) ;
          return *p1 == *p2 ;
       }
       template<typename P>

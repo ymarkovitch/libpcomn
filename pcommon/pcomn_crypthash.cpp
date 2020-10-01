@@ -1,12 +1,12 @@
 /*-*- tab-width: 3; indent-tabs-mode: nil; c-file-style: "ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   pcomn_crypthash.cpp
- COPYRIGHT    :   Yakov Markovitch, Maxim Dementiev, 2010-2011. All rights reserved.
-                  Yakov Markovitch, 2012-2017. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, Maxim Dementiev, 2010-2012. All rights reserved.
+                  Yakov Markovitch, 2012-2020. All rights reserved.
                   All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
- DESCRIPTION  :   C++ wrappers for OpenSSL MD5 and SHA1 hash calculation
+ DESCRIPTION  :   C++ wrappers for OpenSSL MD5, SHA1, SHA2 hash calculation
 
  CREATION DATE:   30 Jul 2010
 *******************************************************************************/
@@ -144,18 +144,6 @@ static inline V &calc_hash_file(F calc, int fd, size_t *size, RaiseError raise_e
 }
 
 /*******************************************************************************
- binary128_t
-*******************************************************************************/
-std::string binary128_t::to_string() const { return b2a_hex(data(), size()) ; }
-
-char *binary128_t::to_strbuf(char *buf) const
-{
-   b2a_hex(data(), size(), buf) ;
-   buf[slen()] = 0 ;
-   return buf ;
-}
-
-/*******************************************************************************
  md5hash_t
 *******************************************************************************/
 md5hash_t md5hash(const void *buf, size_t size)
@@ -197,6 +185,27 @@ sha1hash_t sha1hash_file(int fd, size_t *size, RaiseError raise_error)
 {
    sha1hash_t result ;
    return calc_hash_file(&SHA1, fd, size, raise_error, result) ;
+}
+
+/*******************************************************************************
+ sha256hash_t
+*******************************************************************************/
+sha256hash_t sha256hash(const void *buf, size_t size)
+{
+   sha256hash_t result ;
+   return calc_hash_mem(&SHA256, buf, size, result).hton_inplace() ;
+}
+
+sha256hash_t sha256hash_file(const char *filename, size_t *size, RaiseError raise_error)
+{
+   sha256hash_t result ;
+   return calc_hash_file(&SHA256, filename, size, raise_error, result).hton_inplace() ;
+}
+
+sha256hash_t sha256hash_file(int fd, size_t *size, RaiseError raise_error)
+{
+   sha256hash_t result ;
+   return calc_hash_file(&SHA256, fd, size, raise_error, result).hton_inplace() ;
 }
 
 /*******************************************************************************
@@ -248,23 +257,35 @@ SHA1Hash &SHA1Hash::append_file(const char *filename)
 }
 
 /*******************************************************************************
+ SHA256Hash
+*******************************************************************************/
+typedef HashCalc<sha256hash_t, SHA256_CTX, &SHA256_Init, &SHA256_Update, &SHA256_Final> sha256calc ;
+
+sha256hash_t SHA256Hash::value() const { return sha256calc::value(_state).hton_inplace() ; }
+
+SHA256Hash &SHA256Hash::append_data(const void *buf, size_t size)
+{
+   sha256calc::append_data(_state, buf, size) ;
+   return *this ;
+}
+
+SHA256Hash &SHA256Hash::append_file(FILE *file)
+{
+   sha256calc::append_file(_state, file) ;
+   return *this ;
+}
+
+SHA256Hash &SHA256Hash::append_file(const char *filename)
+{
+   return hash_append_file(*this, filename) ;
+}
+
+/*******************************************************************************
  ostream
 *******************************************************************************/
 std::ostream &operator<<(std::ostream &os, const sha1hash_t &v)
 {
    return os << v.to_string() ;
-}
-
-std::ostream &operator<<(std::ostream &os, const binary128_t &v)
-{
-   char buf[binary128_t::slen() + 1] ;
-   return os.write(v.to_strbuf(buf), binary128_t::slen()) ;
-}
-
-std::ostream &operator<<(std::ostream &os, const binary256_t &v)
-{
-   char buf[binary256_t::slen() + 1] ;
-   return os.write(v.to_strbuf(buf), binary256_t::slen()) ;
 }
 
 } // namespace pcomn

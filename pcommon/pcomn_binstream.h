@@ -3,7 +3,7 @@
 #define __PCOMN_BINSTREAM_H
 /*******************************************************************************
  FILE         :   pcomn_binstream.h
- COPYRIGHT    :   Yakov Markovitch, 2007-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2007-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Simple binary I/O streams.
@@ -27,7 +27,7 @@
 #include <pcomn_except.h>
 #include <pcomn_string.h>
 #include <pcomn_safeptr.h>
-#include <pcomn_simplematrix.h>
+#include <pcomn_vector.h>
 
 #include <string>
 #include <vector>

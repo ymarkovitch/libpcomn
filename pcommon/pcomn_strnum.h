@@ -3,7 +3,7 @@
 #define __PCOMN_STRNUM_H
 /*******************************************************************************
  FILE         :   pcomn_strnum.h
- COPYRIGHT    :   Yakov Markovitch, 2006-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2006-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Numeric <-> string conversions.
@@ -34,18 +34,6 @@
 #define PCOMN_NUMTOSTR(number, radix) (pcomn::numtostr((number), std::array<char, 72>().data(), 72, (radix)))
 
 namespace pcomn {
-
-/******************************************************************************/
-/** Exception that indicates unexpected character while parsing a string.
-*******************************************************************************/
-class _PCOMNEXP unexpected_char : public std::runtime_error {
-      typedef std::runtime_error ancestor ;
-   public:
-      explicit unexpected_char(const std::string &what) :
-         ancestor(what)
-      {}
-} ;
-
 /// @cond
 namespace detail {
 
@@ -208,7 +196,7 @@ inline Integer augment_with_digit(Integer n, int digit, int sign)
 template<typename Integer>
 inline Integer ensure_next_digit(Integer n, int c, int sign)
 {
-   PCOMN_THROW_IF(!isdigit(c), unexpected_char,
+   PCOMN_THROW_IF(!isdigit(c), invalid_str_repr,
                   "Unexpected character: %s encountered while expecting a decimal digit.",
                   charrepr(c).c_str()) ;
    return
@@ -270,28 +258,73 @@ inline Range strtonum(Range input, bool &result)
 }
 
 template<typename Num, typename Range>
-inline if_integer_t<Num> strtonum(Range input)
+if_integer_t<Num> strtonum(Range input)
 {
-   Num result = Num() ;
-   strtonum(input, result) ;
+   Num result {} ;
+   Range &&r = strtonum(input, result) ;
+   PCOMN_THROW_IF(!!r && (!std::is_pointer<Range>() || *r), invalid_str_repr,
+                  "Unexpected character: %s encountered while expecting a decimal digit.",
+                  charrepr(*r).c_str()) ;
    return result ;
 }
 
 /// Convert a string to a number, don't throw exceptions on conversion error
 ///
-/// @return pair(num,bool), where pair.first is the result of a conversiom, pair.second
+/// @return pair(num,bool), where pair.first is the result of a conversion, pair.second
 /// is true if conversion is successful and false otherwise; in case of conversion
 /// failure, pair.first is 0.
-template<typename Num, typename Range>
-if_integer_t<Num, std::pair<Num, bool>> strtonum_safe(Range input) noexcept
+template<typename Int, typename Range>
+if_integer_t<Int, std::pair<Int, bool>> strtonum_safe(Range input) noexcept(std::is_pointer<Range>::value)
 {
-   std::pair<Num, bool> result (Num(), false) ;
-   try {
-      strtonum(input, result.first) ;
-      result.second = true;
+   std::pair<Int, bool> result {} ;
+
+   auto end_of_range = [&input]
+   {
+      return std::is_pointer<Range>() ? !*input : !input ;
+   } ;
+
+   if (end_of_range())
+      return result ;
+
+   int firstchar = *input ;
+   const bool has_sign = std::is_unsigned<Int>() ? (firstchar == '+') : is_in<int, '-', '+'>(firstchar) ;
+   const int sign = std::is_signed<Int>() && firstchar == '-' ? -1 : 1 ;
+
+   auto is_overflow = [&](Int newval, Int oldval)
+   {
+      return std::is_unsigned<Int>() || sign > 0 ? (newval < oldval) : (newval > oldval) ;
+   } ;
+
+   auto augment_with_digit = [&](Int &n, int c)
+   {
+      if (!isdigit(c))
+         return false ;
+
+      constexpr Int radix = 10 ;
+      const Int digit = c - '0' ;
+      const Int next_digit = digit * sign ;
+      const Int oldval = n ;
+      const Int newval = oldval * radix + next_digit ;
+      n = newval ;
+      // Check for overflow
+      return !is_overflow(newval, oldval) ;
+   } ;
+
+   #define STRNUM_ENSURE(condition) while(!(condition)) { result.first = 0 ; return result ; }
+
+   if (has_sign)
+   {
+      ++input ;
+      STRNUM_ENSURE(!end_of_range()) ;
+      firstchar = *input ;
    }
-   catch(const std::exception &)
-   {}
+   STRNUM_ENSURE(augment_with_digit(result.first, firstchar)) ;
+   while ((++input, !end_of_range()))
+      STRNUM_ENSURE(augment_with_digit(result.first, *input)) ;
+
+   #undef STRNUM_ENSURE
+
+   result.second = true ;
    return result ;
 }
 

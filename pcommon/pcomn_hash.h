@@ -3,7 +3,8 @@
 #define __PCOMN_HASH_H
 /*******************************************************************************
  FILE         :   pcomn_hash.h
- COPYRIGHT    :   Yakov Markovitch, 2000-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2000-2020. All rights reserved.
+                  Leonid Yuriev <leo@yuriev.ru>, 2010-2019. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Hash functions & functors.
@@ -39,8 +40,8 @@ _PCOMNEXP uint32_t calc_crc32(uint32_t crc, const void *buf, size_t len) ;
 
 #ifdef __cplusplus
 
-#include <pcomn_meta.h>
-#include <pcomn_integer.h>
+#include "pcomn_binary128.h"
+#include "pcomn_meta.h"
 
 #include <string>
 #include <iosfwd>
@@ -134,73 +135,88 @@ inline size_t hashFNV(const void *data, size_t size, size_t init)
    return hashFNV(data, size, init, std::integral_constant<size_t, sizeof(size_t)>()) ;
 }
 
-/******************************************************************************/
-/** Robert Jenkins' hash function for hashing a 32-bit integer to a 32-bit integer
+/***************************************************************************//**
+ Thomas Wang's hash function for hashing a 64-bit integer to a 64-bit integer
 *******************************************************************************/
-inline uint32_t jenkins_hash32to32(uint32_t x)
-{
-   x = (x+0x7ed55d16) + (x<<12) ;
-   x = (x^0xc761c23c) ^ (x>>19) ;
-   x = (x+0x165667b1) + (x<<5) ;
-   x = (x+0xd3a2646c) ^ (x<<9) ;
-   x = (x+0xfd7046c5) + (x<<3) ;
-   x = (x^0xb55a4f09) ^ (x>>16) ;
-   return x ;
-}
-
-/******************************************************************************/
-/** Thomas Wang's hash function for hashing a 64-bit integer to a 64-bit integer
-*******************************************************************************/
-inline uint64_t wang_hash64to64(uint64_t x)
+constexpr inline uint64_t wang_hash64to64(uint64_t x)
 {
   x = ~x + (x << 21) ; // x = (x << 21) - x - 1
-  x = x ^ (x >> 24) ;
-  x = x + (x << 3) + (x << 8) ; // x * 265
-  x = x ^ (x >> 14) ;
-  x = x + (x << 2) + (x << 4) ; // x * 21
-  x = x ^ (x >> 28) ;
-  x = x + (x << 31) ;
+  x ^= (x >> 24) ;
+  x += (x << 3) + (x << 8) ; // x * 265
+  x ^= (x >> 14) ;
+  x += (x << 2) + (x << 4) ; // x * 21
+  x ^= (x >> 28) ;
+  x += (x << 31) ;
   return x ;
 }
 
-/******************************************************************************/
-/** Thomas Wang's hash function for hashing a 64-bit integer to a 32-bit integer
+/***************************************************************************//**
+ Thomas Wang's hash function for hashing a 64-bit integer to a 32-bit integer
 *******************************************************************************/
-inline uint32_t wang_hash64to32(uint64_t x)
+constexpr inline uint32_t wang_hash64to32(uint64_t x)
 {
   x = ~x + (x << 18) ; // x = (x << 18) - x - 1
-  x = x ^ (x >> 31) ;
-  x = x + (x << 2) + (x << 4) ; // x * 21
-  x = x ^ (x >> 11) ;
-  x = x + (x << 6) ;
-  x = x ^ (x >> 22) ;
+  x ^= (x >> 31) ;
+  x += (x << 2) + (x << 4) ; // x * 21
+  x ^= (x >> 11) ;
+  x += (x << 6) ;
+  x ^= (x >> 22) ;
   return (uint32_t)x ;
 }
 
-inline uint32_t hash_64(uint64_t x, std::integral_constant<size_t, 4>)
+/***************************************************************************//**
+ Thomas Mueller's hash function for hashing a 32-bit integer to a 32-bit hash.
+ This is excellent: super-low-bias, ideal avalanche.
+
+ It is _faster_ than Intel's hardware crc32 instruction for calculating single hash
+ and several times faster when processing an array of values, due to its excellent
+ vectorizability.
+*******************************************************************************/
+constexpr inline uint32_t mueller_hash32(uint32_t x)
 {
-   return wang_hash64to32(x) ;
+    x = ((x >> 16) ^ x) * 0x45d9f3bU ;
+    x = ((x >> 16) ^ x) * 0x45d9f3bU ;
+    x = (x >> 16) ^ x ;
+    return x ;
 }
 
-inline uint64_t hash_64(uint64_t x, std::integral_constant<size_t, 8>)
+/***************************************************************************//**
+ Hash function for hashing a 64-bit integer to a 64-bit hash by degski,
+ unbeliavably fast.
+
+ High-quality: super-low-bias, ideal avalanche.
+
+ Performance of this function is best described if we treat this function as
+ a "CPU pseudo-instruction". Then, on Haswell and GCC or Clang:
+
+  - its latency is ~3 cycles
+  - its throghput is ~1 cycle per hash (when we e.g. perform a bulk evaluation
+    of hashes of array items in a loop) - due do its excellent vectorizability.
+*******************************************************************************/
+constexpr inline uint64_t degski_hash64(uint64_t x)
 {
-   return wang_hash64to64(x) ;
+    x ^= x >> 32 ;
+    x *= 0xd6e8feb86659fd93ull ;
+    x ^= x >> 32 ;
+    x *= 0xd6e8feb86659fd93ull ;
+    x ^= x >> 32 ;
+    return x ;
 }
 
-inline uint32_t hash_32(uint32_t x, std::integral_constant<size_t, 4>)
+constexpr inline uint32_t hash_32(uint32_t x, std::integral_constant<size_t, 4>)
 {
-   return jenkins_hash32to32(x) ;
+   return mueller_hash32(x) ;
 }
 
-inline uint64_t hash_32(uint32_t x, std::integral_constant<size_t, 8>)
+constexpr inline uint64_t hash_32(uint32_t x, std::integral_constant<size_t, 8>)
 {
-   return wang_hash64to64(x) ;
+   return degski_hash64(x) ;
 }
 
 /***************************************************************************//**
  Hashing 32-bit integer to size_t
 *******************************************************************************/
-inline size_t hash_32(uint32_t x)
+constexpr inline size_t hash_32(uint32_t x)
 {
    return hash_32(x, std::integral_constant<size_t, sizeof(size_t)>()) ;
 }
@@ -208,9 +224,9 @@ inline size_t hash_32(uint32_t x)
 /***************************************************************************//**
  Hashing 64-bit integer to size_t
 *******************************************************************************/
-inline size_t hash_64(uint64_t x)
+constexpr inline size_t hash_64(uint64_t x)
 {
-   return hash_64(x, std::integral_constant<size_t, sizeof(size_t)>()) ;
+   return degski_hash64(x) ;
 }
 
 /***************************************************************************//**
@@ -224,11 +240,11 @@ inline size_t hash_bytes(const void *data, size_t length)
 
 /*******************************************************************************
  Hasher functors
+****************************************************************************//**
+ Functor returning its parameter unchanged (but converted to size_t).
 *******************************************************************************/
-/** Functor returning its parameter unchanged (but converted to size_t).
-*******************************************************************************/
-template<typename T>
-struct hash_identity : public std::unary_function<T, size_t> {
+struct hash_identity {
+      template<typename T>
       size_t operator() (const T &val) const { return static_cast<size_t>(val) ; }
 } ;
 
@@ -278,10 +294,7 @@ struct hash_combinator {
       explicit hash_combinator(uint64_t initial_hash) { append(initial_hash) ; }
 
       template<typename InputIterator>
-      hash_combinator(const InputIterator &b, const InputIterator &e) : hash_combinator()
-      {
-         append_data(b, e) ;
-      }
+      hash_combinator(const InputIterator &b, const InputIterator &e) { append_data(b, e) ; }
 
       constexpr uint64_t value() const { return _combined ; }
       constexpr operator uint64_t() const { return value() ; }
@@ -370,205 +383,27 @@ inline size_t tuplehash(A1 &&a1, A2 &&a2, A3 &&a3, Args &&...args)
    return result ;
 }
 
-/*******************************************************************************
- Bit operations on big binary types implementer.
-*******************************************************************************/
-/// @cond
-namespace detail {
-struct combine_bigbinary_bits {
-      template<typename T, typename F>
-      __forceinline
-      static constexpr T eval(const T &x, const T &y, const F &combine)
-      {
-         T result ;
-         const uint64_t * const xd = x.idata() ;
-         const uint64_t * const yd = y.idata() ;
-         uint64_t * const rd = result.idata() ;
-
-         for (size_t i = 0 ; i < sizeof(T)/sizeof(uint64_t) ; ++i)
-         {
-            rd[i] = combine(xd[i], yd[i]) ;
-         }
-         return result ;
-      }
-
-      template<typename T>
-      __forceinline
-      static constexpr T invert(const T &x)
-      {
-         T result ;
-         const uint64_t * const xd = x.idata() ;
-         uint64_t * const rd = result.idata() ;
-
-         for (size_t i = 0 ; i < sizeof(T)/sizeof(uint64_t) ; rd[i] = ~xd[i], ++i) ;
-
-         return result ;
-      }
-} ;
-}
-/// @endcond
-
 /***************************************************************************//**
- 128-bit binary big-endian POD data, aligned to 64-bit boundary.
+ Base class of 128-bit hashes: allows for the "unspecified hash" return/storage
+ type.
 *******************************************************************************/
-struct binary128_t {
+struct digest128_t : binary128_t {
+      using binary128_t::binary128_t ;
 
-      constexpr binary128_t() : _idata() {}
-      constexpr binary128_t(uint64_t hi, uint64_t lo) : _idata{be(hi), be(lo)} {}
+      constexpr digest128_t() = default ;
+      explicit constexpr digest128_t(const binary128_t &src) : binary128_t(src) {}
 
-      constexpr binary128_t(uint16_t h1, uint16_t h2, uint16_t h3, uint16_t h4,
-                            uint16_t h5, uint16_t h6, uint16_t h7, uint16_t h8) :
-         _hdata{be(h1), be(h2), be(h3), be(h4), be(h5), be(h6), be(h7), be(h8)}
-      {}
-      constexpr binary128_t(uint8_t c0, uint8_t c1, uint8_t c2, uint8_t c3,
-                            uint8_t c4, uint8_t c5, uint8_t c6, uint8_t c7,
-                            uint8_t c8, uint8_t c9, uint8_t ca, uint8_t cb,
-                            uint8_t cc, uint8_t cd, uint8_t ce, uint8_t cf) :
-         _cdata{c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, ca, cb, cc, cd, ce, cf}
-      {}
-
-      /// Create value from a hex string representation.
-      /// @note @a hexstr need not be null-terminated, the constructor will scan at most
-      /// 32 characters, or until '\0' encountered, whatever comes first.
-      explicit binary128_t(const char *hexstr)
-      {
-         if (!hextob(_idata, sizeof _idata, hexstr))
-            _idata[1] = _idata[0] = 0 ;
-      }
-
-      /// Check helper
-      explicit constexpr operator bool() const { return !!(_idata[0] | _idata[1]) ; }
-
-      unsigned char *data() { return _cdata ; }
-      constexpr const unsigned char *data() const { return _cdata ; }
-
-      /// Get the count of octets (16)
-      static constexpr size_t size() { return sizeof _idata ; }
-      /// Get the length of string representation (32 chars)
-      static constexpr size_t slen() { return 2*size() ; }
-
-      constexpr uint64_t hi() const { return value_from_big_endian(_idata[0]) ; }
-      constexpr uint64_t lo() const { return value_from_big_endian(_idata[1]) ; }
-
-      unsigned bitcount() const
-      {
-         return
-            bitop::bitcount(_idata[0]) +
-            bitop::bitcount(_idata[1]) ;
-      }
-
-      size_t hash() const { return tuplehash(_idata[0], _idata[1]) ; }
-
-      _PCOMNEXP std::string to_string() const ;
-      _PCOMNEXP char *to_strbuf(char *buf) const ;
-
-      /*********************************************************************//**
-       Bit operations (~,&,|,^).
-      *************************************************************************/
-      friend constexpr binary128_t operator&(const binary128_t &x, const binary128_t &y)
-      {
-         return detail::combine_bigbinary_bits::eval(x, y, std::bit_and<>()) ;
-      }
-
-      friend constexpr binary128_t operator|(const binary128_t &x, const binary128_t &y)
-      {
-         return detail::combine_bigbinary_bits::eval(x, y, std::bit_or<>()) ;
-      }
-
-      friend constexpr binary128_t operator^(const binary128_t &x, const binary128_t &y)
-      {
-         return detail::combine_bigbinary_bits::eval(x, y, std::bit_xor<>()) ;
-      }
-
-      friend constexpr binary128_t operator~(const binary128_t &x)
-      {
-         return detail::combine_bigbinary_bits::invert(x) ;
-      }
-
-      /*********************************************************************//**
-       Equality (==), ordering (<)
-      *************************************************************************/
-      friend constexpr bool operator==(const binary128_t &l, const binary128_t &r)
-      {
-         return !((l._idata[0] ^ r._idata[0]) | (l._idata[1] ^ r._idata[1])) ;
-      }
-
-      friend constexpr bool operator<(const binary128_t &l, const binary128_t &r)
-      {
-         return l.hi() < r.hi() || l._idata[0] == r._idata[0] && l.lo() < r.lo() ;
-      }
-
-   protected:
-      union {
-            uint64_t       _idata[2] ;
-            uint32_t       _wdata[4] ;
-            uint16_t       _hdata[8] ;
-            unsigned char  _cdata[16] ;
-      } ;
-
-   protected:
-      template<typename T>
-      static constexpr T be(T value) { return value_to_big_endian(value) ; }
-
-      uint64_t *idata() { return _idata ; }
-      constexpr const uint64_t *idata() const { return _idata ; }
-
-      friend detail::combine_bigbinary_bits ;
+      constexpr size_t hash() const { return _idata[0] ; }
 } ;
-
-PCOMN_STATIC_CHECK(sizeof(binary128_t) == 16) ;
-PCOMN_STATIC_CHECK(alignof(binary128_t) == 8) ;
-
-// Define !=, >, <=, >= for binary128_t
-PCOMN_DEFINE_RELOP_FUNCTIONS(, binary128_t) ;
-
-template<typename T>
-struct is_literal128 :
-   std::bool_constant<sizeof(T) == sizeof(binary128_t) &&
-                      alignof(T) == alignof(binary128_t) &&
-                      std::is_trivially_copyable<T>::value>
-{} ;
-
-template<typename T>
-inline std::enable_if_t<is_literal128<T>::value, T *> cast128(binary128_t *v)
-{
-   return reinterpret_cast<T *>(v) ;
-}
-
-template<typename T>
-inline std::enable_if_t<is_literal128<T>::value, const T *> cast128(const binary128_t *v)
-{
-   return reinterpret_cast<const T *>(v) ;
-}
-
-template<typename T>
-inline std::enable_if_t<is_literal128<T>::value, T &> cast128(binary128_t &v)
-{
-   return *cast128<T>(&v) ;
-}
-
-template<typename T>
-inline std::enable_if_t<is_literal128<T>::value, const T &> cast128(const binary128_t &v)
-{
-   return *cast128<T>(&v) ;
-}
-
-template<typename T>
-inline std::enable_if_t<is_literal128<T>::value, T &&> cast128(binary128_t &&v)
-{
-   return std::move(*reinterpret_cast<T *>(&v)) ;
-}
 
 /***************************************************************************//**
  MD5 hash
 *******************************************************************************/
-struct md5hash_t : binary128_t {
+struct md5hash_t : digest128_t {
 
       constexpr md5hash_t() = default ;
-      explicit constexpr md5hash_t(const binary128_t &src) : binary128_t(src) {}
-      explicit md5hash_t(const char *hexstr) : binary128_t(hexstr) {}
-
-      constexpr size_t hash() const { return _idata[0] ; }
+      explicit constexpr md5hash_t(const binary128_t &src) : digest128_t(src) {}
+      explicit md5hash_t(const char *hexstr) : digest128_t(hexstr) {}
 } ;
 
 /***************************************************************************//**
@@ -627,131 +462,33 @@ PCOMN_DEFINE_RELOP_FUNCTIONS(, sha1hash_t) ;
 /***************************************************************************//**
  t1ha2 128-bit hash
 *******************************************************************************/
-struct t1ha2hash_t : binary128_t {
+struct t1ha2hash_t : digest128_t {
 
       constexpr t1ha2hash_t() = default ;
-      explicit constexpr t1ha2hash_t(const binary128_t &src) : binary128_t(src) {}
-      explicit t1ha2hash_t(const char *hexstr) : binary128_t(hexstr) {}
-
-      constexpr size_t hash() const { return _idata[0] ; }
+      explicit constexpr t1ha2hash_t(const binary128_t &src) : digest128_t(src) {}
+      explicit t1ha2hash_t(const char *hexstr) : digest128_t(hexstr) {}
 } ;
 
 /***************************************************************************//**
- 256-bit binary
+ SHA256 hash
 *******************************************************************************/
-struct binary256_t {
+struct sha256hash_t : binary256_t {
 
-      constexpr binary256_t() : _idata() {}
-      constexpr binary256_t(uint64_t q0, uint64_t q1, uint64_t q2, uint64_t q3) :
-         _idata{q0, q1, q2, q3}
-      {}
+      using binary256_t::binary256_t ;
 
-      /// Create value from a hex string representation.
-      /// @note @a hexstr need not be null-terminated, the constructor will scan at most
-      /// 64 characters, or until '\0' encountered, whatever comes first.
-      explicit binary256_t(const char *hexstr)
+      constexpr sha256hash_t() = default ;
+      explicit constexpr sha256hash_t(const binary256_t &src) : binary256_t(src) {}
+
+      sha256hash_t hton() const { return sha256hash_t(*this).hton_inplace() ; }
+
+      sha256hash_t& hton_inplace()
       {
-         if (!hextob(_idata, sizeof _idata, hexstr))
-            *this = {} ;
-         else
-         {
-            const uint64_t q0 = be(_idata[3]) ;
-            const uint64_t q1 = be(_idata[2]) ;
-            const uint64_t q2 = be(_idata[1]) ;
-            const uint64_t q3 = be(_idata[0]) ;
-            _idata[0] = q0 ;
-            _idata[1] = q1 ;
-            _idata[2] = q2 ;
-            _idata[3] = q3 ;
-         }
+         binary256_t::flip_endianness() ;
+         return *this ;
       }
-
-      /// Check helper
-      explicit constexpr operator bool() const { return !!((_idata[0] | _idata[1]) | (_idata[2] | _idata[3])) ; }
-
-      unsigned char *data() { return _cdata ; }
-      constexpr const unsigned char *data() const { return _cdata ; }
-
-      uint64_t *idata() { return _idata ; }
-      constexpr const uint64_t *idata() const { return _idata ; }
-
-      unsigned bitcount() const
-      {
-         return
-            bitop::bitcount(_idata[0]) +
-            bitop::bitcount(_idata[1]) +
-            bitop::bitcount(_idata[2]) +
-            bitop::bitcount(_idata[3]) ;
-      }
-
-      /// Get the count of octets (16)
-      static constexpr size_t size() { return sizeof _idata ; }
-      /// Get the length of string representation (32 chars)
-      static constexpr size_t slen() { return 2*size() ; }
-
-      size_t hash() const { return tuplehash(_idata[0], _idata[1], _idata[3], _idata[4]) ; }
-
-      char *to_strbuf(char *buf) const
-      {
-         PCOMN_STATIC_CHECK(slen() >= 2*binary128_t::slen()) ;
-         binary128_t(*(idata() + 3), *(idata() + 2)).to_strbuf(buf) ;
-         binary128_t(*(idata() + 1), *(idata() + 0)).to_strbuf(buf + binary128_t::slen()) ;
-
-         return buf ;
-      }
-
-      /*********************************************************************//**
-       Bit operations (~,&,|,^).
-      *************************************************************************/
-      friend constexpr binary256_t operator&(const binary256_t &x, const binary256_t &y)
-      {
-         return detail::combine_bigbinary_bits::eval(x, y, std::bit_and<>()) ;
-      }
-
-      friend constexpr binary256_t operator|(const binary256_t &x, const binary256_t &y)
-      {
-         return detail::combine_bigbinary_bits::eval(x, y, std::bit_or<>()) ;
-      }
-
-      friend constexpr binary256_t operator^(const binary256_t &x, const binary256_t &y)
-      {
-         return detail::combine_bigbinary_bits::eval(x, y, std::bit_xor<>()) ;
-      }
-
-      friend constexpr binary256_t operator~(const binary256_t &x)
-      {
-         return detail::combine_bigbinary_bits::invert(x) ;
-      }
-
-      /*********************************************************************//**
-       Equality (==), ordering (<)
-      *************************************************************************/
-      friend constexpr bool operator==(const binary256_t &x, const binary256_t &y)
-      {
-         return !(((x._idata[0] ^ y._idata[0]) | (x._idata[1] ^ y._idata[1])) |
-                  ((x._idata[2] ^ y._idata[2]) | (x._idata[3] ^ y._idata[3]))) ;
-      }
-
-      friend bool operator<(const binary256_t &x, const binary256_t &y)
-      {
-         const uint64_t xv[4] {be(x._idata[3]), be(x._idata[2]), be(x._idata[1]), be(x._idata[0])} ;
-         const uint64_t yv[4] {be(y._idata[3]), be(y._idata[2]), be(y._idata[1]), be(y._idata[0])} ;
-         return memcmp(&xv, &yv, sizeof xv) < 0 ;
-      }
-
-   protected:
-      union {
-            uint64_t       _idata[4] ;
-            unsigned char  _cdata[32] ;
-      } ;
-
-   protected:
-      template<typename T>
-      static constexpr T be(T value) { return value_to_big_endian(value) ; }
 } ;
 
-// Define !=, >, <=, >= for binary256_t
-PCOMN_DEFINE_RELOP_FUNCTIONS(, binary256_t) ;
+PCOMN_STATIC_CHECK(sizeof(sha256hash_t) == 32) ;
 
 /***************************************************************************//**
  Backward compatibility typedefs
@@ -769,7 +506,7 @@ namespace detail {
 template<size_t n>
 struct crypthash_state {
       size_t   _size ;
-      uint64_t _statebuf[n] ;
+      uint32_t _statebuf[n] ;
 
       bool is_init() const { return *_statebuf || _size ; }
 } ;
@@ -899,6 +636,67 @@ inline sha1hash_t sha1hash_file(FILE *file, size_t *size = NULL)
    return crypthasher.value() ;
 }
 
+/******************************************************************************/
+/** SHA256 hash accumulator: calculates SHA256 incrementally.
+*******************************************************************************/
+class _PCOMNEXP SHA256Hash {
+   public:
+      SHA256Hash() { memset(&_state, 0, sizeof _state) ; }
+
+      sha256hash_t value() const ;
+      operator sha256hash_t() const { return value() ; }
+
+      /// Data size appended so far
+      size_t size() const { return _state._size ; }
+
+      SHA256Hash &append_data(const void *buf, size_t size) ;
+      SHA256Hash &append_file(const char *filename) ;
+      SHA256Hash &append_file(FILE *file) ;
+
+   private:
+      typedef detail::crypthash_state<28> state ;
+      state _state ;
+} ;
+
+/// Create zero SHA256.
+inline sha256hash_t sha256hash() { return sha256hash_t() ; }
+
+/// Compute SHA256 for a buffer.
+///
+/// @note There are convenient overloading of this function for any object that provides
+/// pcomn::buf::cdata() and pcomn::buf::size() and strslice.
+///
+_PCOMNEXP sha256hash_t sha256hash(const void *buf, size_t size) ;
+/// Compute SHA256 for a file specified by a filename.
+/// @param filename     The name of file to sha256.
+/// @param raise_error  Whether to throw pcomn::system_error exception on I/O error
+/// (e.g., @a filename does not exist), if DONT_RAISE_ERROR then return zero sha256.
+/// @throw std::invalid_argument if @a filename is NULL.
+_PCOMNEXP sha256hash_t sha256hash_file(const char *filename, size_t *size, RaiseError raise_error = DONT_RAISE_ERROR) ;
+/// @overload
+_PCOMNEXP sha256hash_t sha256hash_file(int fd, size_t *size, RaiseError raise_error = DONT_RAISE_ERROR) ;
+/// @overload
+inline sha256hash_t sha256hash_file(const char *filename, RaiseError raise_error = DONT_RAISE_ERROR)
+{
+   return sha256hash_file(filename, NULL, raise_error) ;
+}
+/// @overload
+inline sha256hash_t sha256hash_file(int fd, RaiseError raise_error = DONT_RAISE_ERROR)
+{
+   return sha256hash_file(fd, NULL, raise_error) ;
+}
+
+/// Compute SHA256 for a file opened for reading.
+/// @note Doesn't rewind file before starting calculation.
+inline sha256hash_t sha256hash_file(FILE *file, size_t *size = NULL)
+{
+   SHA256Hash crypthasher ;
+   crypthasher.append_file(file) ;
+   if (size)
+      *size = crypthasher.size() ;
+   return crypthasher.value() ;
+}
+
 /*******************************************************************************
  Leo Yuriev's t1ha2 128-bit hashing
 *******************************************************************************/
@@ -910,11 +708,16 @@ inline t1ha2hash_t t1ha2hash() { return {} ; }
 /// @note There are convenient overloading of this function for any object that provides
 /// pcomn::buf::cdata() and pcomn::buf::size() and for strslice.
 ///
-inline t1ha2hash_t t1ha2hash(const void *data, size_t size)
+inline t1ha2hash_t t1ha2hash(const void *data, size_t size, uint64_t seed)
 {
    uint64_t hi = 0 ;
-   const uint64_t lo = t1ha2_atonce128(&hi, data, size, 0) ;
+   const uint64_t lo = t1ha2_atonce128(&hi, data, size, seed) ;
    return t1ha2hash_t(binary128_t(hi, lo)) ;
+}
+
+inline t1ha2hash_t t1ha2hash(const void *data, size_t size)
+{
+    return t1ha2hash(data, size, 0) ;
 }
 
 /***************************************************************************//**
@@ -929,7 +732,7 @@ template<typename T>
 struct hash_fn_fundamental {
       PCOMN_STATIC_CHECK(std::is_fundamental<T>::value) ;
 
-      size_t operator()(T value) const { return hash_64((uint64_t)value) ; }
+      constexpr size_t operator()(T value) const { return hash_64((uint64_t)value) ; }
 } ;
 
 template<typename T>
@@ -1024,6 +827,16 @@ struct hash_fn<std::tuple<T1, T...>> {
 } ;
 
 /***************************************************************************//**
+ Generic "implicit" hash function: delegates to pcomn::hash_fn<T>().
+*******************************************************************************/
+template<typename T>
+inline size_t hash_data(const T &data)
+{
+   static constexpr hash_fn<T> hasher ;
+   return hasher(data) ;
+}
+
+/***************************************************************************//**
  Hashing functor for any sequence
 *******************************************************************************/
 template<typename S, typename ItemHasher = hash_fn<decltype(*std::begin(std::declval<S>()))>>
@@ -1067,9 +880,7 @@ inline size_t hash_sequence(std::initializer_list<T> s) { return hash_sequence(s
 /*******************************************************************************
  ostream
 *******************************************************************************/
-std::ostream &operator<<(std::ostream &, const binary128_t &) ;
 std::ostream &operator<<(std::ostream &, const sha1hash_t &) ;
-std::ostream &operator<<(std::ostream &, const binary256_t &) ;
 
 } // end of namespace pcomn
 
@@ -1077,10 +888,11 @@ namespace std {
 /*******************************************************************************
  std::hash specializations for cryptohashes
 *******************************************************************************/
-template<> struct hash<pcomn::binary128_t>: pcomn::hash_fn_member<pcomn::binary128_t> {} ;
-template<> struct hash<pcomn::md5hash_t>  : pcomn::hash_fn_member<pcomn::md5hash_t> {} ;
+template<> struct hash<pcomn::digest128_t>: pcomn::hash_fn_member<pcomn::digest128_t> {} ;
+template<> struct hash<pcomn::md5hash_t>  : hash<pcomn::digest128_t> {} ;
+template<> struct hash<pcomn::t1ha2hash_t>: hash<pcomn::digest128_t> {} ;
 template<> struct hash<pcomn::sha1hash_t> : pcomn::hash_fn_member<pcomn::sha1hash_t> {} ;
-template<> struct hash<pcomn::t1ha2hash_t>: pcomn::hash_fn_member<pcomn::t1ha2hash_t> {} ;
+template<> struct hash<pcomn::sha256hash_t> : pcomn::hash_fn_member<pcomn::sha256hash_t> {} ;
 }
 
 #endif /* __cplusplus */

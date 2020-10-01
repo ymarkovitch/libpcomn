@@ -1,11 +1,45 @@
 /* <sys/sdt.h> - Systemtap static probe definition macros.
-   Copyright (C) 2010-2011 Red Hat Inc.
 
-   This file is part of systemtap, and is free software in the public domain.
+   This file is dedicated to the public domain, pursuant to CC0
+   (https://creativecommons.org/publicdomain/zero/1.0/)
 */
 
 #ifndef _SYS_SDT_H
 #define _SYS_SDT_H    1
+
+/*
+  This file defines a family of macros
+
+       STAP_PROBEn(op1, ..., opn)
+
+  that emit a nop into the instruction stream, and some data into an auxiliary
+  note section.  The data in the note section describes the operands, in terms
+  of size and location.  Each location is encoded as assembler operand string.
+  Consumer tools such as gdb or systemtap insert breakpoints on top of
+  the nop, and decode the location operand-strings, like an assembler,
+  to find the values being passed.
+
+  The operand strings are selected by the compiler for each operand.
+  They are constrained by gcc inline-assembler codes.  The default is:
+
+  #define STAP_SDT_ARG_CONSTRAINT nor
+
+  This is a good default if the operands tend to be integral and
+  moderate in number (smaller than number of registers).  In other
+  cases, the compiler may report "'asm' requires impossible reload" or
+  similar.  In this case, consider simplifying the macro call (fewer
+  and simpler operands), reduce optimization, or override the default
+  constraints string via:
+
+  #define STAP_SDT_ARG_CONSTRAINT g
+  #include <sys/sdt.h>
+
+  See also:
+  https://sourceware.org/systemtap/wiki/UserSpaceProbeImplementation
+  https://gcc.gnu.org/onlinedocs/gcc/Constraints.html
+ */
+
+
 
 #ifdef __ASSEMBLER__
 # define _SDT_PROBE(provider, name, n, arglist)	\
@@ -48,9 +82,15 @@
 # define _SDT_ASM_STRING_1(x)		_SDT_ASM_1(.asciz #x)
 
 # define _SDT_ARGFMT(no)		%n[_SDT_S##no]@_SDT_ARGTMPL(_SDT_A##no)
+
 # ifndef STAP_SDT_ARG_CONSTRAINT
+# if defined __powerpc__
+# define STAP_SDT_ARG_CONSTRAINT        nZr
+# else
 # define STAP_SDT_ARG_CONSTRAINT        nor
 # endif
+# endif
+
 # define _SDT_STRINGIFY(x)              #x
 # define _SDT_ARG_CONSTRAINT_STRING(x)  _SDT_STRINGIFY(x)
 # define _SDT_ARG(n, x)			\
@@ -79,8 +119,8 @@ struct __sdt_type
   
 #define __SDT_ALWAYS_SIGNED(T) \
 template<> struct __sdt_type<T> { static const bool __sdt_signed = true; };
-#define __SDT_COND_SIGNED(T) \
-template<> struct __sdt_type<T> { static const bool __sdt_signed = ((T)(-1) < 1); };
+#define __SDT_COND_SIGNED(T,CT)						\
+template<> struct __sdt_type<T> { static const bool __sdt_signed = ((CT)(-1) < 1); };
 __SDT_ALWAYS_SIGNED(signed char)
 __SDT_ALWAYS_SIGNED(short)
 __SDT_ALWAYS_SIGNED(int)
@@ -101,14 +141,14 @@ __SDT_ALWAYS_SIGNED(const volatile short)
 __SDT_ALWAYS_SIGNED(const volatile int)
 __SDT_ALWAYS_SIGNED(const volatile long)
 __SDT_ALWAYS_SIGNED(const volatile long long)
-__SDT_COND_SIGNED(char)
-__SDT_COND_SIGNED(wchar_t)
-__SDT_COND_SIGNED(volatile char)
-__SDT_COND_SIGNED(volatile wchar_t)
-__SDT_COND_SIGNED(const char)
-__SDT_COND_SIGNED(const wchar_t)
-__SDT_COND_SIGNED(const volatile char)
-__SDT_COND_SIGNED(const volatile wchar_t)
+__SDT_COND_SIGNED(char, char)
+__SDT_COND_SIGNED(wchar_t, wchar_t)
+__SDT_COND_SIGNED(volatile char, char)
+__SDT_COND_SIGNED(volatile wchar_t, wchar_t)
+__SDT_COND_SIGNED(const char, char)
+__SDT_COND_SIGNED(const wchar_t, wchar_t)
+__SDT_COND_SIGNED(const volatile char, char)
+__SDT_COND_SIGNED(const volatile wchar_t, wchar_t)
 #if defined (__GNUC__) && (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 4))
 /* __SDT_COND_SIGNED(char16_t) */
 /* __SDT_COND_SIGNED(char32_t) */
@@ -139,6 +179,8 @@ __extension__ extern unsigned long long __sdt_unsp;
 
 #if defined __powerpc__ || defined __powerpc64__
 # define _SDT_ARGTMPL(id)	%I[id]%[id]
+#elif defined __i386__
+# define _SDT_ARGTMPL(id)	%w[id]  /* gcc.gnu.org/PR80115 */
 #else
 # define _SDT_ARGTMPL(id)	%[id]
 #endif
@@ -163,7 +205,12 @@ __extension__ extern unsigned long long __sdt_unsp;
    nice with code in COMDAT sections, which comes up in C++ code.
    Without that assembler support, some combinations of probe placements
    in certain kinds of C++ code may produce link-time errors.  */
-#define _SDT_ASM_AUTOGROUP "?"
+#include "sdt-config.h"
+#if _SDT_ASM_SECTION_AUTOGROUP_SUPPORT
+# define _SDT_ASM_AUTOGROUP "?"
+#else
+# define _SDT_ASM_AUTOGROUP ""
+#endif
 
 #define _SDT_ASM_BODY(provider, name, pack_args, args)			      \
   _SDT_ASM_1(990:	_SDT_NOP)					      \

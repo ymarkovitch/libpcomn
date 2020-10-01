@@ -1,7 +1,7 @@
 /*-*- tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   unittest_strshims.cpp
- COPYRIGHT    :   Yakov Markovitch, 2006-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2006-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Unittest for pcommon string "access shim" functions (i.e.
@@ -247,6 +247,17 @@ void StringFunctionTests::Test_Strip_Inplace()
    T local_nonstripped_3 (local_nonstripped_1) ;
 
    T local_empty ;
+
+   CPPUNIT_LOG_EQUAL(typeid(pcomn::str::lstrip_inplace(local_whitespaces_1)), typeid(T&)) ;
+   CPPUNIT_LOG_EQUAL(typeid(pcomn::str::lstrip_inplace(T(local_whitespaces_1))), typeid(T&&)) ;
+
+   CPPUNIT_LOG_EQUAL(typeid(pcomn::str::rstrip_inplace(local_whitespaces_1)), typeid(T&)) ;
+   CPPUNIT_LOG_EQUAL(typeid(pcomn::str::rstrip_inplace(T(local_whitespaces_1))), typeid(T&&)) ;
+
+   CPPUNIT_LOG_EQUAL(typeid(pcomn::str::strip_inplace(local_whitespaces_1)), typeid(T&)) ;
+   CPPUNIT_LOG_EQUAL(typeid(pcomn::str::strip_inplace(T(local_whitespaces_1))), typeid(T&&)) ;
+
+   CPPUNIT_LOG(std::endl) ;
 
    CPPUNIT_LOG_EQUAL(pcomn::str::lstrip_inplace(local_whitespaces_1),
                      TestData<T>::empty_string) ;

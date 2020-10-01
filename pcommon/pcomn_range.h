@@ -3,7 +3,7 @@
 #define __PCOMN_RANGE_H
 /*******************************************************************************
  FILE         :   pcomn_range.h
- COPYRIGHT    :   Yakov Markovitch, 2006-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2006-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Rangelib mini-library made after the STLSoft rangelib

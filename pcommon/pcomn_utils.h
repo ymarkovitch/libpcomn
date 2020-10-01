@@ -3,7 +3,7 @@
 #define __PCOMN_UTILS_H
 /*******************************************************************************
  FILE         :   pcomn_utils.h
- COPYRIGHT    :   Yakov Markovitch, 1994-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1994-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Various supplemental functions & templates
@@ -29,11 +29,20 @@
    tdef
    principal_type_t
 
-   vsaver
-   bitsaver
    auto_buffer
    imemstream
    omemstream
+
+ Namespace fwd is like __future__ in Python dedicated to inject std::experimental
+ classes until pcommon drops support of previous C++ standard, to facilitate
+ forward-compatibility.
+
+ E.g. we inject
+
+  - std::experimental::optional into pcomn::fwd when compiling for C++14,
+  - std::optional when compiling for C++17 and later
+
+ and use pcomn::fwd::optional in poth cases.
 *******************************************************************************/
 #include <pcommon.h>
 #include <pcomn_assert.h>
@@ -53,124 +62,6 @@
 namespace pcomn {
 
 template<typename> struct basic_strslice ;
-
-/***************************************************************************//**
- Saves the current value of a variable before it is changed and automatically
- restores upon exiting from the block.
-*******************************************************************************/
-template<typename T>
-class vsaver {
-      PCOMN_NONCOPYABLE(vsaver) ;
-   public:
-      explicit vsaver(T &variable) :
-         _saved(variable),
-         _var(&variable)
-      {}
-
-      vsaver(T &variable, const T &new_value) :
-         _saved(variable),
-         _var(&variable)
-      {
-         variable = new_value ;
-      }
-
-      ~vsaver()
-      {
-         if (_var) *_var = _saved ;
-      }
-
-      const T &release() noexcept
-      {
-         _var = NULL ;
-         return _saved ;
-      }
-
-      const T &restore()
-      {
-         if (_var)
-         {
-            *_var = _saved ;
-            _var = NULL ;
-         }
-         return _saved ;
-      }
-
-      const T &saved() const noexcept { return _saved ; }
-
-   private:
-      const T  _saved ;
-      T *      _var ;
-} ;
-
-/***************************************************************************//**
- Temporarily sets a bit mask and then in the destructor automatically restores
- the saved settings.
-*******************************************************************************/
-template<typename T>
-class bitsaver {
-      PCOMN_NONCOPYABLE(bitsaver) ;
-   public:
-      bitsaver(T &flags, T mask) :
-        _flags(flags),
-        _mask(mask),
-        _status(flags & mask)
-      {}
-
-      ~bitsaver()
-      {
-         (_flags &= ~_mask) |= _status ;
-      }
-
-   private:
-      T &      _flags ;
-      const T  _mask ;
-      const T  _status ;
-} ;
-
-/***************************************************************************//**
- Automatically calls the functor passed into the constructor upon destructor call
- (usually at the scope exit).
-*******************************************************************************/
-template<typename F>
-class finalizer {
-      PCOMN_NONCOPYABLE(finalizer) ;
-      PCOMN_NONASSIGNABLE(finalizer) ;
-   public:
-      explicit constexpr finalizer(const F &on_finish) : _finalize(on_finish) {}
-      explicit constexpr finalizer(F &&on_finish) : _finalize(std::move(on_finish)) {}
-
-      finalizer(finalizer &&other) :
-         _finalize(std::move(other._finalize)),
-         _released(std::exchange(other._released, true))
-      {}
-
-      ~finalizer() { finalize() ; }
-
-      /// Prevent finalizer function from being called.
-      /// Can be called arbitrary number of times, idempotent.
-      void release() { _released = true ; }
-
-      /// Explicitly call the finalizer if it hasn't yet been called or released.
-      /// Can be called arbitrary number of times: after the first call all the
-      /// subsequent are ignored.
-      void finalize()
-      {
-         if (_released)
-            return ;
-
-         release() ;
-         _finalize() ;
-      }
-   private:
-      F     _finalize ;         /* Call this in the destructor. */
-      bool  _released = false ; /* Don't call _finalize if true. */
-} ;
-
-template<typename F>
-inline finalizer<std::remove_cvref_t<F>> make_finalizer(F &&on_finish)
-{
-   return finalizer<std::remove_cvref_t<F>>(std::forward<F>(on_finish)) ;
-}
 
 /*******************************************************************************
  Utility functions
@@ -503,7 +394,7 @@ inline std::ostream &operator<<(std::ostream &os, const tdef<P,G> &v) { return o
  as long as the size requested in the constructor does not exceed the threshold,
  does not dynamically allocate memory.
 
- Intended to be used as a stack variable.
+ Use as a stack variable type.
 *******************************************************************************/
 template<size_t threshold, size_t alignment = 0>
 struct auto_buffer final {
@@ -521,6 +412,9 @@ struct auto_buffer final {
       }
 
       char *get() const { return _data ; }
+
+      void *data() { return _data ; }
+      const void *data() const { return _data ; }
 
    private:
       char * const _data ;
@@ -759,5 +653,48 @@ template<typename P, typename G>
 inline auto end(pcomn::tdef<P,G> &&x)->decltype(end(move(x).get())) { return end(move(x).get()) ; }
 
 } // end of std namespace
+
+#if !defined(PCOMN_STL_CXX17) && __cplusplus < 201500L
+
+namespace std {
+
+template<typename  T>
+constexpr inline const T &clamp(const T &v, const T &lo, const T &hi)
+{
+   return pcomn::midval(lo, hi, v) ;
+}
+
+} // end of namespace std
+
+/*******************************************************************************
+ std::optional is extremely needed, but we cannot use it until the minimum supported
+ C++ version for pcommon is C++17 - currently it is C++14.
+
+ There is std::experimental::optional, which present in both libstdc++ (GCC)
+ and libc++ (Clang) and almost completely interface-compatible with std::optional;
+ so we inject it into pcomn::fwd namespace and use as pcomn::fwd::optional until
+ full transition to C++17 or C++20.
+*******************************************************************************/
+#include <experimental/optional>
+
+namespace fwd {
+using std::experimental::optional ;
+using std::experimental::nullopt_t ;
+using std::experimental::nullopt ;
+using std::experimental::make_optional ;
+} // end of namespace pcomn::fwd
+
+#else /* PCOMN_STL_CXX17 */
+
+#include <optional>
+
+namespace fwd {
+using std::optional ;
+using std::nullopt_t ;
+using std::nullopt ;
+using std::make_optional ;
+} // end of namespace pcomn::fwd
+
+#endif /* PCOMN_STL_CXX17 */
 
 #endif /* __PCOMN_UTILS_H */

@@ -607,7 +607,6 @@ extern "C" int enable_dump_on_abend(int traceout_fd)
  Signal handler utility functions
 *******************************************************************************/
 static const char backtrace_msgprefix[] = "\n------ " ;
-static const char backtrace_msgsuffix[] = " ------\n\n" ;
 
 static void puterror(const char *errtext)
 {

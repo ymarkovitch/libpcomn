@@ -1,7 +1,7 @@
 /*-*- tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   unittest_rawstream.cpp
- COPYRIGHT    :   Yakov Markovitch, 2007-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2007-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Test for raw zstreams.

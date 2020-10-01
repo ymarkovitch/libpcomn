@@ -3,7 +3,7 @@
 #define __PCOMN_ITERATOR_H
 /*******************************************************************************
  FILE         :   pcomn_iterator.h
- COPYRIGHT    :   Yakov Markovitch, 2006-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2006-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Iterators:
@@ -339,19 +339,21 @@ inline append_iterator<Container> appender(Container &container)
 
  Use the calliter() function to create call_iterator.
 *******************************************************************************/
-template<typename V>
+template<typename Callback>
 class call_iterator : public std::iterator<std::output_iterator_tag, void, void, void, void> {
    public:
-      typedef V value_type ;
-      typedef std::function<void(const value_type &)> call_type ;
+      typedef Callback callback_type ;
 
-      call_iterator(const call_type &c) : _call(c) {}
-      call_iterator(call_type &&c) : _call(std::move(c)) {}
-      call_iterator(call_iterator &&v) : _call(std::move(v._call)) {}
+      call_iterator(const callback_type &c) : _call(c) {}
+      call_iterator(callback_type &&c) : _call(std::move(c)) {}
 
-      call_iterator &operator=(const value_type &value)
+      call_iterator(call_iterator &&) = default ;
+      call_iterator &operator=(call_iterator &&) = default ;
+
+      template<typename T>
+      call_iterator &operator=(T &&value)
       {
-         _call(value) ;
+         _call(std::forward<T>(value)) ;
          return *this ;
       }
       call_iterator &operator*() { return *this ; }
@@ -359,23 +361,16 @@ class call_iterator : public std::iterator<std::output_iterator_tag, void, void,
       call_iterator &operator++(int) { return *this ; }
 
    private:
-      call_type _call ;
+      callback_type _call ;
 } ;
 
 /******************************************************************************/
 /** Create call_iterator instance for a functor
 *******************************************************************************/
-template<typename V>
-inline call_iterator<V> calliter(const std::function<void(const V &)> &callback)
+template<typename F>
+inline auto calliter(F &&callback)
 {
-   return call_iterator<V>(callback) ;
-}
-
-/// @overload
-template<typename V>
-inline call_iterator<V> calliter(std::function<void(const V &)> &&callback)
-{
-   return call_iterator<V>(std::move(callback)) ;
+   return call_iterator<std::remove_cvref_t<F>>(std::forward<F>(callback)) ;
 }
 
 /******************************************************************************/

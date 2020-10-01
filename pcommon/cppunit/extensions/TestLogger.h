@@ -3,7 +3,7 @@
 #define __TESTLOGGER_H
 /*******************************************************************************
  FILE         :   TestLogger.h
- COPYRIGHT    :   Yakov Markovitch, 2003-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2003-2020. All rights reserved.
 
  DESCRIPTION  :   Logging extensions for CPPUnit
                   See LICENSE for information on usage/redistribution.
@@ -37,8 +37,10 @@
 #include <cxxabi.h>
 #include <array>
 #define CPPUNIT_TYPENAME(t) (::CppUnit::Log::demangle(typeid(t).name()))
+#define CPPUNIT_NOINLINE __attribute__((__noinline__))
 #else
 #define CPPUNIT_TYPENAME(t) (typeid(t).name())
+#define CPPUNIT_NOINLINE
 #endif
 
 #define CPPUNIT_DEREFTYPENAME(t) ((t) ? CPPUNIT_TYPENAME(*t) : CPPUNIT_TYPENAME(t))
@@ -56,13 +58,18 @@
 /*******************************************************************************
  Logging macros for running tests
 *******************************************************************************/
-#define CPPUNIT_LOGSTREAM (CppUnit::Log::Logger<>::logStream())
+#ifndef CPPUNIT_USE_SYNC_LOGSTREAM
+#  define CPPUNIT_LOGSTREAM (CppUnit::Log::Logger<>::logStream())
+#else
+#include <mutex>
+#  define CPPUNIT_LOGSTREAM (CppUnit::Log::Logger<>::syncstream())
+#endif /* CPPUNIT_USE_SYNC_LOGSTREAM */
 
 #define CPPUNIT_LOG(output) ((CPPUNIT_LOGSTREAM << output).flush())
 
 #define CPPUNIT_LOG_MESSAGE(msg) (CppUnit::Log::logMessage((msg)))
 
-#define CPPUNIT_LOG_LINE(output) ((CPPUNIT_LOGSTREAM << output << std::endl))
+#define CPPUNIT_LOG_LINE(output) ((CPPUNIT_LOGSTREAM << output << '\n').flush())
 
 #define CPPUNIT_LOG_EXPRESSION(output) (CPPUNIT_LOGSTREAM << __LINE__ << (": "#output"=") << CppUnit::assertion_traits<decltype((output))>::toString((output)) << std::endl)
 
@@ -322,7 +329,7 @@ inline const char *demangle(const char *mangled)
 }
 #endif
 
-template<X::nval = {}>
+template<X::nval = X::nval::_>
 struct Logger {
       /// Set global stream for CPPUnit test logging.
       /// The CPPUnit does not own the passed pointer, i.e. does not ever delete
@@ -333,6 +340,28 @@ struct Logger {
       static std::ostream *setLogStream(std::ostream *newlog) ;
       static std::ostream &logStream() ;
       static SourceLine sourceLine(const char *file, int line) ;
+
+      #ifdef CPPUNIT_USE_SYNC_LOGSTREAM
+      class syncstream final : private std::basic_streambuf<char>, public std::ostream {
+            typedef std::ostream                ancestor ;
+            typedef std::basic_streambuf<char>  streambuf_type ;
+         public:
+            using ancestor::traits_type ;
+            using ancestor::int_type ;
+
+            syncstream() ;
+            ~syncstream() override ;
+
+         private:
+            std::mutex     _mutex ;
+            std::string    _data ;
+            std::ostream & _wrapped ;
+
+         private:
+            int_type overflow(int_type c = traits_type::eof()) override ;
+      } ;
+      #endif /* CPPUNIT_USE_SYNC_LOGSTREAM */
+
    private:
       static std::ostream *         log ;
       static std::ostream::fmtflags log_fmtflags ;
@@ -340,6 +369,9 @@ struct Logger {
       static unsigned               log_width ;
 } ;
 
+/*******************************************************************************
+ Logger<n>
+*******************************************************************************/
 template<X::nval n>
 std::ostream *Logger<n>::log = &std::cerr ;
 
@@ -383,6 +415,71 @@ SourceLine Logger<n>::sourceLine(const char *file, int line)
    return SourceLine(file, line) ;
 }
 
+#ifdef CPPUNIT_USE_SYNC_LOGSTREAM
+
+template<X::nval n>
+CPPUNIT_NOINLINE Logger<n>::syncstream::syncstream() :
+   ancestor(static_cast<streambuf_type *>(this)),
+   _wrapped([]()->std::ostream &
+   {
+      static std::ofstream nul ("/dev/nul") ;
+      if (!Logger::log)
+         return nul ;
+      return *Logger::log ;
+   }())
+{
+   flags(Logger::log_fmtflags) ;
+   precision(Logger::log_precision) ;
+   width(Logger::log_width) ;
+}
+
+template<X::nval n>
+CPPUNIT_NOINLINE Logger<n>::syncstream::~syncstream()
+{
+   const char * const tail = pbase() + _data.size() ;
+   _data.append(tail, pptr() - tail) ;
+
+   std::lock_guard<std::mutex> guard (_mutex) ;
+   _wrapped << _data << std::flush ;
+}
+
+template<X::nval n>
+CPPUNIT_NOINLINE auto Logger<n>::syncstream::overflow(int_type c) -> int_type
+{
+   if (traits_type::eq_int_type(c, traits_type::eof()))
+      return traits_type::not_eof(c) ;
+
+   const size_t capacity = _data.capacity() ;
+   const size_t max_size = _data.max_size() ;
+
+   if (pptr() >= epptr())
+   {
+      if (capacity >= max_size - 1)
+         return traits_type::eof() ;
+
+      std::string new_buffer ;
+      // Grow buffer
+      new_buffer.reserve(std::min(max_size, std::max<size_t>(16, 2 * (capacity + 1))) - 1) ;
+      if (pbase())
+         new_buffer.assign(pbase(), epptr() - pbase()) ;
+      _data.swap(new_buffer) ;
+
+      // Reinit stream buffer
+      char * const pstart = const_cast<char *>(_data.data()) ;
+      setp(pstart, pstart + _data.capacity()) ;
+      pbump((unsigned)_data.size()) ;
+      setg(pstart, pstart, pstart) ;
+   }
+   *pptr() = traits_type::to_char_type(c) ;
+   pbump(1) ;
+   return c ;
+}
+
+#endif /* CPPUNIT_USE_SYNC_LOGSTREAM */
+
+/*******************************************************************************
+ Logging functions
+*******************************************************************************/
 template<typename S>
 void logExceptionWhat(S &&msg, const std::exception *x)
 {
@@ -398,19 +495,18 @@ void logMessage(S &&msg)
 template<typename S>
 void logExceptionWhat(S &&msg, ...)
 {
-   CPPUNIT_LOG(std::forward<S>(msg) << '\n') ;
+   CPPUNIT_LOG_LINE(std::forward<S>(msg)) ;
 }
 
-template<X::nval n = {}>
+template<X::nval n = X::nval::_>
 void logFailure(const Exception &x)
 {
-   Logger<n>::logStream() << "\nFAILURE" ;
+   auto &&stream = CPPUNIT_LOGSTREAM ;
+   stream << "\nFAILURE" ;
    if (x.sourceLine().isValid())
-      Logger<n>::logStream()
-         << ": " << x.sourceLine().lineNumber() << ' ' << x.sourceLine().fileName() ;
+      stream << ": " << x.sourceLine().lineNumber() << ' ' << x.sourceLine().fileName() ;
 
-   Logger<n>::logStream()
-      << '\n' << x.message().shortDescription() << '\n' << x.message().details() << std::endl ;
+   stream << '\n' << x.message().shortDescription() << '\n' << x.message().details() << std::endl ;
 }
 
 } // end of namespace CppUnit::Log

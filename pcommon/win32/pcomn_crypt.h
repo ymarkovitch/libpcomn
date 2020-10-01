@@ -2,7 +2,7 @@
 #define __PCOMN_CRYPT_H
 /*******************************************************************************
  FILE         :   pcomn_crypt.h
- COPYRIGHT    :   Yakov Markovitch, 2001-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2001-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Win32 CryptAPI wrapper

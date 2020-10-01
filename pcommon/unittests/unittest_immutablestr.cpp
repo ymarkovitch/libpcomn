@@ -1,7 +1,7 @@
 /*-*- tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   unittest_immutablestr.cpp
- COPYRIGHT    :   Yakov Markovitch, 2006-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2006-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Unittest for pcomn::immutable_str<> template class
@@ -10,6 +10,7 @@
  CREATION DATE:   23 Nov 2006
 *******************************************************************************/
 #include <pcomn_immutablestr.h>
+#include <pcomn_strslice.h>
 #include <pcomn_unittest.h>
 #include <vector>
 #include <set>
@@ -20,11 +21,13 @@ using namespace pcomn ;
 template<class ImmutableString>
 class ImmutableStringTests : public CppUnit::TestFixture {
 
-      typedef ImmutableString                            istring ;
-      typedef typename istring::value_type               char_type ;
-      typedef typename istring::traits_type              traits_type ;
-      typedef pcomn::mutable_strbuf<char_type, traits_type>  strbuf ;
-      typedef std::basic_string<char_type, traits_type>  std_string ;
+      typedef ImmutableString                   istring ;
+      typedef typename istring::value_type      char_type ;
+      typedef typename istring::traits_type     traits_type ;
+      typedef pcomn::mutable_strbuf<char_type>  strbuf ;
+
+      typedef basic_strslice<char_type>         string_slice ;
+      typedef std::basic_string<char_type>      std_string ;
 
       static std_string random_string(size_t len)
       {
@@ -36,13 +39,13 @@ class ImmutableStringTests : public CppUnit::TestFixture {
 
       void Test_Constructors_Compilation() ;
       void Test_Constructors_Invariants() ;
-      void Test_Comparison() ;
-      void Test_Find() ;
       void Test_Concatenation() ;
       void Test_Mutable_Strbuf() ;
+
       void Test_To_Upper_Lower() ;
-      void Test_Format() ;
-      void Test_IO() ;
+
+      void Test_Comparison() ;
+      void Test_Find() ;
 
       CPPUNIT_TEST_SUITE(ImmutableStringTests<ImmutableString>) ;
 
@@ -50,7 +53,11 @@ class ImmutableStringTests : public CppUnit::TestFixture {
       CPPUNIT_TEST(Test_Constructors_Invariants) ;
       CPPUNIT_TEST(Test_Concatenation) ;
       CPPUNIT_TEST(Test_Mutable_Strbuf) ;
+
       CPPUNIT_TEST(Test_To_Upper_Lower) ;
+
+      CPPUNIT_TEST(Test_Comparison) ;
+      CPPUNIT_TEST(Test_Find) ;
 
       CPPUNIT_TEST_SUITE_END() ;
 
@@ -71,6 +78,13 @@ struct literals {
       static const CharT upper_case[] ;
       static const CharT line[] ;
 
+      static const CharT foo[] ;
+      static const CharT Foo[] ;
+      static const CharT bar[] ;
+      static const CharT BAR[] ;
+      static const CharT s123[] ;
+      static const CharT s1567[] ;
+
       static const CharT fmt1[] ;
       static const CharT fmt2[] ;
       static const CharT fmt3[] ;
@@ -84,7 +98,16 @@ STRING_LITERAL(empty_string, "") ;
 STRING_LITERAL(some_string, "0123456789abcdefghijklmnopqrstuvwxyz") ;
 STRING_LITERAL(lower_case, "0123456789abcdefghijklmnopqrstuvwxyz") ;
 STRING_LITERAL(upper_case, "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ") ;
+
 STRING_LITERAL(line, "abc\n") ;
+
+STRING_LITERAL(foo,  "foo") ;
+STRING_LITERAL(Foo,  "Foo") ;
+STRING_LITERAL(bar,  "bar") ;
+STRING_LITERAL(BAR,  "BAR") ;
+STRING_LITERAL(s123, "123") ;
+STRING_LITERAL(s1567,"1567") ;
+
 STRING_LITERAL(fmt1, "abcd") ;
 STRING_LITERAL(fmt2, "0x%08x0x%08x0x%08x0x%08x") ;
 
@@ -146,7 +169,7 @@ template<class ImmutableString>
 void ImmutableStringTests<ImmutableString>::Test_Constructors_Invariants()
 {
    const char_type (&empty)[1] = literals<char_type>::empty_string;
-   //const char_type (&some_string)[37] = literals<char_type>::some_string;
+   const char_type (&some_string)[37] = literals<char_type>::some_string;
 
    { // equality / inequality
       istring a;
@@ -194,7 +217,6 @@ void ImmutableStringTests<ImmutableString>::Test_Constructors_Invariants()
          CPPUNIT_EQUAL(random_stdstr.size(),
                        (size_t)std::distance(from_stdstr.rbegin(), from_stdstr.rend())) ;
 
-
          const char_type* const random_cstr(random_stdstr.c_str());
          istring from_cstr(random_cstr) ;
          CPPUNIT_ASSERT(from_cstr == random_cstr) ;
@@ -221,6 +243,15 @@ void ImmutableStringTests<ImmutableString>::Test_Constructors_Invariants()
          CPPUNIT_EQUAL(istring(random_stdstr, 0, random_stdstr.size()),
                        istring(random_stdstr)) ;
       }
+   }
+
+   { // move construction
+       istring a (some_string), b, c (std::move(a)) ;
+
+       CPPUNIT_LOG_EQUAL(c, istring(some_string)) ;
+
+       CPPUNIT_LOG_ASSERT(a == b) ;
+       CPPUNIT_LOG_EQUAL(a.c_str(), b.c_str()) ;
    }
 }
 
@@ -325,11 +356,34 @@ void ImmutableStringTests<ImmutableString>::Test_To_Upper_Lower()
    CPPUNIT_LOG_ASSERT(upcase.c_str() == up_cstr) ;
 }
 
+template<class ImmutableString>
+void ImmutableStringTests<ImmutableString>::Test_Comparison()
+{
+   typedef literals<char_type> lit ;
+   const istring foo = lit::foo ;
+   const std_string stdfoo = (std_string)foo ;
+   const string_slice sfoo = foo ;
+
+   CPPUNIT_LOG_EQUAL(std_string(foo), std_string(lit::foo)) ;
+   CPPUNIT_LOG_NOT_EQUAL(istring(lit::foo), istring(lit::Foo)) ;
+
+   CPPUNIT_LOG_EQ(sfoo, string_slice(lit::foo)) ;
+
+   CPPUNIT_LOG_ASSERT(istring(lit::foo) > string_slice(lit::foo)(0, 1)) ;
+}
+
+template<class ImmutableString>
+void ImmutableStringTests<ImmutableString>::Test_Find()
+{
+}
+
+
 int main(int argc, char *argv[])
 {
-   pcomn::unit::TestRunner runner ;
-   runner.addTest(ImmutableStringTests<pcomn::immutable_string<char> >::suite()) ;
-   runner.addTest(ImmutableStringTests<pcomn::immutable_string<wchar_t> >::suite()) ;
-   return pcomn::unit::run_tests(runner, argc, argv, "unittest.diag.ini",
-                                 "Immutable string tests.") ;
+   return pcomn::unit::run_tests
+       <
+          ImmutableStringTests<pcomn::immutable_string<char>>,
+          ImmutableStringTests<pcomn::immutable_string<wchar_t>>
+       >
+       (argc, argv) ;
 }

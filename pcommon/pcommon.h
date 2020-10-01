@@ -3,12 +3,19 @@
 #define __PCOMMON_H
 /*******************************************************************************
  FILE         :   pcommon.h
- COPYRIGHT    :   Yakov Markovitch, 1996-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1996-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Common definitions for PCOMMON library
 
  CREATION DATE:   27 June 1996
+*******************************************************************************/
+/** @file
+
+ Types and classes:
+   vsaver
+   bitsaver
+   finalizer
 *******************************************************************************/
 #include <pcomn_platform.h>
 #include <pcomn_macros.h>
@@ -93,9 +100,126 @@
 /// @hideinitializer @ingroup ExceptionMacros
 #define PCOMN_THROW_IF(condition, exception, format, ...)   \
 do {                                                        \
-   if (condition)                                           \
+   if (unlikely((condition)))                               \
       PCOMN_THROWF(exception, format, ##__VA_ARGS__) ;      \
 } while(false)
+
+
+/*******************************************************************************
+ Boilerplate macros
+*******************************************************************************/
+#define PCOMN_NONCOPYABLE(Class)   Class(const Class&) = delete
+#define PCOMN_NONASSIGNABLE(Class) void operator=(const Class&) = delete
+
+/// Given that there is '<' operator for the type, define all remaining ordering operators
+/// as global functions.
+#define PCOMN_DEFINE_ORDER_FUNCTIONS(pfx, type)                         \
+   pfx inline auto operator> (const type &x, const type &y)->decltype(!(x<y)) { return !!(y < x) ; } \
+   pfx inline auto operator<=(const type &x, const type &y)->decltype(!(x<y)) { return !(y < x) ; }  \
+   pfx inline auto operator>=(const type &x, const type &y)->decltype(!(x<y)) { return !(x < y) ; }
+
+/// Given that there are operators '==' and '<' for the type, define through them all
+/// remaining relational operators as global functions.
+#define PCOMN_DEFINE_RELOP_FUNCTIONS(pfx, type)                         \
+   pfx inline auto operator!=(const type &x, const type &y)->decltype(!(x==y)) { return !(x == y) ; } \
+   PCOMN_DEFINE_ORDER_FUNCTIONS(P_PASS(pfx), P_PASS(type))
+
+/// Given that there is '<' operator for the type, define all remaining ordering operators
+/// as type methods.
+#define PCOMN_DEFINE_ORDER_METHODS(type, ...)                           \
+   __VA_ARGS__ bool operator>(const type &rhs) const { return rhs < *this ; }       \
+   __VA_ARGS__ bool operator<=(const type &rhs) const { return !(rhs < *this) ; }   \
+   __VA_ARGS__ bool operator>=(const type &rhs) const { return !(*this < rhs) ; }
+
+/// Given that there are operators '==' and '<' for the type, define through them all
+/// remaining relational operators as type methods.
+#define PCOMN_DEFINE_RELOP_METHODS(type, ...)                           \
+   __VA_ARGS__ bool operator!=(const type &rhs) const { return !(*this == rhs) ; } \
+   PCOMN_DEFINE_ORDER_METHODS(P_PASS(type), ##__VA_ARGS__)
+
+/// Define operators '+' and '-' for the type through corresponding augmented operations
+/// '+=' and '-='.
+#define PCOMN_DEFINE_ADDOP_FUNCTIONS(pfx, type)                         \
+   pfx inline type operator+(const type &lhs, const type &rhs) { type ret(lhs) ; ret += rhs ; return ret ; } \
+   pfx inline type operator-(const type &lhs, const type &rhs) { type ret(lhs) ; ret -= rhs ; return ret ; }
+
+#define PCOMN_DEFINE_NONASSOC_ADDOP_FUNCTIONS(pfx, type, rhstype)       \
+   pfx inline type operator+(const type &lhs, const rhstype &rhs) { type ret(lhs) ; ret += rhs ; return ret ; } \
+   pfx inline type operator-(const type &lhs, const rhstype &rhs) { type ret(lhs) ; ret -= rhs ; return ret ; }
+
+#define PCOMN_DEFINE_COMMUTATIVE_OP_FUNCTIONS(pfx, op, type, othertype)  \
+   pfx inline type operator+(const type &self, const othertype &other) { type ret(self) ; ret op##= other ; return ret ; } \
+   pfx inline type operator+(const othertype &other, const type &self) { return self op other ; }
+
+/// Define operators '+' and '-' for the type through corresponding augmented operations
+/// '+=' and '-='.
+#define PCOMN_DEFINE_ADDOP_METHODS(type)                                \
+   type operator+(const type &rhs) const { type ret(*this) ; ret += rhs ; return ret ; } \
+   type operator-(const type &rhs) const { type ret(*this) ; ret -= rhs ; return ret ; }
+
+#define PCOMN_DEFINE_NONASSOC_ADDOP_METHODS(type, rhstype)              \
+   type operator+(const rhstype &rhs) const { type ret(*this) ; ret += rhs ; return ret ; } \
+   type operator-(const rhstype &rhs) const { type ret(*this) ; ret -= rhs ; return ret ; }
+
+/// Define post(inc|dec)rement.
+#define PCOMN_DEFINE_POSTCREMENT(type, op) \
+   type operator op(int) { type result (*this) ; op *this ; return result ; }
+
+/// Define both postincrement and postdecrement.
+#define PCOMN_DEFINE_POSTCREMENT_METHODS(type) \
+   PCOMN_DEFINE_POSTCREMENT(type, ++)          \
+   PCOMN_DEFINE_POSTCREMENT(type, --)
+
+/// Providing there is @a type ::swap, define namespace-level swap overload @a type
+#define PCOMN_DEFINE_SWAP(type, ...) \
+   __VA_ARGS__ inline void swap(type &lhs, type &rhs) noexcept { lhs.swap(rhs) ; }
+
+/// For a type without state, define operators '==' and '!=' that are invariantly 'true'
+/// and 'false' respectively
+///
+/// I.e. we actually say "since object of type T is, in fact, just a namespace, consider
+/// any two T objects equal".
+#define PCOMN_DEFINE_INVARIANT_EQ(prefix, type)                         \
+   prefix constexpr inline bool operator==(const type &, const type &) { return true ; } \
+   prefix constexpr inline bool operator!=(const type &, const type &) { return false ; }
+
+#define PCOMN_DEFINE_INVARIANT_PRINT(prefix, type)                      \
+   prefix inline std::ostream &operator<<(std::ostream &os, const type &) { return os << PCOMN_CLASSNAME(type) ; }
+
+#define PCOMN_DEFINE_PRANGE(type, ...)                                  \
+   __VA_ARGS__ inline auto pbegin(type &x) -> decltype(&*std::begin(x)) { return std::begin(x) ; } \
+   __VA_ARGS__ inline auto pbegin(const type &x) -> decltype(&*std::begin(x)) { return std::begin(x) ; } \
+   __VA_ARGS__ inline auto pend(type &x) -> decltype(&*std::end(x)) { return std::end(x) ; } \
+   __VA_ARGS__ inline auto pend(const type &x) -> decltype(&*std::end(x)) { return std::end(x) ; }
+
+/// Define bit flag operations (|,&,~) over the specified enum type.
+#define PCOMN_DEFINE_FLAG_ENUM(enum_type)                               \
+   PCOMN_STATIC_CHECK(std::is_enum<enum_type>()) ;                      \
+   constexpr inline enum_type operator&(enum_type x, enum_type y)       \
+   {                                                                    \
+      typedef std::underlying_type_t<enum_type> int_type ;              \
+      return (enum_type)((int_type)x & (int_type)y) ;                   \
+   }                                                                    \
+   constexpr inline enum_type operator|(enum_type x, enum_type y)       \
+   {                                                                    \
+      typedef std::underlying_type_t<enum_type> int_type ;              \
+      return (enum_type)((int_type)x | (int_type)y) ;                   \
+   }                                                                    \
+   constexpr inline enum_type operator^(enum_type x, enum_type y)       \
+   {                                                                    \
+      typedef std::underlying_type_t<enum_type> int_type ;              \
+      return (enum_type)((int_type)x ^ (int_type)y) ;                   \
+   }                                                                    \
+   constexpr inline enum_type operator~(enum_type x)                    \
+   {                                                                    \
+      return (enum_type)(~(std::underlying_type_t<enum_type>)x) ;       \
+   }                                                                    \
+   inline enum_type &operator|=(enum_type &x, enum_type y) { return x = x | y ; } \
+   inline enum_type &operator&=(enum_type &x, enum_type y) { return x = x & y ; } \
+   inline enum_type &operator^=(enum_type &x, enum_type y) { return x = x ^ y ; }
+
+/*******************************************************************************
+*******************************************************************************/
 
 namespace pcomn {
 
@@ -130,25 +254,150 @@ class implimit_error : public std::logic_error {
       {}
 } ;
 
-/******************************************************************************/
-/** Base class for boolean tags
+/***************************************************************************//**
+ Base class for boolean tags
 *******************************************************************************/
+template<typename Derived>
 struct bool_value {
-      constexpr bool_value() : _value(false) {}
+      constexpr bool_value() = default ;
       explicit constexpr bool_value(bool value) : _value(value) {}
-      explicit constexpr operator bool() const { return _value ; }
+      constexpr operator bool() const { return _value ; }
+
+      constexpr Derived operator!() const { return Derived(!_value) ; }
+
    private:
-      const bool _value ;
+      bool _value = false ;
 } ;
 
-/******************************************************************************/
-/** A tag type to specify whether to raise exception on error for functions
+/*******************************************************************************
+
+ RAII guards/finalizers
+
+*******************************************************************************/
+/***************************************************************************//**
+ Saves the current value of a variable before it is changed and automatically
+ restores upon exiting from the block.
+*******************************************************************************/
+template<typename T>
+class vsaver {
+      PCOMN_NONCOPYABLE(vsaver) ;
+   public:
+      explicit vsaver(T &variable) :
+         _saved(variable),
+         _var(&variable)
+      {}
+
+      vsaver(T &variable, const T &new_value) :
+         _saved(variable),
+         _var(&variable)
+      {
+         variable = new_value ;
+      }
+
+      ~vsaver()
+      {
+         if (_var) *_var = _saved ;
+      }
+
+      const T &release() noexcept
+      {
+         _var = NULL ;
+         return _saved ;
+      }
+
+      const T &restore()
+      {
+         if (_var)
+         {
+            *_var = _saved ;
+            _var = NULL ;
+         }
+         return _saved ;
+      }
+
+      const T &saved() const noexcept { return _saved ; }
+
+   private:
+      const T  _saved ;
+      T *      _var ;
+} ;
+
+/***************************************************************************//**
+ Temporarily sets a bit mask and then in the destructor automatically restores
+ the saved settings.
+*******************************************************************************/
+template<typename T>
+class bitsaver {
+      PCOMN_NONCOPYABLE(bitsaver) ;
+   public:
+      bitsaver(T &flags, T mask) :
+        _flags(flags),
+        _mask(mask),
+        _status(flags & mask)
+      {}
+
+      ~bitsaver() { (_flags &= ~_mask) |= _status ; }
+
+   private:
+      T &      _flags ;
+      const T  _mask ;
+      const T  _status ;
+} ;
+
+/***************************************************************************//**
+ Automatically calls the functor passed into the constructor upon destructor call
+ (usually at the scope exit).
+*******************************************************************************/
+template<typename F>
+class finalizer {
+      PCOMN_NONCOPYABLE(finalizer) ;
+      PCOMN_NONASSIGNABLE(finalizer) ;
+   public:
+      explicit constexpr finalizer(const F &on_finish) : _finalize(on_finish) {}
+      explicit constexpr finalizer(F &&on_finish) : _finalize(std::move(on_finish)) {}
+
+      finalizer(finalizer &&other) :
+         _finalize(std::move(other._finalize)),
+         _released(std::exchange(other._released, true))
+      {}
+
+      ~finalizer() { finalize() ; }
+
+      /// Prevent finalizer function from being called.
+      /// Can be called arbitrary number of times, idempotent.
+      void release() { _released = true ; }
+
+      /// Explicitly call the finalizer if it hasn't yet been called or released.
+      /// Can be called arbitrary number of times: after the first call all the
+      /// subsequent are ignored.
+      void finalize()
+      {
+         if (_released)
+            return ;
+
+         release() ;
+         _finalize() ;
+      }
+   private:
+      F     _finalize ;         /* Call this in the destructor. */
+      bool  _released = false ; /* Don't call _finalize if true. */
+} ;
+
+template<typename F>
+inline finalizer<std::remove_cv_t<std::remove_reference_t<F>>>
+make_finalizer(F &&on_finish)
+{
+   return finalizer<std::remove_cv_t<std::remove_reference_t<F>>>(std::forward<F>(on_finish)) ;
+}
+
+/***************************************************************************//**
+ A tag type to specify whether to raise exception on error for functions
  that allow to indicate failure with a special return value.
 *******************************************************************************/
-struct RaiseError : bool_value { using bool_value::bool_value ; } ;
+struct RaiseError : bool_value<RaiseError> { using bool_value::bool_value ; } ;
 
-static constexpr const RaiseError DONT_RAISE_ERROR (false) ;
-static constexpr const RaiseError RAISE_ERROR      (true) ;
+constexpr const RaiseError DONT_RAISE_ERROR {false} ;
+constexpr const RaiseError RAISE_ERROR      {true} ;
 
 /******************************************************************************/
 /** Not-a-pointer: something, which is both not NULL and is not a valid pointer
@@ -260,7 +509,7 @@ inline T &set_flags_masked(T &target, T flagset, T mask)
 template<typename T, typename U>
 inline T &set_flags(T &target, bool value, U mask)
 {
-   return set_flags_masked<T>(target, (T() - (T)value), mask) ;
+   return set_flags_masked<T>(target, (T)(T() - (T)value), mask) ;
 }
 
 template<typename T>
@@ -417,7 +666,7 @@ xchange(T &dest, U &&src)
 }
 
 template<typename  T>
-inline const T& midval(const T& minVal, const T& maxVal, const T& val)
+constexpr inline const T& midval(const T& minVal, const T& maxVal, const T& val)
 {
    return std::min(maxVal, std::max(minVal, val)) ;
 }
@@ -460,20 +709,6 @@ constexpr inline std::pair<T, T> ordered_pair(T &&op1, T &&op2, Compare &&comp)
 template<class X, typename... XArgs>
 __noreturn __cold
 void throw_exception(XArgs&& ...args) { throw X(std::forward<XArgs>(args)...) ; }
-
-template<typename Msg>
-__noreturn __cold
-void throw_system_error(std::errc errcode, const Msg &msg)
-{
-   throw_exception<std::system_error>(std::make_error_code(errcode), msg) ;
-}
-
-template<typename Msg>
-__noreturn __cold
-void throw_system_error(int errno_code, const Msg &msg)
-{
-   throw_exception<std::system_error>(errno_code, std::system_category(), msg) ;
-}
 
 /// Throw exception with formatted message
 ///
@@ -682,7 +917,13 @@ template<typename T>
 constexpr inline T *as_ptr_mutable(const T *p) { return const_cast<T *>(p) ; }
 
 template<typename T>
+constexpr inline const T *as_ptr_const(T *p) { return p ; }
+
+template<typename T>
 constexpr inline T &as_mutable(const T &v) { return const_cast<T &>(v) ; }
+
+template<typename T>
+constexpr inline T &as_lvalue(T &&v) { return v ; }
 
 template<size_t alignment>
 constexpr inline bool is_aligned_to(const void *p)
@@ -712,25 +953,74 @@ inline void pcomn_swap(T &a, T &b)
    swap(a, b) ;
 }
 
+/***************************************************************************//**
+ ASCII-only fast character class test functions.
+ Branchless, ILP-friendly, 1-2 cycles per test.
+
+ @note Handle utf8 correctly, simply return false for any non-ascii characters.
+*******************************************************************************/
+/**@{*/
+constexpr inline bool isdigit_ascii(int c)
+{
+   return (unsigned)c - (unsigned)'0' < 10U ;
+}
+
+constexpr inline bool isxdigit_ascii(int c)
+{
+   return isdigit_ascii(c) | ((unsigned)c - (unsigned)'a' < 6U) | ((unsigned)c - (unsigned)'A' < 6U) ;
+}
+
+constexpr inline bool islower_ascii(int c)
+{
+   return (unsigned)c - (unsigned)'a' < 26U ;
+}
+
+constexpr inline bool isupper_ascii(int c)
+{
+   return (unsigned)c - (unsigned)'A' < 26U ;
+}
+
+constexpr inline bool isalpha_ascii(int c)
+{
+   return isupper_ascii(c) | islower_ascii(c) ;
+}
+
+constexpr inline bool isalnum_ascii(int c)
+{
+   return ((unsigned)c - (unsigned)'0' < 10) | isalpha_ascii(c) ;
+}
+/**@}*/
+
 /*******************************************************************************
  Hex digit to number and number to hex digit
 *******************************************************************************/
-inline int hextoi(char hexdigit)
+inline int hexchartoi(int hexdigit)
 {
-  switch (hexdigit)
-  {
-    case '0': return 0 ; case '1': return 1 ; case '2': return 2 ; case '3': return 3 ;
-    case '4': return 4 ; case '5': return 5 ; case '6': return 6 ; case '7': return 7 ;
-    case '8': return 8 ; case '9': return 9 ;
+   constexpr static int8_t v[] =
+   {
+      // 10 items (decimal digits)
+      0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+      // 7 items
+      -1,-1,-1,-1,-1,-1,-1,
+      // 6 items ('A'-'F')
+      10, 11, 12, 13, 14, 15,
+      // 26 items
+      -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+      // 6 items ('a'-'f')
+      10, 11, 12, 13, 14, 15,
 
-    case 'a': case 'A': return 10 ; case 'b': case 'B': return 11 ;
-    case 'c': case 'C': return 12 ; case 'd': case 'D': return 13 ;
-    case 'e': case 'E': return 14 ; case 'f': case 'F': return 15 ;
-  }
-  return -1 ;
+      // There are 73 items below
+      -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+      -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
+   } ;
+
+   static_assert(sizeof v == 128, "Invalid array v size") ;
+
+   const int32_t offs = (int8_t)hexdigit - '0' ;
+   return v[offs & 0x7f] | (offs >> 31) ;
 }
 
-inline int itohex(unsigned num)
+inline int itohexchar(unsigned num)
 {
    static constexpr const char xc[16] =
       { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' } ;
@@ -745,130 +1035,16 @@ inline void *hextob(void *buf, size_t bufsz, const char *hexstr)
    uint8_t *data = static_cast<uint8_t *>(buf) ;
    for (const char *c = hexstr, *e = c + 2 * bufsz ; c != e ; c += 2, ++data)
    {
-      const int d1 = hextoi(c[0]) ;
+      const int d1 = hexchartoi(c[0]) ;
       if (d1 < 0)
          return nullptr ;
-      const int d2 = hextoi(c[1]) ;
+      const int d2 = hexchartoi(c[1]) ;
       if (d2 < 0)
          return nullptr ;
       *data = (d1 << 4) | d2 ;
    }
    return buf ;
 }
-
-/*******************************************************************************
-
-*******************************************************************************/
-#define PCOMN_NONCOPYABLE(Class)   Class(const Class&) = delete
-#define PCOMN_NONASSIGNABLE(Class) void operator=(const Class&) = delete
-
-/// Given that there is '<' operator for the type, define all remaining ordering operators
-/// as global functions.
-#define PCOMN_DEFINE_ORDER_FUNCTIONS(pfx, type)                         \
-   pfx inline auto operator> (const type &x, const type &y)->decltype(!(x<y)) { return !!(y < x) ; } \
-   pfx inline auto operator<=(const type &x, const type &y)->decltype(!(x<y)) { return !(y < x) ; }  \
-   pfx inline auto operator>=(const type &x, const type &y)->decltype(!(x<y)) { return !(x < y) ; }
-
-/// Given that there are operators '==' and '<' for the type, define through them all
-/// remaining relational operators as global functions.
-#define PCOMN_DEFINE_RELOP_FUNCTIONS(pfx, type)                         \
-   pfx inline auto operator!=(const type &x, const type &y)->decltype(!(x==y)) { return !(x == y) ; } \
-   PCOMN_DEFINE_ORDER_FUNCTIONS(P_PASS(pfx), P_PASS(type))
-
-/// Given that there is '<' operator for the type, define all remaining ordering operators
-/// as type methods.
-#define PCOMN_DEFINE_ORDER_METHODS(type, ...)                           \
-   __VA_ARGS__ bool operator>(const type &rhs) const { return rhs < *this ; }       \
-   __VA_ARGS__ bool operator<=(const type &rhs) const { return !(rhs < *this) ; }   \
-   __VA_ARGS__ bool operator>=(const type &rhs) const { return !(*this < rhs) ; }
-
-/// Given that there are operators '==' and '<' for the type, define through them all
-/// remaining relational operators as type methods.
-#define PCOMN_DEFINE_RELOP_METHODS(type, ...)                           \
-   __VA_ARGS__ bool operator!=(const type &rhs) const { return !(*this == rhs) ; } \
-   PCOMN_DEFINE_ORDER_METHODS(P_PASS(type), ##__VA_ARGS__)
-
-/// Define operators '+' and '-' for the type through corresponding augmented operations
-/// '+=' and '-='.
-#define PCOMN_DEFINE_ADDOP_FUNCTIONS(pfx, type)                         \
-   pfx inline type operator+(const type &lhs, const type &rhs) { type ret(lhs) ; ret += rhs ; return ret ; } \
-   pfx inline type operator-(const type &lhs, const type &rhs) { type ret(lhs) ; ret -= rhs ; return ret ; }
-
-#define PCOMN_DEFINE_NONASSOC_ADDOP_FUNCTIONS(pfx, type, rhstype)       \
-   pfx inline type operator+(const type &lhs, const rhstype &rhs) { type ret(lhs) ; ret += rhs ; return ret ; } \
-   pfx inline type operator-(const type &lhs, const rhstype &rhs) { type ret(lhs) ; ret -= rhs ; return ret ; }
-
-#define PCOMN_DEFINE_COMMUTATIVE_OP_FUNCTIONS(pfx, op, type, othertype)  \
-   pfx inline type operator+(const type &self, const othertype &other) { type ret(self) ; ret op##= other ; return ret ; } \
-   pfx inline type operator+(const othertype &other, const type &self) { return self op other ; }
-
-/// Define operators '+' and '-' for the type through corresponding augmented operations
-/// '+=' and '-='.
-#define PCOMN_DEFINE_ADDOP_METHODS(type)                                \
-   type operator+(const type &rhs) const { type ret(*this) ; ret += rhs ; return ret ; } \
-   type operator-(const type &rhs) const { type ret(*this) ; ret -= rhs ; return ret ; }
-
-#define PCOMN_DEFINE_NONASSOC_ADDOP_METHODS(type, rhstype)              \
-   type operator+(const rhstype &rhs) const { type ret(*this) ; ret += rhs ; return ret ; } \
-   type operator-(const rhstype &rhs) const { type ret(*this) ; ret -= rhs ; return ret ; }
-
-/// Define post(inc|dec)rement.
-#define PCOMN_DEFINE_POSTCREMENT(type, op) \
-   type operator op(int) { type result (*this) ; op *this ; return result ; }
-
-/// Define both postincrement and postdecrement.
-#define PCOMN_DEFINE_POSTCREMENT_METHODS(type) \
-   PCOMN_DEFINE_POSTCREMENT(type, ++)          \
-   PCOMN_DEFINE_POSTCREMENT(type, --)
-
-/// Providing there is @a type ::swap, define namespace-level swap overload @a type
-#define PCOMN_DEFINE_SWAP(type, ...) \
-   __VA_ARGS__ inline void swap(type &lhs, type &rhs) { lhs.swap(rhs) ; }
-
-/// For a type without state, define operators '==' and '!=' that are invariantly 'true'
-/// and 'false' respectively
-///
-/// I.e. we actually say "since object of type T is, in fact, just a namespace, consider
-/// any two T objects equal".
-#define PCOMN_DEFINE_INVARIANT_EQ(prefix, type)                         \
-   prefix constexpr inline bool operator==(const type &, const type &) { return true ; } \
-   prefix constexpr inline bool operator!=(const type &, const type &) { return false ; }
-
-#define PCOMN_DEFINE_INVARIANT_PRINT(prefix, type)                      \
-   prefix inline std::ostream &operator<<(std::ostream &os, const type &) { return os << PCOMN_CLASSNAME(type) ; }
-
-#define PCOMN_DEFINE_PRANGE(type, ...)                                  \
-   __VA_ARGS__ inline auto pbegin(type &x) -> decltype(&*std::begin(x)) { return std::begin(x) ; } \
-   __VA_ARGS__ inline auto pbegin(const type &x) -> decltype(&*std::begin(x)) { return std::begin(x) ; } \
-   __VA_ARGS__ inline auto pend(type &x) -> decltype(&*std::end(x)) { return std::end(x) ; } \
-   __VA_ARGS__ inline auto pend(const type &x) -> decltype(&*std::end(x)) { return std::end(x) ; }
-
-/// Define bit flag operations (|,&,~) over the specified enum type.
-#define PCOMN_DEFINE_FLAG_ENUM(enum_type)                               \
-   PCOMN_STATIC_CHECK(std::is_enum<enum_type>()) ;                      \
-   constexpr inline enum_type operator&(enum_type x, enum_type y)       \
-   {                                                                    \
-      typedef std::underlying_type_t<enum_type> int_type ;              \
-      return (enum_type)((int_type)x & (int_type)y) ;                   \
-   }                                                                    \
-   constexpr inline enum_type operator|(enum_type x, enum_type y)       \
-   {                                                                    \
-      typedef std::underlying_type_t<enum_type> int_type ;              \
-      return (enum_type)((int_type)x | (int_type)y) ;                   \
-   }                                                                    \
-   constexpr inline enum_type operator^(enum_type x, enum_type y)       \
-   {                                                                    \
-      typedef std::underlying_type_t<enum_type> int_type ;              \
-      return (enum_type)((int_type)x ^ (int_type)y) ;                   \
-   }                                                                    \
-   constexpr inline enum_type operator~(enum_type x)                    \
-   {                                                                    \
-      return (enum_type)(~(std::underlying_type_t<enum_type>)x) ;       \
-   }                                                                    \
-   inline enum_type &operator|=(enum_type &x, enum_type y) { return x = x | y ; } \
-   inline enum_type &operator&=(enum_type &x, enum_type y) { return x = x & y ; } \
-   inline enum_type &operator^=(enum_type &x, enum_type y) { return x = x ^ y ; }
-
 
 /*******************************************************************************
  Demangling
@@ -885,20 +1061,36 @@ namespace pcomn {
 
 /// @note This function never returns NULL and and the returned string is always
 /// null-terminated.
-inline const char *demangle(const char *mangled, char *buf, size_t buflen)
+template<Instantiate = instantiate>
+__noinline const char *demangle__(const char *mangled, char *buf, size_t buflen)
 {
    if (!buflen || !buf)
       return "" ;
    *buf = 0 ;
-   if (mangled && *mangled)
+   if (mangled && *mangled && buflen > 1)
    {
+      static thread_local char *demangled = nullptr ;
+      static thread_local size_t maxlen = 0 ;
+
       int status = 0 ;
-      size_t len = buflen ;
+      size_t len = 0 ;
+      char *result = abi::__cxa_demangle(mangled, demangled, &len, &status) ;
+
+      if (result)
+      {
+         demangled = result ;
+         maxlen = std::max(maxlen, len) ;
+      }
+
       // On failure, return the source name
-      if (!abi::__cxa_demangle(mangled, buf, &len, &status))
-         strncpy(buf, mangled, buflen - 1)[buflen - 1] = 0 ;
+      strncpyz(buf, result ? result : mangled, buflen) ;
    }
    return buf ;
+}
+
+inline const char *demangle(const char *mangled, char *buf, size_t buflen)
+{
+   return demangle__<>(mangled, buf, buflen) ;
 }
 
 template<typename T>

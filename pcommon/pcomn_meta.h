@@ -3,7 +3,7 @@
 #define __PCOMN_META_H
 /*******************************************************************************
  FILE         :   pcomn_meta.h
- COPYRIGHT    :   Yakov Markovitch, 2006-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2006-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Basic template metaprogramming support.
@@ -33,18 +33,17 @@
 #include <experimental/type_traits>
 #endif /* PCOMN_STL_CXX17 */
 
+// Avoid including the whole <string>
+#if defined(__GLIBCXX__)
+#include <bits/stringfwd.h>
+#endif
+
 #include <stdlib.h>
 #include <stddef.h>
 
 #ifndef PCOMN_STL_CXX17
 
 namespace std {
-
-// Forward declaration of std::basic_string: we don't require <string> header for
-// pcomn_meta
-PCOMN_BEGIN_NAMESPACE_CXX11
-template<typename, typename, typename> class basic_string ;
-PCOMN_END_NAMESPACE_CXX11
 
 template<class C>
 inline constexpr auto size(const C &container) -> decltype(container.size()) { return container.size() ; }
@@ -246,13 +245,12 @@ constexpr __forceinline To bit_cast(const From &from) noexcept
    PCOMN_STATIC_CHECK(alignof(To) <= alignof(From)) ;
    PCOMN_STATIC_CHECK(std::is_trivially_copyable_v<From> && std::is_trivially_copyable_v<To>) ;
 
-   const char * const src = reinterpret_cast<const char *>(&from) ;
-   To result = *reinterpret_cast<const To *>(src) ;
-   return result ;
+   const union { const From *src ; const To *dst ; } result = {&from} ;
+   return *result.dst ;
 }
 
-/******************************************************************************/
-/** Function for getting T value in unevaluated context for e.g. passsing
+/***************************************************************************//**
+ Function for getting T value in unevaluated context for e.g. passsing
  to functions in SFINAE context without the need to go through constructors
 
  Differs from std::declval in that it does not converts T to rvalue reference
@@ -350,6 +348,33 @@ constexpr inline T fold_bitor(T a1, T a2, TN ...aN)
 template<typename T> struct identity_type { typedef T type ; } ;
 
 /***************************************************************************//**
+ Transfer cv-qualifiers of the source type to the target type.
+ So, e.g.
+     - `transfer_cv_t<const int, double>` is `const double`
+     - `transfer_cv_t<const int, volatile double>` is `const volatile double`
+     - `transfer_cv_t<const volatile int, double>` is `const volatile double`
+     - `transfer_cv_t<const volatile int, volatile double>` is `const volatile double`
+
+ @Note `transfer_cv_t<const int, double*>` is `double* const`, _not_ 'const double*'
+*******************************************************************************/
+/**@{*/
+template<typename S, typename T>
+struct transfer_cv { typedef T type ; } ;
+
+template<typename S, typename T>
+struct transfer_cv<const S, T> : transfer_cv<S, const T> {} ;
+
+template<typename S, typename T>
+struct transfer_cv<volatile S, T> : transfer_cv<S, volatile T> {} ;
+
+template<typename S, typename T>
+struct transfer_cv<const volatile S, T> : transfer_cv<S, const volatile T> {} ;
+/**@}*/
+
+template<typename S, typename T>
+using transfer_cv_t = typename transfer_cv<S,T>::type ;
+
+/***************************************************************************//**
  Provides globally placed default-constructed value of its parameter type.
 *******************************************************************************/
 template<typename T>
@@ -380,12 +405,12 @@ struct make {
 *******************************************************************************/
 template<typename Base, typename Derived>
 struct is_base_of_strict :
-         bool_constant<!(std::is_same<Base, Derived>::value ||
-                         std::is_same<const volatile Base*, const volatile void*>::value) &&
-                         std::is_convertible<const volatile Derived*, const volatile Base*>::value> {} ;
+         bool_constant<!(std::is_same_v<Base, Derived> ||
+                         std::is_same_v<const volatile Base*, const volatile void*>) &&
+                         std::is_convertible_v<const volatile Derived*, const volatile Base*>> {} ;
 
 template<typename T, typename U>
-using is_same_unqualified = std::is_same<std::remove_cv_t<T>, std::remove_cv_t<U> > ;
+using is_same_unqualified = std::is_same<std::remove_cv_t<T>, std::remove_cv_t<U>> ;
 
 template<typename To, typename... From>
 struct is_all_convertible : std::true_type {} ;
@@ -401,6 +426,20 @@ struct if_all_convertible : std::enable_if<is_all_convertible<To, From...>::valu
 template<typename T, typename To, typename... From>
 using if_all_convertible_t = typename if_all_convertible<T, To, From...>::type ;
 
+template<typename T, typename... Types>
+struct is_one_of : std::true_type {} ;
+
+template<typename T, typename T1, typename... Tn>
+struct is_one_of<T, T1, Tn...> :
+   std::bool_constant<(std::is_same_v<T, T1> || is_one_of<T, Tn...>::value)>
+{} ;
+
+template<typename T, typename... Types>
+constexpr bool is_one_of_v = is_one_of<T, Types...>::value ;
+
+template<typename To, typename... From>
+constexpr bool is_all_convertible_v = is_all_convertible<To, From...>::value ;
+
 /***************************************************************************//**
  Check if the type can be trivially swapped, i.e. by simply swapping raw memory
  contents.
@@ -415,10 +454,20 @@ struct is_trivially_swappable<std::pair<T1, T2>> :
          ct_and<is_trivially_swappable<T1>, is_trivially_swappable<T2>>
 {} ;
 
+/***************************************************************************//**
+ Type trait for types that allow memcpy()/memmove() construction and assignment.
+
+ This is the equivalent of `std::is_trivially_copyable` - and, by default,
+ is implemented as `std::is_trivially_copyable` - except that it can be overloaded
+ to return `true` for types that _are_, in fact, trivially copyable, but for which
+ `std::is_trivially_copyable` returns `false` due to collateral restrictions,
+ e.g. `std::pair<int,unsigned>`
+*******************************************************************************/
 template<typename T>
-struct is_memmovable : std::bool_constant<std::is_trivially_copyable<T>::value &&
-                                          std::is_trivially_destructible<T>::value>
-{} ;
+struct is_memmovable : std::bool_constant<std::is_trivially_copyable<T>::value> {} ;
+
+template<typename T, typename U>
+struct is_memmovable<std::pair<T, U>> : ct_and<is_memmovable<T>, is_memmovable<U> > {} ;
 
 template<typename T>
 constexpr bool is_trivially_swappable_v = is_trivially_swappable<T>::value ;
@@ -460,7 +509,7 @@ template<typename T>
 using noref_result_of_t = typename noref_result_of<T>::type ;
 
 template<typename T>
-using valtype_t = std::remove_cv_t<std::remove_reference_t<T>> ;
+using valtype_t = std::remove_cvref_t<T> ;
 
 template<typename T, typename... A>
 struct rebind___t {
@@ -470,6 +519,36 @@ struct rebind___t {
 
 template<typename C, typename T, typename... A>
 using rebind_t = decltype(rebind___t<T, A...>::eval(autoval<C *>())) ;
+
+/***************************************************************************//**
+ Facilitates specifying the default parameters-types for a template with type `void`;
+ i.e., the possibility to use void as a tag "use the default type for this parameter".
+
+ There are lots of templates with several defaulted type parameters, e.g.:
+
+ @code
+ template<class Key, class T,
+          class Hash = std::hash<Key>,
+          class KeyEqual = std::equal_to<Key>,
+          class Allocator = std::allocator<std::pair<const Key, T>>>
+ class unordered_map ;
+ @endcode
+
+ If we need to specify a non-default value for one of the defaulted parameters, there is
+ a problem: if the parameter to be specified is not the first in the sequence of
+ parameters with defaults, all the previous parameters must be specified explicitly,
+ even if you want to keep using their default values.
+*******************************************************************************/
+/**@{*/
+template<typename Specified, typename Default>
+struct select_type {
+      typedef Specified type ;
+} ;
+
+template<typename Default>
+struct select_type<void, Default> {
+      typedef Default type ;
+} ;
 
 template<typename Functor, typename Argtype, template<class> class Default>
 struct select_functor {
@@ -481,8 +560,12 @@ struct select_functor<void, Argtype, Default> {
       typedef Default<Argtype> type ;
 } ;
 
+template<typename Specified, typename Default>
+using select_type_t = typename select_type<Specified, Default>::type ;
+
 template<typename Functor, typename Argtype, template<class> class Default>
 using select_functor_t = typename select_functor<Functor, Argtype, Default>::type ;
+/**@}*/
 
 /******************************************************************************/
 /** Macro to define member type metatesters
@@ -509,7 +592,6 @@ PCOMN_DEFINE_TYPE_MEMBER_TEST(iterator) ;
 PCOMN_DEFINE_TYPE_MEMBER_TEST(const_iterator) ;
 PCOMN_DEFINE_TYPE_MEMBER_TEST(pointer) ;
 
-/// @cond
 // Intentionally create an inconsistent name pcomn::has_type_type
 // has_type is too generic a name, even for pcomn namespace.
 namespace detail { PCOMN_DEFINE_TYPE_MEMBER_TEST(type) ; }
@@ -605,21 +687,5 @@ underlying_int(I value)
 }
 
 } // end of namespace pcomn
-/// @endcond
-
-/*******************************************************************************
- Ersatz C++11 type taits: even GCC 4.9 does not provide is_trivially_something
- traits, and we desperately need is_trivially_copyable.
-
- Note this contrived trait class is not a complete equivalent of the standard
- one: it does not consider move constructor/assignment.
-*******************************************************************************/
-#if !defined(__clang__) && PCOMN_WORKAROUND(__GNUC_VER__, < 700)
-namespace std {
-template<typename T, typename U>
-struct is_trivially_copyable<pair<T, U> > :
-         pcomn::ct_and<is_trivially_copyable<T>, is_trivially_copyable<U> > {} ;
-}
-#endif // PCOMN_WORKAROUND(__GNUC_VER__, < 700)
 
 #endif /* __PCOMN_META_H */

@@ -3,7 +3,7 @@
 #define __PCOMN_UNITTEST_H
 /*******************************************************************************
  FILE         :   pcomn_unittest.h
- COPYRIGHT    :   Yakov Markovitch, 2003-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2003-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Helpers for unit testing with CPPUnit
@@ -11,6 +11,20 @@
  PROGRAMMED BY:   Yakov Markovitch
  CREATION DATE:   10 Jun 2003
 *******************************************************************************/
+/** @file
+ Helper classes, functions, types, macros for CppUnit-based unittests.
+
+ class TestFixture<private_dirname>
+
+ @code
+ extern const char FOOBARTEST_FIXTURE[] = "foobar-test" ;
+ class FooBarTests : public pcomn::unit::TestFixture<FOOBARTEST_FIXTURE> {...} ;
+ @endcode
+
+ CppUnit::assertion_traits_sequence<sequence> for any sequence with std::begin(seq),
+ std::end(seq), std::size(seq)
+*******************************************************************************/
+
 #include <pcomn_platform.h>
 GCC_DIAGNOSTIC_PUSH_IGNORE(unused-result)
 #include <pcomn_macros.h>
@@ -20,6 +34,7 @@ GCC_DIAGNOSTIC_PUSH_IGNORE(unused-result)
 #include <pcomn_except.h>
 #include <pcomn_string.h>
 #include <pcomn_strslice.h>
+#include <pcomn_vector.h>
 #include <pcomn_cstrptr.h>
 #include <pcomn_path.h>
 #include <pcomn_function.h>
@@ -42,6 +57,7 @@ GCC_DIAGNOSTIC_PUSH_IGNORE(unused-result)
 #include <list>
 #include <map>
 #include <set>
+#include <array>
 #include <stdexcept>
 #include <mutex>
 #include <chrono>
@@ -73,7 +89,7 @@ constexpr DiffOptions DF_SENSE_ALL = DF_SENSE_TRAIL_SPACE|DF_SENSE_SPACE_CHANGE|
 /*******************************************************************************
  Test environment
 *******************************************************************************/
-template<novalue = {}>
+template<novalue = NaV>
 struct test_environment {
 
       friend std::string resolve_test_path(const CppUnit::Test &, const std::string &, bool) ;
@@ -325,7 +341,7 @@ struct unique_locked_ostream {
 
 template<typename Tag>
 unique_locked_ostream<Tag>::unique_locked_ostream(std::ostream *owned_stream) :
-   _streamp(owned_stream), _lock(_streamp.get())
+   _streamp(owned_stream, {}), _lock(_streamp.get())
 {}
 
 template<typename Tag>
@@ -337,7 +353,7 @@ template<typename Tag>
 unique_locked_ostream<Tag>::unique_locked_ostream(const strslice &filename) :
    unique_locked_ostream(new std::ofstream(std::string(filename).c_str()))
 {
-   PCOMN_THROW_IF(!stream(), environment_error, "Cannot open " P_STRSLICEQF " for writing", P_STRSLICEV(filename)) ;
+   PCOMN_THROW_IF(!stream(), system_error, "Cannot open " P_STRSLICEQF " for writing", P_STRSLICEV(filename)) ;
 }
 
 template<typename Tag>
@@ -346,7 +362,7 @@ unique_locked_ostream<Tag>::~unique_locked_ostream() = default ;
 /*******************************************************************************
                      class TestProgressListener
 *******************************************************************************/
-template<novalue = {}>
+template<novalue = NaV>
 class TestListener : public CppUnit::TextTestProgressListener {
    public:
       void startTest(CppUnit::Test *test)
@@ -424,8 +440,8 @@ class TestRunner : public CppUnit::TextUi::TestRunner {
       TestProgressListener _listener ;
 } ;
 
-/******************************************************************************/
-/** Unique test fixture base class
+/***************************************************************************//**
+ Unique test fixture base class
 
  To get the path to a file in the unittest sources directory:
   @code
@@ -455,7 +471,7 @@ class TestFixture : public CppUnit::TestFixture {
       PCOMN_STATIC_CHECK(private_dirname != nullptr) ;
       #endif
    public:
-      typedef ostream_lock<TestFixture<private_dirname> > locked_out ;
+      typedef ostream_lock<TestFixture<private_dirname>> locked_out ;
 
       const char *testname() const { return TestRunner::testShortName() ; }
 
@@ -615,7 +631,7 @@ typename TestFixture<private_dirname>::locked_out TestFixture<private_dirname>::
          // Ensure $CPPUNIT_PROGDIR/data is here
          CPPUNIT_ASSERT(_datadir_ready || mkdir_with_parents(_data_basedir)) ;
          std::unique_ptr<std::ofstream> new_stream (new std::ofstream(data_file().c_str())) ;
-         PCOMN_THROW_IF(!*new_stream, environment_error, "Cannot open " P_STRSLICEQF " for writing", P_STRSLICEV(data_file())) ;
+         PCOMN_THROW_IF(!*new_stream, system_error, "Cannot open " P_STRSLICEQF " for writing", P_STRSLICEV(data_file())) ;
          _out = std::move(new_stream) ;
       }
    }
@@ -785,12 +801,11 @@ struct assertion_traits_sequence {
 } ;
 
 template<typename Seq, char d, char b, char a>
-bool assertion_traits_sequence<Seq, d, b, a>::equal(const Seq &lhs, const Seq &rhs)
+bool assertion_traits_sequence<Seq, d, b, a>::equal(const Seq &x, const Seq &y)
 {
    using namespace std ;
    return
-      lhs.size() == rhs.size() &&
-      std::equal(begin(lhs), end(lhs), begin(rhs), assertion_traits_eq()) ;
+      size(x) == size(y) && std::equal(begin(x), end(x), begin(y), assertion_traits_eq()) ;
 }
 
 template<typename Seq, char d, char b, char a>
@@ -801,24 +816,6 @@ std::string assertion_traits_sequence<Seq, d, b, a>::toString(const Seq &value)
    std::for_each(begin(value), end(value), stringify_item(result, d)) ;
    return result.append(1, a) ;
 }
-
-template<typename M>
-struct assertion_traits_matrix : assertion_traits_sequence<M, '\n', '\n', '\n'> {
-      typedef assertion_traits_sequence<M, '\n', '\n', '\n'> ancestor ;
-
-      static bool equal(const M &x, const M &y)
-      {
-         return x.columns() == y.columns() && ancestor::equal(x, y) ;
-      }
-      static std::string toString(const M &m)
-      {
-         std::string desc
-            (pcomn::strprintf("%lux%lu", (unsigned long)m.rows(), (unsigned long)m.columns())) ;
-         return m.empty()
-            ? std::move(desc)
-            : std::move(desc) + "\n========" + ancestor::toString(m) + "========\n" ;
-      }
-} ;
 
 template<typename Unordered>
 struct assertion_traits_unordered {
@@ -855,29 +852,59 @@ struct assertion_traits<std::multiset<K, C>> : assertion_traits_sequence<std::mu
 
 #define _CPPUNIT_ASSERTION_TRAITS_SEQUENCE(sequence)                    \
    template<typename T>                                                 \
-   struct assertion_traits<sequence<T> > : assertion_traits_sequence<sequence<T>> {}
-
-#define _CPPUNIT_ASSERTION_TRAITS_MATRIX(matrix)                        \
-   template<typename T>                                                 \
-   struct assertion_traits<matrix<T> > : assertion_traits_matrix<matrix<T>> {}
+   struct assertion_traits<sequence<T>> : assertion_traits_sequence<sequence<T>> {}
 
 _CPPUNIT_ASSERTION_TRAITS_SEQUENCE(std::vector) ;
 _CPPUNIT_ASSERTION_TRAITS_SEQUENCE(std::list) ;
 _CPPUNIT_ASSERTION_TRAITS_SEQUENCE(std::deque) ;
 _CPPUNIT_ASSERTION_TRAITS_SEQUENCE(pcomn::simple_vector) ;
-
-_CPPUNIT_ASSERTION_TRAITS_MATRIX(pcomn::matrix_slice) ;
+_CPPUNIT_ASSERTION_TRAITS_SEQUENCE(pcomn::simple_slice) ;
 
 template<typename T, size_t maxsize>
 struct assertion_traits<pcomn::static_vector<T, maxsize>> :
          assertion_traits_sequence<pcomn::static_vector<T, maxsize>> {} ;
 
-template<typename T, bool r>
-struct assertion_traits<pcomn::simple_matrix<T, r> > :
-         assertion_traits_matrix<pcomn::simple_matrix<T, r> > {} ;
+template<typename T, size_t size>
+struct assertion_traits<std::array<T,size>> : assertion_traits_sequence<std::array<T,size>> {} ;
 
 #undef _CPPUNIT_ASSERTION_TRAITS_SEQUENCE
+
+/*******************************************************************************
+ matrix_slice
+ simple_matrix
+*******************************************************************************/
+#ifdef __PCOMN_SIMPLEMATRIX_H
+
+template<typename M>
+struct assertion_traits_matrix : assertion_traits_sequence<M, '\n', '\n', '\n'> {
+      typedef assertion_traits_sequence<M, '\n', '\n', '\n'> ancestor ;
+
+      static bool equal(const M &x, const M &y)
+      {
+         return x.columns() == y.columns() && ancestor::equal(x, y) ;
+      }
+      static std::string toString(const M &m)
+      {
+         std::string desc
+            (pcomn::strprintf("%lux%lu", (unsigned long)m.rows(), (unsigned long)m.columns())) ;
+         return m.empty()
+            ? std::move(desc)
+            : std::move(desc) + "\n========" + ancestor::toString(m) + "========\n" ;
+      }
+} ;
+
+#define _CPPUNIT_ASSERTION_TRAITS_MATRIX(matrix)                        \
+   template<typename T>                                                 \
+   struct assertion_traits<matrix<T>> : assertion_traits_matrix<matrix<T>> {}
+
+_CPPUNIT_ASSERTION_TRAITS_MATRIX(pcomn::matrix_slice) ;
+
+template<typename T, bool r>
+struct assertion_traits<pcomn::simple_matrix<T, r>> :
+         assertion_traits_matrix<pcomn::simple_matrix<T, r>> {} ;
+
 #undef _CPPUNIT_ASSERTION_TRAITS_MATRIX
+#endif /* __PCOMN_SIMPLEMATRIX_H */
 
 template<>
 inline std::string assertion_traits<std::type_info>::toString(const std::type_info &x)
@@ -898,7 +925,7 @@ std::string assertion_traits<signed char>::toString(const signed char &value)
 }
 
 template<typename T1, typename T2>
-struct assertion_traits<std::pair<T1, T2> > {
+struct assertion_traits<std::pair<T1, T2>> {
       typedef std::pair<T1, T2> type ;
 
       static bool equal(const type &lhs, const type &rhs)
@@ -912,13 +939,13 @@ struct assertion_traits<std::pair<T1, T2> > {
 } ;
 
 template<typename T1, typename T2>
-std::string assertion_traits<std::pair<T1, T2> >::toString(const type &value)
+std::string assertion_traits<std::pair<T1, T2>>::toString(const type &value)
 {
    return std::string(1, '{') + pcomn::unit::to_string(value.first) + ',' + pcomn::unit::to_string(value.second) + '}' ;
 }
 
 template<typename... A>
-struct assertion_traits<std::tuple<A...> > {
+struct assertion_traits<std::tuple<A...>> {
       typedef std::tuple<A...> type ;
 
       static bool equal(const type &lhs, const type &rhs)
@@ -979,16 +1006,16 @@ std::string assertion_traits_str<S>::quote(const C *begin, size_t sz)
 }
 
 template<typename C>
-struct assertion_traits<std::basic_string<C> > : assertion_traits_str<std::basic_string<C> > {} ;
+struct assertion_traits<std::basic_string<C>> : assertion_traits_str<std::basic_string<C>> {} ;
 
 template<typename C>
-struct assertion_traits<pcomn::basic_cstrptr<C> > : assertion_traits_str<pcomn::basic_cstrptr<C> > {} ;
+struct assertion_traits<pcomn::basic_cstrptr<C>> : assertion_traits_str<pcomn::basic_cstrptr<C>> {} ;
 
 template<typename C>
-struct assertion_traits<pcomn::basic_strslice<C> > : assertion_traits_str<pcomn::basic_strslice<C> > {
+struct assertion_traits<pcomn::basic_strslice<C>> : assertion_traits_str<pcomn::basic_strslice<C>> {
       static std::string toString(const pcomn::basic_strslice<C> &value)
       {
-         return assertion_traits_str<pcomn::basic_strslice<C> >::quote(value.begin(), value.size()) ;
+         return assertion_traits_str<pcomn::basic_strslice<C>>::quote(value.begin(), value.size()) ;
       }
 } ;
 

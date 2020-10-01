@@ -124,7 +124,7 @@
  *    t1ha library itself:
  *
  *      // To enable use of GNU ELF Indirect functions.
- *      #define T1T1HA_USE_INDIRECT_FUNCTIONS 1
+ *      #define T1HA_USE_INDIRECT_FUNCTIONS 1
  *
  *      // To disable use of GNU ELF Indirect functions. This may be useful
  *      // if the actual toolchain or the system's loader don't support ones.
@@ -169,7 +169,7 @@
 
 #define T1HA_VERSION_MAJOR 2
 #define T1HA_VERSION_MINOR 1
-#define T1HA_VERSION_RELEASE 0
+#define T1HA_VERSION_RELEASE 1
 
 #ifndef __has_attribute
 #define __has_attribute(x) (0)
@@ -320,10 +320,8 @@
 #if defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__)
 #if defined(__GNUC__) || __has_attribute(dllexport)
 #define __dll_export __attribute__((dllexport))
-#elif defined(_MSC_VER)
-#define __dll_export __declspec(dllexport)
 #else
-#define __dll_export
+#define __dll_export __declspec(dllexport)
 #endif
 #elif defined(__GNUC__) || __has_attribute(visibility)
 #define __dll_export __attribute__((visibility("default")))
@@ -336,11 +334,11 @@
 #if defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__)
 #if defined(__GNUC__) || __has_attribute(dllimport)
 #define __dll_import __attribute__((dllimport))
-#elif defined(_MSC_VER)
-#define __dll_import __declspec(dllimport)
 #else
-#define __dll_import
+#define __dll_import __declspec(dllimport)
 #endif
+#elif defined(__GNUC__) || __has_attribute(visibility)
+#define __dll_import __attribute__((visibility("default")))
 #else
 #define __dll_import
 #endif
@@ -524,8 +522,6 @@ T1HA_API void t1ha2_update(t1ha_context_t *__restrict ctx,
  *       different each other, i.e. 64-bit result is NOT any part of 128-bit. */
 T1HA_API uint64_t t1ha2_final(t1ha_context_t *__restrict ctx,
                               uint64_t *__restrict extra_result /* optional */);
-
-T1HA_API uint64_t t1ha2_bin128(uint64_t lo, uint64_t hi);
 
 #endif /* T1HA2_DISABLED */
 

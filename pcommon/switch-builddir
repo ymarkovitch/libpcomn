@@ -1,0 +1,41 @@
+#! /bin/bash
+BASEDIR="$(dirname $(readlink -f $0))"
+BASENAME="$(basename $0)"
+BUILDLINK="$BASEDIR/build"
+
+BUILDTYPES="debug|release|relwithdebinfo|dbgsanitize|relsanitize|dbgavx|dbgavx2|relavx|relavx2"
+
+function usage {
+    cat <<EOF
+Usage: $BASENAME {$BUILDTYPES}
+  Create or switch CMake build directory as symbolic link with name 'build'
+
+This allows to keep CMake build directories for several build types simultaneously
+and switch between them.
+
+Note that command accepts build type name case-insensitively, so
+  $BASENAME RelWithDebInfo
+and
+  $BASENAME relwithdebinfo
+will both create link "$BUILDLINK" to "$BASEDIR/.build.relwithdebinfo"
+
+EOF
+   exit ${1:-0} ;
+}
+
+function error () { echo $1 "Use --help to show usage." ; exit 1 ; }
+
+[ $# = 1 ] || error "Invalid argument count."
+[ "$1" != "--help" ] || usage
+
+# Lowercase the build type
+TYPE="${1,,}"
+# Set extended globbing
+shopt -s extglob
+
+eval 'case "$TYPE" in @($BUILDTYPES) ) true ;; * ) false ;; esac' || error "Unknown build type '$1'."
+BUILDDIR="$BASEDIR/.build.$TYPE"
+
+[ -L "$BUILDLINK" -o ! -a "$BUILDLINK" ] || { echo "Non-symlink file or directory $BUILDLINK already exists." ; exit 1 ; } 1>&2
+[ -a "$BUILDDIR" ] || mkdir "$BUILDDIR" || { echo "Cannot create '$BUILDDIR'." ; exit 1 ; } 1>&2
+[ -L "$BUILDLINK" -o ! -a "$BUILDLINK" ] && ln -sfn ".build.$TYPE" "$BUILDLINK"

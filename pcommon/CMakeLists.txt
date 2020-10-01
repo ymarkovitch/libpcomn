@@ -1,7 +1,7 @@
 #------------------------------------------------------------------------------
 # FILE         :  CMakeLists.txt
 #
-# COPYRIGHT    :  Yakov Markovitch, 2014-2018
+# COPYRIGHT    :  Yakov Markovitch, 2014-2020
 #                 See LICENSE for information on usage/redistribution.
 #
 # DESCRIPTION  :  CMake script for building pcommon library
@@ -9,7 +9,7 @@
 # PROGRAMMED BY:  Yakov Markovitch
 # CREATION DATE:  29 Aug 2014
 #------------------------------------------------------------------------------
-cmake_minimum_required(VERSION 3.5.2)
+cmake_minimum_required(VERSION 3.12)
 
 project(libpcommon C CXX)
 
@@ -19,11 +19,27 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} CACHE PATH "")
 set_property(GLOBAL PROPERTY ALLOW_DUPLICATE_CUSTOM_TARGETS TRUE)
 
 include(pcommon)
+include(CMakeFindDependencyMacro)
 
 set(ENABLE_PCOMN_UNITTESTS  ON  CACHE BOOL "Enable unittests building. Requires CPPUntit.")
 set(ENABLE_PCOMN_STACKTRACE OFF CACHE BOOL "Enable stacktrace classes. Linux-only. Requires libunwind and libdw.")
-set(ENABLE_PCOMN_AVX        NO  CACHE BOOL "Enable use of AVX instruction set. Substantially accelerates e.g. hashing and pcomn::bitarray.")
-set(ENABLE_PCOMN_AVX2       NO  CACHE BOOL "Enable use of AVX2 instruction set. Substantially accelerates e.g. hashing and pcomn::bitarray.")
+set(ENABLE_PCOMN_AVX        NO  CACHE BOOL "Enable use of AVX and BMI1 instruction sets. Substantially accelerates e.g. hashing, pcomn::bitarray.")
+set(ENABLE_PCOMN_AVX2       NO  CACHE BOOL "Enable use of AVX2 and BMI2 instruction sets. Substantially accelerates e.g. hashing, pcomn::bitarray, pcomn::bitops.")
+
+# Introduce custom build types RelAvx, RelAvx2, DbgAvx, DbgAvx2 to facilitate
+# one-pass unit testing for different processor architecture flags.
+# CMAKE_BUILD_TYPE=RelAvx
+set(CMAKE_CXX_FLAGS_RELAVX  "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+set(CMAKE_C_FLAGS_RELAVX    "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
+# CMAKE_BUILD_TYPE=RelAvx2
+set(CMAKE_CXX_FLAGS_RELAVX2 "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+set(CMAKE_C_FLAGS_RELAVX2   "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
+# CMAKE_BUILD_TYPE=DbgAvx
+set(CMAKE_CXX_FLAGS_DBGAVX  "${CMAKE_CXX_FLAGS_DEBUG}")
+set(CMAKE_C_FLAGS_DBGAVX    "${CMAKE_C_FLAGS_DEBUG}")
+# CMAKE_BUILD_TYPE=DbgAvx2
+set(CMAKE_CXX_FLAGS_RELAVX2 "${CMAKE_CXX_FLAGS_DEBUG}")
+set(CMAKE_C_FLAGS_RELAVX2   "${CMAKE_C_FLAGS_DEBUG}")
 
 message("***** Processing ${PROJECT_NAME} *****")
 
@@ -46,22 +62,16 @@ else()
     set(COMPILER_GCCLIKE 0)
 endif()
 
-if (NOT UNIX)
-    if (NOT ZLIB_INCLUDE_DIR)
-        find_package(ZLIB)
-    endif()
-    if (NOT ZLIB_INCLUDE_DIR)
-        messsage(FATAL_ERROR "ZLib include path is not found. Please specify -DZLIB_INCLUDE_DIR manually.")
-    endif()
-else()
-    find_package(OpenSSL)
-    if (NOT OPENSSL_INCLUDE_DIR)
-        message(FATAL_ERROR "OpenSSL library include files are not found. Please install OpenSSL development library.")
-    endif()
+set(ZSTD_USE_STATIC_LIBS YES)
+
+find_package(ZSTD 1.4.3)
+find_package(ZLIB REQUIRED)
+if (UNIX)
+    find_package(OpenSSL REQUIRED)
 endif()
 
 function(find_required_package package_name package_checkvar)
-    find_package(${package_name} REQUIRED)
+    find_dependency(${package_name})
     if (NOT ${package_checkvar})
         message(FATAL_ERROR
             "\n${package_name} library, which is required for stack trace, is not found.\n"
@@ -86,6 +96,12 @@ endif()
 if (NOT CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
     set(ENABLE_PCOMN_AVX2 NO)
     set(ENABLE_PCOMN_AVX  NO)
+elseif (CMAKE_BUILD_TYPE MATCHES "AVX")
+    if (CMAKE_BUILD_TYPE MATCHES "AVX2")
+        set(ENABLE_PCOMN_AVX2 YES)
+    else()
+        set(ENABLE_PCOMN_AVX YES)
+    endif()
 endif()
 
 if (ENABLE_PCOMN_AVX2 OR ENABLE_PCOMN_AVX)
@@ -128,6 +144,7 @@ add_library(pcommon STATIC
   pcomn_trace.cpp
   pcomn_tracecfg.cpp
 
+  pcomn_binary128.cpp
   pcomn_binascii.cpp
   pcomn_binstream.cpp
   pcomn_cfgparser.cpp
@@ -136,7 +153,9 @@ add_library(pcommon STATIC
   pcomn_fileutils.cpp
   pcomn_fileread.cpp
 
+  pcomn_immutablestr.cpp
   pcomn_mmap.cpp
+  pcomn_netaddr.cpp
   pcomn_path.cpp
   pcomn_rawstream.cpp
   pcomn_regex.cpp
@@ -151,7 +170,13 @@ add_library(pcommon STATIC
   pcomn_zstream.cpp
 
   $<$<NOT:$<PLATFORM_ID:Windows>>:
-  pcomn_crypthash
+  pcomn_blocqueue.cpp
+  pcomn_crypthash.cpp
+  pcomn_pthread.cpp
+  pcomn_semaphore.cpp
+  pcomn_syncobj.cpp
+  $<$<BOOL:${ZSTD_FOUND}>:pcomn_zstd.cpp>
+  unix/pcomn_native_syncobj.cpp
   unix/pcomn_posix_exec.cpp
   unix/pcomn_shutil.cpp
   unix/pcomn_sys.cpp
@@ -160,17 +185,7 @@ add_library(pcommon STATIC
 )
 
 # C++14 required
-target_compile_features(pcommon
-  PUBLIC
-  cxx_alignas
-  cxx_alignof
-  cxx_constexpr
-  cxx_decltype
-  cxx_delegating_constructors
-  cxx_return_type_deduction
-  cxx_relaxed_constexpr
-  cxx_lambda_init_captures
-  )
+target_compile_features(pcommon PUBLIC cxx_std_14)
 
 set_target_properties(pcommon
   PROPERTIES
@@ -197,7 +212,9 @@ target_compile_definitions(pcommon
 target_compile_options(pcommon
   PUBLIC
   $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>:-pthread>
-  $<$<CXX_COMPILER_ID:GNU>:-frecord-gcc-switches>
+  $<$<AND:$<${COMPILE_LANGUAGE_CXX}>,$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>>:-faligned-new>
+
+  $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>:-frecord-gcc-switches>
   $<$<AND:${COMPILER_GCCLIKE},$<BOOL:${DISABLE_PCOMN_AVX}>>:-march=westmere>
   $<$<AND:${COMPILER_GCCLIKE},$<BOOL:${ENABLE_PCOMN_AVX}>>:-march=corei7-avx>
   $<$<AND:${COMPILER_GCCLIKE},$<BOOL:${ENABLE_PCOMN_AVX2}>>:-march=haswell>
@@ -223,10 +240,20 @@ target_link_libraries(pcommon
   $<$<BOOL:${ENABLE_PCOMN_STACKTRACE}>:unwind>
   $<$<BOOL:${ENABLE_PCOMN_STACKTRACE}>:dw>
   $<$<BOOL:${ENABLE_PCOMN_STACKTRACE}>:elf>
+
+  INTERFACE
+  $<$<BOOL:${ZSTD_FOUND}>:zstd>
+  $<$<BOOL:${COMPILER_GCCLIKE}>:OpenSSL::Crypto>
+  $<$<BOOL:${COMPILER_GCCLIKE}>:stdc++fs>
+  $<$<BOOL:${COMPILER_GCCLIKE}>:z>
   )
 
 set_source_files_properties(${T1HA_SOURCEFILES} PROPERTIES
     COMPILE_OPTIONS $<$<BOOL:${CMAKE_OPTIMIZED_BUILD}>:-O3>)
+
+set_source_files_properties(${T1HA_SOURCEDIR}/t1ha0_ia32aes_noavx.c PROPERTIES COMPILE_OPTIONS -maes)
+set_source_files_properties(${T1HA_SOURCEDIR}/t1ha0_ia32aes_avx.c   PROPERTIES COMPILE_OPTIONS "-maes;-mavx")
+set_source_files_properties(${T1HA_SOURCEDIR}/t1ha0_ia32aes_avx2.c  PROPERTIES COMPILE_OPTIONS "-maes;-mavx;-mavx2")
 
 if (ENABLE_PCOMN_UNITTESTS)
   enable_testing()

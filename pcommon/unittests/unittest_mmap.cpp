@@ -1,7 +1,7 @@
 /*-*- tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   unittest_mmap.cpp
- COPYRIGHT    :   Yakov Markovitch, 2007-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2007-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Test for memory-mapping classes.
@@ -88,7 +88,7 @@ void MMapTests::Test_MemMapFile()
    CPPUNIT_LOG_RUN(MMFile = NULL) ;
 
    CPPUNIT_LOG(std::endl) ;
-   CPPUNIT_LOG_EXCEPTION(MMFile.reset(new pcomn::PMemMappedFile(-1)), pcomn::environment_error) ;
+   CPPUNIT_LOG_EXCEPTION(MMFile.reset(new pcomn::PMemMappedFile(-1)), pcomn::system_error) ;
    CPPUNIT_LOG_RUN(fd = pcomn::ensure_ge<pcomn::system_error>(open(name, O_RDONLY), 0)) ;
    CPPUNIT_LOG_EQ(file_size(fd), 66000) ;
    CPPUNIT_LOG_RUN(MMFile.reset(new pcomn::PMemMappedFile(fd, 6000, O_RDONLY))) ;
@@ -222,7 +222,7 @@ void MMapTests::Test_MemMapEmptyFile()
    CPPUNIT_LOG_RUN(pcomn::PMemMapping(CPPUNIT_AT_TESTDIR("unittest.1byte.lst").c_str())) ;
    // Creating a memory mapping over a non-regular file (here "/dev/null" or "NUL") is an error.
    CPPUNIT_LOG_EXCEPTION(pcomn::PMemMapping(PCOMN_NULL_FILE_NAME, 0, 1),
-                         pcomn::environment_error) ;
+                         pcomn::system_error) ;
    // But, as it is zero-length, zero-length zero-offset mapping is allowed
    CPPUNIT_LOG_IS_NULL(pcomn::PMemMapping(PCOMN_NULL_FILE_NAME)) ;
 

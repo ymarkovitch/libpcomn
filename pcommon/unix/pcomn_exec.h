@@ -3,7 +3,7 @@
 #define __PCOMN_EXEC_UNIX_H
 /*******************************************************************************
  FILE         :   pcomn_exec.h
- COPYRIGHT    :   Yakov Markovitch, 2011-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2011-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Process exec/spawn/popen routines for UNIX/Linux platform.

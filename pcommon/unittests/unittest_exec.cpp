@@ -1,7 +1,7 @@
 /*-*- tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   unittest_exec.cpp
- COPYRIGHT    :   Yakov Markovitch, 2011-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2011-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Unittests for exec/spawn/fork utilities and shell utilities.
@@ -272,7 +272,7 @@ void ShutilTests::Test_Shutil_Rm()
    CPPUNIT_LOG_EQUAL(sys::fileaccess(str::cstr(f_20)), sys::ACC_EXISTS) ;
 
    // File doesn't exist
-   CPPUNIT_LOG_EXCEPTION(rm(f_q), environment_error) ;
+   CPPUNIT_LOG_EXCEPTION(rm(f_q), system_error) ;
    CPPUNIT_LOG_EQUAL(sys::fileaccess(str::cstr(f_10)), sys::ACC_EXISTS) ;
    CPPUNIT_LOG_EQUAL(sys::fileaccess(str::cstr(f_15)), sys::ACC_EXISTS) ;
 
@@ -285,10 +285,10 @@ void ShutilTests::Test_Shutil_Rm()
       CPPUNIT_LOG_ASSERT(rm("10.txt", RM_ALLOW_RELPATH)) ;
       CPPUNIT_LOG_EQUAL(sys::fileaccess(str::cstr(f_10)), sys::ACC_NOEXIST) ;
 
-      CPPUNIT_LOG_EXCEPTION(rm(f_10), environment_error) ;
-      CPPUNIT_LOG_EXCEPTION(rm("10.txt", RM_ALLOW_RELPATH), environment_error) ;
+      CPPUNIT_LOG_EXCEPTION(rm(f_10), system_error) ;
+      CPPUNIT_LOG_EXCEPTION(rm("10.txt", RM_ALLOW_RELPATH), system_error) ;
       CPPUNIT_LOG_IS_FALSE(rm("10.txt", RM_IGNORE_ERRORS)) ;
-      CPPUNIT_LOG_EXCEPTION(rm("10.txt", RM_ALLOW_RELPATH), environment_error) ;
+      CPPUNIT_LOG_EXCEPTION(rm("10.txt", RM_ALLOW_RELPATH), system_error) ;
       CPPUNIT_LOG_EXCEPTION(rm("10.txt", RM_IGNORE_NEXIST), std::invalid_argument) ;
       // If RM_IGNORE_NEXIST is set, returns "true"
       CPPUNIT_LOG_ASSERT(rm("10.txt", RM_ALLOW_RELPATH|RM_IGNORE_NEXIST)) ;
@@ -298,7 +298,7 @@ void ShutilTests::Test_Shutil_Rm()
       CPPUNIT_LOG_ASSERT(rm(f_15)) ;
       CPPUNIT_LOG_EQUAL(sys::fileaccess(str::cstr(f_15)), sys::ACC_NOEXIST) ;
 
-      CPPUNIT_LOG_EXCEPTION(rm(f_star), environment_error) ;
+      CPPUNIT_LOG_EXCEPTION(rm(f_star), system_error) ;
       CPPUNIT_LOG_RUN(generate_seqn_file<4>(f_star, 0, 0)) ;
       CPPUNIT_LOG_EQUAL(sys::fileaccess(str::cstr(f_star)), sys::ACC_EXISTS) ;
       CPPUNIT_LOG_ASSERT(rm(f_star)) ;
@@ -320,7 +320,7 @@ void ShutilTests::Test_Shutil_Rm()
       CPPUNIT_LOG_RUN(PCOMN_ENSURE_POSIX(mkdir(strprintf("%s/newdir/dir01", ddir).c_str(), 0755), "mkdir")) ;
       CPPUNIT_LOG_RUN(generate_seqn_file<4>(strprintf("%s/newdir/15.txt", ddir), 5, 21)) ;
       CPPUNIT_LOG_EQUAL(sys::fileaccess(str::cstr(strprintf("%s/newdir/15.txt", ddir))), sys::ACC_EXISTS) ;
-      CPPUNIT_LOG_EXCEPTION(rm(strprintf("%s/newdir", ddir)), environment_error) ;
+      CPPUNIT_LOG_EXCEPTION(rm(strprintf("%s/newdir", ddir)), system_error) ;
       CPPUNIT_LOG_IS_FALSE(rm(strprintf("%s/newdir", ddir), RM_IGNORE_ERRORS)) ;
       CPPUNIT_LOG_EQUAL(sys::fileaccess(str::cstr(strprintf("%s/newdir", ddir)), X_OK), sys::ACC_EXISTS) ;
       CPPUNIT_LOG_ASSERT(rm(strprintf("%s/newdir", ddir), RM_RECURSIVE)) ;
@@ -331,8 +331,8 @@ void ShutilTests::Test_Shutil_Rm()
       CPPUNIT_LOG_EXCEPTION(rm("/foo"), std::invalid_argument) ;
       CPPUNIT_LOG_EXCEPTION(rm("/foo/bar/.."), std::invalid_argument) ;
 
-      CPPUNIT_LOG_EXCEPTION(rm("/foo/bar"), environment_error) ;
-      CPPUNIT_LOG_EXCEPTION(rm("/foo", RM_ALLOW_ROOTDIR), environment_error) ;
+      CPPUNIT_LOG_EXCEPTION(rm("/foo/bar"), system_error) ;
+      CPPUNIT_LOG_EXCEPTION(rm("/foo", RM_ALLOW_ROOTDIR), system_error) ;
    }
    catch (const std::exception &)
    {

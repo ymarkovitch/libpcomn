@@ -1,7 +1,7 @@
 /*-*- tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   unittest_hashclosed.cpp
- COPYRIGHT    :   Yakov Markovitch, 2008-2018. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2008-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Unittests for a closed hashtable.
@@ -38,7 +38,7 @@ class ClosedHashTests : public CppUnit::TestFixture {
    protected:
       // A hashtable with a hash function that allows to create predictable collisions,
       // which enables testing of a hash table behaviour in the presence of collisions.
-      typedef pcomn::closed_hashtable<long, pcomn::identity, pcomn::hash_identity<long> > test_inthashtable ;
+      typedef pcomn::closed_hashtable<long, pcomn::identity, pcomn::hash_identity> test_inthashtable ;
 
    private:
       void Test_Hashtable_Bucket() ;

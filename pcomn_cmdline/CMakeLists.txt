@@ -7,7 +7,7 @@
 # PROGRAMMED BY:  Yakov Markovitch
 # CREATION DATE:  29 Nov 2017
 #------------------------------------------------------------------------------
-cmake_minimum_required(VERSION 3.5.2)
+cmake_minimum_required(VERSION 3.12)
 
 project(libpcomn_cmdline)
 
