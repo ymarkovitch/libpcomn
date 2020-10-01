@@ -488,6 +488,13 @@ void UtilityTests::Test_Folding()
 
    cc = C::N4 ;
    CPPUNIT_LOG_IS_FALSE((is_in(cc, C::N5, C::N1))) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   char c = '\n' + 64 ;
+   CPPUNIT_LOG_IS_FALSE((is_in(c, '\n', '\t'))) ;
+   CPPUNIT_LOG_RUN(c = '\t') ;
+   CPPUNIT_LOG_ASSERT((is_in(c, '\n', '\t'))) ;
+
 }
 
 /*******************************************************************************
