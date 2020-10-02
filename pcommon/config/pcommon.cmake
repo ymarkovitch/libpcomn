@@ -439,6 +439,30 @@ function(apply_project_requirements target1)
     endif()
 endfunction()
 
+function(unittest_NOSIMD NAME)
+    unittest(${ARGV})
+    set_source_files_properties("${NAME}.cpp" PROPERTIES COMPILE_OPTIONS "-march=x86-64")
+endfunction(unittest_NOSIMD)
+
+function(unittest_SSE42 NAME)
+    unittest(${ARGV})
+    set_source_files_properties("${NAME}.cpp" PROPERTIES COMPILE_OPTIONS "-march=westmere")
+endfunction(unittest_SSE42)
+
+function(unittest_AVX NAME)
+    if (PCOMN_HOST_HAS_AVX)
+        unittest(${ARGV})
+        set_source_files_properties("${NAME}.cpp" PROPERTIES COMPILE_OPTIONS "-march=corei7-avx")
+    endif()
+endfunction(unittest_AVX)
+
+function(unittest_AVX2 NAME)
+    if (PCOMN_HOST_HAS_AVX2)
+        unittest(${ARGV})
+        set_source_files_properties("${NAME}.cpp" PROPERTIES COMPILE_OPTIONS "-march=haswell")
+    endif()
+endfunction(unittest_AVX2)
+
 #
 # Prepare
 #
