@@ -587,23 +587,19 @@ void PDiagBase::setlog(int fd)
    setlog(fd, fd != STDERR_FILENO && fd != STDOUT_FILENO) ;
 }
 
-void PDiagBase::setlog(int fd, bool owned)
+void PDiagBase::do_setlog(int fd, bool owned, bool reset_fname)
 {
    ctx::LOCK() ;
+   auto lock_guard = pcomn::make_finalizer(&ctx::UNLOCK) ;
 
-   *ctx::log_name = 0 ;
-   do_setlog(fd, owned) ;
-
-   ctx::UNLOCK() ;
-}
-
-void PDiagBase::do_setlog(int fd, bool owned)
-{
    if (fd == ctx::log_fd)
    {
       ctx::log_owned = owned ;
       return ;
    }
+
+   if (reset_fname)
+      *ctx::log_name = 0 ;
 
    const int  prev_fd = ctx::log_fd ;
    const bool prev_owned = ctx::log_owned ;
@@ -612,9 +608,15 @@ void PDiagBase::do_setlog(int fd, bool owned)
    ctx::log_owned = false ;
 
    if (prev_fd >= 0 && prev_owned)
-      ::close(prev_fd) ;
+   {
+      if (fd < 0)
+         lock_guard.finalize() ;
 
-   if (fd < 0)
+      ::close(prev_fd) ;
+      if (fd < 0)
+         return ;
+   }
+   else if (fd < 0)
       return ;
 
    if (check_diag_fd(fd))
@@ -636,15 +638,17 @@ const char *PDiagBase::logname()
 
 void PDiagBase::setlog(const char *logname)
 {
+   if (!logname || !*logname) {
+      do_setlog(-1, false, true) ;
+      return ;
+   }
+
    ctx::LOCK() ;
 
-   if (!logname || !*logname)
-      do_setlog(-1, false) ;
-
-   else if (!stricmp(logname, "stdout"))
-      do_setlog(STDOUT_FILENO, false) ;
+   if (!stricmp(logname, "stdout"))
+      do_setlog(STDOUT_FILENO, false, false) ;
    else if (!stricmp(logname, "stderr") || !stricmp(logname, "stdlog"))
-      do_setlog(STDERR_FILENO, false) ;
+      do_setlog(STDERR_FILENO, false, false) ;
    else
    {
       const int fd = open(logname,
@@ -656,7 +660,7 @@ void PDiagBase::setlog(const char *logname)
       {
          strncpy(ctx::log_name, logname, sizeof ctx::log_name - 1) ;
          ctx::log_name[sizeof ctx::log_name - 1] = 0 ;
-         do_setlog(fd, true) ;
+         do_setlog(fd, true, false) ;
       }
    }
 
