@@ -780,7 +780,7 @@ struct stringify_item {
       template<typename T>
       void operator()(const T &value) const
       {
-         (_count++ ? (_result += _delimiter) : _result) += pcomn::unit::to_string(value) ;
+         (_count++ && _delimiter ? (_result += _delimiter) : _result) += pcomn::unit::to_string(value) ;
       }
    private:
       std::string &     _result ;
@@ -812,9 +812,13 @@ template<typename Seq, char d, char b, char a>
 std::string assertion_traits_sequence<Seq, d, b, a>::toString(const Seq &value)
 {
    using namespace std ;
-   std::string result (1, b) ;
+   std::string result ;
+   if (b)
+      result += b ;
    std::for_each(begin(value), end(value), stringify_item(result, d)) ;
-   return result.append(1, a) ;
+   if (a)
+      result += a ;
+   return result ;
 }
 
 template<typename Unordered>
