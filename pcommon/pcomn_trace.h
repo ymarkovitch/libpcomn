@@ -172,7 +172,7 @@ class _PCOMNEXP PDiagBase {
       /// descriptors to this method.
       static void setlog(int fd) ;
 
-      static void setlog(int fd, bool own) ;
+      static void setlog(int fd, bool own) { do_setlog(fd, own, true) ; }
 
       /// Set trace log stream.
       /// The function recognises "special" names @b stdout, @b stderr, and @b stdlog
@@ -191,6 +191,8 @@ class _PCOMNEXP PDiagBase {
                                  const char *fname, unsigned line) ;
 
       static const PTraceSuperGroup &null_supergroup ;
+
+      static void do_setlog(int fd, bool own, bool reset_fname) ;
 } ;
 
 /******************************************************************************/

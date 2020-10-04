@@ -582,24 +582,24 @@ static void output_fdlog_msg(void *data, LogLevel level, const char *fmt, ...)
 /*******************************************************************************
  PDiagBase: log handling and trace output
 *******************************************************************************/
-#define UNLOCK_RETURN   do { ctx::UNLOCK() ; return ; } while(false)
-
 void PDiagBase::setlog(int fd)
 {
    setlog(fd, fd != STDERR_FILENO && fd != STDOUT_FILENO) ;
 }
 
-void PDiagBase::setlog(int fd, bool owned)
+void PDiagBase::do_setlog(int fd, bool owned, bool reset_fname)
 {
    ctx::LOCK() ;
+   auto lock_guard = pcomn::make_finalizer(&ctx::UNLOCK) ;
 
    if (fd == ctx::log_fd)
    {
       ctx::log_owned = owned ;
-      UNLOCK_RETURN ;
+      return ;
    }
 
-   *ctx::log_name = 0 ;
+   if (reset_fname)
+      *ctx::log_name = 0 ;
 
    const int  prev_fd = ctx::log_fd ;
    const bool prev_owned = ctx::log_owned ;
@@ -610,14 +610,14 @@ void PDiagBase::setlog(int fd, bool owned)
    if (prev_fd >= 0 && prev_owned)
    {
       if (fd < 0)
-         ctx::UNLOCK() ;
+         lock_guard.finalize() ;
 
       ::close(prev_fd) ;
       if (fd < 0)
          return ;
    }
    else if (fd < 0)
-      UNLOCK_RETURN ;
+      return ;
 
    if (check_diag_fd(fd))
    {
@@ -629,8 +629,6 @@ void PDiagBase::setlog(int fd, bool owned)
       else if (ctx::log_fd == STDOUT_FILENO)
          strcpy(ctx::log_name, "stdout") ;
    }
-
-   UNLOCK_RETURN ;
 }
 
 const char *PDiagBase::logname()
@@ -640,17 +638,17 @@ const char *PDiagBase::logname()
 
 void PDiagBase::setlog(const char *logname)
 {
+   if (!logname || !*logname) {
+      do_setlog(-1, false, true) ;
+      return ;
+   }
+
    ctx::LOCK() ;
 
-   if (!logname || !*logname)
-      setlog(-1) ;
-
-   else if (!stricmp(logname, "stdout"))
-      setlog(STDOUT_FILENO) ;
-
+   if (!stricmp(logname, "stdout"))
+      do_setlog(STDOUT_FILENO, false, false) ;
    else if (!stricmp(logname, "stderr") || !stricmp(logname, "stdlog"))
-      setlog(STDERR_FILENO) ;
-
+      do_setlog(STDERR_FILENO, false, false) ;
    else
    {
       const int fd = open(logname,
@@ -662,7 +660,7 @@ void PDiagBase::setlog(const char *logname)
       {
          strncpy(ctx::log_name, logname, sizeof ctx::log_name - 1) ;
          ctx::log_name[sizeof ctx::log_name - 1] = 0 ;
-         setlog(fd) ;
+         do_setlog(fd, true, false) ;
       }
    }
 
