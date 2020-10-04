@@ -77,7 +77,7 @@ class _PCOMNEXP re2ex : public regex_matcher {
          OPT_LITERAL    = 0x0008, /**< Interpret string as literal, not regexp */
          OPT_NONL       = 0x0010, /**< Never match \n, even if it is in regexp */
          OPT_NOCAPTURE  = 0x0020, /**< Parse all parens as non-capturing */
-         OPT_NOCASE     = 0x0030  /**< Case-insensitibe match */
+         OPT_NOCASE     = 0x0040  /**< Case-insensitibe match */
       } ;
 
       re2ex() : ancestor(create_pattern(strslice(), 0)) {}
