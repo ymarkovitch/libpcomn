@@ -618,6 +618,12 @@ constexpr inline if_integer_t<I, size_t> cellndx(size_t pos)
    return pos / int_traits<I>::bitsize ;
 }
 
+template<typename I>
+constexpr inline if_integer_t<I, size_t> cellcount(size_t bitcount)
+{
+   return cellndx<I>(bitcount + int_traits<I>::bitsize - 1) ;
+}
+
 /// Given a bit position, get the bit index inside the corresponding cell.
 /// @return 0 <= bitndx(pos) < bisizeof(I)
 template<typename I>
