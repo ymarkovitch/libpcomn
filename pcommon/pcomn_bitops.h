@@ -644,6 +644,18 @@ constexpr inline if_integer_t<I> tailmask(size_t bitcnt)
    return ~(~I(1) << bitndx<I>(bitcnt - 1)) ;
 }
 
+template<typename I>
+constexpr inline if_integer_t<I> headmask(size_t bitcnt)
+{
+
+   return
+      #ifdef PCOMN_PL_BMI2
+      !__builtin_is_constant_evaluated() ? ~_bzhi_u64(-1, bitndx<I>(bitcnt)) :
+      #endif
+
+      ~tailmask<I>(bitcnt) | -!bitndx<I>(bitcnt) ;
+}
+
 /// Get the end of the range of equal bits starting from the given position of specified
 /// word.
 template<typename I>

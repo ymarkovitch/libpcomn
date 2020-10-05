@@ -37,6 +37,7 @@ class BitOperationsTests : public CppUnit::TestFixture {
       void Test_OneOf() ;
       void Test_Log2() ;
       void Test_BoolsToBits() ;
+      void Test_CellOps() ;
 
       CPPUNIT_TEST_SUITE(BitOperationsTests) ;
 
@@ -53,6 +54,7 @@ class BitOperationsTests : public CppUnit::TestFixture {
       CPPUNIT_TEST(Test_OneOf) ;
       CPPUNIT_TEST(Test_Log2) ;
       CPPUNIT_TEST(Test_BoolsToBits) ;
+      CPPUNIT_TEST(Test_CellOps) ;
 
       CPPUNIT_TEST_SUITE_END() ;
 
@@ -597,6 +599,90 @@ void BitOperationsTests::Test_BoolsToBits()
                                          0,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1}),
       uint64_t(0b11101111'11111110'11111111'11111111'11111111'11111110'00011111'11111110)) ;
 
+}
+
+void BitOperationsTests::Test_CellOps()
+{
+   using namespace bitop ;
+
+   CPPUNIT_LOG_EQ(cellndx<uint64_t>(0), 0) ;
+   CPPUNIT_LOG_EQ(cellndx<uint64_t>(1), 0) ;
+   CPPUNIT_LOG_EQ(cellndx<uint64_t>(63), 0) ;
+   CPPUNIT_LOG_EQ(cellndx<uint64_t>(64), 1) ;
+   CPPUNIT_LOG_EQ(cellndx<uint64_t>(127), 1) ;
+   CPPUNIT_LOG_EQ(cellndx<uint64_t>(128), 2) ;
+
+   CPPUNIT_LOG_EQ(cellndx<uint8_t>(0), 0) ;
+   CPPUNIT_LOG_EQ(cellndx<uint8_t>(1), 0) ;
+   CPPUNIT_LOG_EQ(cellndx<uint8_t>(63), 7) ;
+   CPPUNIT_LOG_EQ(cellndx<uint8_t>(64), 8) ;
+   CPPUNIT_LOG_EQ(cellndx<uint8_t>(127), 15) ;
+   CPPUNIT_LOG_EQ(cellndx<uint8_t>(128), 16) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_EQ(cellcount<uint64_t>(0), 0) ;
+   CPPUNIT_LOG_EQ(cellcount<uint64_t>(1), 1) ;
+   CPPUNIT_LOG_EQ(cellcount<uint64_t>(63), 1) ;
+   CPPUNIT_LOG_EQ(cellcount<uint64_t>(64), 1) ;
+   CPPUNIT_LOG_EQ(cellcount<uint64_t>(65), 2) ;
+   CPPUNIT_LOG_EQ(cellcount<uint64_t>(127), 2) ;
+   CPPUNIT_LOG_EQ(cellcount<uint64_t>(128), 2) ;
+   CPPUNIT_LOG_EQ(cellcount<uint64_t>(129), 3) ;
+
+   CPPUNIT_LOG_EQ(cellcount<uint8_t>(0), 0) ;
+   CPPUNIT_LOG_EQ(cellcount<uint8_t>(1), 1) ;
+   CPPUNIT_LOG_EQ(cellcount<uint8_t>(63), 8) ;
+   CPPUNIT_LOG_EQ(cellcount<uint8_t>(64), 8) ;
+   CPPUNIT_LOG_EQ(cellcount<uint8_t>(65), 9) ;
+   CPPUNIT_LOG_EQ(cellcount<uint8_t>(127), 16) ;
+   CPPUNIT_LOG_EQ(cellcount<uint8_t>(128), 16) ;
+   CPPUNIT_LOG_EQ(cellcount<uint8_t>(129), 17) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_EQUAL(tailmask<uint64_t>(0),   uint64_t(0b11111111'11111111'11111111'11111111'11111111'11111111'11111111'11111111)) ;
+   CPPUNIT_LOG_EQUAL(tailmask<uint64_t>(5),   uint64_t(0b00000000'00000000'00000000'00000000'00000000'00000000'00000000'00011111)) ;
+   CPPUNIT_LOG_EQUAL(tailmask<uint64_t>(64),  uint64_t(0b11111111'11111111'11111111'11111111'11111111'11111111'11111111'11111111)) ;
+   CPPUNIT_LOG_EQUAL(tailmask<uint64_t>(65),  uint64_t(0b1)) ;
+   CPPUNIT_LOG_EQUAL(tailmask<uint64_t>(127), uint64_t(0b01111111'11111111'11111111'11111111'11111111'11111111'11111111'11111111)) ;
+
+   CPPUNIT_LOG_EQUAL(headmask<uint64_t>(0),   uint64_t(0b11111111'11111111'11111111'11111111'11111111'11111111'11111111'11111111)) ;
+   CPPUNIT_LOG_EQUAL(headmask<uint64_t>(5),   uint64_t(0b11111111'11111111'11111111'11111111'11111111'11111111'11111111'11100000)) ;
+   CPPUNIT_LOG_EQUAL(headmask<uint64_t>(63),  uint64_t(0b10000000'00000000'00000000'00000000'00000000'00000000'00000000'00000000)) ;
+   CPPUNIT_LOG_EQUAL(headmask<uint64_t>(64),  uint64_t(0b11111111'11111111'11111111'11111111'11111111'11111111'11111111'11111111)) ;
+
+   CPPUNIT_LOG_EQUAL(tailmask<uint8_t>(0), uint8_t(0b11111111)) ;
+   CPPUNIT_LOG_EQUAL(tailmask<uint8_t>(1), uint8_t(0b00000001)) ;
+   CPPUNIT_LOG_EQUAL(tailmask<uint8_t>(2), uint8_t(0b00000011)) ;
+   CPPUNIT_LOG_EQUAL(tailmask<uint8_t>(3), uint8_t(0b00000111)) ;
+   CPPUNIT_LOG_EQUAL(tailmask<uint8_t>(4), uint8_t(0b00001111)) ;
+   CPPUNIT_LOG_EQUAL(tailmask<uint8_t>(5), uint8_t(0b00011111)) ;
+   CPPUNIT_LOG_EQUAL(tailmask<uint8_t>(6), uint8_t(0b00111111)) ;
+   CPPUNIT_LOG_EQUAL(tailmask<uint8_t>(7), uint8_t(0b01111111)) ;
+   CPPUNIT_LOG_EQUAL(tailmask<uint8_t>(8), uint8_t(0b11111111)) ;
+   CPPUNIT_LOG_EQUAL(tailmask<uint8_t>(9), uint8_t(0b00000001)) ;
+
+   CPPUNIT_LOG_EQUAL(headmask<uint8_t>(0), uint8_t(0b11111111)) ;
+   CPPUNIT_LOG_EQUAL(headmask<uint8_t>(1), uint8_t(0b11111110)) ;
+   CPPUNIT_LOG_EQUAL(headmask<uint8_t>(2), uint8_t(0b11111100)) ;
+   CPPUNIT_LOG_EQUAL(headmask<uint8_t>(3), uint8_t(0b11111000)) ;
+   CPPUNIT_LOG_EQUAL(headmask<uint8_t>(4), uint8_t(0b11110000)) ;
+   CPPUNIT_LOG_EQUAL(headmask<uint8_t>(5), uint8_t(0b11100000)) ;
+   CPPUNIT_LOG_EQUAL(headmask<uint8_t>(6), uint8_t(0b11000000)) ;
+   CPPUNIT_LOG_EQUAL(headmask<uint8_t>(7), uint8_t(0b10000000)) ;
+   CPPUNIT_LOG_EQUAL(headmask<uint8_t>(8), uint8_t(0b11111111)) ;
+   CPPUNIT_LOG_EQUAL(headmask<uint8_t>(9), uint8_t(0b11111110)) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   // Get bits [3:6) (note the bit addressing is from the _left_)
+   CPPUNIT_LOG_EQ(0b01101000 & headmask<uint8_t>(3) & tailmask<uint8_t>(6), 0b00'101'000) ;
+   CPPUNIT_LOG_EQ(0b01110100 & headmask<uint8_t>(3) & tailmask<uint8_t>(6), 0b00'110'000) ;
+   CPPUNIT_LOG_EQ(0b01110101 & headmask<uint8_t>(3) & tailmask<uint8_t>(6), 0b00'110'000) ;
+
+   // Get bits 0:8
+   CPPUNIT_LOG_EQ(0b11110100 & headmask<uint8_t>(0) & tailmask<uint8_t>(8), 0b11110100) ;
 }
 
 /*******************************************************************************
