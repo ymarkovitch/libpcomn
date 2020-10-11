@@ -772,10 +772,11 @@ void throw_arg_assert(const char *assertion_text, const char *function_name)
    char message[512] ;
    if (unlikely(!assertion_text))
       assertion_text = "" ;
-   if (unlikely(!function_name))
-      function_name = "" ;
-   snprintf(message, sizeof message, "Arguments assertion '%s' failed%s%s.",
-            assertion_text, *function_name ? " in " : "", function_name) ;
+   if (function_name && *function_name)
+      snprintf(message, sizeof message, "Arguments assertion '%s' failed in function '%s'.",
+               assertion_text, function_name) ;
+   else
+      snprintf(message, sizeof message, "Arguments assertion '%s' failed.", assertion_text) ;
    throw_exception<X>(message) ;
 }
 }
