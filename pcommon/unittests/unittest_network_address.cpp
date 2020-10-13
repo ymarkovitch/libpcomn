@@ -304,6 +304,9 @@ void IPAddressTests::Test_IPv6_Address_Parser()
     CPPUNIT_LOG_EQUAL(ipv6_addr("::1"),
                       ipv6_addr(0, 0, 0, 0, 0, 0, 0, 1)) ;
 
+    CPPUNIT_LOG_EQUAL(ipv6_addr("2001:db8:ac10:fe01:feed:babe:cafe::"),
+                      ipv6_addr(0x2001, 0xDB8, 0xAC10, 0xFE01, 0xFEED, 0xBABE, 0xCAFE, 0)) ;
+
     CPPUNIT_LOG_EQUAL(ipv6_addr("::ffff:0.0.0.0"),
                       ipv6_addr(0, 0, 0, 0, 0, 0xffff, 0, 0)) ;
 
@@ -446,6 +449,9 @@ void IPAddressTests::Test_IPv6_Subnet_Address()
 
     CPPUNIT_LOG_EQUAL(ipv6_subnet("::1/128"),
                       ipv6_subnet(0, 0, 0, 0, 0, 0, 0, 1, 128)) ;
+
+    CPPUNIT_LOG_EQUAL(ipv6_subnet("2001:db8:ac10:fe01:feed:babe:cafe::/127"),
+                      ipv6_subnet(0x2001, 0xDB8, 0xAC10, 0xFE01, 0xFEED, 0xBABE, 0xCAFE, 0, 127)) ;
 
     CPPUNIT_LOG(std::endl) ;
 

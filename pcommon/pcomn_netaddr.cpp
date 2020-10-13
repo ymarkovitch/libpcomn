@@ -310,7 +310,7 @@ binary128_t ipv6_addr::from_string(const strslice &address_string, std::errc *ec
                 }
 
                 // '::' inside the address may occur at most once
-                IPV6_STRING_ENSURE(!zrun_begin.phextet & ++hextet_count < 8) ;
+                IPV6_STRING_ENSURE(!zrun_begin.phextet & ++hextet_count <= 8) ;
 
                 // Fall through
             case HeadColon:
