@@ -651,7 +651,8 @@ __noreturn void backtrace_handler(int, siginfo_t *info, void *ctx)
     {
         putmsg("Forwarding signal\n") ;
 
-        psiginfo(info, nullptr) ;
+        // FIXME: libc's both psiginfo and psignal are signal-unsafe, write own function.
+        //psiginfo(info, nullptr) ;
         // Try to forward the signal.
         raise(info->si_signo) ;
         // Terminate the process immediately.
