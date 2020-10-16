@@ -36,6 +36,13 @@
  bitop::rotr      - Rotate Right
 
  bitop::bitextend - Get the integral value filled with the specified bit value.
+
+ bitop::array_bools_to_bits<N> - Convert std::array<bool,N> to uintN_t
+ bitop::bits_to_array_bools<N> - Convert uintN_t to std::array<bool,N>
+
+ bitop::bits_extract - Extract bits from unsigned integer at the bit locations
+                       specified by `mask` to contiguous low bits of the result
+                       (see BMI2 PEXT instruction).
 *******************************************************************************/
 
 #include <pcomn_meta.h>
@@ -341,7 +348,7 @@ struct int_traits {
       typedef typename std::make_signed_t<type>    stype ;
       typedef typename std::make_unsigned_t<type>  utype ;
 
-      static constexpr const bool     is_signed = std::numeric_limits<type>::is_signed ;
+      static constexpr const bool     is_signed = std::is_signed<type>::value ;
       static constexpr const unsigned bitsize = bitsizeof(type) ;
       static constexpr const type     ones = (type)~type() ;
       static constexpr const type     signbit = (type)((type)1 << (bitsize - 1)) ;
@@ -376,10 +383,10 @@ template<typename T, typename R = T> struct
 if_not_integer : disable_if<is_integer<T>::value, R> {} ;
 
 template<typename T, typename R = T> struct
-if_signed_int : std::enable_if<(is_integer<T>::value && std::numeric_limits<T>::is_signed), R> {} ;
+if_signed_int : std::enable_if<(is_integer<T>::value && std::is_signed<T>::value), R> {} ;
 
 template<typename T, typename R = T> struct
-if_unsigned_int : std::enable_if<(is_integer<T>::value && !std::numeric_limits<T>::is_signed), R> {} ;
+if_unsigned_int : std::enable_if<(is_integer<T>::value && !std::is_signed<T>::value), R> {} ;
 
 template<typename T, typename R = T> struct
 if_numeric : std::enable_if<is_numeric<T>::value, R> {} ;
@@ -976,6 +983,56 @@ inline std::array<bool, 64> bits_to_array_bools(uint64_t bits)
    return bits_to_array_bools_generic(bits) ;
 }
 
+/**@}*/
+
+/***************************************************************************//**
+ Extract bits from unsigned integer `source` at the corresponding bit locations
+ specified by `mask` to contiguous low bits of the result; the remaining upper
+ bits in the result are set to zero.
+
+ Matches the logic of PEXT - Parallel Bits Extract from BMI2 ISA, and on platforms
+ supporting BMI2 is implemented with this instruction.
+
+ bits_extract<uint8_t>(0b11110010, 0b00100111) -> 0b1010
+ bits_extract<uint8_t>(0b11110000, 0b10100000) -> 0b11 ;
+
+ bits_extract<uint32_t>(0b11110000'00000000'00000000'10000010,
+                        0b00100001'00000000'00000000'11111111) -> 0b1010000010
+*******************************************************************************/
+/**@{*/
+#ifdef PCOMN_PL_BMI2
+template<typename I>
+inline if_unsigned_int_t<I> bits_extract(I source, I mask)
+{
+   return bitsizeof(I) <= 32 ? _pext_u32(source, mask) : _pext_u64(source, mask) ;
+}
+#else
+template<typename I>
+inline if_unsigned_int_t<I> bits_extract(I source, I mask)
+{
+   if (mask == bitextend<I>(1))
+      return source ;
+
+   I result = 0 ;
+   for (unsigned result_bitpos = 0 ; mask ; ++result_bitpos)
+   {
+      const unsigned bitpos =
+         #ifdef PCOMN_GCC_INTRINSICS
+         // In absence of BMI, __builtin_ctz() is slightly faster than bitop::rzcnt();
+         // with BMI there's no difference.
+         bitsizeof(mask) <= 32 ? __builtin_ctz(mask) : __builtin_ctzl(mask)
+         #else
+         rzcnt(mask)
+         #endif
+         ;
+
+      (mask >>= bitpos) >>= 1 ;
+      result |= ((source >>= bitpos) & 1) << result_bitpos ;
+      source >>= 1 ;
+   }
+   return result ;
+}
+#endif
 /**@}*/
 
 /*******************************************************************************

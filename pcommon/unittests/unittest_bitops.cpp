@@ -37,6 +37,7 @@ class BitOperationsTests : public CppUnit::TestFixture {
       void Test_OneOf() ;
       void Test_Log2() ;
       void Test_BoolsToBits() ;
+      void Test_BitsExtract() ;
       void Test_CellOps() ;
 
       CPPUNIT_TEST_SUITE(BitOperationsTests) ;
@@ -54,6 +55,7 @@ class BitOperationsTests : public CppUnit::TestFixture {
       CPPUNIT_TEST(Test_OneOf) ;
       CPPUNIT_TEST(Test_Log2) ;
       CPPUNIT_TEST(Test_BoolsToBits) ;
+      CPPUNIT_TEST(Test_BitsExtract) ;
       CPPUNIT_TEST(Test_CellOps) ;
 
       CPPUNIT_TEST_SUITE_END() ;
@@ -599,6 +601,57 @@ void BitOperationsTests::Test_BoolsToBits()
                                          0,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1}),
       uint64_t(0b11101111'11111110'11111111'11111111'11111111'11111110'00011111'11111110)) ;
 
+}
+
+void BitOperationsTests::Test_BitsExtract()
+{
+   using namespace bitop ;
+
+   CPPUNIT_LOG_EQUAL(bits_extract(uint32_t(0b11110000'00000000'00000000'00000000),
+                                  uint32_t(0)),
+                     uint32_t(0)) ;
+
+   CPPUNIT_LOG_EQUAL(bits_extract(uint32_t(0b11110000'00000000'00000000'00000000),
+                                  uint32_t(-1)),
+                     uint32_t(0b11110000'00000000'00000000'00000000)) ;
+
+   CPPUNIT_LOG_EQUAL(bits_extract(uint32_t(0b11110000'00000000'00000000'00000000),
+                                  uint32_t(0b10100000'00000000'00000000'00000000)),
+                     uint32_t(0b11)) ;
+   CPPUNIT_LOG_EQUAL(bits_extract(uint32_t(0b11110000'00000000'00000000'00000000),
+                                  uint32_t(0b10100000'00000000'00000000'00000001)),
+                     uint32_t(0b110)) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_EQUAL(bits_extract(uint64_t(0b11110000'00000000'00000000'00000000'00000000'00000000'00000000'10000010),
+                                  uint64_t(0)),
+                     uint64_t(0)) ;
+
+   CPPUNIT_LOG_EQUAL(bits_extract(uint64_t(0b11110000'00000000'00000000'00000000'00000000'00000000'00000000'10000010),
+                                  uint64_t(-1)),
+                     uint64_t(0b11110000'00000000'00000000'00000000'00000000'00000000'00000000'10000010)) ;
+
+   CPPUNIT_LOG_EQUAL(bits_extract(uint64_t(0b11110000'00000000'00000000'00000000'00000000'00000000'00000000'10000010),
+                                  uint64_t(0b10100000'00000000'00000000'00000000'00000000'00000000'00000000'00000000)),
+                     uint64_t(0b11)) ;
+   CPPUNIT_LOG_EQUAL(bits_extract(uint64_t(0b11110000'00000000'00000000'00000000'00000000'00000000'00000000'10000010),
+                                  uint64_t(0b10100000'00000000'00000000'00000001'00000000'00000000'00000000'00000000)),
+                     uint64_t(0b110)) ;
+
+   CPPUNIT_LOG_EQUAL(bits_extract(uint64_t(0b11110000'00000000'00000000'00000000'00000000'00000000'00000000'10000010),
+                                  uint64_t(0b00100001'00000000'00000000'00000000'00000000'00000000'00000000'11111111)),
+                     uint64_t(0b1010000010)) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_EQUAL(bits_extract(uint8_t(0b11110000), uint8_t(0)), uint8_t(0)) ;
+   CPPUNIT_LOG_EQUAL(bits_extract(uint8_t(0b11110000), uint8_t(-1)), uint8_t(0b11110000)) ;
+
+   CPPUNIT_LOG_EQUAL(bits_extract(uint8_t(0b11110000), uint8_t(0b10100000)), uint8_t(0b11)) ;
+   CPPUNIT_LOG_EQUAL(bits_extract(uint8_t(0b11110000), uint8_t(0b10100001)), uint8_t(0b110)) ;
+
+   CPPUNIT_LOG_EQUAL(bits_extract(uint8_t(0b11110010), uint8_t(0b00100111)), uint8_t(0b1010)) ;
 }
 
 void BitOperationsTests::Test_CellOps()
