@@ -898,7 +898,7 @@ inline std::array<bool, bitsizeof(I)> bits_to_array_bools_generic(I bits)
 
 inline uint16_t array_bools_to_bits(const std::array<bool, 16> &ab)
 {
-   #ifndef PCOMN_PL_SIMD_SSE42
+   #if !defined(PCOMN_PL_SIMD_SSE42) || PCOMN_WORKAROUND(__clang_major__, <6)
    return array_bools_to_bits_generic(ab) ;
 
    #else
@@ -913,7 +913,7 @@ inline uint16_t array_bools_to_bits(const std::array<bool, 16> &ab)
 
 inline std::array<bool, 16> bits_to_array_bools(uint16_t bits)
 {
-   #ifndef PCOMN_PL_SIMD_AVX
+   #if !defined(PCOMN_PL_SIMD_AVX) || PCOMN_WORKAROUND(__clang_major__, <6)
    return bits_to_array_bools_generic(bits) ;
 
    #else
@@ -936,7 +936,7 @@ inline std::array<bool, 16> bits_to_array_bools(uint16_t bits)
 
 inline uint32_t array_bools_to_bits(const std::array<bool, 32> &ab)
 {
-   #ifndef PCOMN_PL_SIMD_AVX2
+   #if !defined(PCOMN_PL_SIMD_AVX2) || PCOMN_WORKAROUND(__clang_major__, <6)
    return array_bools_to_bits_generic(ab) ;
 
    #else
@@ -951,7 +951,7 @@ inline uint32_t array_bools_to_bits(const std::array<bool, 32> &ab)
 
 inline std::array<bool, 32> bits_to_array_bools(uint32_t bits)
 {
-   #ifndef PCOMN_PL_SIMD_AVX2
+   #if !defined(PCOMN_PL_SIMD_AVX2) || PCOMN_WORKAROUND(__clang_major__, <6)
    return bits_to_array_bools_generic(bits) ;
 
    #else
