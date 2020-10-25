@@ -639,12 +639,26 @@ constexpr inline if_integer_t<I, size_t> bitndx(size_t pos)
    return pos & (int_traits<I>::bitsize - 1) ;
 }
 
+/// Get the mask to select a bit from a bitvector cell.
+///
+/// @tparam I  The type of bitvector cell (e.g. uint64_t).
+/// @param pos The position in the bitvector.
+///
+/// bitmask<uint64_t>(63)==0x80'00'00'00'00'00'00'00
+/// bitmask<uint64_t>(67)==0b1000
+///
 template<typename I>
 constexpr inline if_integer_t<I> bitmask(size_t pos)
 {
    return std::integral_constant<I, 1>::value << bitndx<I>(pos) ;
 }
 
+/// Get the mask to select tail bits from the last cell of a bitvector.
+/// @tparam I     The type of bitvector cell (e.g. uint64_t)
+/// @param bitcnt Bitvector size
+///
+/// tailmask<uint64_t>(67)==0b111
+///
 template<typename I>
 constexpr inline if_integer_t<I> tailmask(size_t bitcnt)
 {
@@ -654,7 +668,6 @@ constexpr inline if_integer_t<I> tailmask(size_t bitcnt)
 template<typename I>
 constexpr inline if_integer_t<I> headmask(size_t bitcnt)
 {
-
    return
       #ifdef PCOMN_PL_BMI2
       !__builtin_is_constant_evaluated() ? ~_bzhi_u64(-1, bitndx<I>(bitcnt)) :
