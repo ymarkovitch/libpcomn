@@ -405,6 +405,8 @@ struct auto_buffer final {
                : (*reinterpret_cast<char **>(&_buf) = new char[sz]))
       {}
 
+      auto_buffer(const auto_buffer &) = delete ;
+
       ~auto_buffer()
       {
          if ((void *)_data != &_buf)
@@ -422,6 +424,36 @@ struct auto_buffer final {
 
       PCOMN_NONCOPYABLE(auto_buffer) ;
       PCOMN_NONASSIGNABLE(auto_buffer) ;
+} ;
+
+/***************************************************************************//**
+ @see auto_buffer.
+
+ Use as a stack variable type.
+*******************************************************************************/
+template<typename T, size_t threshold>
+struct uninitialized_auto_array final {
+      typedef T value_type ;
+      typedef value_type *iterator ;
+      typedef const value_type *const_iterator ;
+
+      explicit uninitialized_auto_array(size_t sz) : _buffer(sizeof(T)*sz) {}
+
+      value_type *data() { return static_cast<value_type*>(_buffer.data()) ; }
+      const value_type *data() const { return static_cast<const value_type*>(_buffer.data()) ; }
+
+      iterator begin() { return data() ; }
+      iterator end() { return data() + _size ; }
+
+      const_iterator begin() const { return data() ; }
+      const_iterator end() const { return data() + _size ; }
+
+      size_t size() const { return _size ; }
+      size_t empty() const { return !_size ; }
+
+   private:
+      const size_t _size ;
+      auto_buffer  _buffer ;
 } ;
 
 /***************************************************************************//**
