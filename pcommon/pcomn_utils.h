@@ -435,7 +435,10 @@ struct uninitialized_auto_array final {
       typedef value_type *iterator ;
       typedef const value_type *const_iterator ;
 
-      explicit uninitialized_auto_array(size_t sz) : _buffer(sizeof(T)*sz) {}
+      explicit uninitialized_auto_array(size_t sz) :
+         _size(sz),
+         _buffer(sizeof(T)*sz)
+      {}
 
       value_type *data() { return static_cast<value_type*>(_buffer.data()) ; }
       const value_type *data() const { return static_cast<const value_type*>(_buffer.data()) ; }
