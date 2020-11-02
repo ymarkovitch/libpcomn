@@ -405,8 +405,6 @@ struct auto_buffer final {
                : (*reinterpret_cast<char **>(&_buf) = new char[sz]))
       {}
 
-      auto_buffer(const auto_buffer &) = delete ;
-
       ~auto_buffer()
       {
          if ((void *)_data != &_buf)
@@ -453,7 +451,7 @@ struct uninitialized_auto_array final {
 
    private:
       const size_t _size ;
-      auto_buffer  _buffer ;
+      auto_buffer<sizeof(T), alignof(T)>  _buffer ;
 } ;
 
 /***************************************************************************//**
