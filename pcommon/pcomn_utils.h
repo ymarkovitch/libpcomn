@@ -449,12 +449,22 @@ struct uninitialized_auto_array final {
       const_iterator begin() const { return data() ; }
       const_iterator end() const { return data() + _size ; }
 
+      value_type &front() { return *data() ; }
+      value_type &back()
+      {
+         NOXCHECK(_size) ;
+         return *(data() + _size - 1) ;
+      }
+
+      const value_type &front() const { return const_cast<uninitialized_auto_array*>(this)->front() ; }
+      const value_type &back() const { return const_cast<uninitialized_auto_array*>(this)->back() ; }
+
       size_t size() const { return _size ; }
       size_t empty() const { return !_size ; }
 
    private:
       const size_t _size ;
-      auto_buffer<sizeof(T), alignof(T)>  _buffer ;
+      auto_buffer<sizeof(T)*threshold, alignof(T)>  _buffer ;
 } ;
 
 /***************************************************************************//**
