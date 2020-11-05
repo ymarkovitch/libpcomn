@@ -847,6 +847,12 @@ constexpr inline if_integer_t<T, nzbitpos_iterator<T>> bitpos_end(T)
    return nzbitpos_iterator<T>() ;
 }
 
+template<typename T>
+inline if_integer_t<T, unipair<nzbitpos_iterator<T>>> bitpos_range(T value, bool v = true)
+{
+   return {bitpos_begin(value, v), bitpos_end(value)} ;
+}
+
 /***************************************************************************//**
  Convert array<bool> <-> bitword
 *******************************************************************************/
