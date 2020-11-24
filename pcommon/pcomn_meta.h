@@ -160,6 +160,11 @@ using remove_cvref = std::remove_cv<std::remove_reference_t<T>> ;
 template<typename T>
 using remove_cvref_t = typename remove_cvref<T>::type ;
 
+template<typename T> struct type_identity { typedef T type ; } ;
+
+template<typename T>
+using type_identity_t = typename type_identity<T>::type ;
+
 } // end of namespace std
 
 #endif /* PCOMN_STL_CXX20 */
@@ -345,7 +350,7 @@ constexpr inline T fold_bitor(T a1, T a2, TN ...aN)
  This allows to completely separate otherwise compatible types (e.g. pointer to derived
  and pointer to base, etc.)
 *******************************************************************************/
-template<typename T> struct identity_type { typedef T type ; } ;
+template<typename T> using identity_type = std::type_identity<T> ;
 
 /***************************************************************************//**
  Transfer cv-qualifiers of the source type to the target type.
