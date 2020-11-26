@@ -175,6 +175,9 @@ inline namespace traits {
 
 using std::bool_constant ;
 
+template<uint8_t v>
+using byte_constant = std::integral_constant<uint8_t, v> ;
+
 template<int v>
 using int_constant = std::integral_constant<int, v> ;
 
