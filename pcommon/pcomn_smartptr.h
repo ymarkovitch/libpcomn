@@ -256,8 +256,8 @@ class shared_intrusive_ptr {
       {}
 
       shared_intrusive_ptr(shared_intrusive_ptr &&src) noexcept :
-         _object(src._object)
-      { src._object = nullptr ; }
+         shared_intrusive_ptr(src._object, int_constant<42>())
+      {}
 
       template<typename U, typename = instance_if_t<std::is_convertible<U*, element_type*>::value> >
       shared_intrusive_ptr(const shared_intrusive_ptr<U> &src) noexcept :
@@ -266,8 +266,8 @@ class shared_intrusive_ptr {
 
       template<typename U, typename = instance_if_t<std::is_convertible<U*, element_type*>::value> >
       shared_intrusive_ptr(shared_intrusive_ptr<U> &&src) noexcept :
-         _object(src._object)
-      { src._object = nullptr ; }
+         shared_intrusive_ptr(src._object, int_constant<42>())
+      {}
 
       ~shared_intrusive_ptr() noexcept { dec_ref() ; }
 
@@ -288,7 +288,11 @@ class shared_intrusive_ptr {
       /// Alias for instances(), added to match std::shared_ptr insterface
       intptr_t use_count() const noexcept { return instances() ; }
 
-      void reset() noexcept { shared_intrusive_ptr().swap(*this) ; }
+      void reset() noexcept
+      {
+         if (auto *element = as_ptr_mutable(std::exchange<element_type*>(_object, nullptr)))
+            refcount_policy_t<element_type>::dec_ref(element) ;
+      }
 
       void swap(shared_intrusive_ptr &other) noexcept
       {
@@ -301,6 +305,12 @@ class shared_intrusive_ptr {
          return *this ;
       }
 
+      shared_intrusive_ptr &operator=(element_type *other) noexcept
+      {
+         assign_element(other) ;
+         return *this ;
+      }
+
       template<typename U>
       auto operator=(const shared_intrusive_ptr<U> &other) noexcept
          ->decltype(shared_intrusive_ptr(other.get())) &
@@ -309,53 +319,95 @@ class shared_intrusive_ptr {
          return *this ;
       }
 
-      shared_intrusive_ptr &operator=(element_type *other) noexcept
+      shared_intrusive_ptr &operator=(shared_intrusive_ptr &&other) noexcept
       {
-         assign_element(other) ;
+         move_element(other._object) ;
+         return *this ;
+      }
+
+      template<typename U>
+      auto operator=(shared_intrusive_ptr<U> &&other) noexcept
+         ->decltype(shared_intrusive_ptr(other.get())) &
+      {
+         move_element(other._object) ;
          return *this ;
       }
 
       /// Create an instance of shared_intrusive_ptr whose stored pointer is _moved_ from
       /// this's stored pointer with static_cast'ing.
-      /// This is used to imlement the "moving" sptr_cast.
+      /// This is used to implement the "moving" sptr_cast.
       ///
       template<class U>
       shared_intrusive_ptr<transfer_cv_t<element_type, U>> cast_move() noexcept
       {
          typedef transfer_cv_t<element_type, U> result_element ;
-         shared_intrusive_ptr<result_element> result ;
-         result._object = static_cast<result_element *>(_object) ;
-         _object = nullptr ;
-         return result ;
+         return shared_intrusive_ptr<result_element>(_object, int_constant<42>()) ;
       }
 
    private:
-      std::remove_const_t<element_type> * mutable_object() const
+      template<typename U>
+      shared_intrusive_ptr(U *&src_object, int_constant<42>) noexcept :
+         _object(static_cast<element_type *>(src_object))
       {
-         return const_cast<std::remove_const_t<element_type> *>(_object) ;
+         if (!std::is_same<refcount_policy_t<element_type>, refcount_policy_t<U>>() && src_object)
+         {
+            inc_ref() ;
+            refcount_policy_t<U>::dec_ref(as_ptr_mutable(src_object)) ;
+         }
+         src_object = nullptr ;
       }
 
-      void inc_ref() const { if (_object) refcount_policy_t<T>::inc_ref(mutable_object()) ; }
-      void dec_ref() { if (_object) refcount_policy_t<T>::dec_ref(mutable_object()) ; }
+      void inc_ref() const noexcept { if (_object) refcount_policy_t<element_type>::inc_ref(as_ptr_mutable(_object)) ; }
+      void dec_ref() noexcept { if (_object) refcount_policy_t<element_type>::dec_ref(as_ptr_mutable(_object)) ; }
 
       template<class E>
-      void assign_element(E *other_element)
+      void assign_element(E *other_element) noexcept
       {
-         typedef refcount_policy_t<E>   other_policy_type ;
-         typedef std::remove_const_t<E> other_mutable_element ;
+         typedef refcount_policy_t<E> other_policy_type ;
 
-         other_mutable_element *other_object = const_cast<other_mutable_element *>(other_element) ;
+         auto *other_object = as_ptr_mutable(other_element) ;
 
-         if (_object != other_object)
+         if (_object == other_object) return ;
+
+         if (other_object)
+            other_policy_type::inc_ref(other_object) ; /* First we must increment counter of source object
+                                                        * due to possibility of (indirect) removal of all
+                                                        * remaining references to that one as a result of
+                                                        * dec_ref() call. */
+         dec_ref() ;
+         _object = other_object ;
+      }
+
+      template<class E>
+      void move_element(E *&other_element) noexcept
+      {
+         typedef refcount_policy_t<element_type> this_policy_type ;
+         typedef refcount_policy_t<E>            other_policy_type ;
+
+         if (!other_element)
          {
-            if (other_object)
-               other_policy_type::inc_ref(other_object) ; /* First we must increment counter of source object
-                                                           * due to possibility of (indirect) removal of all
-                                                           * remaining references to that one as a result of
-                                                           * dec_ref() call. */
-            dec_ref() ;
-            _object = other_object ;
+            reset() ;
+            return ;
          }
+
+         auto *other_object = as_ptr_mutable(other_element) ;
+         other_element = nullptr ;
+         element_type *old_this_object = std::exchange(_object, static_cast<element_type*>(other_object)) ;
+
+         if (other_object == old_this_object)
+         {
+            other_policy_type::dec_ref(other_object) ;
+            return ;
+         }
+
+         if (!std::is_same<this_policy_type, other_policy_type>())
+         {
+            this_policy_type::inc_ref(as_ptr_mutable(_object)) ;
+            other_policy_type::dec_ref(other_object) ;
+         }
+
+         if (old_this_object)
+            this_policy_type::dec_ref(as_ptr_mutable(old_this_object)) ;
       }
 
    private:
@@ -579,36 +631,36 @@ class sptr_wrapper : private sptr_wrapper_tag<T> {
       typedef T smartptr_type ;
       typedef typename T::element_type element_type ;
 
-      explicit sptr_wrapper(const T &p) : _ptr(p) {}
+      explicit sptr_wrapper(const T &p) noexcept : _ptr(p) {}
 
       /// Get the value of the stored smartpointer as a plain pointer
-      element_type *get() const { return _ptr.get() ; }
+      element_type *get() const noexcept { return _ptr.get() ; }
       /// Get the value of the stored smartpointer as a plain pointer
-      operator element_type *() const { return get() ; }
+      operator element_type *() const noexcept { return get() ; }
       /// Get the stored smartpointer
-      const smartptr_type &ptr() const { return _ptr ; }
+      const smartptr_type &ptr() const noexcept { return _ptr ; }
 
-      void swap(sptr_wrapper &other) { other._ptr.swap(_ptr) ; }
+      void swap(sptr_wrapper &other) noexcept { other._ptr.swap(_ptr) ; }
    private:
       T _ptr ;
 } ;
 
 /// Create a smartpointer wrapper from passed smartpointer @a p
 template<typename T>
-inline sptr_wrapper<T> sptr(const T &p) { return sptr_wrapper<T>(p) ; }
+inline sptr_wrapper<T> sptr(const T &p) noexcept { return sptr_wrapper<T>(p) ; }
 
 template<typename T>
-inline void swap(sptr_wrapper<T> &x, sptr_wrapper<T> &y) { x.swap(y) ; }
+inline void swap(sptr_wrapper<T> &x, sptr_wrapper<T> &y) noexcept { x.swap(y) ; }
 
 /*******************************************************************************
  Define swap function and tags for smartpointers
 *******************************************************************************/
-#define PCOMN_SPTR_DEF(PTemplate)                                 \
-   template<typename T>                                           \
-   inline void swap(PTemplate<T> &lhs, PTemplate<T> &rhs)         \
-   {                                                              \
-      lhs.swap(rhs) ;                                             \
-   }                                                              \
+#define PCOMN_SPTR_DEF(PTemplate)                                  \
+   template<typename T>                                            \
+   inline void swap(PTemplate<T> &lhs, PTemplate<T> &rhs) noexcept \
+   {                                                               \
+      lhs.swap(rhs) ;                                              \
+   }                                                               \
    template<typename T> class sptr_wrapper_tag<PTemplate<T> > {}
 
 PCOMN_SPTR_DEF(shared_intrusive_ptr) ;
