@@ -22,11 +22,11 @@ template<typename C>
 struct active_counter_base {
       typedef C count_type ;
 
-      constexpr active_counter_base(count_type init = count_type()) : _counter(init) {}
+      constexpr active_counter_base(count_type init = count_type()) noexcept : _counter(init) {}
 
-      count_type count() const { return _counter ; }
+      constexpr count_type count() const noexcept { return _counter ; }
 
-      count_type reset(count_type new_value = count_type())
+      count_type reset(count_type new_value = count_type()) noexcept
       {
          count_type old = std::move(_counter) ;
          _counter = std::move(new_value) ;
@@ -44,17 +44,17 @@ template<typename T>
 struct active_counter_base<std::atomic<T>> {
       typedef T count_type ;
 
-      constexpr active_counter_base(count_type init = count_type()) : _counter(init) {}
+      constexpr active_counter_base(count_type init = count_type()) noexcept : _counter(init) {}
 
-      count_type count() const { return _counter.load(std::memory_order_consume) ; }
+      count_type count() const noexcept { return _counter.load(std::memory_order_consume) ; }
 
-      count_type reset(count_type new_value = count_type())
+      count_type reset(count_type new_value = count_type()) noexcept
       {
          return _counter.exchange(new_value, std::memory_order_acq_rel) ;
       }
 
-      count_type inc_passive() { return _counter.fetch_add(1, std::memory_order_acq_rel) + 1 ; }
-      count_type dec_passive() { return _counter.fetch_sub(1, std::memory_order_acq_rel) - 1 ; }
+      count_type inc_passive() noexcept { return _counter.fetch_add(1, std::memory_order_acq_rel) + 1 ; }
+      count_type dec_passive() noexcept { return _counter.fetch_sub(1, std::memory_order_acq_rel) - 1 ; }
 
    private:
       std::atomic<count_type> _counter ;
@@ -71,7 +71,7 @@ class active_counter : public active_counter_base<C> {
    public:
       using typename ancestor::count_type ;
 
-      active_counter(count_type initval = init) : ancestor(initval) {}
+      active_counter(count_type initval = init) noexcept : ancestor(initval) {}
 
       /// Do-nothing destructor, just for the sake of polymorphism.
       virtual ~active_counter() = default ;
