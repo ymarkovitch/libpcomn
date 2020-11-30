@@ -294,6 +294,18 @@ class shared_intrusive_ptr {
             refcount_policy_t<element_type>::dec_ref(element) ;
       }
 
+      void reset(std::nullptr_t) noexcept { reset() ; }
+
+      void reset(element_type *other) noexcept
+      {
+         if (other == _object) return ;
+
+         auto *element = as_ptr_mutable(std::exchange<element_type*>(_object, other)) ;
+         inc_ref() ;
+         if (element)
+            refcount_policy_t<element_type>::dec_ref(element) ;
+      }
+
       void swap(shared_intrusive_ptr &other) noexcept
       {
          std::swap(_object, other._object) ;
