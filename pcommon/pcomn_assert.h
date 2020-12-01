@@ -200,6 +200,10 @@ static __attribute__((used)) __noinline int IsDebuggerPresent()
     const char *tracepid ;
     int dummy ;
 
+    if (getenv("RUNNING_UNDER_RR"))
+       // Avoid int3 under rr, the resulting trace can behave badly
+       return 0 ;
+
     memset(buf, 0, sizeof buf) ;
     if ((fd = open("/proc/self/status", O_RDONLY)) >= 0)
     {
