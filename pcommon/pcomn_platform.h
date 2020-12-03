@@ -570,6 +570,9 @@
 #ifdef __forceinline
 #undef __forceinline
 #endif
+#ifdef __flatten
+#undef __flatten
+#endif
 #ifdef __restrict
 #undef __restrict
 #endif
@@ -586,10 +589,12 @@
 #define __noreturn      __attribute__((__noreturn__))
 #define __noinline      __attribute__((__noinline__))
 #define __cold          __attribute__((__noinline__, __cold__))
-#ifndef __NO_INLINE__
+#if defined(__OPTIMIZE__) && !defined(__NO_INLINE__)
 #define __forceinline   inline __attribute__((__always_inline__))
+#define __flatten       __attribute__((__flatten__))
 #else
 #define __forceinline   inline
+#define __flatten
 #endif
 #define __restrict      __restrict__
 #define __may_alias     __attribute__((__may_alias__))
@@ -628,6 +633,7 @@
 #define __noreturn
 #define __noinline
 #define __cold
+#define __flatten
 #define __forceinline inline
 #define __restrict
 #define __may_alias
