@@ -294,9 +294,16 @@ class vsaver {
          variable = new_value ;
       }
 
+      vsaver(T &variable, T &&new_value) :
+         _saved(variable),
+         _var(&variable)
+      {
+         variable = std::move(new_value) ;
+      }
+
       ~vsaver()
       {
-         if (_var) *_var = _saved ;
+         if (_var) *_var = std::move(_saved) ;
       }
 
       const T &release() noexcept
@@ -305,21 +312,22 @@ class vsaver {
          return _saved ;
       }
 
-      const T &restore()
+      void restore()
       {
-         if (_var)
-         {
-            *_var = _saved ;
-            _var = NULL ;
-         }
-         return _saved ;
+         if (!_var) return ;
+
+         *_var = std::move(_saved) ;
+         _var = NULL ;
       }
 
+      /// Get the saved value.
+      /// @note This may be reset by restore() since it move-assignes the saved value.
+      ///
       const T &saved() const noexcept { return _saved ; }
 
    private:
-      const T  _saved ;
-      T *      _var ;
+      T  _saved ;
+      T *_var ;
 } ;
 
 /***************************************************************************//**
