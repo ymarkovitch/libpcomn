@@ -34,6 +34,7 @@
 #include <system_error>
 #include <type_traits>
 #include <utility>
+#include <array>
 
 #ifdef PCOMN_COMPILER_GNU
 #define PCOMN_DEMANGLE(name) (::pcomn::demangle((name), std::array<char, 1024>().begin(), 1024))
