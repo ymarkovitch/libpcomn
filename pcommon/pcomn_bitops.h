@@ -540,18 +540,18 @@ constexpr inline if_integer_t<I, unsigned> rzcnt(I v)
 
 /// Test if Power of 2 or Zero.
 template<typename I>
-constexpr inline if_integer_t<I, bool> tstpow2z(I x)
+constexpr inline if_integer_t<underlying_integral_t<I>, bool> tstpow2z(I x)
 {
-   return !clrrnzb(x) ;
+   return !clrrnzb(underlying_int(x)) ;
 }
 
 /// Test if Power of 2.
 /// 00001000 -> true
 /// 00101000 -> false
 template<typename I>
-constexpr inline if_integer_t<I, bool> tstpow2(I x)
+constexpr inline if_integer_t<underlying_integral_t<I>, bool> tstpow2(I x)
 {
-   return tstpow2z(x) && x ;
+   return tstpow2z(x) && underlying_int(x) ;
 }
 
 /// Rotate Left.
