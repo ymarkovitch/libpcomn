@@ -133,7 +133,8 @@ constexpr inline auto nullable_eq(const P1 &x, const P2 &y) -> decltype(*x == *y
 /// Check if T* is assignable to U*, providing that valtypes of T and U are the same
 /// (i.e. assigning to base class or void pointer is _not_ allowed)
 template<typename T, typename U>
-using is_ptr_exact_assignable = ct_and<std::is_assignable<T *&, U *>, std::is_same<valtype_t<T>, valtype_t<U> > > ;
+using is_ptr_exact_assignable = ct_and<std::is_assignable<T *&, U *>,
+                                       std::is_same<std::remove_cvref_t<T>, std::remove_cvref_t<U>>> ;
 
 namespace detail {
 
