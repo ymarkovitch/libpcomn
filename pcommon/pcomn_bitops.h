@@ -669,7 +669,7 @@ template<typename I>
 constexpr inline if_integer_t<I> headmask(size_t bitcnt)
 {
    return
-      #ifdef PCOMN_PL_BMI2
+      #if defined(PCOMN_PL_BMI2) && !PCOMN_WORKAROUND(__GNUC_VER__, < 900)
       !__builtin_is_constant_evaluated() ? ~_bzhi_u64(-1, bitndx<I>(bitcnt)) :
       #endif
 
