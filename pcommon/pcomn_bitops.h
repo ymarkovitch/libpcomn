@@ -421,6 +421,53 @@ inline typename if_signed_int<T, T>::type iabs(T v) { return std::abs(v) ; }
 
 template<typename T>
 inline typename if_unsigned_int<T, T>::type iabs(T v) { return v ; }
+
+/***************************************************************************//**
+ Function objects for performing bitwise ANDN and ORN.
+
+ Effectively call `&~` and `|~` on their arguments.
+ Amend missing standard library functionality (there are std::bit_op operations,
+ e.g std::bit_and).
+
+ Both bit_andnot and bit_ornot have "transparent" specializations bit_andnot<void>
+ and bit_ornot<void>, deducing their argument and return types.
+*******************************************************************************/
+/**@{*/
+template<typename T = void>
+struct bit_andnot {
+      constexpr T operator()(const T &x, const T &y) const { return x &~ y ; }
+} ;
+
+template<>
+struct bit_andnot<void> {
+      typedef std::true_type is_transparent ;
+
+      template<class T, class U>
+      constexpr auto operator()(T&& x, U&& y) const
+         -> decltype(std::forward<T>(x) &~ std::forward<U>(y))
+      {
+         return std::forward<T>(x) &~ std::forward<U>(y) ;
+      }
+} ;
+
+template<typename T = void>
+struct bit_ornot {
+      constexpr T operator()(const T &x, const T &y) const { return x |~ y ; }
+} ;
+
+template<>
+struct bit_ornot<void> {
+      typedef std::true_type is_transparent ;
+
+      template<typename T, typename U>
+      constexpr auto operator()(T&& x, U&& y) const
+         -> decltype(std::forward<T>(x) |~ std::forward<U>(y))
+      {
+         return std::forward<T>(x) |~ std::forward<U>(y) ;
+      }
+} ;
+/**@}*/
+
 /*******************************************************************************
  namespace pcomn::bitop
  Bit operations (like bit counts, etc.)
