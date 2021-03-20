@@ -112,9 +112,9 @@ public:
     /// to the arument.
     /// @param nothing_is How to interpret the "Unknown" state: if `true`, convert
     /// `Unknown` to `true`, otherwise to `false`.
-    constexpr bool as_bool(bool nothing_is) const
+    constexpr bool as_bool(bool unknown_is) const
     {
-        return data() + nothing_is >= True ;
+        return data() + unknown_is >= True ;
     }
 
     /***************************************************************************
