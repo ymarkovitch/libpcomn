@@ -33,9 +33,14 @@
 /// @note Uses alloca() to allocate memory on the stack.
 ///
 #define PCOMN_STACK_BITVECTOR(varname, elem_type, nelements)            \
-   const size_t _nelements_##__LINE__##varname = (nelements) ;          \
-   elem_type * const _mem_##__LINE__##varname = P_ALLOCA(elem_type, _nelements_##__LINE__##varname) ; \
-   pcomn::basic_bitvector<elem_type> varname (_mem_##__LINE__##varname, _nelements_##__LINE__##varname)
+   const size_t _nelems_##__LINE__##varname = (nelements) ;             \
+   elem_type * const _mem_##__LINE__##varname = P_ALLOCA(elem_type, _nelems_##__LINE__##varname) ; \
+   pcomn::basic_bitvector<elem_type> varname (_mem_##__LINE__##varname, _nelems_##__LINE__##varname)
+
+#define PCOMN_STACK_BITVECTOR_EXACT_SIZE(varname, bitcount, elem_type)  \
+   const size_t _bitcnt_##__LINE__##varname = (bitcount) ;              \
+   elem_type * const _mem_##__LINE__##varname = P_ALLOCA(elem_type, pcomn::basic_bitvector<elem_type>::cellndx(_bitcnt_##__LINE__##varname)) ; \
+   pcomn::basic_bitvector<elem_type> varname (_bitcnt_##__LINE__##varname, _mem_##__LINE__##varname)
 
 namespace pcomn {
 
