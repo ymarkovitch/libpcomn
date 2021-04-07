@@ -422,8 +422,8 @@ inline typename if_signed_int<T, T>::type iabs(T v) { return std::abs(v) ; }
 template<typename T>
 inline typename if_unsigned_int<T, T>::type iabs(T v) { return v ; }
 
-/***************************************************************************//**
- Function objects for performing bitwise ANDN and ORN.
+/******************************************************************************/
+/** @name Function objects for performing bitwise ANDN and ORN.
 
  Effectively call `&~` and `|~` on their arguments.
  Amend missing standard library functionality (there are std::bit_op operations,
@@ -432,7 +432,6 @@ inline typename if_unsigned_int<T, T>::type iabs(T v) { return v ; }
  Both bit_andnot and bit_ornot have "transparent" specializations bit_andnot<void>
  and bit_ornot<void>, deducing their argument and return types.
 *******************************************************************************/
-/**@{*/
 template<typename T = void>
 struct bit_andnot {
       constexpr T operator()(const T &x, const T &y) const { return x &~ y ; }
@@ -1051,10 +1050,10 @@ inline std::array<bool, 64> bits_to_array_bools(uint64_t bits)
 
 /**@}*/
 
-/***************************************************************************//**
- Extract bits from unsigned integer `source` at the corresponding bit locations
- specified by `mask` to contiguous low bits of the result; the remaining upper
- bits in the result are set to zero.
+/******************************************************************************/
+/** @name Extract bits from unsigned integer `source` at the corresponding bit locations
+ specified by `mask` to contiguous low bits of the result; the remaining upper bits
+ in the result are set to zero.
 
  Matches the logic of PEXT - Parallel Bits Extract from BMI2 ISA, and on platforms
  supporting BMI2 is implemented with this instruction.
