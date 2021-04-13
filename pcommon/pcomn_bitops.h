@@ -754,7 +754,7 @@ if_integer_t<I, size_t> find_first_bit(const I *bits, size_t start, size_t finis
 
    if (!cell)
    {
-      const size_t to = cellndx<cell_type>(finish) ;
+      const size_t to = cellcount<cell_type>(finish) ;
       do {
          if (++ndx >= to)
             return finish ;

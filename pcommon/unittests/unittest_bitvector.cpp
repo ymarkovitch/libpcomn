@@ -35,6 +35,7 @@ class BitVectorTests : public CppUnit::TestFixture {
     void Test_Bit_Search() ;
     template<typename I>
     void Test_Positional_Iterator() ;
+    void Test_Basic_Positional_Iterator() ;
     void Test_Boundary_Iterator() ;
     void Test_Atomic_Set_Reset_Bits() ;
 
@@ -46,6 +47,7 @@ class BitVectorTests : public CppUnit::TestFixture {
     CPPUNIT_TEST(Test_Bit_Search) ;
     CPPUNIT_TEST(Test_Positional_Iterator<uint32_t>) ;
     CPPUNIT_TEST(Test_Positional_Iterator<uint64_t>) ;
+    CPPUNIT_TEST(Test_Basic_Positional_Iterator) ;
     CPPUNIT_TEST(Test_Boundary_Iterator) ;
     CPPUNIT_TEST(Test_Atomic_Set_Reset_Bits) ;
 
@@ -354,6 +356,36 @@ void BitVectorTests::Test_Positional_Iterator()
     CPPUNIT_LOG_ASSERT(bp != ep) ;
     CPPUNIT_LOG_EQ(*bp, 4095) ;
     CPPUNIT_LOG_ASSERT(++bp == ep) ;
+}
+
+void BitVectorTests::Test_Basic_Positional_Iterator()
+{
+    typedef basic_bitvector<uint64_t> bitvector ;
+
+    uint64_t vdata[16]  = {} ;
+
+    bitvector bv (1000, vdata + 0) ;
+
+    set_bits(bv, {0, 200, 300, 555, 999}) ;
+
+    auto bp = bv.begin_positional() ;
+    auto ep = bv.end_positional() ;
+
+    CPPUNIT_LOG_EQ(bv.count(), 5) ;
+    CPPUNIT_LOG_EQ(std::distance(bp, ep), 5) ;
+    CPPUNIT_LOG_EQUAL(std::vector<unsigned>(bp, ep), (std::vector<unsigned>{0, 200, 300, 555, 999})) ;
+
+    CPPUNIT_LOG_EQ(vdata[15], 0x8000000000) ;
+
+    CPPUNIT_LOG_RUN(vdata[15] = 0x9000000000) ;
+    CPPUNIT_LOG_EQ(bv.count(), 6) ;
+    CPPUNIT_LOG_EQUAL(std::vector<unsigned>(bv.begin_positional(), bv.end_positional()),
+                      (std::vector<unsigned>{0, 200, 300, 555, 996, 999})) ;
+
+    CPPUNIT_LOG_RUN(vdata[15] = 0x18000000000) ;
+    CPPUNIT_LOG_EQ(bv.count(), 5) ;
+    CPPUNIT_LOG_EQUAL(std::vector<unsigned>(bv.begin_positional(), bv.end_positional()),
+                      (std::vector<unsigned>{0, 200, 300, 555, 999})) ;
 }
 
 void BitVectorTests::Test_Boundary_Iterator()
