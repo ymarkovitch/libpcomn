@@ -15,7 +15,7 @@
 *******************************************************************************/
 #include <pcomn_assert.h>
 #include <pcomn_meta.h>
-#include <pcomn_integer.h>
+#include <pcomn_bitops.h>
 #include <pcomn_atomic.h>
 #include <pcomn_alloca.h>
 #include <pcommon.h>
