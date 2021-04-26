@@ -640,19 +640,19 @@ broadcasti(I value)
 ///
 template<typename T>
 constexpr inline std::enable_if_t<ct_and<std::is_integral<T>, ct_not<is_same_unqualified<T, bool>>>::value, T>
-set_bits_masked(T target, T bits, T mask)
+set_bits_masked(T target, T bits, T mask) noexcept
 {
    return target &~ mask | bits & mask ;
 }
 
 template<typename I>
-constexpr inline if_integer_t<I, bool> bit_test(I word, uint8_t pos)
+constexpr inline if_integer_t<I, bool> bit_test(I word, uint8_t pos) noexcept
 {
    return (word >> pos) & 1 ;
 }
 
 template<typename I>
-constexpr inline if_integer_t<I> bit_set(I word, uint8_t pos, bool bit)
+constexpr inline if_integer_t<I> bit_set(I word, uint8_t pos, bool bit) noexcept
 {
    const I mask = I(1) << pos ;
    const I on = word | mask ;
