@@ -429,6 +429,16 @@ enum class novalue : bool { _ } ;
 
 constexpr const novalue NaV = novalue::_ ;
 
+/**@{**************************************************************************/
+/** @name Empty class tag types used to specify data copying strategy in constructors
+ of containers that can both hold (copy into container's internal memory) the passed
+ data or just keep pointer(s) to it.
+*******************************************************************************/
+struct nocopy_t { explicit nocopy_t() = default ; } ;
+
+constexpr nocopy_t nocopy {} ;
+/**@{*/
+
 /*******************************************************************************
  void * pointer arithmetics
 *******************************************************************************/
