@@ -575,19 +575,14 @@ template<typename Functor, typename Argtype, template<class> class Default>
 using select_functor_t = typename select_functor<Functor, Argtype, Default>::type ;
 /**@}*/
 
-/******************************************************************************/
-/** Macro to define member type metatesters
+/***************************************************************************//**
+ Macro to define member type metatesters
 *******************************************************************************/
 #define PCOMN_DEFINE_TYPE_MEMBER_TEST(type)                             \
-   namespace detail {                                                   \
+   template<typename T, typename=void>                                  \
+   struct has_##type : std::false_type {} ;                             \
    template<typename T>                                                 \
-   std::false_type has_##type##_test(...) ;                             \
-   template<typename T>                                                 \
-   std::true_type has_##type##_test(typename T::type const volatile *) ; \
-   }                                                                    \
-                                                                        \
-   template<typename T>                                                 \
-   struct has_##type : decltype(detail::has_##type##_test<T>(0)) {}
+   struct has_##type<T,std::void_t<typename T::type>> : std::true_type {}
 
 /*******************************************************************************
  Define member type metatests for std:: member typedefs
