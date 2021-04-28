@@ -747,6 +747,15 @@ inline auto xform_range(const Container &cont, Converter &&cvt) ->
                          xform_iter(std::end(cont), std::forward<Converter>(cvt))) ;
 }
 
+template<typename Converter, typename T>
+inline auto xform_range(const unipair<T> &r, Converter &&cvt) ->
+   decltype(std::make_pair(xform_iter(r.first, std::forward<Converter>(cvt)),
+                           xform_iter(r.second, std::forward<Converter>(cvt))))
+{
+   return std::make_pair(xform_iter(r.first, std::forward<Converter>(cvt)),
+                         xform_iter(r.second, std::forward<Converter>(cvt))) ;
+}
+
 template<typename Iterator>
 inline xform_iterator<Iterator, select1st> mapkey_iter(const Iterator &i)
 {
