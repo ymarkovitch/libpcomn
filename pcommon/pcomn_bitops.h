@@ -407,6 +407,9 @@ using if_numeric_t = typename if_numeric<T, R>::type ;
 template<typename T, typename R = T>
 using if_arithmetic_t = typename if_arithmetic<T, R>::type ;
 
+template<typename T, typename R = T>
+using if_bool_t = std::enable_if_t<std::is_same_v<T, bool>, R> ;
+
 template<typename T>
 inline constexpr if_signed_int_t<T> sign_bit(T value)
 {
