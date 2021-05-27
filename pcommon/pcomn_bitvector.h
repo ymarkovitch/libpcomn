@@ -39,7 +39,8 @@
 
 #define PCOMN_STACK_BITVECTOR_EXACT_SIZE(varname, bitcount, elem_type)  \
    const size_t _bitcnt_##__LINE__##varname = (bitcount) ;              \
-   elem_type * const _mem_##__LINE__##varname = P_ALLOCA(elem_type, pcomn::basic_bitvector<elem_type>::cellndx(_bitcnt_##__LINE__##varname)) ; \
+   elem_type * const _mem_##__LINE__##varname =                         \
+      P_ALLOCA(elem_type, pcomn::basic_bitvector<elem_type>::cell_count_for(_bitcnt_##__LINE__##varname)) ; \
    pcomn::basic_bitvector<elem_type> varname (_bitcnt_##__LINE__##varname, _mem_##__LINE__##varname)
 
 namespace pcomn {
@@ -83,7 +84,7 @@ struct basic_bitvector<const E> {
 
       constexpr basic_bitvector(size_t bitcount_size, element_type *memory) :
          _elements(memory),
-         _nelements((bitcount_size + bits_per_element() - 1)/bits_per_element()),
+         _nelements(cell_count_for(bitcount_size)),
          _size(bitcount_size)
       {}
 
@@ -154,6 +155,11 @@ struct basic_bitvector<const E> {
       static constexpr element_type bitextend(bool bit) { return bitop::bitextend<element_type>(bit) ; }
 
       constexpr element_type tailmask() const { return bitop::tailmask<element_type>(_size) ; }
+
+      static constexpr size_t cell_count_for(size_t bitcount)
+      {
+         return bitop::cellcount<element_type>(bitcount) ;
+      }
 
       /*********************************************************************//**
        Random-access constant iterator over bits.
@@ -335,6 +341,7 @@ struct basic_bitvector : basic_bitvector<const E> {
       using ancestor::bitmask ;
       using ancestor::bitextend ;
       using ancestor::nelements ;
+      using ancestor::cell_count_for ;
 
       constexpr basic_bitvector() = default ;
       constexpr basic_bitvector(element_type *e, size_t n) : ancestor(e, n) {}
