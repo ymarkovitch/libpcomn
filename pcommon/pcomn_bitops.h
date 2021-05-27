@@ -146,11 +146,7 @@ template<> struct bit_traits<64> {
       #ifdef PCOMN_GCC_INTRINSICS
 
       const int result = 63 - __builtin_clzll(value) ;
-      return
-         #ifndef PCOMN_PL_BMI2
-         !value ? -1 :
-         #endif
-         result ;
+      return result | -!value ;
 
       #else
 
@@ -201,11 +197,7 @@ template<> struct bit_traits<32> {
       #ifdef PCOMN_GCC_INTRINSICS
 
       const int result = 31 - __builtin_clz(value) ;
-      return
-         #ifndef PCOMN_PL_BMI2
-         !value ? -1 :
-         #endif
-         result ;
+      return result | -!value ;
 
       #else
 
@@ -567,16 +559,19 @@ template<typename I>
 constexpr inline if_integer_t<I, unsigned> rzcnt(I v)
 {
    #ifdef PCOMN_GCC_INTRINSICS
+   #if PCOMN_PL_BMI2
+
+   const size_t count = bitsizeof(v) <= 32 ? _tzcnt_u32(v) : _tzcnt_u64(v) ;
+   return bitsizeof(v) >= 32 ? count : std::min(count, bitsizeof(v)) ;
+
+   #else /* !PCOMN_PL_BMI2 */
 
    const size_t count = bitsizeof(v) <= 32 ? __builtin_ctz(v) : __builtin_ctzl(v) ;
-   return
-      #ifndef PCOMN_PL_BMI2
-      !v ? bitsizeof(v) :
-      #endif
+   return !v ? bitsizeof(v) : bitsizeof(v) >= 32 ? count : std::min(count, bitsizeof(v)) ;
 
-      bitsizeof(v) >= 32 ? count : std::min(count, bitsizeof(v)) ;
+   #endif /* PCOMN_PL_BMI2 */
 
-   #else
+   #else /* !PCOMN_GCC_INTRINSICS */
 
    // Get rightmost non-zero bit
    // 00001010 -> 00000010
