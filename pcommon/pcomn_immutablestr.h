@@ -903,13 +903,16 @@ PCOMN_DEFINE_SWAP(immutable_string<C>, template<typename C>) ;
 PCOMN_DEFINE_SWAP(mutable_strbuf<C>,   template<typename C>) ;
 
 /*******************************************************************************
- Decalre explicit instantiations.
+ Declare explicit instantiations.
 *******************************************************************************/
 extern template class immutable_string<char> ;
 extern template class immutable_string<wchar_t> ;
 
 extern template class mutable_strbuf<char> ;
 extern template class mutable_strbuf<wchar_t> ;
+
+extern template class refcounted_storage<char> ;
+extern template class refcounted_storage<wchar_t> ;
 
 /*******************************************************************************
  Stream output

@@ -19,4 +19,7 @@ template class immutable_string<wchar_t> ;
 template class mutable_strbuf<char> ;
 template class mutable_strbuf<wchar_t> ;
 
+template class refcounted_storage<char> ;
+template class refcounted_storage<wchar_t> ;
+
 } // end of namespace pcomn
