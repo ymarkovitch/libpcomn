@@ -26,6 +26,9 @@ set(ENABLE_PCOMN_STACKTRACE OFF CACHE BOOL "Enable stacktrace classes. Linux-onl
 set(ENABLE_PCOMN_AVX        NO  CACHE BOOL "Enable use of AVX and BMI1 instruction sets. Substantially accelerates e.g. hashing, pcomn::bitarray.")
 set(ENABLE_PCOMN_AVX2       NO  CACHE BOOL "Enable use of AVX2 and BMI2 instruction sets. Substantially accelerates e.g. hashing, pcomn::bitarray, pcomn::bitops.")
 
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 # Introduce custom build types RelAvx, RelAvx2, DbgAvx, DbgAvx2 to facilitate
 # one-pass unit testing for different processor architecture flags.
 # CMAKE_BUILD_TYPE=RelAvx
@@ -111,6 +114,12 @@ if (ENABLE_PCOMN_AVX2 OR ENABLE_PCOMN_AVX)
     endif()
 else()
     set(DISABLE_PCOMN_AVX YES)
+endif()
+
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 11)
+    set(PCOMN_DWARF_OPT "-gdwarf-5")
+else()
+    set(PCOMN_DWARF_OPT "-gdwarf-4")
 endif()
 
 ################################################################################
@@ -224,7 +233,7 @@ target_compile_options(pcommon
   $<$<CXX_COMPILER_ID:Clang>:-Wall -Wno-error -Wno-unused-result -Wno-mismatched-tags>
   $<$<AND:${COMPILER_GCCLIKE},$<${COMPILE_LANGUAGE_CXX}>>:-Woverloaded-virtual>
 
-  $<$<AND:$<OR:$<CONFIG:Debug>,$<CONFIG:DbgSanitize>,$<CONFIG:RelWithDebInfo>>,${COMPILER_GCCLIKE}>:-gdwarf-4>
+  $<$<AND:$<OR:$<CONFIG:Debug>,$<CONFIG:DbgSanitize>,$<CONFIG:RelWithDebInfo>>,${COMPILER_GCCLIKE}>:${PCOMN_DWARF_OPT}>
   $<$<PLATFORM_ID:Linux>:-fvisibility=hidden>
 
   PUBLIC
