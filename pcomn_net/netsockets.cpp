@@ -87,7 +87,9 @@ void data_socket::connect(const sock_address &peer_addr, int timeout)
     const bool temporary_nonblock = timeout >= 0 && !(sockflags & O_NONBLOCK) ;
 
     if (temporary_nonblock)
+    {
         PCOMN_THROW_MSG_IF(fcntl(sockd, F_SETFL, sockflags | O_NONBLOCK) == -1, socket_error, "fcntl")  ;
+    }
 
 	// Connecting...
 	int status = ::connect(sockd, peer_addr.as_sockaddr(), peer_addr.addrsize()) ;
