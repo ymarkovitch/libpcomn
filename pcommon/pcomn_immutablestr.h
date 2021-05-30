@@ -151,7 +151,7 @@ class refcounted_storage {
 
       size_type size() const noexcept { return size_type(str_data().size()) ; }
       size_type capacity() const noexcept { return size() ; }
-      size_type max_size() const noexcept { return allocator_type::max_size() ; }
+      size_type max_size() const noexcept { return std::numeric_limits<size_type>::max() / 16 ; }
 
       void swap(refcounted_storage &rhs) noexcept { std::swap(_data, rhs._data) ; }
 
