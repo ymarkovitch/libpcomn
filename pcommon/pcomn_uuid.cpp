@@ -68,6 +68,8 @@ char *uuid::to_strbuf(char *buf) const
 /*******************************************************************************
  MAC
 *******************************************************************************/
+GCC_DIAGNOSTIC_PUSH_IGNORE(stringop-overflow)
+
 MAC::MAC(const strslice &str, std::errc *ec)
 {
    if (ec)
@@ -95,7 +97,7 @@ MAC::MAC(const strslice &str, std::errc *ec)
 
    if (!is_in(delim, '-', ':', '.', ' ')
        || str.size() != slen()
-       || buf[5] != delim || buf[8] != delim || buf[11] != delim || buf[14] != delim
+       || (buf[5] != delim | buf[8] != delim | buf[11] != delim | buf[14] != delim)
        || (result = cvt(std::begin(buf), std::end(buf))) < 0)
    {
       PCOMN_THROW_IF(!ec, invalid_str_repr, "Invalid MAC format " P_STRSLICEQF, P_STRSLICEV(str)) ;
@@ -105,6 +107,8 @@ MAC::MAC(const strslice &str, std::errc *ec)
    else
       _idata = value_to_little_endian(result) ;
 }
+
+GCC_DIAGNOSTIC_POP()
 
 char *MAC::to_strbuf(char *buf) const
 {
