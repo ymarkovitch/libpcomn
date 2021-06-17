@@ -386,6 +386,35 @@ struct binary128_t : protected b128_t {
             ;
       }
 
+      /*********************************************************************//**
+       binary128_t bit operations (~,&,|,^).
+      *************************************************************************/
+      /**@{*/
+      friend constexpr binary128_t operator&(const binary128_t &x, const binary128_t &y)
+      {
+         return detail::combine_bigbinary_bits::eval(x, y, std::bit_and<>()) ;
+      }
+
+      friend constexpr binary128_t operator|(const binary128_t &x, const binary128_t &y)
+      {
+         return detail::combine_bigbinary_bits::eval(x, y, std::bit_or<>()) ;
+      }
+
+      friend constexpr binary128_t operator^(const binary128_t &x, const binary128_t &y)
+      {
+         return detail::combine_bigbinary_bits::eval(x, y, std::bit_xor<>()) ;
+      }
+
+      friend constexpr binary128_t operator~(const binary128_t &x)
+      {
+         return detail::combine_bigbinary_bits::invert(x) ;
+      }
+
+      binary128_t &operator&=(const binary128_t &other) { return *this = *this & other ; }
+      binary128_t &operator|=(const binary128_t &other) { return *this = *this | other ; }
+      binary128_t &operator^=(const binary128_t &other) { return *this = *this ^ other ; }
+      /**@}*/
+
       friend std::ostream &operator<<(std::ostream &os, const binary128_t &v)
       {
          return os << *v.bdata() ;
@@ -412,31 +441,6 @@ PCOMN_STATIC_CHECK(alignof(binary128_t) == alignof(b128_t)) ;
 
 // Define !=, >, <=, >= for binary128_t
 PCOMN_DEFINE_RELOP_FUNCTIONS(, binary128_t) ;
-
-/***************************************************************************//**
- binary128_t bit operations (~,&,|,^).
-*******************************************************************************/
-/**@{*/
-constexpr inline binary128_t operator&(const binary128_t &x, const binary128_t &y)
-{
-   return detail::combine_bigbinary_bits::eval(x, y, std::bit_and<>()) ;
-}
-
-constexpr inline binary128_t operator|(const binary128_t &x, const binary128_t &y)
-{
-   return detail::combine_bigbinary_bits::eval(x, y, std::bit_or<>()) ;
-}
-
-constexpr inline binary128_t operator^(const binary128_t &x, const binary128_t &y)
-{
-   return detail::combine_bigbinary_bits::eval(x, y, std::bit_xor<>()) ;
-}
-
-constexpr inline binary128_t operator~(const binary128_t &x)
-{
-   return detail::combine_bigbinary_bits::invert(x) ;
-}
-/**@}*/
 
 /***************************************************************************//**
  256-bit binary
