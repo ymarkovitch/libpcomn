@@ -364,6 +364,12 @@ struct is_integer : std::bool_constant<std::is_integral<T>::value && !std::is_sa
 template<typename T>
 struct is_numeric : std::bool_constant<std::is_arithmetic<T>::value && !std::is_same<T, bool>::value> {} ;
 
+template<typename T>
+struct is_signed_integer : std::bool_constant<is_integer<T>() && std::is_signed<T>()> {} ;
+
+template<typename T>
+struct is_unsigned_integer : std::bool_constant<is_integer<T>() && !std::is_signed<T>()> {} ;
+
 /***************************************************************************//**
  Overload enabler, a la enable_if<>.
  If T is an integer type, returns (as internal typedef) R as 'type'
@@ -375,10 +381,10 @@ template<typename T, typename R = T> struct
 if_not_integer : disable_if<is_integer<T>::value, R> {} ;
 
 template<typename T, typename R = T> struct
-if_signed_int : std::enable_if<(is_integer<T>::value && std::is_signed<T>::value), R> {} ;
+if_signed_int : std::enable_if<is_signed_integer<T>::value, R> {} ;
 
 template<typename T, typename R = T> struct
-if_unsigned_int : std::enable_if<(is_integer<T>::value && !std::is_signed<T>::value), R> {} ;
+if_unsigned_int : std::enable_if<is_unsigned_integer<T>::value, R> {} ;
 
 template<typename T, typename R = T> struct
 if_numeric : std::enable_if<is_numeric<T>::value, R> {} ;
