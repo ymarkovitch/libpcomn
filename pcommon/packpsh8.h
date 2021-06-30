@@ -22,4 +22,4 @@
 #  pragma warning(disable:4103)
 #endif
 
-#pragma pack(8)
+#pragma pack(push, 8)
