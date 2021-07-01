@@ -17,7 +17,7 @@
 #ifdef __BORLANDC__
 #  pragma nopackwarning
 #endif
-#ifdef _MSC_VER >= 800
+#if _MSC_VER >= 800
 #  pragma warning(disable:4103)
 #endif
 
