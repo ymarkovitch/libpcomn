@@ -403,7 +403,7 @@ class static_vector {
 
       size_t size() const { return _size ; }
 
-      size_t max_size() const { return maxsize ; }
+      constexpr static size_t max_size() { return maxsize ; }
 
       /// Indicate that the slice is empty
       bool empty() const { return !size() ; }
