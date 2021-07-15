@@ -191,7 +191,7 @@ unsigned PDiagBase::mode() { return global_mode ; }
  PDiagBase: trace context initialization and locking
 *******************************************************************************/
 static constexpr const unsigned DIAG_LOGMAXPATH  = 2048 ;
-static constexpr const unsigned DIAG_MAXMESSAGE  = 4096 ; /* Buffer size for diagnostic messages */
+static constexpr const unsigned DIAG_MAXMESSAGE  = 8192 ; /* Buffer size for diagnostic messages */
 static constexpr const unsigned DIAG_MAXPREFIX   = 256 ;
 
 // How often (in seconds) diag_isenabled_diag() should check if the tracing
