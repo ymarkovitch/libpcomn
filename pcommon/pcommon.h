@@ -434,9 +434,11 @@ constexpr const novalue NaV = novalue::_ ;
  of containers that can both hold (copy into container's internal memory) the passed
  data or just keep pointer(s) to it.
 *******************************************************************************/
-struct nocopy_t { explicit nocopy_t() = default ; } ;
+struct shallow_copy_t { explicit shallow_copy_t() = default ; } ;
+constexpr shallow_copy_t shallow_copy {} ;
 
-constexpr nocopy_t nocopy {} ;
+struct deep_copy_t { explicit deep_copy_t() = default ; } ;
+constexpr deep_copy_t deep_copy {} ;
 /**@{*/
 
 /*******************************************************************************
