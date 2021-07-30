@@ -12,6 +12,7 @@
 *******************************************************************************/
 #include <ctype.h>
 #include <pcomn_platform.h>
+#include <string.h>
 
 /*
    Turning off boring Borland's messages about inlining and
