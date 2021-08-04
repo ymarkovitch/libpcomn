@@ -3,7 +3,7 @@
 #define __PCOMN_PLATFORM_H
 /*******************************************************************************
  FILE         :   pcomn_platform.h
- COPYRIGHT    :   Yakov Markovitch, 1996-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1996-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Platform identification macros
@@ -414,14 +414,6 @@
 #  include <cstddef>
 #endif
 
-#if defined(__GLIBCXX__)
-#  define PCOMN_BEGIN_NAMESPACE_CXX11 _GLIBCXX_BEGIN_NAMESPACE_CXX11
-#  define PCOMN_END_NAMESPACE_CXX11   _GLIBCXX_END_NAMESPACE_CXX11
-#else
-#  define PCOMN_BEGIN_NAMESPACE_CXX11
-#  define PCOMN_END_NAMESPACE_CXX11
-#endif
-
 /*******************************************************************************
  SIMD instruction sets
 *******************************************************************************/
@@ -436,6 +428,12 @@
 #     endif
 #     ifdef __AVX2__
 #        define PCOMN_PL_SIMD_AVX2  1
+#     endif
+#     ifdef __BMI1__
+#        define PCOMN_PL_BMI1       1
+#     endif
+#     ifdef __BMI2__
+#        define PCOMN_PL_BMI2       1
 #     endif
 
 #  endif /* PCOMN_COMPILER_GNU && PCOMN_PL_X86 */
@@ -531,6 +529,27 @@
 #define GCC_MAKE_PRAGMA(text)
 #define MS_MAKE_PRAGMA(text)
 
+/***************************************************************************//**
+ CPU intrinsics availability.
+*******************************************************************************/
+/**@{*/
+#ifdef PCOMN_COMPILER_GNU
+
+#  define PCOMN_GCC_INTRINSICS 1
+
+#  ifdef PCOMN_PL_X86
+#     define PCOMN_GCC86_INTRINSICS 1
+#  endif
+#  ifdef PCOMN_PL_SIMD_AVX
+#     define PCOMN_AVX_INTRINSICS 1
+#  endif
+#  ifdef PCOMN_PL_SIMD_AVX2
+#     define PCOMN_AVX2_INTRINSICS 1
+#  endif
+
+#endif
+/**@}*/
+
 /*******************************************************************************
  Macro definitions for extended attribute specifiers, like __noreturn, __noinline, etc.,
  for various compilers.
@@ -551,6 +570,9 @@
 #ifdef __forceinline
 #undef __forceinline
 #endif
+#ifdef __flatten
+#undef __flatten
+#endif
 #ifdef __restrict
 #undef __restrict
 #endif
@@ -567,7 +589,13 @@
 #define __noreturn      __attribute__((__noreturn__))
 #define __noinline      __attribute__((__noinline__))
 #define __cold          __attribute__((__noinline__, __cold__))
+#if defined(__OPTIMIZE__) && !defined(__NO_INLINE__)
 #define __forceinline   inline __attribute__((__always_inline__))
+#define __flatten       __attribute__((__flatten__))
+#else
+#define __forceinline   inline
+#define __flatten
+#endif
 #define __restrict      __restrict__
 #define __may_alias     __attribute__((__may_alias__))
 
@@ -605,6 +633,7 @@
 #define __noreturn
 #define __noinline
 #define __cold
+#define __flatten
 #define __forceinline inline
 #define __restrict
 #define __may_alias
@@ -695,6 +724,17 @@
 #define GCC_DIAGNOSTIC_PUSH_SETERR(warn) GCC_DIAGNOSTIC_PUSH() GCC_SETERR_WARNING(warn)
 #define GCC_DIAGNOSTIC_POP() GCC_MAKE_PRAGMA(GCC diagnostic pop)
 
+// Clang warning control
+#if (__CLANG_VER__)
+#define CLANG_MAKE_PRAGMA(text) GCC_MAKE_PRAGMA(text)
+#else
+#define CLANG_MAKE_PRAGMA(text)
+#endif
+
+#define CLANG_IGNORE_WARNING(warn) CLANG_MAKE_PRAGMA(clang diagnostic ignored "-W"#warn)
+#define CLANG_ENABLE_WARNING(warn) CLANG_MAKE_PRAGMA(clang diagnostic warning "-W"#warn)
+#define CLANG_SETERR_WARNING(warn) CLANG_MAKE_PRAGMA(clang diagnostic error "-W"#warn)
+
 // kludge for warnings that was introduced in gcc v7 and unknown for smaller versions
 #if __GNUC__ >= 7
 #define GCC_DIAGNOSTIC_PUSH_IGNORE_v7(warn) GCC_DIAGNOSTIC_PUSH_IGNORE(warn)
@@ -767,6 +807,20 @@ typedef int64_t   int64_be ;
 typedef uint64_t  uint64_be ;
 
 #ifdef __cplusplus
+/***************************************************************************//**
+ @var PCOMN_CACHELINE_SIZE
+ Typical L1 cacheline size for the architecture the library is compiled for.
+*******************************************************************************/
+constexpr size_t PCOMN_CACHELINE_SIZE =
+#if !defined(PCOMN_PL_POWER8)
+   64
+#else
+   128
+#endif
+   ;
+#endif
+
+#ifdef __cplusplus
 namespace pcomn {
 #endif
 
@@ -779,9 +833,15 @@ typedef unsigned long long int   ulonglong_t ;
 
 #ifdef __cplusplus
 
-const size_t KiB = 1024 ;
-const size_t MiB = 1024*KiB ;
-const size_t GiB = 1024*MiB ;
+constexpr size_t KiB = 1024 ;
+constexpr size_t MiB = 1024*KiB ;
+constexpr size_t GiB = 1024*MiB ;
+
+/***************************************************************************//**
+ Data types for aligning to CPU cache line or memory page.
+*******************************************************************************/
+struct alignas(PCOMN_CACHELINE_SIZE) cacheline_t { char data[PCOMN_CACHELINE_SIZE] ; } ;
+struct alignas(4*KiB)                mempage_t   { char data[4*KiB] ; } ;
 
 /***************************************************************************//**
  A single-value enum for use as a tag for instantiation of static template
@@ -969,18 +1029,6 @@ inline void put_byte(T *data, size_t byte_num, uint8_t byte)
    reinterpret_cast<const char *>(data)[__byte_pos(*data, byte_num)] = byte ;
 }
 } // end of namespace pcomn
-
-/***************************************************************************//**
- @var PCOMN_CACHELINE_SIZE
- Typical L1 cacheline size for the architecture the library is compiled for.
-*******************************************************************************/
-constexpr size_t PCOMN_CACHELINE_SIZE =
-#if !defined(PCOMN_PL_POWER8)
-   64
-#else
-   128
-#endif
-   ;
 
 #endif // __cplusplus
 

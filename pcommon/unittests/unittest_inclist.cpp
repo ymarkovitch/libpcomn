@@ -1,7 +1,7 @@
 /*-*- tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   unittest_inclist.cpp
- COPYRIGHT    :   Yakov Markovitch, 2009-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2009-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Unit tests of smartpointers.
@@ -137,8 +137,8 @@ void InclusiveListTests::Test_Single_List()
 
    SListItem e1("1"), e2("2"), e3("3"), e4("4"), e5("5"), e6("6"), e7("7") ;
 
-   SListItem::slist1_type s1_1, s1_2 ;
-   SListItem::slist2_type s2_1, s2_2 ;
+   SListItem::slist1_type s1_1 ;
+   SListItem::slist2_type s2_1 ;
 
    CPPUNIT_LOG_IS_NULL(e1.next1()) ;
    CPPUNIT_LOG_IS_NULL(e1.next2()) ;

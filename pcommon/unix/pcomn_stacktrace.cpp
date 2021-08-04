@@ -607,7 +607,6 @@ extern "C" int enable_dump_on_abend(int traceout_fd)
  Signal handler utility functions
 *******************************************************************************/
 static const char backtrace_msgprefix[] = "\n------ " ;
-static const char backtrace_msgsuffix[] = " ------\n\n" ;
 
 static void puterror(const char *errtext)
 {
@@ -652,7 +651,8 @@ __noreturn void backtrace_handler(int, siginfo_t *info, void *ctx)
     {
         putmsg("Forwarding signal\n") ;
 
-        psiginfo(info, nullptr) ;
+        // FIXME: libc's both psiginfo and psignal are signal-unsafe, write own function.
+        //psiginfo(info, nullptr) ;
         // Try to forward the signal.
         raise(info->si_signo) ;
         // Terminate the process immediately.

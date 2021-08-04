@@ -1,7 +1,7 @@
 /*-*- tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   unittest_vector.cpp
- COPYRIGHT    :   Yakov Markovitch, 2009-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2009-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Unit tests of simple_slice, simple_vector, static_vector et al.

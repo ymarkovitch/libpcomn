@@ -1,7 +1,7 @@
 /*-*- tab-width:4;indent-tabs-mode:nil;c-file-style:"ellemtel";c-basic-offset:4;c-file-offsets:((innamespace . 0)(inlambda . 0)) -*-*/
 /*******************************************************************************
  FILE         :   pcomn_zstd.cpp
- COPYRIGHT    :   Yakov Markovitch, 2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2019-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   zstd/zdict wrappers.
@@ -64,6 +64,28 @@ iovec_t zdict::train_from_strvector(const T &strings, size_t capacity)
         }
 
     return train(sample_sz, {buf.get(), sample_sz}, capacity) ;
+}
+
+digest128_t zdict::digest() const
+{
+    NOXCHECK(size() > 8) ;
+    static constexpr size_t ddata_offset = 8 ;
+
+    auto *stored_digest = reinterpret_cast<std::atomic<uint64_t> *>(_digest.data()) ;
+
+    union {
+        uint64_t    digest_data[2] ;
+        t1ha2hash_t digest_value ;
+    } local = {{stored_digest[0].load(std::memory_order_acquire),
+                stored_digest[1].load(std::memory_order_acquire)}} ;
+
+    if (!local.digest_data[0] || !local.digest_data[1])
+    {
+        local.digest_value = t1ha2hash(padd(data(), ddata_offset), size() - ddata_offset) ;
+        for (int i = 2 ; i-- ; stored_digest[i].store(local.digest_data[i])) ;
+    }
+
+    return local.digest_value ;
 }
 
 /*******************************************************************************

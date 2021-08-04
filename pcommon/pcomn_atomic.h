@@ -3,7 +3,7 @@
 #define __PCOMN_ATOMIC
 /*******************************************************************************
  FILE         :   pcomn_atomic.h
- COPYRIGHT    :   Yakov Markovitch, 2001-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2001-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Atomic operations support for all platforms
@@ -43,11 +43,48 @@
 
 namespace pcomn {
 
+/***************************************************************************//**
+ Type trait equals true if this atomic type is always lock-free.
+*******************************************************************************/
+template<typename T>
+using is_atomic_placement =
+   std::bool_constant<sizeof(T) >= 4 && sizeof(T) <= sizeof(void *) && alignof(T) >= sizeof(T)> ;
+
+/***************************************************************************//**
+ If the type is eligible for both atomic load/store and integral or pointer
+ arithmetic operations, provides the member constant @a value equal to true;
+ otherwise, false.
+*******************************************************************************/
+template<typename T>
+struct is_atomic_arithmetic : std::bool_constant
+<std::is_pointer<T>::value ||
+ std::is_integral<T>::value && is_atomic_placement<T>::value>
+{} ;
+
+/***************************************************************************//**
+ If the type is eligible for atomic store, load, and exchange, provides the member
+ constant @a value equal to true; otherwise, false.
+*******************************************************************************/
+template<typename T>
+struct is_atomic : std::bool_constant
+<is_atomic_arithmetic<T>::value ||
+ std::is_trivially_copyable<T>::value && is_atomic_placement<T>::value>
+{} ;
+
+/*******************************************************************************
+
+*******************************************************************************/
+template<typename C, bool=is_atomic<C>::value>
+struct atomic_type_traits : std::false_type {} ;
+
 template<typename C>
-struct atomic_type {
+struct atomic_type_traits<C, true> : std::true_type {
       typedef typename std::remove_cv<C>::type  value_type ;
       typedef std::atomic<value_type>           type ;
 } ;
+
+template<typename C>
+struct atomic_type : atomic_type_traits<C> {} ;
 
 template<typename C>
 struct atomic_type<std::atomic<C>> : atomic_type<C> {} ;
@@ -62,34 +99,8 @@ template<typename C>
 using atomic_type_t = typename atomic_type<C>::type ;
 template<typename C>
 using atomic_value_t = typename atomic_type<C>::value_type ;
-
-/******************************************************************************/
-/** Type trait equals true if this atomic type is always lock-free.
-*******************************************************************************/
-template<typename T>
-using is_atomic_placement =
-   std::bool_constant<sizeof(T) >= 4 && sizeof(T) <= sizeof(void *) && alignof(T) >= sizeof(T)> ;
-
-/******************************************************************************/
-/** If the type is eligible for both atomic load/store and integral or pointer
- arithmetic operations, provides the member constant @a value equal to true;
- otherwise, false.
-*******************************************************************************/
-template<typename T>
-struct is_atomic_arithmetic : std::bool_constant
-<std::is_pointer<T>::value ||
- std::is_integral<T>::value && is_atomic_placement<T>::value>
-{} ;
-
-/******************************************************************************/
-/** If the type is eligible for atomic store, load, and exchange, provides the member
- constant @a value equal to true; otherwise, false.
-*******************************************************************************/
-template<typename T>
-struct is_atomic : std::bool_constant
-<is_atomic_arithmetic<T>::value ||
- std::is_trivially_copyable<T>::value && is_atomic_placement<T>::value>
-{} ;
+template<typename C>
+constexpr bool atomic_type_v = atomic_type<C>::value ;
 
 template<typename T, typename R = T>
 using enable_if_atomic_t =
@@ -102,6 +113,7 @@ using enable_if_atomic_arithmetic_t =
 template<typename T, typename R = T>
 using enable_if_atomic_ptr_t =
    std::enable_if_t<is_atomic<atomic_value_t<T>>::value && std::is_pointer<atomic_value_t<T>>::value, R> ;
+
 
 /******************************************************************************/
 /** Check if the type is eligible for CAS2 or double-witdth LL/SC.
@@ -209,8 +221,7 @@ inline void atomic_process_fence()
 *******************************************************************************/
 /// Ordered load value
 template<typename T>
-inline enable_if_atomic_t<atomic_value_t<T>>
-load(T *value, std::memory_order order = std::memory_order_acq_rel)
+inline atomic_value_t<T> load(T *value, std::memory_order order = std::memory_order_acquire)
 {
    return reinterpret_cast<const atomic_type_t<T> *>(value)
       ->load(order) ;
@@ -218,8 +229,8 @@ load(T *value, std::memory_order order = std::memory_order_acq_rel)
 
 /// Ordered store value
 template<typename T>
-inline enable_if_atomic_t<T, void>
-store(T *value, atomic_value_t<T> new_value, std::memory_order order = std::memory_order_acq_rel)
+inline std::void_t<atomic_value_t<T>>
+store(T *value, atomic_value_t<T> new_value, std::memory_order order = std::memory_order_release)
 {
    reinterpret_cast<atomic_type_t<T> *>(value)->store(new_value, order) ;
 }
@@ -232,7 +243,7 @@ store(T *value, atomic_value_t<T> new_value, std::memory_order order = std::memo
 /// and return the value @a target held previously.
 ///
 template<typename T>
-inline enable_if_atomic_t<atomic_value_t<T>>
+inline atomic_value_t<T>
 xchg(T *target, atomic_value_t<T> newvalue, std::memory_order order = std::memory_order_acq_rel)
 {
    return reinterpret_cast<atomic_type_t<T> *>(target)
@@ -250,9 +261,8 @@ xchg(T *target, atomic_value_t<T> newvalue, std::memory_order order = std::memor
 /// (and thus *target is replaced), false otherwise.
 ///
 template<typename T>
-inline enable_if_atomic_t<T, bool>
-cas(T *target, atomic_value_t<T> *expected_value, atomic_value_t<T> new_value,
-    std::memory_order order = std::memory_order_acq_rel)
+inline bool cas(T *target, atomic_value_t<T> *expected_value, atomic_value_t<T> new_value,
+                std::memory_order order = std::memory_order_acq_rel)
 {
    return reinterpret_cast<atomic_type_t<T> *>(target)
       ->compare_exchange_weak(*expected_value, new_value, order) ;
@@ -260,9 +270,8 @@ cas(T *target, atomic_value_t<T> *expected_value, atomic_value_t<T> new_value,
 
 /// @overload
 template<typename T>
-inline enable_if_atomic_t<T, bool>
-cas(T *target, atomic_value_t<T> expected_value, atomic_value_t<T> new_value,
-    std::memory_order order = std::memory_order_acq_rel)
+inline bool cas(T *target, atomic_value_t<T> expected_value, atomic_value_t<T> new_value,
+                std::memory_order order = std::memory_order_acq_rel)
 {
    return cas(target, &expected_value, new_value, order) ;
 }
@@ -278,20 +287,26 @@ cas(T *target, atomic_value_t<T> expected_value, atomic_value_t<T> new_value,
 ///
 template<typename T>
 inline enable_if_atomic2_t<T, bool>
-cas2_weak(T *target, T *expected_value, T new_value, std::memory_order order = std::memory_order_acq_rel)
+cas2_weak(T *target, T *expected_value, T new_value, std::memory_order = std::memory_order_acq_rel)
 {
    static_assert(PCOMN_ATOMIC_WIDTH >=2,
                  "CAS2 is only available on CPU platforms with 2-pointer-wide-enabled atomic operation(s).") ;
 
    #if !defined(PCOMN_PL_MS)
 
-   __int128 * const expected128 = reinterpret_cast<__int128 *>(expected_value) ;
-   const __int128 * const new128 = reinterpret_cast<__int128 *>(&new_value) ;
-
-   return reinterpret_cast<std::atomic<__int128> *>(target)
-      ->compare_exchange_weak(*expected128, *new128, order) ;
-
+   __int128 * const target128 = reinterpret_cast<__int128 *>(target) ;
+   __int128 * const old128 = reinterpret_cast<__int128 *>(expected_value) ;
+   const __int128 expected128 = *old128 ;
+   #if (!__CLANG_VER__)
+   const __int128 * const desired128 = reinterpret_cast<__int128 *>(&new_value) ;
    #else
+   const __int128 desired128 = *reinterpret_cast<__int128 *>(&new_value) ;
+   #endif
+
+   *old128 = __sync_val_compare_and_swap(target128, expected128, desired128) ;
+   return *old128 == expected128 ;
+
+   #else /*PCOMN_PL_MS*/
 
    __int64 * const begin_target = reinterpret_cast<__int64 *>(target) ;
    __int64 * const begin_expected = reinterpret_cast<__int64 *>(expected_value) ;
@@ -300,7 +315,7 @@ cas2_weak(T *target, T *expected_value, T new_value, std::memory_order order = s
    return !!_InterlockedCompareExchange128(begin_target,
                                            begin_new[1], begin_new[0],
                                            begin_expected) ;
-   #endif
+   #endif /*PCOMN_PL_MS*/
 }
 
 template<typename T>
@@ -321,16 +336,22 @@ cas2_strong(T *target, T *expected_value, T new_value, std::memory_order order =
 
 template<typename T>
 inline enable_if_atomic2_t<T, bool>
-cas2_strong(T *target, T *expected_value, T new_value, std::memory_order order = std::memory_order_acq_rel)
+cas2_strong(T *target, T *expected_value, T new_value, std::memory_order = std::memory_order_acq_rel)
 {
    static_assert(PCOMN_ATOMIC_WIDTH >=2,
                  "CAS2 is only available on CPU platforms with 2-pointer-wide-enabled atomic operation(s).") ;
 
-   __int128 * const expected128 = reinterpret_cast<__int128 *>(expected_value) ;
-   const __int128 * const new128 = reinterpret_cast<__int128 *>(&new_value) ;
+   __int128 * const target128 = reinterpret_cast<__int128 *>(target) ;
+   __int128 * const old128 = reinterpret_cast<__int128 *>(expected_value) ;
+   const __int128 expected128 = *old128 ;
+   #if (!__CLANG_VER__)
+   const __int128 * const desired128 = reinterpret_cast<__int128 *>(&new_value) ;
+   #else
+   const __int128 desired128 = *reinterpret_cast<__int128 *>(&new_value) ;
+   #endif
 
-   return reinterpret_cast<std::atomic<__int128> *>(target)
-      ->compare_exchange_strong(*expected128, *new128, order) ;
+   *old128 = __sync_val_compare_and_swap(target128, expected128, desired128) ;
+   return *old128 == expected128 ;
 }
 
 #endif
@@ -366,10 +387,10 @@ store(T *target, T value, std::memory_order order = std::memory_order_acq_rel)
 /// Atomic fetch_and_F.
 /// @return Old value
 template<typename T, typename F>
-inline enable_if_atomic_t<atomic_value_t<T>>
+inline atomic_value_t<T>
 fetch_and_F(T *value, F &&fn, std::memory_order order = std::memory_order_acq_rel)
 {
-   for (atomic_value_t<T> oldval = *value ;;)
+   for (atomic_value_t<T> oldval = load(value, std::memory_order_relaxed) ;;)
    {
       const atomic_value_t<T> newval = std::forward<F>(fn)(oldval) ;
       if (cas(value, &oldval, newval, order))
@@ -377,42 +398,52 @@ fetch_and_F(T *value, F &&fn, std::memory_order order = std::memory_order_acq_re
    }
 }
 
-/// Atomic check_and_F
+/// Atomic check_and_apply
 template<typename T, typename F, typename C>
-inline enable_if_atomic_t<T, std::pair<bool, atomic_value_t<T>>>
-check_and_F(T *value, C &&check, F &&fn, std::memory_order order = std::memory_order_acq_rel)
+inline std::pair<bool, atomic_value_t<T>>
+check_and_apply(T *value, C &&check_value, F &&convert_value,
+                std::memory_order order = std::memory_order_acq_rel)
 {
-   atomic_value_t<T> oldval = *value ;
-   while(std::forward<C>(check)(oldval))
-      if (cas(value, &oldval, std::forward<F>(fn)(oldval), order))
+   atomic_value_t<T> oldval = load(value, std::memory_order_relaxed) ;
+
+   while(std::forward<C>(check_value)(oldval))
+   {
+      const atomic_value_t<T> newval = std::forward<F>(convert_value)(oldval) ;
+
+      if (cas(value, &oldval, newval, order))
          return {true, oldval} ;
+   }
    return {false, oldval} ;
 }
 
 template<typename T, typename C>
-inline enable_if_atomic_t<T, std::pair<bool, atomic_value_t<T>>>
-check_and_swap(T *target, C &&check, atomic_value_t<T> new_value,
+inline std::pair<bool, atomic_value_t<T>>
+check_and_swap(T *target, atomic_value_t<T> newval, C &&compare_values,
                std::memory_order order = std::memory_order_acq_rel)
 {
-   return
-      check_and_F(target, std::forward<C>(check), [=](atomic_value_t<T>){ return new_value ; }, order) ;
+   auto check_value = [&](atomic_value_t<T> oldval)
+   {
+      return std::forward<C>(compare_values)(oldval, newval) ;
+   } ;
+
+   return check_and_apply(target, check_value, [=](auto){ return newval ; }, order) ;
 }
 
 /*******************************************************************************
  Atomic arithmetic and bit operations
 *******************************************************************************/
 /// Atomic add
-template<typename T>
+template<typename T, typename I>
 inline enable_if_atomic_arithmetic_t<atomic_value_t<T>>
-add(T *value, ptrdiff_t addend, std::memory_order order = std::memory_order_acq_rel)
+add(T *value, I addend, std::memory_order order = std::memory_order_acq_rel)
 {
    return reinterpret_cast<atomic_type_t<T> *>(value)->fetch_add(addend, order) + addend ;
 }
 
 /// Atomic subtract
-template<typename T>
+template<typename T, typename I>
 inline enable_if_atomic_arithmetic_t<atomic_value_t<T>>
-sub(T *value, ptrdiff_t subtrahend, std::memory_order order = std::memory_order_acq_rel)
+sub(T *value, I subtrahend, std::memory_order order = std::memory_order_acq_rel)
 {
    return reinterpret_cast<atomic_type_t<T> *>(value)->fetch_sub(subtrahend, order) - subtrahend ;
 }
@@ -491,10 +522,10 @@ bit_cas(T *target, atomic_value_t<T> expected_bits, atomic_value_t<T> new_bits, 
 
    expected_bits &= mask ;
    new_bits &= mask ;
-   return check_and_F(target,
-                      [=](type v){ return (v & mask) == expected_bits ; },
-                      [=](type v){ return v &~ mask | new_bits ; },
-                      order).first ;
+   return check_and_apply(target,
+                          [=](type v){ return (v & mask) == expected_bits ; },
+                          [=](type v){ return v &~ mask | new_bits ; },
+                          order).first ;
 }
 
 /*******************************************************************************

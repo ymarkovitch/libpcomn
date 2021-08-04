@@ -1,9 +1,9 @@
-/*-*- mode: c++; tab-width: 3; indent-tabs-mode: nil; c-file-style: "ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
+/*-*- mode:c++;tab-width:3;indent-tabs-mode:nil;c-file-style:"ellemtel";c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 #ifndef __PCOMN_SYNCOBJ_H
 #define __PCOMN_SYNCOBJ_H
 /*******************************************************************************
  FILE         :   pcomn_syncobj.h
- COPYRIGHT    :   Yakov Markovitch, 1997-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1997-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Synchronisation primitives
@@ -14,19 +14,38 @@
 /** @file
  Synchronization primitives missing in STL: shared mutex, primitive semaphore
  (event_mutex)
+
+ Polymorphic scope lock macros:
+
+   + PCOMN_SCOPE_LOCK(NAME,LOCK) : declare std::lock_guard variable of name NAME over LOCK
+   + PCOMN_SCOPE_XLOCK(NAME,LOCK): declare std::unique_lock variable of name NAME over LOCK
+   + PCOMN_SCOPE_R_LOCK(NAME,LOCK)
+   + PCOMN_SCOPE_W_LOCK(NAME,LOCK):
+   + PCOMN_SCOPE_W_XLOCK(NAME,LOCK):
+
+ binary_semaphore: classic binary Dijkstra semaphore (AKA benafore)
+
+ promise_lock: a binary semaphore with only possible state change from locked to unlocked,
+    with idempotent unlocked state (allows to call unlock arbitrary number of times).
+
+ Both the binary_semaphore and promise_lock are extremely fast when uncontended,
+ the cost is one atomic userspace operation.
 *******************************************************************************/
-#include <pcomn_platform.h>
-#include <pcomn_assert.h>
+#include "pcomn_platform.h"
+#include "pcomn_assert.h"
+#include "pcomn_except.h"
 
 #include <mutex>
 #include <atomic>
+#include <chrono>
 
 #include <type_traits>
 
+// Include wrappers over native synchronization objects
 #include PCOMN_PLATFORM_HEADER(pcomn_native_syncobj.h)
 
-/******************************************************************************/
-/** Polymorphic scope lock
+/***************************************************************************//**
+ Polymorphic scope locks
 
  Let's 'mymutex' is a variable of any type T for which pcomn::PTGuarg<T> is defined.
  To create a lexical scope guard variable 'myguardvar' for mymutex, use the following:
@@ -39,6 +58,7 @@
  @param guard_varname   The name of local guard variable.
  @param lock_expr       The expression that should return PTScopeGuard<T> value.
 *******************************************************************************/
+/**@{*/
 #define PCOMN_SCOPE_LOCK(guard_varname, lock_expr, ...)                 \
    const std::lock_guard<std::remove_cvref_t<decltype((lock_expr))>> guard_varname ((lock_expr), ##__VA_ARGS__)
 
@@ -51,10 +71,52 @@
 #define PCOMN_SCOPE_W_LOCK(guard_varname, lock_expr, ...)   PCOMN_SCOPE_LOCK(guard_varname, (lock_expr), ##__VA_ARGS__)
 #define PCOMN_SCOPE_W_XLOCK(guard_varname, lock_expr, ...)  PCOMN_SCOPE_XLOCK(guard_varname, (lock_expr), ##__VA_ARGS__)
 
+/**@}*/
+
 namespace pcomn {
 
-/******************************************************************************/
-/** Get logical CPU(core) which the calling thread is running on.
+enum class TimeoutMode {
+   None,
+   Period,
+   SteadyClock,
+   SystemClock
+} ;
+
+/// Convert timeout specified as std::chrono::duration to struct timespec.
+/// The timeout can be relative (period), or absolute (time point).
+inline
+struct timespec timeout_timespec(TimeoutMode mode, std::chrono::nanoseconds timeout)
+{
+   switch (mode)
+   {
+      case TimeoutMode::None: return {} ;
+      case TimeoutMode::Period:
+         return sys::nsec_to_timespec(std::chrono::steady_clock::now().time_since_epoch() + timeout) ;
+      default: break ;
+   }
+   return sys::nsec_to_timespec(timeout) ;
+} ;
+
+/// Get the TimeoutMode from the clock type from std::chrono.
+///
+/// @tparam Clock std::chrono::steady_clock or std::chrono::system_clock; the function
+/// verifies this parameter.
+/// @return TimeoutMode::SteadyClock or TimeoutMode::SystemClock
+///
+template<typename Clock>
+constexpr TimeoutMode timeout_mode_from_clock()
+{
+   static_assert(is_one_of<Clock,
+                 std::chrono::steady_clock,
+                 std::chrono::system_clock>::value,
+                 "Only steady_clock and system_clock are supported for timeout specification.") ;
+
+   return std::is_same_v<Clock, std::chrono::steady_clock> ?
+      TimeoutMode::SteadyClock : TimeoutMode::SystemClock ;
+}
+
+/***************************************************************************//**
+ Get the logical CPU(core) which the calling thread is running on.
  Never fails: if underlying OS API fails, returns 0.
 *******************************************************************************/
 inline unsigned current_cpu_core()
@@ -84,8 +146,8 @@ unsigned probable_current_cpu_core()
    return coreid_cache ;
 }
 
-/******************************************************************************/
-/** Read-write mutex on top of a native (platform) read-write mutex for those platforms
+/***************************************************************************//**
+ Read-write mutex on top of a native (platform) read-write mutex for those platforms
  that have such native mutex (e.g. POSIX Threads).
 *******************************************************************************/
 class shared_mutex {
@@ -105,8 +167,8 @@ class shared_mutex {
       sys::native_rw_mutex _lock ;
 } ;
 
-/******************************************************************************/
-/** General-purpose shared (read-write) mutex ownership wrapper allowing  deferred
+/***************************************************************************//**
+ General-purpose shared (read-write) mutex ownership wrapper allowing  deferred
  locking and transfer of lock ownership.
 
  Locking a shared_lock locks the associated mutex in shared (read) mode.
@@ -163,8 +225,8 @@ class shared_lock {
             return ;
 
          if (!owns_lock())
-            throw_system_error(std::errc::operation_not_permitted,
-                               "Attempt to unlock already unlocked mutex") ;
+            throw_syserror(std::errc::operation_not_permitted,
+                           "Attempt to unlock already unlocked mutex") ;
          mutex()->unlock_shared() ;
          _owns = false ;
       }
@@ -194,7 +256,7 @@ class shared_lock {
       void ensure_nonempty() const
       {
          if (!mutex())
-            throw_system_error(std::errc::operation_not_permitted, "NULL mutex pointer") ;
+            throw_syserror(std::errc::operation_not_permitted, "NULL mutex pointer") ;
       }
       void unlock_nocheck()
       {
@@ -206,9 +268,8 @@ class shared_lock {
       }
 } ;
 
-#if PCOMN_HAS_NATIVE_PROMISE
-/******************************************************************************/
-/** Promise lock is a binary semaphore with only possible state change from locked
+/***************************************************************************//**
+ Promise lock is a binary semaphore with only possible state change from locked
  to unlocked.
 
  The promise lock is constructed either in locked (default) or unlocked state and
@@ -224,41 +285,83 @@ class shared_lock {
  @note The promise lock is @em not mutex in the sense there is no "ownership" of
  the lock: @em any thread may call unlock().
 *******************************************************************************/
-class promise_lock : private sys::native_promise_lock {
-      typedef sys::native_promise_lock ancestor ;
+class promise_lock {
       PCOMN_NONCOPYABLE(promise_lock) ;
       PCOMN_NONASSIGNABLE(promise_lock) ;
    public:
-      /// Create a promise lock, initially locked by default.
-      explicit constexpr promise_lock(bool initially_locked = true) :
-         ancestor(initially_locked)
-      {}
+      /// Create an initially locked promise lock.
+      constexpr promise_lock() noexcept : promise_lock(true) {}
 
-      ~promise_lock() = default ;
-
-      using ancestor::wait ;
-      using ancestor::unlock ;
-} ;
-
-#else // No native_promise_lock, fallback to standard (inefficient)
-class promise_lock : private std::mutex {
-      typedef std::mutex ancestor ;
-      PCOMN_NONCOPYABLE(promise_lock) ;
-      PCOMN_NONASSIGNABLE(promise_lock) ;
-   public:
-      explicit constexpr promise_lock(bool initially_locked = true) :
+      /// Create a lock with explicitly specified initial state.
+      explicit constexpr promise_lock(bool initially_locked) noexcept :
          _locked(initially_locked)
       {}
 
-      ~promise_lock() = default ;
+      /// Destruction is OK for both locked and unlocked promise_lock objects,
+      /// except for then the object is locked _and_ somebody is waiting on it.
+      ~promise_lock()
+      {
+         PCOMN_VERIFY(_locked.load(std::memory_order_relaxed) < 2) ;
+      }
+
+      void unlock() ;
+
+      /// Block until the lock is unlocked.
+      /// @note This function *does not* reacquire the lock, and if the lock is not
+      /// locked does not make system calls.
+      ///
+      void wait() ;
+
+      /// Check if the lock is unlocked.
+      /// Never blocks and never takes a kernel call.
+      ///
+      /// @return true if unlocked, false otherwise.
+      /// @note *Does not* reacquire the lock.
+      ///
+      bool try_wait() noexcept { return wait_with_timeout(TimeoutMode::Period, {}) ; }
+
+      /// Check if the lock is unlocked, block until specified `timeout_duration` has
+      /// elapsed or the lock becomes unlocked, whichever comes first.
+      ///
+      /// Uses std::chrono::steady_clock to measure a duration, thus immune to clock
+      /// adjusments.
+      /// If `timeout_duration` is zero, behaves like try_wait().
+      ///
+      /// @return true if unlocked, false if timeout expired.
+      ///
+      template<typename R, typename P>
+      bool wait_for(const std::chrono::duration<R, P> &timeout_duration)
+      {
+         return wait_with_timeout(TimeoutMode::Period, timeout_duration) ;
+      }
+
+      /// Check if the lock is unlocked, block until specified `abs_time` has been
+      /// reached or the lock becomes unlocked, whichever comes first.
+      ///
+      /// Only allows std::chrono::steady_clock or std::chrono::system_clock to specify
+      /// `abs_time`.
+      /// If `abs_time` has already passed, behaves like try_wait() but still
+      /// can make a system call in the presence of contention.
+      ///
+      /// @return true if unlocked, false if timeout expired.
+      ///
+      template<typename Clock, typename Duration>
+      bool wait_until(const std::chrono::time_point<Clock, Duration> &abs_time)
+      {
+         return wait_with_timeout(timeout_mode_from_clock<Clock>(),
+                                  abs_time.time_since_epoch()) ;
+      }
+
+      bool wait_with_timeout(TimeoutMode, std::chrono::nanoseconds timeout) ;
 
    private:
-      std::cond
+      std::atomic<int32_t> _locked ; /* 0:unlocked,
+                                        1:locked, nobody waiting,
+                                        2:locked, somebody waiting */
 } ;
-#endif // PCOMN_HAS_NATIVE_PROMISE
 
-/******************************************************************************/
-/** Identifier dispenser: requests range of integral numbers, then (atomically)
+/***************************************************************************//**
+ Identifier dispenser: requests range of integral numbers, then (atomically)
  allocates successive numbers from the range upon request.
 
  @param AtomicInt       Atomic integer type
@@ -320,15 +423,16 @@ class ident_dispenser {
       RangeProvider           _provider ;
 } ;
 
-/******************************************************************************/
-/** Generator of integral identifiers which are unique insdide a process run.
+/***************************************************************************//**
+ Generator of integral identifiers which are unique insdide a process run.
 
  Atomically allocates a range of integral numbers for a thread and then allocates
  successive numbers from that range upon request from this thread until the range
  depletion, when allocates new range.
- Range allocation is atomic (interlocked), but the ident allocation is needn't
- be atomic since it is thread-local, thus performing only one interlocked
- operation per range (by default, per 65536 identifiers allocated).
+
+ Range allocation is atomic, but the ident allocation is needn't be atomic since
+ it is thread-local, so only one interlocked operation per range is required
+ (by default, per 65536 identifiers allocated).
 *******************************************************************************/
 template<typename Tag, typename Int = uint64_t, Int blocksize = 0x10000U>
 class local_ident_dispenser {

@@ -1,7 +1,7 @@
 /*-*- tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   unittest_smartptr.cpp
- COPYRIGHT    :   Yakov Markovitch, 2007-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2007-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Unit tests of smartpointers.
@@ -53,12 +53,14 @@ struct LifetimeRegister {
 class IntrusiveSmartPtrTests : public CppUnit::TestFixture {
 
       void Test_Constructors() ;
+      void Test_Assignment() ;
       void Test_Wrapper() ;
       void Test_Bind_ThisPtr() ;
 
       CPPUNIT_TEST_SUITE(IntrusiveSmartPtrTests) ;
 
       CPPUNIT_TEST(Test_Constructors) ;
+      CPPUNIT_TEST(Test_Assignment) ;
       CPPUNIT_TEST(Test_Wrapper) ;
       CPPUNIT_TEST(Test_Bind_ThisPtr) ;
 
@@ -232,6 +234,104 @@ void IntrusiveSmartPtrTests::Test_Constructors()
    CPPUNIT_LOG_EQ(quux.instances(), 3) ;
    CPPUNIT_LOG_EQ((cfoo = quux).instances(), 4) ;
    CPPUNIT_LOG_IS_TRUE(constfoo_reg.destructed) ;
+}
+
+void IntrusiveSmartPtrTests::Test_Assignment()
+{
+   LifetimeRegister foo_reg ;
+   LifetimeRegister bar_reg ;
+   LifetimeRegister quux_reg ;
+
+   typedef pcomn::shared_intrusive_ptr<Foo> foo_ptr ;
+   typedef pcomn::shared_intrusive_ptr<Bar> bar_ptr ;
+
+   foo_ptr foo1 (new Foo(foo_reg)) ;
+
+   CPPUNIT_LOG_ASSERT(foo1.get()) ;
+   CPPUNIT_LOG_EQ(foo1.use_count(), 1) ;
+
+   foo_ptr foo2 (foo1.get()) ;
+
+   CPPUNIT_LOG_EQUAL(foo1.get(), foo2.get()) ;
+   CPPUNIT_LOG_ASSERT(foo1.get()) ;
+   CPPUNIT_LOG_EQ(foo1.use_count(), 2) ;
+
+   foo_ptr foo3 (foo2) ;
+
+   CPPUNIT_LOG_EQUAL(foo3.get(), foo1.get()) ;
+   CPPUNIT_LOG_ASSERT(foo3.get()) ;
+   CPPUNIT_LOG_EQ(foo1.use_count(), 3) ;
+
+   CPPUNIT_LOG_RUN(foo3 = foo3) ;
+   CPPUNIT_LOG_EQUAL(foo3.get(), foo1.get()) ;
+   CPPUNIT_LOG_EQ(foo3.use_count(), 3) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_RUN(foo3 = std::move(foo3)) ;
+   CPPUNIT_LOG_EQUAL(foo3.get(), foo1.get()) ;
+   CPPUNIT_LOG_EQ(foo3.use_count(), 3) ;
+
+   CPPUNIT_LOG_RUN(foo3 = std::move(foo2)) ;
+   CPPUNIT_LOG_EQUAL(foo3.get(), foo1.get()) ;
+   CPPUNIT_LOG_EQ(foo2.get(), nullptr) ;
+   CPPUNIT_LOG_EQ(foo3.use_count(), 2) ;
+
+   CPPUNIT_LOG_RUN(foo2 = std::move(foo3)) ;
+   CPPUNIT_LOG_EQUAL(foo2.get(), foo1.get()) ;
+   CPPUNIT_LOG_EQ(foo3.get(), nullptr) ;
+   CPPUNIT_LOG_EQ(foo2.use_count(), 2) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   foo_ptr foo4 (std::move(foo3)) ;
+
+   CPPUNIT_LOG_EQ(foo4.get(), nullptr) ;
+   CPPUNIT_LOG_RUN(foo4 = foo4) ;
+   CPPUNIT_LOG_EQ(foo4.get(), nullptr) ;
+   CPPUNIT_LOG_RUN(foo4 = std::move(foo4)) ;
+   CPPUNIT_LOG_EQ(foo4.get(), nullptr) ;
+
+   CPPUNIT_LOG_RUN(foo4 = foo1.get()) ;
+   CPPUNIT_LOG_EQUAL(foo4.get(), foo1.get()) ;
+   CPPUNIT_LOG_EQ(foo4.use_count(), 3) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_RUN(foo2 = {}) ;
+   CPPUNIT_LOG_RUN(foo3 = nullptr) ;
+   CPPUNIT_LOG_RUN(foo4 = foo3) ;
+
+   CPPUNIT_LOG_IS_NULL(foo2.get()) ;
+   CPPUNIT_LOG_IS_NULL(foo3.get()) ;
+   CPPUNIT_LOG_IS_NULL(foo4.get()) ;
+   CPPUNIT_LOG_ASSERT(foo1.get()) ;
+   CPPUNIT_LOG_EQ(foo1.use_count(), 1) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_IS_TRUE(foo_reg.constructed) ;
+   CPPUNIT_LOG_IS_FALSE(foo_reg.destructed) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   bar_ptr bar1 (new Bar(bar_reg)) ;
+
+   CPPUNIT_LOG_EQ(bar1.use_count(), 1) ;
+   CPPUNIT_LOG_RUN(foo2 = bar1) ;
+   CPPUNIT_LOG_EQ(bar1.use_count(), 2) ;
+   CPPUNIT_LOG_EQ(foo2.get(), bar1.get()) ;
+
+   CPPUNIT_LOG_IS_FALSE(foo_reg.destructed) ;
+   CPPUNIT_LOG_IS_TRUE(bar_reg.constructed) ;
+   CPPUNIT_LOG_IS_FALSE(bar_reg.destructed) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_RUN(foo1 = std::move(bar1)) ;
+   CPPUNIT_LOG_EQ(foo1.use_count(), 2) ;
+   CPPUNIT_LOG_IS_NULL(bar1.get()) ;
+
+   CPPUNIT_LOG_IS_TRUE(foo_reg.destructed) ;
+   CPPUNIT_LOG_IS_TRUE(bar_reg.constructed) ;
+   CPPUNIT_LOG_IS_FALSE(bar_reg.destructed) ;
 }
 
 void IntrusiveSmartPtrTests::Test_Wrapper()

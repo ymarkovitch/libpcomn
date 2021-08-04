@@ -3,7 +3,7 @@
 #define __PCOMN_UNITTEST_MT_H
 /*******************************************************************************
  FILE         :   pcomn_unittest_mt.h
- COPYRIGHT    :   Yakov Markovitch, 2014-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2014-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Helpers for multi-threaded testing with CPPUnit, googlemock, etc.
@@ -11,7 +11,16 @@
  PROGRAMMED BY:   Yakov Markovitch
  CREATION DATE:   6 Feb 2014
 *******************************************************************************/
-#include <pcomn_unittest.h>
+#ifndef CPPUNIT_USE_SYNC_LOGSTREAM
+
+#ifdef CPPUNIT_LOGSTREAM
+#error Ensure pcomn_unittest_mt.h is #included first in the unit test source file.
+#endif /* CPPUNIT_LOGSTREAM */
+
+#define CPPUNIT_USE_SYNC_LOGSTREAM
+#endif
+
+#include "pcomn_unittest.h"
 
 #include <thread>
 #include <mutex>
@@ -26,8 +35,49 @@
 namespace pcomn {
 namespace unit {
 
-/******************************************************************************/
-/** Primitive queue to "feed" test worker; if the queue is empty, the consumer
+/*******************************************************************************
+ watchdog
+*******************************************************************************/
+class watchdog {
+public:
+    explicit watchdog(std::chrono::milliseconds timeout) :
+        _timeout(timeout)
+    {}
+
+    __noinline void arm()
+    {
+        CPPUNIT_ASSERT(!_watchdog.joinable()) ;
+
+        _armed.lock() ;
+
+        _watchdog = std::thread([&]{
+            if (!_armed.try_lock_for(_timeout))
+            {
+                CPPUNIT_LOG_LINE("ERROR: THE TEST DEADLOCKED") ;
+                PCOMN_FAIL("ERROR: THE TEST DEADLOCKED") ;
+            }
+        }) ;
+    }
+
+    __noinline void disarm()
+    {
+        CPPUNIT_ASSERT(_watchdog.joinable()) ;
+
+        _armed.unlock() ;
+        _watchdog.join() ;
+        _watchdog = {} ;
+    }
+
+    std::chrono::milliseconds timeout() const { return  _timeout ; }
+
+private:
+    std::chrono::milliseconds  _timeout ;
+    std::timed_mutex           _armed ;
+    std::thread                _watchdog ;
+} ;
+
+/***************************************************************************//**
+ Primitive queue to "feed" test worker; if the queue is empty, the consumer
  gets T()
 *******************************************************************************/
 template<typename T>
@@ -41,23 +91,26 @@ class consumer_feeder {
       void push_back(const T &value) { (std::unique_lock<std::mutex>(_mutex), _queue.push_back(value)) ; }
       void push_back(T &&value) { (std::unique_lock<std::mutex>(_mutex), _queue.push_back(std::move(value))) ; }
 
-      T pop_front()
-      {
-         std::unique_lock<std::mutex> lock (_mutex) ;
-         if (_queue.empty())
-         {
-            lock.unlock() ;
-            return T() ;
-         }
-         T result (std::move(_queue.front())) ;
-         _queue.pop_front() ;
-         return result ;
-      }
+    T pop_front() ;
 
    private:
       std::mutex   _mutex ;
       std::list<T> _queue ;
 } ;
+
+template<typename T>
+T consumer_feeder<T>::pop_front()
+{
+    std::unique_lock<std::mutex> lock (_mutex) ;
+    if (_queue.empty())
+    {
+        lock.unlock() ;
+        return T() ;
+    }
+    T result (std::move(_queue.front())) ;
+    _queue.pop_front() ;
+    return result ;
+}
 
 /*******************************************************************************
 
@@ -107,7 +160,7 @@ class ThreadPack {
 
       void submit_work(unsigned thread_idx, const work_type &fn)
       {
-         submit_work(thread_idx, std::move(fn)) ;
+         submit_work(thread_idx, work_type(fn)) ;
       }
 
       void launch()

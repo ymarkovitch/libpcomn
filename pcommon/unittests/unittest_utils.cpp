@@ -1,7 +1,7 @@
 /*-*- tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   unittest_utils.cpp
- COPYRIGHT    :   Yakov Markovitch, 2011-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2011-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Unittests of various stuff from pcomn_utils.h
@@ -488,6 +488,13 @@ void UtilityTests::Test_Folding()
 
    cc = C::N4 ;
    CPPUNIT_LOG_IS_FALSE((is_in(cc, C::N5, C::N1))) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   char c = '\n' + 64 ;
+   CPPUNIT_LOG_IS_FALSE((is_in(c, '\n', '\t'))) ;
+   CPPUNIT_LOG_RUN(c = '\t') ;
+   CPPUNIT_LOG_ASSERT((is_in(c, '\n', '\t'))) ;
+
 }
 
 /*******************************************************************************

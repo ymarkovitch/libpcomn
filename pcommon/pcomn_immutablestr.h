@@ -3,7 +3,7 @@
 #define __PCOMN_IMMUTABLESTR_H
 /*******************************************************************************
  FILE         :   pcomn_immutablestr.h
- COPYRIGHT    :   Yakov Markovitch, 2006-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2006-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   The immutable string template.
@@ -112,7 +112,8 @@ class refcounted_storage {
          incref(str_data()) ;
       }
 
-      refcounted_storage(refcounted_storage &&source) noexcept
+      refcounted_storage(refcounted_storage &&source) noexcept :
+            _data(const_cast<value_type *>(data_type::zero.begin()))
       {
          swap(source) ;
       }
@@ -150,7 +151,7 @@ class refcounted_storage {
 
       size_type size() const noexcept { return size_type(str_data().size()) ; }
       size_type capacity() const noexcept { return size() ; }
-      size_type max_size() const noexcept { return allocator_type::max_size() ; }
+      size_type max_size() const noexcept { return std::numeric_limits<size_type>::max() / 16 ; }
 
       void swap(refcounted_storage &rhs) noexcept { std::swap(_data, rhs._data) ; }
 
@@ -902,13 +903,16 @@ PCOMN_DEFINE_SWAP(immutable_string<C>, template<typename C>) ;
 PCOMN_DEFINE_SWAP(mutable_strbuf<C>,   template<typename C>) ;
 
 /*******************************************************************************
- Decalre explicit instantiations.
+ Declare explicit instantiations.
 *******************************************************************************/
 extern template class immutable_string<char> ;
 extern template class immutable_string<wchar_t> ;
 
 extern template class mutable_strbuf<char> ;
 extern template class mutable_strbuf<wchar_t> ;
+
+extern template class refcounted_storage<char> ;
+extern template class refcounted_storage<wchar_t> ;
 
 /*******************************************************************************
  Stream output

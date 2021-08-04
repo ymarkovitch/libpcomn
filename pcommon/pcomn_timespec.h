@@ -3,7 +3,7 @@
 #define __PCOMN_TIMESPEC_H
 /*******************************************************************************
  FILE         :   pcomn_timespec.h
- COPYRIGHT    :   Yakov Markovitch, 2010-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2010-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Time point and time interval classes for simple time manipulation.

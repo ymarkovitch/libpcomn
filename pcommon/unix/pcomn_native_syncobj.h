@@ -3,7 +3,7 @@
 #define __PCOMN_NATIVE_SYNCOBJ_H
 /*******************************************************************************
  FILE         :   pcomn_native_syncobj.h
- COPYRIGHT    :   Yakov Markovitch, 2008-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2008-2020. All rights reserved.
 
  DESCRIPTION  :   Native synchronization objects for Unices
 
@@ -13,17 +13,18 @@
 /** @file
  Define native synchronization objects, like read-write mutex, etc., for Unix.
 
-  @li PCOMN_HAS_NATIVE_PROMISE
   @li PCOMN_HAS_NATIVE_RWMUTEX
 *******************************************************************************/
+#include <pcomn_platform.h>
+#ifndef PCOMN_PL_UNIX
+#error This header supports only Unix.
+#endif
+
 #include <pcommon.h>
 #include <pcomn_assert.h>
 #include <pcomn_except.h>
 #include <pcomn_atomic.h>
-
-#ifndef PCOMN_PL_UNIX
-#error This header supports only Unix.
-#endif
+#include <pcomn_sys.h>
 
 #include <pthread.h>
 
@@ -54,10 +55,9 @@ inline void pause_cpu() { asm volatile("pause\n": : :"memory") ; }
 
 inline void pause_cpu(size_t cycle_count)
 {
-   // The apporximate count of CPU clocks per pause operation.
-   // MUST be the power of 2.
-   static const size_t pause_clk = 8 ;
-   for (size_t i = cycle_count & pause_clk - 1 ; i-- ; pause_cpu()) ;
+   // The log2 of the apporximate count of CPU clocks per pause operation.
+   constexpr size_t pause_clk = 3 ;
+   for (size_t i = (cycle_count + (1U << pause_clk) - 1) >> pause_clk ; i-- ; pause_cpu()) ;
 }
 
 #else
@@ -81,144 +81,104 @@ inline unsigned get_current_cpu_core()
 /*******************************************************************************
  Futex API
 *******************************************************************************/
-inline int futex(void *addr1, int32_t op, int32_t val1, struct timespec *timeout, void *addr2, int32_t val3)
-{
-  return syscall(SYS_futex, addr1, op, val1, timeout, addr2, val3) ;
-}
+/// FutexWait is the set of ORable flags to specify futex_wait behaviour.
+enum class FutexWait : uint8_t {
+   RelTime = 0,      /**< Wait for the specified duration (default). */
+   AbsTime = 1,      /**< Wait until the specified point in time. */
 
-inline int futex(int32_t *self, int32_t op, int32_t value)
-{
-  return futex(self, op, value, NULL, NULL, 0) ;
-}
-
-inline int futex(int32_t *self, int32_t op, int32_t value, int32_t val2)
-{
-  return futex(self, op, value, (struct timespec *)(intptr_t)val2, NULL, 0) ;
-}
-
-#define PCOMN_HAS_NATIVE_PROMISE 1
-/******************************************************************************/
-/** Promise lock is a binary semaphore with only possible state change from locked
- to unlocked.
-
- The promise lock is constructed either in locked (default) or unlocked state and
- has two members: wait() and unlock().
-
- If promise lock is in locked state, all wait() callers are blocked until the it is
- switched to unlocked state; in unlocked state, wait() is no-op.
-
- unlock() is idempotent and can be called arbitrary number of times (i.e., the invariant
- is "after calling unlock() the lock is in unlocked state no matter what state it's been
- before in").
-
- @note The promise lock is @em not mutex in the sense there is no "ownership" of
- the lock: @em any thread may call unlock().
-*******************************************************************************/
-class native_promise_lock {
-      PCOMN_NONCOPYABLE(native_promise_lock) ;
-      PCOMN_NONASSIGNABLE(native_promise_lock) ;
-   public:
-      explicit constexpr native_promise_lock(bool initially_locked = true) :
-         _locked(initially_locked)
-      {}
-
-      ~native_promise_lock() { unlock() ; }
-
-      void wait()
-      {
-         while (atomic_op::load(&_locked, std::memory_order_acq_rel)
-                && futex(&_locked, FUTEX_WAIT_PRIVATE, 1) == EINTR) ;
-      }
-
-      void unlock()
-      {
-         if (atomic_op::load(&_locked, std::memory_order_acquire) &&
-             atomic_op::cas(&_locked, 1, 0, std::memory_order_release))
-
-            futex(&_locked, FUTEX_WAKE_PRIVATE, INT_MAX) ;
-      }
-
-   private:
-      int32_t _locked ;
+   SteadyClock = 0,  /**< Use CLOCK_MONOTONIC. */
+   SystemClock = 2   /**< Use CLOCK_REALTIME; ignored for RelTime. */
 } ;
 
-#define PCOMN_HAS_NATIVE_BENAFORE 1
-/******************************************************************************/
-/** Classic binary Dijkstra semaphore; nonrecursive lock that allow both self-locking
- and unlocking by any thread (not only by the "owner" thread that acquired the lock).
-*******************************************************************************/
-class binary_semaphore {
-      PCOMN_NONCOPYABLE(binary_semaphore) ;
-      PCOMN_NONASSIGNABLE(binary_semaphore) ;
-      static constexpr const int32_t ST_UNLOCKED = 0 ;
-      static constexpr const int32_t ST_LOCKED   = 1 ;
-      static constexpr const int32_t ST_LOCKWAIT = 2 ;
-   public:
-      constexpr binary_semaphore() :
-         _state(ST_UNLOCKED)
-      {}
-      explicit constexpr binary_semaphore(bool acquire) :
-         _state(!!acquire)
-      {}
+PCOMN_DEFINE_FLAG_ENUM(FutexWait) ;
 
-      ~binary_semaphore() { NOXCHECK(_state != ST_LOCKWAIT) ; }
+constexpr inline bool operator!(FutexWait f) { return !(uint8_t)f ; }
 
-      /// Acquire lock.
-      /// If the lock is held by @em any thread (including itself), wait for it to be
-      /// released.
-      void lock()
-      {
-         int32_t expected = ST_UNLOCKED ;
-         // Attempt to swap ST_UNLOCKED -> ST_LOCKED; on success, we are the first
-         if (atomic_op::cas(&_state, &expected, ST_LOCKED, std::memory_order_acquire))
-            // Locked, no contention; here _state is always ST_LOCKED
-            return ;
+inline int futex(void *addr1, int32_t op, int32_t val, struct timespec *timeout, void *addr2, int32_t val3) noexcept
+{
+   return syscall(SYS_futex, addr1, op, val, timeout, addr2, val3) ;
+}
 
-         // Contended
-         int32_t contended = atomic_op::xchg(&_state, ST_LOCKWAIT, std::memory_order_acquire) ;
+template<typename I>
+inline int futex(I *self, int32_t op, int32_t value) noexcept
+{
+   PCOMN_STATIC_CHECK(atomic_type_v<I> && sizeof(I) == 4 && !std::is_const<I>()) ;
 
-         while (contended)
-         {
-            // Wait in the kernel (possibly)
-            futex(&_state, FUTEX_WAIT_PRIVATE, ST_LOCKWAIT) ;
-            contended = atomic_op::xchg(&_state, ST_LOCKWAIT, std::memory_order_acquire) ;
-         }
-         // Locked, there is contention; here _state is always ST_LOCKWAIT
-      }
+   return futex(self, op, value, NULL, NULL, 0) ;
+}
 
-      /// Try to acquire the lock.
-      /// This call never blocks and never takes a kernel call.
-      /// @return true, if this thread has successfully acquired the lock; false, if the
-      /// lock is already held by any thread, including itself.
-      bool try_lock()
-      {
-         return atomic_op::cas(&_state, ST_UNLOCKED, ST_LOCKED) ;
-      }
+template<typename I>
+inline int futex(I *self, int32_t op, int32_t value, int32_t val2) noexcept
+{
+   PCOMN_STATIC_CHECK(atomic_type_v<I> && sizeof(I) == 4 && !std::is_const<I>()) ;
 
-      /// Release the lock.
-      void unlock()
-      {
-         switch (atomic_op::xchg(&_state, ST_UNLOCKED, std::memory_order_release))
-         {
-            case ST_UNLOCKED: // Let unlock be idempotent...
-            case ST_LOCKED:   // There was no contention, no need to wake up threads in the kernel.
-               return ;
-         }
+   return futex(self, op, value, (struct timespec *)(intptr_t)val2, NULL, 0) ;
+}
 
-         // Someone probably still waits inside the kernel, it was ST_LOCKWAIT.
-         // Wake up one thread.
-         futex(&_state, FUTEX_WAKE_PRIVATE, 1) ;
-      }
+/// Atomically test that *self still contains the expected_value, and if so, sleep
+/// waiting for a FUTEX_WAKE operation on `self`.
+///
+/// @note Ihe operation is FUTEX_WAIT_PRIVATE.
+/// @note Can be interrupted by a signal, in which case it returns EINTR.
+///
+template<typename I>
+inline int futex_wait(I *self, int32_t expected_value) noexcept
+{
+   return futex(self, FUTEX_WAIT_PRIVATE, expected_value) ;
+}
 
-   private:
-      int32_t _state ;
-} ;
+/// Test that `*self` still contains `expected_value`, and if so, sleeps waiting for
+/// a futex_wake() on `self` or until `timeout` expired.
+///
+/// @note Ihe operation is FUTEX_WAIT_PRIVATE (on FutexWait::RelIime `flags`)
+///  or FUTEX_WAIT_BITSET_PRIVATE (on FutexWait::AbsTime `flags`).
+///
+/// @note Can be interrupted by a signal before wake or timeot, in which case
+/// it returns EINTR.
+///
+int futex_wait_with_timeout(void *self, int32_t expected_value, FutexWait flags, struct timespec timeout) ;
+
+/// Test that `*self` still contains `expected_value`, and if so, sleeps waiting for
+/// a futex_wake() on `self` or until `timeout` expired.
+///
+/// @note Ihe operation is FUTEX_WAIT_PRIVATE (on FutexWait::RelIime `flags`)
+///  or FUTEX_WAIT_BITSET_PRIVATE (on FutexWait::AbsTime `flags`).
+///
+/// @note Can be interrupted by a signal before wake or timeot, in which case
+/// it returns EINTR.
+///
+template<typename I>
+inline int futex_wait(I *self, int32_t expected_value, FutexWait flags, struct timespec timeout)
+{
+   PCOMN_STATIC_CHECK(atomic_type_v<I> && sizeof(I) == 4 && !std::is_const<I>()) ;
+
+   return futex_wait_with_timeout(self, expected_value, flags, timeout) ;
+}
+
+/// Wake at most `max_waked_count` of the waiters that are waiting (e.g., inside
+/// futex_wait()) on the futex word at the address `self`.
+///
+/// @note When `max_waked_count` is not specified, this is futex_wake_any().
+///
+template<typename I>
+inline int futex_wake(I *self, int32_t max_waked_count = 1)
+{
+   return futex(self, FUTEX_WAKE_PRIVATE, max_waked_count) ;
+}
+
+/// Wake all the waiters that are waiting futex_wait()) on the futex word
+/// at the address `self`.
+template<typename I>
+inline int futex_wake_all(I *self)
+{
+   return futex_wake(self, std::numeric_limits<int32_t>::max()) ;
+}
 
 #endif // PCOMN_PL_LINUX
 
 #define PCOMN_HAS_NATIVE_RWMUTEX 1
-/******************************************************************************/
-/** Read-write mutex for POSIX Threads.
+/***************************************************************************//**
+ Read-write mutex for POSIX Threads.
 *******************************************************************************/
 class native_rw_mutex {
       PCOMN_NONCOPYABLE(native_rw_mutex) ;
@@ -280,8 +240,8 @@ class native_rw_mutex {
       }
 } ;
 
-/******************************************************************************/
-/** File lock; provides read-write mutex logic
+/***************************************************************************//**
+ File lock; provides read-write mutex logic
 *******************************************************************************/
 class native_file_mutex {
       PCOMN_NONASSIGNABLE(native_file_mutex) ;

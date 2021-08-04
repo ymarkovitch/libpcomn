@@ -1,7 +1,7 @@
 /*-*- tab-width:4;indent-tabs-mode:nil;c-file-style:"stroustrup";c-file-offsets:((innamespace . 0)(inline-open . 0)(case-label . +)) -*-*/
 /*******************************************************************************
  FILE         :   pcomn_netaddr.cpp
- COPYRIGHT    :   Yakov Markovitch, 2008-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2008-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Internet address class(es)/functions.
@@ -48,7 +48,7 @@ MS_IGNORE_WARNING(4267)
 
 namespace pcomn {
 
-static inline std::pair<ipv4_addr, bool> ipv4_from_dotdec(const strslice &addrstr)
+static inline std::pair<ipv4_addr, bool> ipv4_from_dotdec(const strslice &addrstr) noexcept
 {
     enum State { Dot, Digit } ;
 
@@ -91,18 +91,55 @@ static inline std::pair<ipv4_addr, bool> ipv4_from_dotdec(const strslice &addrst
     return {ipv4_addr(octets[0], octets[1], octets[2], last_octet), true} ;
 }
 
+#ifndef PCOMN_PL_POSIX
+static inline std::pair<uint32_t, bool> ipv4_from_ifaddr(const char *, bool) { return {} ; }
+#else
+static __noinline std::pair<uint32_t, bool> ipv4_from_ifaddr(const char *addr, bool raise)
+{
+    try {
+        static int sockd = PCOMN_ENSURE_POSIX(::socket(PF_INET, SOCK_STREAM, 0), "socket") ;
+        ifreq request ;
+        strcpy(request.ifr_name, addr) ;
+
+        if (ioctl(sockd, SIOCGIFADDR, &request) != -1)
+            return {value_from_big_endian(reinterpret_cast<sockaddr_in *>(&request.ifr_addr)->sin_addr.s_addr), true} ;
+    }
+    catch (const std::exception &x)
+    {
+        if (raise)
+            throw ;
+    }
+    return {} ;
+}
+#endif /* PCOMN_PL_POSIX */
+
 /*******************************************************************************
  ipv4_addr
 *******************************************************************************/
-uint32_t ipv4_addr::from_string(const strslice &addrstr, CFlags flags)
+uint32_t ipv4_addr::from_string(const strslice &addrstr, std::errc *ec, CFlags flags)
 {
     const unsigned maxdot = 16 ;
     const unsigned maxsz =
         ct_max<unsigned, ct_max<unsigned, NI_MAXHOST, maxdot>::value, IFNAMSIZ>::value ;
 
+    PCOMN_THROW_MSG_IF((flags & (IGNORE_DOTDEC|USE_HOSTNAME|USE_IFACE)) == IGNORE_DOTDEC,
+                       std::invalid_argument, "Invalid flags: flags combination completely disables address construction.") ;
+
+    const bool raise_error = !ec && !(flags & NO_EXCEPTION) ;
+    if (ec)
+        *ec = {} ;
+
+    #define IPV4_ENSURE(cond, exception, ...) do if (!(cond)) {         \
+            if (ec) *ec = (std::is_base_of<std::invalid_argument, exception>()) \
+                        ? std::errc::invalid_argument : (std::errc)errno ; \
+            PCOMN_THROW_MSG_IF(raise_error, exception, __VA_ARGS__) ;   \
+            return 0 ;                                                  \
+        } while(false)
+
+
     if (addrstr.empty())
     {
-        PCOMN_THROW_MSG_IF(!(flags & ALLOW_EMPTY), invalid_str_repr, "Empty network address string.") ;
+        IPV4_ENSURE(flags & ALLOW_EMPTY, invalid_str_repr, "Empty IPv4 address string.") ;
         return 0 ;
     }
 
@@ -112,13 +149,7 @@ uint32_t ipv4_addr::from_string(const strslice &addrstr, CFlags flags)
     memcpy(strbuf, addrstr.begin(), len) ;
     strbuf[len] = 0 ;
 
-    PCOMN_THROW_MSG_IF(addrstr.size() >= maxsz, invalid_str_repr,
-                       "The address string '%s' is too long.", strbuf) ;
-
-    PCOMN_THROW_MSG_IF((flags & (IGNORE_DOTDEC|USE_HOSTNAME|USE_IFACE)) == IGNORE_DOTDEC,
-                       std::invalid_argument, "Invalid flags: flags combination completely disables address construction.") ;
-
-    const bool usexc = !(flags & NO_EXCEPTION) ;
+    IPV4_ENSURE(addrstr.size() < maxsz, invalid_str_repr, "IPv4 address string '%s' is too long.", strbuf) ;
 
     // First try to interpret the address as dot-decimal.
     if (!(flags & IGNORE_DOTDEC))
@@ -127,35 +158,17 @@ uint32_t ipv4_addr::from_string(const strslice &addrstr, CFlags flags)
         if (from_dotdec.second)
             return from_dotdec.first.ipaddr() ;
 
-        if (!(flags & (USE_HOSTNAME|USE_IFACE)))
-        {
-            PCOMN_THROW_MSG_IF(usexc, invalid_str_repr, "Invalid dot decimal IP address '%s'.", strbuf) ;
-            return 0 ;
-        }
+        IPV4_ENSURE(flags & (USE_HOSTNAME|USE_IFACE), invalid_str_repr, "Invalid dot decimal IP address '%s'.", strbuf) ;
     }
 
     if (flags & USE_IFACE)
     {
-        // This works only for UNIX-like environment
-        #ifdef PCOMN_PL_POSIX
-        if (addrstr.size() < IFNAMSIZ)
-        {
-            static int sockd = PCOMN_ENSURE_POSIX(::socket(PF_INET, SOCK_STREAM, 0), "socket") ;
+        const auto &addr = ipv4_from_ifaddr(strbuf, raise_error) ;
+        if (addr.second)
+            return addr.first ;
 
-            ifreq request ;
-            strcpy(request.ifr_name, strbuf) ;
-
-            if (ioctl(sockd, SIOCGIFADDR, &request) != -1)
-                return value_from_big_endian(reinterpret_cast<sockaddr_in *>(&request.ifr_addr)->sin_addr.s_addr) ;
-        }
-        #endif
-
-        if (!(flags & USE_HOSTNAME))
-        {
-            PCOMN_THROW_MSG_IF(usexc, system_error,
-                               "Cannot retrieve address for network interface '%s'", strbuf) ;
-            return 0 ;
-        }
+        IPV4_ENSURE(flags & USE_HOSTNAME, system_error,
+                    "Cannot retrieve address for network interface '%s'", strbuf) ;
     }
 
     // OK, maybe it's a host name?
@@ -163,13 +176,11 @@ uint32_t ipv4_addr::from_string(const strslice &addrstr, CFlags flags)
     if (const struct hostent * const host = gethostbyname(strbuf))
         return value_from_big_endian(*(const uint32_t *)host->h_addr_list[0]) ;
 
-    if (usexc)
-    {
-        const long err = h_errno ;
-        errno = EINVAL ;
-        PCOMN_THROWF(system_error, "Cannot resolve hostname '%s'. %s", strbuf, str::cstr(hstrerror(err))) ;
-    }
-    return 0 ;
+    const long err = h_errno ;
+    errno = EINVAL ;
+
+    IPV4_ENSURE(false, system_error,
+                "Cannot resolve hostname '%s'. %s", strbuf, str::cstr(hstrerror(err))) ;
 }
 
 std::string ipv4_addr::dotted_decimal() const
@@ -222,10 +233,12 @@ ipv4_subnet::ipv4_subnet(const strslice &subnet_string, RaiseError raise_error)
 /*******************************************************************************
  ipv6_addr
 *******************************************************************************/
-binary128_t ipv6_addr::from_string(const strslice &address_string, CFlags flags)
+binary128_t ipv6_addr::from_string(const strslice &address_string, std::errc *ec, CFlags flags)
 {
-    #define IPV6_STRING_ERROR() do { if (raise_error) invalid_address_string(address_string) ; return {} ; } while(false)
-    #define IPV6_STRING_ENSURE(cond) while (unlikely(!(cond))) { IPV6_STRING_ERROR() ; }
+    #define IPV6_STRING_ENSURE(cond) while (!(cond)) do {                   \
+            if (ec) *ec = std::errc::invalid_argument ;                     \
+            else if (raise_error) invalid_address_string(address_string) ;  \
+            return {} ; } while(false)
 
     enum State {
         Begin,
@@ -238,6 +251,8 @@ binary128_t ipv6_addr::from_string(const strslice &address_string, CFlags flags)
 
     const bool raise_error = !(flags & NO_EXCEPTION) ;
     const bool allow_dotdec = !(flags & IGNORE_DOTDEC) ;
+    if (ec)
+        *ec = {} ;
 
     ipv6_addr result ;
     result_ptr dest = {result._hdata} ;
@@ -295,7 +310,7 @@ binary128_t ipv6_addr::from_string(const strslice &address_string, CFlags flags)
                 }
 
                 // '::' inside the address may occur at most once
-                IPV6_STRING_ENSURE(!zrun_begin.phextet & ++hextet_count < 8) ;
+                IPV6_STRING_ENSURE(!zrun_begin.phextet & ++hextet_count <= 8) ;
 
                 // Fall through
             case HeadColon:

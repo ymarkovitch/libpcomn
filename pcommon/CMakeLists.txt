@@ -1,7 +1,7 @@
 #------------------------------------------------------------------------------
 # FILE         :  CMakeLists.txt
 #
-# COPYRIGHT    :  Yakov Markovitch, 2014-2019
+# COPYRIGHT    :  Yakov Markovitch, 2014-2020
 #                 See LICENSE for information on usage/redistribution.
 #
 # DESCRIPTION  :  CMake script for building pcommon library
@@ -25,6 +25,9 @@ set(ENABLE_PCOMN_UNITTESTS  ON  CACHE BOOL "Enable unittests building. Requires 
 set(ENABLE_PCOMN_STACKTRACE OFF CACHE BOOL "Enable stacktrace classes. Linux-only. Requires libunwind and libdw.")
 set(ENABLE_PCOMN_AVX        NO  CACHE BOOL "Enable use of AVX and BMI1 instruction sets. Substantially accelerates e.g. hashing, pcomn::bitarray.")
 set(ENABLE_PCOMN_AVX2       NO  CACHE BOOL "Enable use of AVX2 and BMI2 instruction sets. Substantially accelerates e.g. hashing, pcomn::bitarray, pcomn::bitops.")
+
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Introduce custom build types RelAvx, RelAvx2, DbgAvx, DbgAvx2 to facilitate
 # one-pass unit testing for different processor architecture flags.
@@ -113,6 +116,12 @@ else()
     set(DISABLE_PCOMN_AVX YES)
 endif()
 
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 11)
+    set(PCOMN_DWARF_OPT "-gdwarf-5")
+else()
+    set(PCOMN_DWARF_OPT "-gdwarf-4")
+endif()
+
 ################################################################################
 # Platform sources subdirectory
 ################################################################################
@@ -170,8 +179,13 @@ add_library(pcommon STATIC
   pcomn_zstream.cpp
 
   $<$<NOT:$<PLATFORM_ID:Windows>>:
-  pcomn_crypthash
+  pcomn_blocqueue.cpp
+  pcomn_crypthash.cpp
+  pcomn_pthread.cpp
+  pcomn_semaphore.cpp
+  pcomn_syncobj.cpp
   $<$<BOOL:${ZSTD_FOUND}>:pcomn_zstd.cpp>
+  unix/pcomn_native_syncobj.cpp
   unix/pcomn_posix_exec.cpp
   unix/pcomn_shutil.cpp
   unix/pcomn_sys.cpp
@@ -207,7 +221,9 @@ target_compile_definitions(pcommon
 target_compile_options(pcommon
   PUBLIC
   $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>:-pthread>
-  $<$<CXX_COMPILER_ID:GNU>:-frecord-gcc-switches>
+  $<$<AND:$<${COMPILE_LANGUAGE_CXX}>,$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>>:-faligned-new>
+
+  $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>:-frecord-gcc-switches>
   $<$<AND:${COMPILER_GCCLIKE},$<BOOL:${DISABLE_PCOMN_AVX}>>:-march=westmere>
   $<$<AND:${COMPILER_GCCLIKE},$<BOOL:${ENABLE_PCOMN_AVX}>>:-march=corei7-avx>
   $<$<AND:${COMPILER_GCCLIKE},$<BOOL:${ENABLE_PCOMN_AVX2}>>:-march=haswell>
@@ -217,7 +233,7 @@ target_compile_options(pcommon
   $<$<CXX_COMPILER_ID:Clang>:-Wall -Wno-error -Wno-unused-result -Wno-mismatched-tags>
   $<$<AND:${COMPILER_GCCLIKE},$<${COMPILE_LANGUAGE_CXX}>>:-Woverloaded-virtual>
 
-  $<$<AND:$<OR:$<CONFIG:Debug>,$<CONFIG:DbgSanitize>,$<CONFIG:RelWithDebInfo>>,${COMPILER_GCCLIKE}>:-gdwarf-4>
+  $<$<AND:$<OR:$<CONFIG:Debug>,$<CONFIG:DbgSanitize>,$<CONFIG:RelWithDebInfo>>,${COMPILER_GCCLIKE}>:${PCOMN_DWARF_OPT}>
   $<$<PLATFORM_ID:Linux>:-fvisibility=hidden>
 
   PUBLIC

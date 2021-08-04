@@ -3,7 +3,7 @@
 #define __PCOMN_VECTOR_H
 /*******************************************************************************
  FILE         :   pcomn_vector.h
- COPYRIGHT    :   Yakov Markovitch, 2000-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2000-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Simple (of constant, constructor-given size) vector classes.
@@ -410,7 +410,7 @@ class static_vector {
 
       size_t size() const { return _size ; }
 
-      size_t max_size() const { return maxsize ; }
+      constexpr static size_t max_size() { return maxsize ; }
 
       /// Indicate that the slice is empty
       bool empty() const { return !size() ; }

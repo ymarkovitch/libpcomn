@@ -1,7 +1,7 @@
 /*-*- mode: c; tab-width: 3; indent-tabs-mode: nil; c-file-style: "ellemtel" -*-*/
 /*******************************************************************************
  FILE         :   packpsh4.h
- COPYRIGHT    :   Yakov Markovitch, 1998-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1998-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   This file turns 4 byte packing of structures on.  (That is, it disables
@@ -17,8 +17,8 @@
 #ifdef __BORLANDC__
 #  pragma nopackwarning
 #endif
-#ifdef _MSC_VER >= 800
+#if _MSC_VER >= 800
 #  pragma warning(disable:4103)
 #endif
 
-#pragma pack(4)
+#pragma pack(push, 4)

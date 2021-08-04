@@ -1,7 +1,7 @@
 /*-*- tab-width:4;c-file-style:"stroustrup";c-file-offsets:((innamespace . 0)(inline-open . 0)(case-label . +)) -*-*/
 /*******************************************************************************
  FILE         :   unittest_network_address.cpp
- COPYRIGHT    :   Yakov Markovitch, 2008-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2008-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Internet address classes unit tests.
@@ -55,7 +55,6 @@ void IPAddressTests::Test_IPv4_Address()
     CPPUNIT_LOG_EQ(ipv4_addr().ipaddr(), 0) ;
     CPPUNIT_LOG_EQ(ipv4_addr().inaddr().s_addr, 0) ;
     CPPUNIT_LOG_EQUAL(ipv4_addr().str(), std::string("0.0.0.0")) ;
-    CPPUNIT_LOG_EXCEPTION(ipv4_addr(""), std::invalid_argument) ;
 
     CPPUNIT_LOG_EQUAL(ipv4_addr("", ipv4_addr::ALLOW_EMPTY).ipaddr(), (uint32_t)0) ;
     CPPUNIT_LOG_EXCEPTION_MSG(ipv4_addr(""), invalid_str_repr, "mpty") ;
@@ -108,7 +107,27 @@ void IPAddressTests::Test_IPv4_Address()
     CPPUNIT_LOG_EQUAL(inaddr_loopback(), ipv4_addr("localhost", ipv4_addr::USE_HOSTNAME)) ;
     CPPUNIT_LOG_EQUAL(inaddr_broadcast(), ipv4_addr(255, 255, 255, 255)) ;
     CPPUNIT_LOG_EXCEPTION(ipv4_addr("Hello, world!", ipv4_addr::USE_HOSTNAME), system_error) ;
-    CPPUNIT_LOG_EQUAL(ipv4_addr(1, 2, 3, 4).hostname(), std::string("1.2.3.4")) ;
+    //CPPUNIT_LOG_EQUAL(ipv4_addr(1, 2, 3, 4).hostname(), std::string("1.2.3.4")) ;
+    CPPUNIT_LOG(std::endl) ;
+
+    CPPUNIT_LOG(std::endl) ;
+
+    std::errc errcode ;
+
+    CPPUNIT_LOG_EQUAL(ipv4_addr("", errcode).ipaddr(), (uint32_t)0) ;
+    CPPUNIT_LOG_EQUAL(errcode, std::errc::invalid_argument) ;
+
+    CPPUNIT_LOG_EQUAL(ipv4_addr("127.0.0.2", errcode), ipv4_addr(127, 0, 0, 2)) ;
+    CPPUNIT_LOG_EQUAL(errcode, std::errc()) ;
+
+    CPPUNIT_LOG_EQUAL(ipv4_addr("65..66.67", errcode, ipv4_addr::ONLY_DOTDEC), ipv4_addr()) ;
+    CPPUNIT_LOG_EQUAL(errcode, std::errc::invalid_argument) ;
+
+    CPPUNIT_LOG_EQUAL(ipv4_addr("Hello, world!", errcode={}, ipv4_addr::USE_HOSTNAME), ipv4_addr()) ;
+    CPPUNIT_LOG_EQUAL(errcode, std::errc::invalid_argument) ;
+
+    CPPUNIT_LOG_EQUAL(ipv4_addr("localhost", errcode, ipv4_addr::USE_HOSTNAME), ipv4_addr(127, 0, 0, 1)) ;
+    CPPUNIT_LOG_EQUAL(errcode, std::errc()) ;
 }
 
 void IPAddressTests::Test_IPv4_Subnet_Address()
@@ -285,6 +304,9 @@ void IPAddressTests::Test_IPv6_Address_Parser()
     CPPUNIT_LOG_EQUAL(ipv6_addr("::1"),
                       ipv6_addr(0, 0, 0, 0, 0, 0, 0, 1)) ;
 
+    CPPUNIT_LOG_EQUAL(ipv6_addr("2001:db8:ac10:fe01:feed:babe:cafe::"),
+                      ipv6_addr(0x2001, 0xDB8, 0xAC10, 0xFE01, 0xFEED, 0xBABE, 0xCAFE, 0)) ;
+
     CPPUNIT_LOG_EQUAL(ipv6_addr("::ffff:0.0.0.0"),
                       ipv6_addr(0, 0, 0, 0, 0, 0xffff, 0, 0)) ;
 
@@ -311,6 +333,25 @@ void IPAddressTests::Test_IPv6_Address_Parser()
     CPPUNIT_LOG_EXCEPTION_MSG(ipv6_addr("::ffff:127.0.0.1", ipv6_addr::IGNORE_DOTDEC), invalid_str_repr, "address") ;
 
     CPPUNIT_LOG_EXCEPTION_MSG(ipv6_addr("172.16.9.100", ipv6_addr::IGNORE_DOTDEC), invalid_str_repr, "address") ;
+
+
+    CPPUNIT_LOG(std::endl) ;
+    CPPUNIT_LOG(std::endl) ;
+
+    std::errc errcode = {} ;
+
+    CPPUNIT_LOG_EQUAL(ipv6_addr("::ffff:127.0.0.1", errcode, ipv6_addr::IGNORE_DOTDEC), ipv6_addr()) ;
+    CPPUNIT_LOG_EQUAL(errcode, std::errc::invalid_argument) ;
+
+    CPPUNIT_LOG_EQUAL(ipv6_addr("1::fe01:feed:babe:cafe:f00d", errcode, ipv6_addr::IGNORE_DOTDEC),
+                      ipv6_addr(1, 0, 0, 0xFE01, 0xFEED, 0xBABE, 0xCAFE, 0xF00D)) ;
+    CPPUNIT_LOG_EQUAL(errcode, std::errc()) ;
+
+    CPPUNIT_LOG_EQUAL(ipv6_addr("", errcode), ipv6_addr()) ;
+    CPPUNIT_LOG_EQUAL(errcode, std::errc::invalid_argument) ;
+
+    CPPUNIT_LOG_EQUAL(ipv6_addr("", errcode, ipv6_addr::ALLOW_EMPTY), ipv6_addr()) ;
+    CPPUNIT_LOG_EQUAL(errcode, std::errc()) ;
 }
 
 void IPAddressTests::Test_IPv6_Subnet_Address()
@@ -323,9 +364,6 @@ void IPAddressTests::Test_IPv6_Subnet_Address()
 
     const ipv6_addr addr_2001_food (0x2001, 0x0DB8, 0xAC10, 0xFE01, 0xFEED, 0xBABE, 0xCAFE, 0xF00D) ;
     const ipv6_addr addr_00_food   (0,      0,      0xAC10, 0xFE01, 0xFEED, 0xBABE, 0xCAFE, 0xF00D) ;
-
-    const ipv6_addr addr_pre_1 (1, 0, 0, 0, 0, 0, 0, 0) ;
-    const ipv6_addr addr_post_1 (0, 0, 0, 0, 0, 0, 0, 1) ;
 
     CPPUNIT_LOG_EQUAL(ipv6_subnet(addr_2001_food, 64), ipv6_subnet(addr_2001_food, 64)) ;
 
@@ -411,6 +449,9 @@ void IPAddressTests::Test_IPv6_Subnet_Address()
 
     CPPUNIT_LOG_EQUAL(ipv6_subnet("::1/128"),
                       ipv6_subnet(0, 0, 0, 0, 0, 0, 0, 1, 128)) ;
+
+    CPPUNIT_LOG_EQUAL(ipv6_subnet("2001:db8:ac10:fe01:feed:babe:cafe::/127"),
+                      ipv6_subnet(0x2001, 0xDB8, 0xAC10, 0xFE01, 0xFEED, 0xBABE, 0xCAFE, 0, 127)) ;
 
     CPPUNIT_LOG(std::endl) ;
 

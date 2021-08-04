@@ -3,7 +3,7 @@
 #define __PCOMN_UUID_H
 /*******************************************************************************
  FILE         :   pcomn_uuid.h
- COPYRIGHT    :   Yakov Markovitch, 2014-2019
+ COPYRIGHT    :   Yakov Markovitch, 2014-2020
 
  DESCRIPTION  :   UUID data type
 
@@ -15,6 +15,8 @@
 *******************************************************************************/
 #include <pcomn_hash.h>
 #include <pcomn_strslice.h>
+
+#include <system_error>
 
 namespace pcomn {
 
@@ -47,15 +49,17 @@ struct uuid : binary128_t {
       /// @param str Canonical form of UUID string representation, like
       /// e.g. "123e4567-e89b-12d3-a456-426655440000", or an empty string or nullptr,
       ///
-      _PCOMNEXP
-      uuid(const strslice &str, RaiseError raise_error) ;
-
-      uuid(const strslice &str) : uuid (str, RAISE_ERROR) {}
+      uuid(const strslice &str, RaiseError raise_error) :
+         uuid(str, raise_error ? nullptr : &as_lvalue(std::errc()))
+      {}
 
       uuid(const char *str, RaiseError raise_error) :
          uuid(str ? strslice(str) : strslice(), raise_error)
       {}
 
+      uuid(const strslice &str, std::errc &ec) : uuid(str, &ec) {}
+
+      uuid(const strslice &str) : uuid (str, RAISE_ERROR) {}
       uuid(const char *str) : uuid(str, RAISE_ERROR) {}
 
       /// Get the pointer to 16-octets-sequence representing UUID in "most significant
@@ -83,6 +87,10 @@ struct uuid : binary128_t {
          char buf[slen() + 1] ;
          return std::string(to_strbuf(buf)) ;
       }
+
+   private:
+      _PCOMNEXP
+      uuid(const strslice &str, std::errc *ec) ;
 } ;
 
 PCOMN_STATIC_CHECK(sizeof(uuid) == 16) ;
@@ -97,12 +105,26 @@ struct MAC {
       constexpr MAC(uint8_t o1, uint8_t o2, uint8_t o3, uint8_t o4, uint8_t o5, uint8_t o6) :
          _data{o6, o5, o4, o3, o2, o1, 0, 0} {}
 
+      /// Converting constructor from text representation.
+      ///
+      /// The following formats are supported:
+      ///   1. a1-b2-c3-d4-e5-f6 (AKA "canonical IEEE802 text representation")
+      ///   2. a1:b2:c3:d4:e5:f6
+      ///   3. a1 b2 c3 d4 e5 f6
+      ///   4. a1.b2.c3.d4.e5.f6
+      ///
+      /// Hexadecimal letters may mix upper- and lower-case, so "a1:b2:c3:d4:e5:f6",
+      /// "A1:B2:C3:D4:E5:F6", "a1:B2:c3:D4:e5:f6" are allowed.
+      ///
       MAC(const char *str, RaiseError raise_error = RAISE_ERROR) :
          MAC(str ? strslice(str) : strslice(), raise_error)
       {}
 
-      _PCOMNEXP
-      MAC(const strslice &str, RaiseError raise_error = RAISE_ERROR) ;
+      MAC(const strslice &str, RaiseError raise_error = RAISE_ERROR) :
+         MAC(str, raise_error ? nullptr : &as_lvalue(std::errc()))
+      {}
+
+      MAC(const strslice &str, std::errc &ec) : MAC(str, &ec) {}
 
       template<typename I, typename=std::enable_if_t<(sizeof(I) == 8 && std::is_unsigned<I>::value),int>>
       explicit constexpr MAC(I data) : _idata{value_to_little_endian(data & 0x00FFFFFFFFFFFFFFULL)} {}
@@ -146,6 +168,10 @@ struct MAC {
             unsigned char  _data[8] ;
             uint64_t       _idata ;
       } ;
+
+   private:
+      _PCOMNEXP
+      MAC(const strslice &str, std::errc *ec) ;
 } ;
 
 PCOMN_DEFINE_RELOP_FUNCTIONS(, MAC) ;

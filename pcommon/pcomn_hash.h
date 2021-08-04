@@ -3,7 +3,7 @@
 #define __PCOMN_HASH_H
 /*******************************************************************************
  FILE         :   pcomn_hash.h
- COPYRIGHT    :   Yakov Markovitch, 2000-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2000-2020. All rights reserved.
                   Leonid Yuriev <leo@yuriev.ru>, 2010-2019. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
@@ -135,73 +135,88 @@ inline size_t hashFNV(const void *data, size_t size, size_t init)
    return hashFNV(data, size, init, std::integral_constant<size_t, sizeof(size_t)>()) ;
 }
 
-/******************************************************************************/
-/** Robert Jenkins' hash function for hashing a 32-bit integer to a 32-bit integer
+/***************************************************************************//**
+ Thomas Wang's hash function for hashing a 64-bit integer to a 64-bit integer
 *******************************************************************************/
-inline uint32_t jenkins_hash32to32(uint32_t x)
-{
-   x = (x+0x7ed55d16) + (x<<12) ;
-   x = (x^0xc761c23c) ^ (x>>19) ;
-   x = (x+0x165667b1) + (x<<5) ;
-   x = (x+0xd3a2646c) ^ (x<<9) ;
-   x = (x+0xfd7046c5) + (x<<3) ;
-   x = (x^0xb55a4f09) ^ (x>>16) ;
-   return x ;
-}
-
-/******************************************************************************/
-/** Thomas Wang's hash function for hashing a 64-bit integer to a 64-bit integer
-*******************************************************************************/
-inline uint64_t wang_hash64to64(uint64_t x)
+constexpr inline uint64_t wang_hash64to64(uint64_t x)
 {
   x = ~x + (x << 21) ; // x = (x << 21) - x - 1
-  x = x ^ (x >> 24) ;
-  x = x + (x << 3) + (x << 8) ; // x * 265
-  x = x ^ (x >> 14) ;
-  x = x + (x << 2) + (x << 4) ; // x * 21
-  x = x ^ (x >> 28) ;
-  x = x + (x << 31) ;
+  x ^= (x >> 24) ;
+  x += (x << 3) + (x << 8) ; // x * 265
+  x ^= (x >> 14) ;
+  x += (x << 2) + (x << 4) ; // x * 21
+  x ^= (x >> 28) ;
+  x += (x << 31) ;
   return x ;
 }
 
-/******************************************************************************/
-/** Thomas Wang's hash function for hashing a 64-bit integer to a 32-bit integer
+/***************************************************************************//**
+ Thomas Wang's hash function for hashing a 64-bit integer to a 32-bit integer
 *******************************************************************************/
-inline uint32_t wang_hash64to32(uint64_t x)
+constexpr inline uint32_t wang_hash64to32(uint64_t x)
 {
   x = ~x + (x << 18) ; // x = (x << 18) - x - 1
-  x = x ^ (x >> 31) ;
-  x = x + (x << 2) + (x << 4) ; // x * 21
-  x = x ^ (x >> 11) ;
-  x = x + (x << 6) ;
-  x = x ^ (x >> 22) ;
+  x ^= (x >> 31) ;
+  x += (x << 2) + (x << 4) ; // x * 21
+  x ^= (x >> 11) ;
+  x += (x << 6) ;
+  x ^= (x >> 22) ;
   return (uint32_t)x ;
 }
 
-inline uint32_t hash_64(uint64_t x, std::integral_constant<size_t, 4>)
+/***************************************************************************//**
+ Thomas Mueller's hash function for hashing a 32-bit integer to a 32-bit hash.
+ This is excellent: super-low-bias, ideal avalanche.
+
+ It is _faster_ than Intel's hardware crc32 instruction for calculating single hash
+ and several times faster when processing an array of values, due to its excellent
+ vectorizability.
+*******************************************************************************/
+constexpr inline uint32_t mueller_hash32(uint32_t x)
 {
-   return wang_hash64to32(x) ;
+    x = ((x >> 16) ^ x) * 0x45d9f3bU ;
+    x = ((x >> 16) ^ x) * 0x45d9f3bU ;
+    x = (x >> 16) ^ x ;
+    return x ;
 }
 
-inline uint64_t hash_64(uint64_t x, std::integral_constant<size_t, 8>)
+/***************************************************************************//**
+ Hash function for hashing a 64-bit integer to a 64-bit hash by degski,
+ unbeliavably fast.
+
+ High-quality: super-low-bias, ideal avalanche.
+
+ Performance of this function is best described if we treat this function as
+ a "CPU pseudo-instruction". Then, on Haswell and GCC or Clang:
+
+  - its latency is ~3 cycles
+  - its throghput is ~1 cycle per hash (when we e.g. perform a bulk evaluation
+    of hashes of array items in a loop) - due do its excellent vectorizability.
+*******************************************************************************/
+constexpr inline uint64_t degski_hash64(uint64_t x)
 {
-   return wang_hash64to64(x) ;
+    x ^= x >> 32 ;
+    x *= 0xd6e8feb86659fd93ull ;
+    x ^= x >> 32 ;
+    x *= 0xd6e8feb86659fd93ull ;
+    x ^= x >> 32 ;
+    return x ;
 }
 
-inline uint32_t hash_32(uint32_t x, std::integral_constant<size_t, 4>)
+constexpr inline uint32_t hash_32(uint32_t x, std::integral_constant<size_t, 4>)
 {
-   return jenkins_hash32to32(x) ;
+   return mueller_hash32(x) ;
 }
 
-inline uint64_t hash_32(uint32_t x, std::integral_constant<size_t, 8>)
+constexpr inline uint64_t hash_32(uint32_t x, std::integral_constant<size_t, 8>)
 {
-   return wang_hash64to64(x) ;
+   return degski_hash64(x) ;
 }
 
 /***************************************************************************//**
  Hashing 32-bit integer to size_t
 *******************************************************************************/
-inline size_t hash_32(uint32_t x)
+constexpr inline size_t hash_32(uint32_t x)
 {
    return hash_32(x, std::integral_constant<size_t, sizeof(size_t)>()) ;
 }
@@ -209,9 +224,9 @@ inline size_t hash_32(uint32_t x)
 /***************************************************************************//**
  Hashing 64-bit integer to size_t
 *******************************************************************************/
-inline size_t hash_64(uint64_t x)
+constexpr inline size_t hash_64(uint64_t x)
 {
-   return hash_64(x, std::integral_constant<size_t, sizeof(size_t)>()) ;
+   return degski_hash64(x) ;
 }
 
 /***************************************************************************//**
@@ -225,11 +240,11 @@ inline size_t hash_bytes(const void *data, size_t length)
 
 /*******************************************************************************
  Hasher functors
+****************************************************************************//**
+ Functor returning its parameter unchanged (but converted to size_t).
 *******************************************************************************/
-/** Functor returning its parameter unchanged (but converted to size_t).
-*******************************************************************************/
-template<typename T>
-struct hash_identity : public std::unary_function<T, size_t> {
+struct hash_identity {
+      template<typename T>
       size_t operator() (const T &val) const { return static_cast<size_t>(val) ; }
 } ;
 
@@ -717,7 +732,7 @@ template<typename T>
 struct hash_fn_fundamental {
       PCOMN_STATIC_CHECK(std::is_fundamental<T>::value) ;
 
-      size_t operator()(T value) const { return hash_64((uint64_t)value) ; }
+      constexpr size_t operator()(T value) const { return hash_64((uint64_t)value) ; }
 } ;
 
 template<typename T>

@@ -3,7 +3,7 @@
 #define __PCOMN_SMARTPTR_H
 /*******************************************************************************
  FILE         :   pcomn_smartptr.h
- COPYRIGHT    :   Yakov Markovitch, 1994-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1994-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Templates of "smart pointers", i.e. pointers with
@@ -30,21 +30,21 @@ namespace pcomn {
 /// does nothing.
 /// @return Value of @a counted.
 template<typename C, intptr_t init>
-inline active_counter<C, init> *inc_ref(active_counter<C, init> * __restrict counted)
+inline active_counter<C, init> *inc_ref(active_counter<C, init> * __restrict counted) noexcept
 {
    counted && counted->inc() ;
    return counted ;
 }
 
 template<typename C, intptr_t init>
-inline active_counter<C, init> *dec_ref(active_counter<C, init> * __restrict counted)
+inline active_counter<C, init> *dec_ref(active_counter<C, init> * __restrict counted) noexcept
 {
    counted && counted->dec() ;
    return counted ;
 }
 
 template<typename Refcounted>
-inline void assign_ref(Refcounted *&target, Refcounted *source)
+inline void assign_ref(Refcounted *&target, Refcounted *source) noexcept
 {
    if (target != source)
    {
@@ -57,7 +57,7 @@ inline void assign_ref(Refcounted *&target, Refcounted *source)
 }
 
 template<typename Refcounted>
-inline void clear_ref(Refcounted *&target)
+inline void clear_ref(Refcounted *&target) noexcept
 {
    if (target)
    {
@@ -83,26 +83,24 @@ struct refcount_basic_policy {
          return atomic_op::load(&(ptr->*counter), std::memory_order_consume) ;
       }
 
-      static C inc_ref(T *ptr) noexcept
+      static void inc_ref(T *ptr) noexcept
       {
          NOXCHECK(ptr) ;
-         return atomic_op::preinc(&(ptr->*counter)) ;
+         atomic_op::preinc(&(ptr->*counter)) ;
       }
 
-      static C dec_ref(T *ptr) noexcept
+      static void dec_ref(T *ptr) noexcept
       {
          NOXCHECK(ptr) ;
-         const C result = atomic_op::predec(&(ptr->*counter)) ;
-         if (!result)
+         if (!atomic_op::predec(&(ptr->*counter)))
             refcount_policy<T>::threshold_action(ptr) ;
-         return result ;
       }
 } ;
 
 /******************************************************************************/
 /** Reference counter: the base class for reference counted objects.
 *******************************************************************************/
-template<typename C = std::atomic<intptr_t> >
+template<typename C = std::atomic<intptr_t>>
 class PTRefCounter : public active_counter<C> {
       typedef active_counter<C> ancestor ;
    public:
@@ -110,19 +108,19 @@ class PTRefCounter : public active_counter<C> {
       typedef refcount_policy<PTRefCounter<C>> refcount_policy_type ;
 
       /// Alias for instances(), added to match std::shared_ptr interface
-      count_type use_count() const { return instances() ; }
+      count_type use_count() const noexcept { return instances() ; }
 
       /// Get current instance counter value.
-      count_type instances() const { return this->count() ; }
+      count_type instances() const noexcept { return this->count() ; }
 
    protected:
       /// The default constructor creates object with zero counter.
-      PTRefCounter() = default ;
+      PTRefCounter() noexcept = default ;
 
       /// Copy constructor.
       /// Creates object with zeroed counter, same as default constructor.
       /// In fact, does nothing about the copying.
-      PTRefCounter (const PTRefCounter &) : ancestor() {}
+      PTRefCounter (const PTRefCounter &) noexcept : ancestor() {}
 
       /// Destructor does nothing, declared for inheritance protection and debugging purposes.
       ~PTRefCounter() override = default ;
@@ -147,28 +145,34 @@ class PTRefCounter : public active_counter<C> {
 
 typedef PTRefCounter<> PRefCount ;
 
-/******************************************************************************/
-/** Intrusive reference-counted pointer policy for objects based on
- PTRefCounter (or PRefCount)
+/***************************************************************************//**
+ Intrusive reference-counted pointer to anything based on PRefCount
+*******************************************************************************/
+typedef shared_intrusive_ptr<PRefCount>       refcounted_ptr ;
+typedef shared_intrusive_ptr<const PRefCount> refcounted_cptr ;
+
+/***************************************************************************//**
+ Intrusive reference-counted pointer policy for objects based on PTRefCounter
+ (or PRefCount)
 *******************************************************************************/
 template<typename C>
 struct refcount_policy<PTRefCounter<C>> {
       typedef typename PTRefCounter<C>::count_type count_type ;
 
-      static count_type instances(const PTRefCounter<C> *counted)
+      static count_type instances(const PTRefCounter<C> *counted) noexcept
       {
          NOXCHECK(counted) ;
          return counted->instances() ;
       }
-      static count_type inc_ref(PTRefCounter<C> *counted)
+      static void inc_ref(PTRefCounter<C> *counted) noexcept
       {
          NOXCHECK(counted) ;
-         return counted->inc_passive() ;
+         counted->inc_passive() ;
       }
-      static count_type dec_ref(PTRefCounter<C> *counted)
+      static void dec_ref(PTRefCounter<C> *counted) noexcept
       {
          NOXCHECK(counted) ;
-         return counted->dec() ;
+         counted->dec() ;
       }
 } ;
 
@@ -193,8 +197,8 @@ void *eval_refcount_policy(...) ;
 template<typename U>
 using refcount_policy_t = typename detail::refcount_policy_<U, decltype(detail::eval_refcount_policy(autoval<U *>()))>::type ;
 
-/******************************************************************************/
-/** Intrusive reference-counted shared pointer.
+/***************************************************************************//**
+ Intrusive reference-counted shared pointer.
 
  Intrusive shared pointer requires the pointed object to provide reference counting
  logic. This can be done in one of the two possible ways:
@@ -211,8 +215,8 @@ class shared_intrusive_ptr {
       template<typename U>
       friend class shared_intrusive_ptr ;
 
-      constexpr shared_intrusive_ptr() = default ;
-      constexpr shared_intrusive_ptr(nullptr_t) {}
+      constexpr shared_intrusive_ptr() noexcept = default ;
+      constexpr shared_intrusive_ptr(nullptr_t) noexcept  {}
 
       explicit shared_intrusive_ptr(element_type *object) noexcept :
          _object(object)
@@ -252,8 +256,8 @@ class shared_intrusive_ptr {
       {}
 
       shared_intrusive_ptr(shared_intrusive_ptr &&src) noexcept :
-         _object(src._object)
-      { src._object = nullptr ; }
+         shared_intrusive_ptr(src._object, int_constant<42>())
+      {}
 
       template<typename U, typename = instance_if_t<std::is_convertible<U*, element_type*>::value> >
       shared_intrusive_ptr(const shared_intrusive_ptr<U> &src) noexcept :
@@ -262,26 +266,45 @@ class shared_intrusive_ptr {
 
       template<typename U, typename = instance_if_t<std::is_convertible<U*, element_type*>::value> >
       shared_intrusive_ptr(shared_intrusive_ptr<U> &&src) noexcept :
-         _object(src._object)
-      { src._object = nullptr ; }
+         shared_intrusive_ptr(src._object, int_constant<42>())
+      {}
 
-      ~shared_intrusive_ptr() { dec_ref() ; }
+      ~shared_intrusive_ptr() noexcept { dec_ref() ; }
 
-      constexpr element_type *get() const { return _object ; }
-      constexpr element_type *operator->() const { return get() ; }
-      constexpr element_type &operator*() const { return *get() ; }
+      constexpr element_type *get() const noexcept { return _object ; }
+      constexpr element_type *operator->() const noexcept { return get() ; }
+      constexpr element_type &operator*() const noexcept { return *get() ; }
 
-      constexpr explicit operator bool() const { return !!get() ; }
+      constexpr explicit operator bool() const noexcept { return !!get() ; }
 
       /// Get the number of different intrusive_sptr instances (this included) managing
       /// the current object
       ///
-      intptr_t instances() const { return _object ? refcount_policy_t<T>::instances(_object) : 0 ; }
+      intptr_t instances() const noexcept
+      {
+         return _object ? refcount_policy_t<element_type>::instances(_object) : 0 ;
+      }
 
       /// Alias for instances(), added to match std::shared_ptr insterface
-      intptr_t use_count() const { return instances() ; }
+      intptr_t use_count() const noexcept { return instances() ; }
 
-      void reset() { shared_intrusive_ptr().swap(*this) ; }
+      void reset() noexcept
+      {
+         if (auto *element = as_ptr_mutable(std::exchange<element_type*>(_object, nullptr)))
+            refcount_policy_t<element_type>::dec_ref(element) ;
+      }
+
+      void reset(std::nullptr_t) noexcept { reset() ; }
+
+      void reset(element_type *other) noexcept
+      {
+         if (other == _object) return ;
+
+         auto *element = as_ptr_mutable(std::exchange<element_type*>(_object, other)) ;
+         inc_ref() ;
+         if (element)
+            refcount_policy_t<element_type>::dec_ref(element) ;
+      }
 
       void swap(shared_intrusive_ptr &other) noexcept
       {
@@ -294,6 +317,12 @@ class shared_intrusive_ptr {
          return *this ;
       }
 
+      shared_intrusive_ptr &operator=(element_type *other) noexcept
+      {
+         assign_element(other) ;
+         return *this ;
+      }
+
       template<typename U>
       auto operator=(const shared_intrusive_ptr<U> &other) noexcept
          ->decltype(shared_intrusive_ptr(other.get())) &
@@ -302,53 +331,95 @@ class shared_intrusive_ptr {
          return *this ;
       }
 
-      shared_intrusive_ptr &operator=(element_type *other) noexcept
+      shared_intrusive_ptr &operator=(shared_intrusive_ptr &&other) noexcept
       {
-         assign_element(other) ;
+         move_element(other._object) ;
+         return *this ;
+      }
+
+      template<typename U>
+      auto operator=(shared_intrusive_ptr<U> &&other) noexcept
+         ->decltype(shared_intrusive_ptr(other.get())) &
+      {
+         move_element(other._object) ;
          return *this ;
       }
 
       /// Create an instance of shared_intrusive_ptr whose stored pointer is _moved_ from
       /// this's stored pointer with static_cast'ing.
-      /// This is used to imlement the "moving" sptr_cast.
+      /// This is used to implement the "moving" sptr_cast.
       ///
       template<class U>
       shared_intrusive_ptr<transfer_cv_t<element_type, U>> cast_move() noexcept
       {
          typedef transfer_cv_t<element_type, U> result_element ;
-         shared_intrusive_ptr<result_element> result ;
-         result._object = static_cast<result_element *>(_object) ;
-         _object = nullptr ;
-         return result ;
+         return shared_intrusive_ptr<result_element>(_object, int_constant<42>()) ;
       }
 
    private:
-      std::remove_const_t<element_type> * mutable_object() const
+      template<typename U>
+      shared_intrusive_ptr(U *&src_object, int_constant<42>) noexcept :
+         _object(static_cast<element_type *>(src_object))
       {
-         return const_cast<std::remove_const_t<element_type> *>(_object) ;
+         if (!std::is_same<refcount_policy_t<element_type>, refcount_policy_t<U>>() && src_object)
+         {
+            inc_ref() ;
+            refcount_policy_t<U>::dec_ref(as_ptr_mutable(src_object)) ;
+         }
+         src_object = nullptr ;
       }
 
-      void inc_ref() const { if (_object) refcount_policy_t<T>::inc_ref(mutable_object()) ; }
-      void dec_ref() { if (_object) refcount_policy_t<T>::dec_ref(mutable_object()) ; }
+      void inc_ref() const noexcept { if (_object) refcount_policy_t<element_type>::inc_ref(as_ptr_mutable(_object)) ; }
+      void dec_ref() noexcept { if (_object) refcount_policy_t<element_type>::dec_ref(as_ptr_mutable(_object)) ; }
 
       template<class E>
-      void assign_element(E *other_element)
+      void assign_element(E *other_element) noexcept
       {
-         typedef refcount_policy_t<E>   other_policy_type ;
-         typedef std::remove_const_t<E> other_mutable_element ;
+         typedef refcount_policy_t<E> other_policy_type ;
 
-         other_mutable_element *other_object = const_cast<other_mutable_element *>(other_element) ;
+         auto *other_object = as_ptr_mutable(other_element) ;
 
-         if (_object != other_object)
+         if (_object == other_object) return ;
+
+         if (other_object)
+            other_policy_type::inc_ref(other_object) ; /* First we must increment counter of source object
+                                                        * due to possibility of (indirect) removal of all
+                                                        * remaining references to that one as a result of
+                                                        * dec_ref() call. */
+         dec_ref() ;
+         _object = other_object ;
+      }
+
+      template<class E>
+      void move_element(E *&other_element) noexcept
+      {
+         typedef refcount_policy_t<element_type> this_policy_type ;
+         typedef refcount_policy_t<E>            other_policy_type ;
+
+         if (!other_element)
          {
-            if (other_object)
-               other_policy_type::inc_ref(other_object) ; /* First we must increment counter of source object
-                                                           * due to possibility of (indirect) removal of all
-                                                           * remaining references to that one as a result of
-                                                           * dec_ref() call. */
-            dec_ref() ;
-            _object = other_object ;
+            reset() ;
+            return ;
          }
+
+         auto *other_object = as_ptr_mutable(other_element) ;
+         other_element = nullptr ;
+         element_type *old_this_object = std::exchange(_object, static_cast<element_type*>(other_object)) ;
+
+         if (other_object == old_this_object)
+         {
+            other_policy_type::dec_ref(other_object) ;
+            return ;
+         }
+
+         if (!std::is_same<this_policy_type, other_policy_type>())
+         {
+            this_policy_type::inc_ref(as_ptr_mutable(_object)) ;
+            other_policy_type::dec_ref(other_object) ;
+         }
+
+         if (old_this_object)
+            this_policy_type::dec_ref(as_ptr_mutable(old_this_object)) ;
       }
 
    private:
@@ -398,19 +469,19 @@ inline shared_intrusive_ptr<transfer_cv_t<U, T>> sptr_dynamic_cast(const shared_
 *******************************************************************************/
 template<class T>
 struct ref_lease  {
-      explicit ref_lease(T *guarded) : _guarded(guarded) { inccount(guarded) ; }
-      ~ref_lease() { deccount(_guarded) ; }
+      explicit ref_lease(T *guarded) noexcept : _guarded(guarded) { inccount(guarded) ; }
+      ~ref_lease() noexcept { deccount(_guarded) ; }
 
    private:
       T * const _guarded ;
 
       template<typename C, intptr_t init>
-      static void inccount(active_counter<C, init> *counter)
+      static void inccount(active_counter<C, init> *counter) noexcept
       {
          if (counter) counter->inc_passive() ;
       }
       template<typename C, intptr_t init>
-      static void deccount(active_counter<C, init> *counter)
+      static void deccount(active_counter<C, init> *counter) noexcept
       {
          if (counter) counter->dec_passive() ;
       }
@@ -422,32 +493,32 @@ struct ref_lease  {
 *******************************************************************************/
 #define PCOMN_SPTR_RELOP(OP)                                            \
    template<typename T, typename U>                                     \
-   inline auto operator OP(const U *x, const shared_intrusive_ptr<T> &y) \
+   inline auto operator OP(const U *x, const shared_intrusive_ptr<T> &y) noexcept \
       ->decltype(x OP y.get())                                          \
    {                                                                    \
       return x OP y.get() ;                                             \
    }                                                                    \
                                                                         \
    template<typename T, typename U>                                     \
-   inline auto operator OP(const shared_intrusive_ptr<T> &x, const U *y) \
+   inline auto operator OP(const shared_intrusive_ptr<T> &x, const U *y) noexcept \
       ->decltype(x.get() OP y)                                          \
    {                                                                    \
       return x.get() OP y ;                                             \
    }                                                                    \
    template<typename T>                                                 \
-   inline bool operator OP(nullptr_t, const shared_intrusive_ptr<T> &y) \
+   inline bool operator OP(nullptr_t, const shared_intrusive_ptr<T> &y) noexcept \
    {                                                                    \
       return nullptr OP y.get() ;                                       \
    }                                                                    \
                                                                         \
    template<typename T>                                                 \
-   inline bool operator OP(const shared_intrusive_ptr<T> &x, nullptr_t) \
+   inline bool operator OP(const shared_intrusive_ptr<T> &x, nullptr_t) noexcept \
    {                                                                    \
       return x.get() OP nullptr ;                                       \
    }                                                                    \
                                                                         \
    template<typename T, typename U>                                     \
-   inline auto operator OP(const shared_intrusive_ptr<T> &x, const shared_intrusive_ptr<U> &y) \
+   inline auto operator OP(const shared_intrusive_ptr<T> &x, const shared_intrusive_ptr<U> &y) noexcept \
       ->decltype(x.get() OP y.get())                                    \
    {                                                                    \
       return x.get() OP y.get() ;                                       \
@@ -482,10 +553,10 @@ class shared_ref {
 
       typedef decltype(smartptr_mode((type *)nullptr)) smartptr_type ;
 
-      shared_ref(const shared_ref &other) = default ;
+      shared_ref(const shared_ref &other) noexcept = default ;
 
       template<typename R, typename = instance_if_t<std::is_convertible<R*, element_type*>::value> >
-      shared_ref(const shared_ref<R> &other) :
+      shared_ref(const shared_ref<R> &other) noexcept :
          _ptr(other.ptr())
       {}
 
@@ -513,20 +584,20 @@ class shared_ref {
          _ptr(std::move(PCOMN_ENSURE_ARG(ptr)))
       {}
 
-      type &get() const { return *_ptr ; }
-      operator type &() const { return get() ; }
-      type *operator->() const { return &get() ; }
-      type &operator*() const { return get() ; }
+      type &get() const noexcept { return *_ptr ; }
+      operator type &() const noexcept { return get() ; }
+      type *operator->() const noexcept { return &get() ; }
+      type &operator*() const noexcept { return get() ; }
 
-      const smartptr_type &ptr() const { return _ptr ; }
-      operator const smartptr_type &() const { return ptr() ; }
+      const smartptr_type &ptr() const noexcept { return _ptr ; }
+      operator const smartptr_type &() const noexcept { return ptr() ; }
 
-      shared_ref &operator=(const shared_ref &) = default ;
+      shared_ref &operator=(const shared_ref &) noexcept = default ;
 
       template<typename R>
       std::enable_if_t<std::is_convertible<R*, element_type*>::value,
                        shared_ref &>
-      operator=(const shared_ref<R> &other)
+      operator=(const shared_ref<R> &other) noexcept
       {
          _ptr = other.ptr() ;
          return *this ;
@@ -548,10 +619,10 @@ class shared_ref {
          return get()[std::forward<A>(a)] ;
       }
 
-      intptr_t instances() const { return _ptr.use_count() ; }
-      intptr_t use_count() const { return _ptr.use_count() ; }
+      intptr_t instances() const noexcept { return _ptr.use_count() ; }
+      intptr_t use_count() const noexcept { return _ptr.use_count() ; }
 
-      void swap(shared_ref &other) { pcomn_swap(_ptr, other._ptr) ; }
+      void swap(shared_ref &other) noexcept { pcomn_swap(_ptr, other._ptr) ; }
 
    private:
       smartptr_type _ptr ;
@@ -572,36 +643,36 @@ class sptr_wrapper : private sptr_wrapper_tag<T> {
       typedef T smartptr_type ;
       typedef typename T::element_type element_type ;
 
-      explicit sptr_wrapper(const T &p) : _ptr(p) {}
+      explicit sptr_wrapper(const T &p) noexcept : _ptr(p) {}
 
       /// Get the value of the stored smartpointer as a plain pointer
-      element_type *get() const { return _ptr.get() ; }
+      element_type *get() const noexcept { return _ptr.get() ; }
       /// Get the value of the stored smartpointer as a plain pointer
-      operator element_type *() const { return get() ; }
+      operator element_type *() const noexcept { return get() ; }
       /// Get the stored smartpointer
-      const smartptr_type &ptr() const { return _ptr ; }
+      const smartptr_type &ptr() const noexcept { return _ptr ; }
 
-      void swap(sptr_wrapper &other) { other._ptr.swap(_ptr) ; }
+      void swap(sptr_wrapper &other) noexcept { other._ptr.swap(_ptr) ; }
    private:
       T _ptr ;
 } ;
 
 /// Create a smartpointer wrapper from passed smartpointer @a p
 template<typename T>
-inline sptr_wrapper<T> sptr(const T &p) { return sptr_wrapper<T>(p) ; }
+inline sptr_wrapper<T> sptr(const T &p) noexcept { return sptr_wrapper<T>(p) ; }
 
 template<typename T>
-inline void swap(sptr_wrapper<T> &x, sptr_wrapper<T> &y) { x.swap(y) ; }
+inline void swap(sptr_wrapper<T> &x, sptr_wrapper<T> &y) noexcept { x.swap(y) ; }
 
 /*******************************************************************************
  Define swap function and tags for smartpointers
 *******************************************************************************/
-#define PCOMN_SPTR_DEF(PTemplate)                                 \
-   template<typename T>                                           \
-   inline void swap(PTemplate<T> &lhs, PTemplate<T> &rhs)         \
-   {                                                              \
-      lhs.swap(rhs) ;                                             \
-   }                                                              \
+#define PCOMN_SPTR_DEF(PTemplate)                                  \
+   template<typename T>                                            \
+   inline void swap(PTemplate<T> &lhs, PTemplate<T> &rhs) noexcept \
+   {                                                               \
+      lhs.swap(rhs) ;                                              \
+   }                                                               \
    template<typename T> class sptr_wrapper_tag<PTemplate<T> > {}
 
 PCOMN_SPTR_DEF(shared_intrusive_ptr) ;

@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 # FILE         :  CMakeLists.txt
-# COPYRIGHT    :  Yakov Markovitch, 2014-2019
+# COPYRIGHT    :  Yakov Markovitch, 2014-2020
 #                 See LICENSE for information on usage/redistribution.
 #
 # DESCRIPTION  :  pcommon unittests build script
@@ -33,11 +33,24 @@ unittest(unittest_strslice)
 unittest(unittest_algorithms)
 unittest(unittest_base64)
 unittest(unittest_binary128)
-unittest(unittest_bitops)
+
+unittest_NOSIMD(unittest_bitops)
+unittest_SSE42(unittest_bitops_SSE42)
+unittest_AVX  (unittest_bitops_AVX)
+unittest_AVX2 (unittest_bitops_AVX2)
+
+unittest_SSE42(unittest_bitarray)
+unittest_AVX  (unittest_bitarray_AVX)
+unittest_AVX2 (unittest_bitarray_AVX2)
+
+unittest_SSE42(unittest_bitvector)
+unittest_AVX  (unittest_bitvector_AVX)
+unittest_AVX2 (unittest_bitvector_AVX2)
+
+unittest(unittest_blocqueue)
+
 unittest(unittest_buffer)
 unittest(unittest_cacher)
-#unittest(unittest_cdsqueue)
-#unittest(unittest_cdscrq)
 unittest(unittest_crypthash)
 unittest(unittest_ctype)
 unittest(unittest_enum)
@@ -54,6 +67,7 @@ unittest(unittest_network_address)
 unittest(unittest_omanip)
 unittest(unittest_rawstream)
 unittest(unittest_regex)
+unittest(unittest_semaphore)
 unittest(unittest_simplematrix)
 unittest(unittest_strnum)
 unittest(unittest_strsubst)
@@ -63,6 +77,10 @@ unittest(unittest_sys)
 unittest(unittest_socket_address)
 unittest(unittest_ternary)
 unittest(unittest_textio)
+
+unittest(unittest_threadpool)
+unittest(fuzzytest_threadpool)
+
 unittest(unittest_timespec)
 unittest(unittest_uri)
 unittest(unittest_uuid)

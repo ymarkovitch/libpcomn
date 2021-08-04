@@ -3,7 +3,7 @@
 #define __PCOMN_SYS_H
 /*******************************************************************************
  FILE         :   pcomn_sys.h
- COPYRIGHT    :   Yakov Markovitch, 2008-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2008-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   System (platform) functions
@@ -144,7 +144,7 @@ DIR *listdir(DIR *d, const char *dirname, unsigned flags, OutputIterator &filena
 {
    if (!d)
    {
-      PCOMN_CHECK_POSIX(-!!raise, *dirname ? "Cannot open directory '%s'" : "Cannot open directory", dirname) ;
+      PCOMN_CHECK_POSIX(-raise, *dirname ? "Cannot open directory '%s'" : "Cannot open directory", dirname) ;
       return NULL ;
    }
 
@@ -161,7 +161,7 @@ DIR *listdir(DIR *d, const char *dirname, unsigned flags, OutputIterator &filena
       if (!err)
          return NaP ;
 
-      PCOMN_CHECK_POSIX(-!!raise, *dirname ? "Cannot open directory '%s'" : "Cannot open directory", dirname) ;
+      PCOMN_CHECK_POSIX(-raise, *dirname ? "Cannot open directory '%s'" : "Cannot open directory", dirname) ;
       return NULL ;
    }
 

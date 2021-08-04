@@ -3,7 +3,7 @@
 #define __PCOMN_STOPWATCH_H
 /*******************************************************************************
  FILE         :   pcomn_stopwatch.h
- COPYRIGHT    :   Yakov Markovitch, 1998-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1998-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Stopwatches - classes for both CPU and real time counting for different
@@ -13,6 +13,7 @@
 *******************************************************************************/
 #include <pcommon.h>
 #include <time.h>
+#include <chrono>
 
 #if   defined(PCOMN_PL_WINDOWS)
 #  include <windows.h>
@@ -26,8 +27,11 @@ namespace pcomn {
 
 GCC_DIAGNOSTIC_PUSH_IGNORE(non-virtual-dtor)
 
-/******************************************************************************/
-/** The base (abstract) class for both CPU and physical time stopwatches.
+/// Seconds with floating-point representation.
+typedef std::chrono::duration<double> dseconds ;
+
+/***************************************************************************//**
+ The base (abstract) class for both CPU and physical time stopwatches.
 *******************************************************************************/
 class PStopwatch {
    public:
@@ -44,6 +48,9 @@ class PStopwatch {
 
       /// The same as elapsed()
       operator double() const { return elapsed() ; }
+
+      /// Get the elapsed time in seconds as std::chrono duration.
+      dseconds elapsed_duration() const { return dseconds(elapsed()) ; }
 
       /// Check whether the stopwatch is ticking: true, if ticking, false, if stopped.
       bool is_running() const { return _running ; }
@@ -101,18 +108,16 @@ class PStopwatch {
       bool     _running ;     /* True, if ticking */
 } ;
 
-/*******************************************************************************
-                     class PRealStopwatch
+/***************************************************************************//**
+ A stopwatch for counting periods ot the real (physical) time.
 *******************************************************************************/
-/** A stopwatch for counting periods ot the real (physical) time.
-*******************************************************************************/
-class PRealStopwatch : public PStopwatch {
+class PRealStopwatch final  : public PStopwatch {
       typedef PStopwatch ancestor ;
    public:
       PRealStopwatch() ;
 
    protected:
-      virtual double current() const ;
+      double current() const final ;
 } ;
 
 /*******************************************************************************
@@ -120,13 +125,13 @@ class PRealStopwatch : public PStopwatch {
 *******************************************************************************/
 /** A stopwatch for counting CPU time, i.e. time that a process spends on CPU
 *******************************************************************************/
-class PCpuStopwatch : public PStopwatch {
+class PCpuStopwatch final : public PStopwatch {
       typedef PStopwatch ancestor ;
    public:
       PCpuStopwatch() ;
 
    protected:
-      virtual double current() const ;
+      double current() const final ;
 } ;
 
 /*******************************************************************************

@@ -101,7 +101,7 @@ void Base64DecondeTests::Test_SkippedInvalid()
         CPPUNIT_LOG_RUN(res_len = a2b_base64(skip_upto_0, &ascii_len, buf, sizeof(buf))) ;
         CPPUNIT_LOG_EQUAL(res_len & ~0x3, 0_SZ) ;
         CPPUNIT_LOG_EQUAL(ascii_len, 10_SZ) ;
-        CPPUNIT_LOG_EQUAL(skip_upto_0 + ascii_len, strchr(skip_upto_0, '0')) ;
+        CPPUNIT_LOG_EQ(skip_upto_0 + ascii_len, strchr(skip_upto_0, '0')) ;
     }
 
     {
@@ -142,7 +142,7 @@ void Base64DecondeTests::Test_SkippedInvalid()
         CPPUNIT_LOG_EQUAL(res_len = a2b_base64(full_decode, &ascii_len, buf, sizeof(buf)), 1_SZ) ;
         CPPUNIT_LOG_EQUAL(*buf, 'A') ;
         CPPUNIT_LOG_EQUAL(ascii_len, sizeof(full_decode)-1 ) ;
-        CPPUNIT_LOG_EQUAL(skip_invalid_base64(full_decode, ascii_len), strchr(full_decode, 'Q')) ;
+        CPPUNIT_LOG_EQ(skip_invalid_base64(full_decode, ascii_len), strchr(full_decode, 'Q')) ;
     }
 
     {
@@ -151,9 +151,9 @@ void Base64DecondeTests::Test_SkippedInvalid()
         size_t res_len ;
         CPPUNIT_LOG_EQUAL(res_len = a2b_base64(skip_upto_PAD, &ascii_len, buf, sizeof(buf)), 0_SZ) ;
         CPPUNIT_LOG_EQUAL(ascii_len, sizeof(skip_upto_PAD)-1 - 1) ;
-        CPPUNIT_LOG_EQUAL(skip_upto_PAD + ascii_len, strchr(skip_upto_PAD, '=')) ;
+        CPPUNIT_LOG_EQ(skip_upto_PAD + ascii_len, strchr(skip_upto_PAD, '=')) ;
         ascii_len = sizeof(skip_upto_PAD)-1 ;
-        CPPUNIT_LOG_EQUAL(skip_invalid_base64(skip_upto_PAD, ascii_len) - skip_upto_PAD, (ptrdiff_t)ascii_len - 1) ;
+        CPPUNIT_LOG_EQ(skip_invalid_base64(skip_upto_PAD, ascii_len) - skip_upto_PAD, (ptrdiff_t)ascii_len - 1) ;
     }
 }
 

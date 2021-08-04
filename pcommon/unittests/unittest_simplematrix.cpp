@@ -1,7 +1,7 @@
 /*-*- tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   unittest_simplematrix.cpp
- COPYRIGHT    :   Yakov Markovitch, 2009-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2009-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Unit tests of simple_matrix
@@ -9,6 +9,7 @@
  PROGRAMMED BY:   Yakov Markovitch
  CREATION DATE:   18 Mar 2009
 *******************************************************************************/
+#include <iostream>
 #include <pcomn_simplematrix.h>
 #include <pcomn_unittest.h>
 

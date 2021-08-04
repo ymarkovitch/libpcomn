@@ -3,7 +3,7 @@
 #define __PCOMN_UNITTEST_H
 /*******************************************************************************
  FILE         :   pcomn_unittest.h
- COPYRIGHT    :   Yakov Markovitch, 2003-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2003-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Helpers for unit testing with CPPUnit
@@ -57,6 +57,7 @@ GCC_DIAGNOSTIC_PUSH_IGNORE(unused-result)
 #include <list>
 #include <map>
 #include <set>
+#include <array>
 #include <stdexcept>
 #include <mutex>
 #include <chrono>
@@ -88,7 +89,7 @@ constexpr DiffOptions DF_SENSE_ALL = DF_SENSE_TRAIL_SPACE|DF_SENSE_SPACE_CHANGE|
 /*******************************************************************************
  Test environment
 *******************************************************************************/
-template<novalue = {}>
+template<novalue = NaV>
 struct test_environment {
 
       friend std::string resolve_test_path(const CppUnit::Test &, const std::string &, bool) ;
@@ -340,7 +341,7 @@ struct unique_locked_ostream {
 
 template<typename Tag>
 unique_locked_ostream<Tag>::unique_locked_ostream(std::ostream *owned_stream) :
-   _streamp(owned_stream), _lock(_streamp.get())
+   _streamp(owned_stream, {}), _lock(_streamp.get())
 {}
 
 template<typename Tag>
@@ -352,7 +353,7 @@ template<typename Tag>
 unique_locked_ostream<Tag>::unique_locked_ostream(const strslice &filename) :
    unique_locked_ostream(new std::ofstream(std::string(filename).c_str()))
 {
-   PCOMN_THROW_IF(!stream(), environment_error, "Cannot open " P_STRSLICEQF " for writing", P_STRSLICEV(filename)) ;
+   PCOMN_THROW_IF(!stream(), system_error, "Cannot open " P_STRSLICEQF " for writing", P_STRSLICEV(filename)) ;
 }
 
 template<typename Tag>
@@ -361,7 +362,7 @@ unique_locked_ostream<Tag>::~unique_locked_ostream() = default ;
 /*******************************************************************************
                      class TestProgressListener
 *******************************************************************************/
-template<novalue = {}>
+template<novalue = NaV>
 class TestListener : public CppUnit::TextTestProgressListener {
    public:
       void startTest(CppUnit::Test *test)
@@ -630,7 +631,7 @@ typename TestFixture<private_dirname>::locked_out TestFixture<private_dirname>::
          // Ensure $CPPUNIT_PROGDIR/data is here
          CPPUNIT_ASSERT(_datadir_ready || mkdir_with_parents(_data_basedir)) ;
          std::unique_ptr<std::ofstream> new_stream (new std::ofstream(data_file().c_str())) ;
-         PCOMN_THROW_IF(!*new_stream, environment_error, "Cannot open " P_STRSLICEQF " for writing", P_STRSLICEV(data_file())) ;
+         PCOMN_THROW_IF(!*new_stream, system_error, "Cannot open " P_STRSLICEQF " for writing", P_STRSLICEV(data_file())) ;
          _out = std::move(new_stream) ;
       }
    }
@@ -779,7 +780,7 @@ struct stringify_item {
       template<typename T>
       void operator()(const T &value) const
       {
-         (_count++ ? (_result += _delimiter) : _result) += pcomn::unit::to_string(value) ;
+         (_count++ && _delimiter ? (_result += _delimiter) : _result) += pcomn::unit::to_string(value) ;
       }
    private:
       std::string &     _result ;
@@ -811,9 +812,13 @@ template<typename Seq, char d, char b, char a>
 std::string assertion_traits_sequence<Seq, d, b, a>::toString(const Seq &value)
 {
    using namespace std ;
-   std::string result (1, b) ;
+   std::string result ;
+   if (b)
+      result += b ;
    std::for_each(begin(value), end(value), stringify_item(result, d)) ;
-   return result.append(1, a) ;
+   if (a)
+      result += a ;
+   return result ;
 }
 
 template<typename Unordered>
@@ -862,6 +867,9 @@ _CPPUNIT_ASSERTION_TRAITS_SEQUENCE(pcomn::simple_slice) ;
 template<typename T, size_t maxsize>
 struct assertion_traits<pcomn::static_vector<T, maxsize>> :
          assertion_traits_sequence<pcomn::static_vector<T, maxsize>> {} ;
+
+template<typename T, size_t size>
+struct assertion_traits<std::array<T,size>> : assertion_traits_sequence<std::array<T,size>> {} ;
 
 #undef _CPPUNIT_ASSERTION_TRAITS_SEQUENCE
 

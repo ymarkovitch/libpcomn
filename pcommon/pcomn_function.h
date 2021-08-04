@@ -3,7 +3,7 @@
 #define __PCOMN_FUNCTION_H
 /*******************************************************************************
  FILE         :   pcomn_function.h
- COPYRIGHT    :   Yakov Markovitch, 2000-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2000-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   STL-like additional functors
@@ -16,7 +16,6 @@
 #include <pcomn_macros.h>
 
 #include <functional>
-#include <tuple>
 
 namespace pcomn {
 
@@ -25,7 +24,7 @@ namespace pcomn {
 *******************************************************************************/
 struct identity {
       template<typename T>
-      T &&operator() (T &&t) const { return std::forward<T>(t) ; }
+      constexpr T &&operator() (T &&t) const { return std::forward<T>(t) ; }
 } ;
 
 /***************************************************************************//**
@@ -310,27 +309,16 @@ mem_data_ptr_t<R, T *> mem_data_ptr(R T::*p) { return mem_data_ptr_t<R, T *>(p) 
  make_function
  bind_thisptr
 *******************************************************************************/
-template<typename R, typename T>
-std::function<R()> bind_thisptr(R (T::*memfn)(), T *thisptr)
+template<typename R, typename T, typename E>
+std::function<R()> bind_thisptr(R (E::*memfn)(), T &&thisptr)
 {
-   return {std::bind(memfn, thisptr)} ;
-}
-template<typename R, typename T>
-std::function<R()> bind_thisptr(R (T::*memfn)() const, const T *thisptr)
-{
-   return {std::bind(memfn, thisptr)} ;
+   return {std::bind(memfn, std::forward<T>(thisptr))} ;
 }
 
-template<typename R, typename T>
-std::function<R()> bind_thisptr(R (T::element_type::*memfn)(), T thisptr)
+template<typename R, typename T, typename E>
+std::function<R()> bind_thisptr(R (E::*memfn)() const, T &&thisptr)
 {
-   return {std::bind(memfn, thisptr)} ;
-}
-
-template<typename R, typename T>
-std::function<R()> bind_thisptr(R (T::element_type::*memfn)() const, T thisptr)
-{
-   return {std::bind(memfn, thisptr)} ;
+   return {std::bind(memfn, std::forward<T>(thisptr))} ;
 }
 
 #define P_PLACEHOLDER_(num, ...)  std::placeholders::_##num
@@ -406,13 +394,9 @@ function_type_t<Callable> make_function(Callable &&fn)
    return {std::forward<Callable>(fn)} ;
 }
 
-template<typename, typename>
-struct is_callable : bool_constant<false> {} ;
-
 template<typename T, typename R, typename...Args>
-struct is_callable<T, R(Args...)> :
-         bool_constant<(!is_same_unqualified<T, nullptr_t>::value &&
-                        std::is_constructible<std::function<R(Args...)>, T>::value)> {} ;
+struct is_callable_as : bool_constant<(!is_same_unqualified<T, nullptr_t>::value &&
+                                       std::is_constructible<std::function<R(Args...)>, T>::value)> {} ;
 
 } // end of namespace pcomn
 

@@ -3,7 +3,7 @@
 #define __PCOMN_ASSERT_H
 /*******************************************************************************
  FILE         :   pcomn_assert.h
- COPYRIGHT    :   Yakov Markovitch, 1999-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1999-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Inline-debugging macros for C and C++
@@ -34,13 +34,13 @@
 #define PARANOID_NOXCHECK(condition)  PARANOID_NOXCHECKX((condition), #condition)
 
 #define PCOMN_FAIL(msg)                                                 \
-   ((void)(pcomn_fail("Failure: %s, file %s, line %d\n", (char *)(msg), __FILE__, __LINE__)))
+   ((void)(pcomn_fail("Failure: %s\n", (char *)(msg), __FILE__, __LINE__)))
 
 #define PCOMN_ENSURE(p, s) (likely(!!(p)) ? (1) : (PCOMN_FAIL(s), 0))
 
 #define PCOMN_VERIFY(p)                                                 \
    (unlikely(!(p)) ? (pcomn_fail(                                       \
-                         "Verify failed: %s, file %s, line %d\n",       \
+                         "Verify failed: %s\n",                         \
                          (char *)#p, __FILE__, __LINE__), 0) : (1))
 
 #define NOXFAIL(msg) PCOMN_FAIL(msg)
@@ -58,9 +58,8 @@
 #else
 
 #define _NOXCHECKX(condition, message, type)                            \
-   (!(condition) ? (pcomn_fail(                                         \
-                       (#type " violated: %s, file %s, line %d\n"),     \
-                       (char *)message, __FILE__, __LINE__)) : (void)0)
+   (!(condition) ? (pcomn_fail((#type " violated: %s\n"),               \
+                               (char *)message, __FILE__, __LINE__)) : (void)0)
 
 #define NOXPRECONDITIONX(condition, message) _NOXCHECKX((condition), message, Precondition)
 #define NOXCHECKX(condition, message) _NOXCHECKX((condition), message, Check)
@@ -108,12 +107,12 @@ PCOMN_CFUNC _CRTIMP void __cdecl _assert(const char *, const char *, unsigned) ;
 
 #ifndef __cplusplus
 #  define __pcomn_assert_fail__(fmt, msg, file, line)                   \
-   ((intptr_t)GetStdHandle(STD_ERROR_HANDLE) > 0 &&                          \
+   ((intptr_t)GetStdHandle(STD_ERROR_HANDLE) > 0 &&                     \
     (fputc('\n', stderr) && fprintf(stderr, (char *)(fmt), (char *)(msg), (char *)(file), (line)) > 0 && \
      (_flushall(), raise(SIGABRT), exit(3), 1)) || (_assert((char *)(msg), (char *)(file), (line)), 1))
 #else /* __cplusplus */
 template<typename N>
-__noreturn __noinline void __pcomn_assert_fail__(const char *fmt, const char *msg, const char *file, N line)
+__noreturn __cold void __pcomn_assert_fail__(const char *fmt, const char *msg, const char *file, N line) noexcept
 {
    // This is a hack: there is no good and simple way to know in MSVC whether
    // the application is console or windows.
@@ -139,8 +138,11 @@ __noreturn __noinline void __pcomn_assert_fail__(const char *fmt, const char *ms
 #include <stdlib.h>
 #include <stdio.h>
 
-static __inline
+static __cold __noreturn __attribute__((used))
 void __pcomn_assert_fail__(const char *fmt, const char *msg, const char *file, unsigned line)
+#ifdef __cplusplus
+noexcept
+#endif
 {
    putc('\n', stderr) ;
    error_at_line(0, 0, file, line, fmt, msg, file, line) ;
@@ -198,6 +200,10 @@ static __attribute__((used)) __noinline int IsDebuggerPresent()
     const char *tracepid ;
     int dummy ;
 
+    if (getenv("RUNNING_UNDER_RR"))
+       // Avoid int3 under rr, the resulting trace can behave badly
+       return 0 ;
+
     memset(buf, 0, sizeof buf) ;
     if ((fd = open("/proc/self/status", O_RDONLY)) >= 0)
     {
@@ -224,7 +230,7 @@ static __attribute__((used)) __noinline int IsDebuggerPresent()
 
 #ifdef __cplusplus
 template<typename N>
-__noinline __noreturn void pcomn_fail(const char *fmt, const char *msg, const char *file, N line) noexcept
+__cold __noreturn void pcomn_fail(const char *fmt, const char *msg, const char *file, N line) noexcept
 {
    __pcomn_debug_fail__(fmt, msg, file, line) ;
    abort() ;

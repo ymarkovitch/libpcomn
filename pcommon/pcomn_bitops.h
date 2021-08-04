@@ -3,7 +3,7 @@
 #define __PCOMN_BITOPS_H
 /*******************************************************************************
  FILE         :   pcomn_bitops.h
- COPYRIGHT    :   Yakov Markovitch, 2016-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2016-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Basic bit operations, both using common C integer ariphmetic
@@ -16,7 +16,7 @@
  Basic operations over bits of integral data types, both using common C integer arithmetic
  and CPU-specific instructions/intrinsics.
 
- bitop::bitcount
+ bitop::popcount
  bitop::log2floor
  bitop::log2ceil
 
@@ -36,28 +36,40 @@
  bitop::rotr      - Rotate Right
 
  bitop::bitextend - Get the integral value filled with the specified bit value.
+
+ bitop::array_bools_to_bits<N> - Convert std::array<bool,N> to uintN_t
+ bitop::bits_to_array_bools<N> - Convert uintN_t to std::array<bool,N>
+
+ bitop::bits_extract - Extract bits from unsigned integer at the bit locations
+                       specified by `mask` to contiguous low bits of the result
+                       (see BMI2 PEXT instruction).
 *******************************************************************************/
 
 #include <pcomn_meta.h>
 #include <pcomn_assert.h>
 #include <pcommon.h>
 
+#include <array>
 #include <functional>
 #include <iterator>
 #include <limits>
 #include <cstdlib>
 #include <limits.h>
 
-#ifdef PCOMN_COMPILER_GNU
-#  if defined(PCOMN_PL_X86)
-#     include <x86intrin.h>
-#  endif
+#ifdef PCOMN_GCC86_INTRINSICS
+#  include <immintrin.h>
 #endif
 
 namespace pcomn {
 
 /// Calculate at compile-time the number of bits in a type or value.
 #define bitsizeof(t) (sizeof(t) * CHAR_BIT)
+
+#if (__CLANG_VER__)
+#define shuffle_simd_vector(v, ...) __builtin_shufflevector(v, v, __VA_ARGS__)
+#elif (__GNUC_VER__)
+#define shuffle_simd_vector(v, ...) __builtin_shuffle(v, decltype(v){__VA_ARGS__})
+#endif
 
 /*******************************************************************************
  Istruction Set Architecture variant tags
@@ -112,8 +124,12 @@ template<> struct bit_traits<64> {
    typedef int64_t  stype ;
    typedef uint64_t utype ;
 
-   static constexpr unsigned bitcount(utype value)
+   static constexpr unsigned popcount(utype value)
    {
+      #if defined(PCOMN_GCC_INTRINSICS)
+      return __builtin_popcountll(value) ;
+      #else
+
       utype r = value ;
       r = (0x5555555555555555ULL & r) + (0x5555555555555555ULL & (r >> 1U)) ;
       r = (0x3333333333333333ULL & r) + (0x3333333333333333ULL & (r >>  2U)) ;
@@ -122,12 +138,16 @@ template<> struct bit_traits<64> {
       // Attempt to use a bit more of the out-of-order parallelism
       return
          ((unsigned)(r >> 48U) + (unsigned)(r >> 32U) + (unsigned)(r >> 16U) + (unsigned)r) & 0x7fU ;
+      #endif
    }
 
    static constexpr int log2floor(utype value)
    {
-      #if defined(PCOMN_COMPILER_GNU) && defined(__BMI2__)
-      return 63 - __builtin_clzll(value) ;
+      #ifdef PCOMN_GCC_INTRINSICS
+
+      const int result = 63 - __builtin_clzll(value) ;
+      return result | -!value ;
+
       #else
 
       utype x = value ;
@@ -137,7 +157,7 @@ template<> struct bit_traits<64> {
       x |= (x >> 8) ;
       x |= (x >> 16) ;
       x |= (x >> 32) ;
-      return (int)bitcount(x) - 1 ;
+      return (int)popcount(x) - 1 ;
 
       #endif
    }
@@ -157,19 +177,28 @@ template<> struct bit_traits<32> {
    typedef int       stype ;
    typedef unsigned  utype ;
 
-   static constexpr unsigned bitcount(utype value)
+   static constexpr unsigned popcount(utype value)
    {
+      #ifdef PCOMN_GCC_INTRINSICS
+      return __builtin_popcount(value) ;
+      #else
+
       unsigned r = value ;
       r = (0x55555555U & r) + (0x55555555U & (r >> 1U)) ;
       r = (0x33333333U & r) + (0x33333333U & (r >> 2U)) ;
       r = (r + (r >> 4U)) & 0x0f0f0f0fU ;
       return (r + (r >> 8U) + (r >> 16U) + (r >> 24U)) & 0x3fU ;
+
+      #endif
    }
 
    static constexpr int log2floor(utype value)
    {
-      #if defined(PCOMN_COMPILER_GNU) && defined(__BMI2__)
-      return 31 - __builtin_clz(value) ;
+      #ifdef PCOMN_GCC_INTRINSICS
+
+      const int result = 31 - __builtin_clz(value) ;
+      return result | -!value ;
+
       #else
 
       unsigned x = value ;
@@ -178,7 +207,7 @@ template<> struct bit_traits<32> {
       x |= (x >> 4) ;
       x |= (x >> 8) ;
       x |= (x >> 16) ;
-      return (int)bitcount((utype)x) - 1 ;
+      return (int)popcount((utype)x) - 1 ;
 
       #endif
    }
@@ -198,19 +227,27 @@ template<> struct bit_traits<16> {
    typedef int16_t  stype ;
    typedef uint16_t utype ;
 
-   static constexpr unsigned bitcount(utype value)
+   static constexpr unsigned popcount(utype value)
    {
+      #ifdef PCOMN_GCC_INTRINSICS
+      return __builtin_popcount(value) ;
+      #else
+
       unsigned r = value ;
       r = (0x5555U & r) + (0x5555U & (r >> 1U)) ;
       r = (0x3333U & r) + (0x3333U & (r >> 2U)) ;
       r = (r + (r >> 4U)) & 0x0f0fU ;
       return (r + (r >> 8U)) & 0x1fU ;
-   }
+
+      #endif
+  }
 
    static constexpr int log2floor(utype value)
    {
-      #if defined(PCOMN_COMPILER_GNU) && defined(__BMI2__)
-      return 31 - __builtin_clz(value) ;
+      #ifdef PCOMN_GCC_INTRINSICS
+
+      return bit_traits<32>::log2floor(value) ;
+
       #else
 
       unsigned x = static_cast<utype>(value) ;
@@ -218,7 +255,7 @@ template<> struct bit_traits<16> {
       x |= (x >> 2) ;
       x |= (x >> 4) ;
       x |= (x >> 8) ;
-      return (int)bitcount((utype)x) - 1 ;
+      return (int)popcount((utype)x) - 1 ;
 
       #endif
    }
@@ -238,18 +275,26 @@ template<> struct bit_traits<8> {
    typedef int8_t  stype ;
    typedef uint8_t utype ;
 
-   static constexpr unsigned bitcount(utype value)
+   static constexpr unsigned popcount(utype value)
    {
+      #if defined(PCOMN_GCC_INTRINSICS)
+      return __builtin_popcount(value) ;
+      #else
+
       unsigned r = value ;
       r = (0x55U & r) + (0x55U & (r >> 1U)) ;
       r = (0x33U & r) + (0x33U & (r >> 2U)) ;
       return (r + (r >> 4U)) & 0xfU ;
+
+      #endif
    }
 
    static constexpr int log2floor(utype value)
    {
-      #if defined(PCOMN_COMPILER_GNU) && defined(__BMI2__)
-      return 31 - __builtin_clz(value) ;
+      #ifdef PCOMN_GCC_INTRINSICS
+
+      return bit_traits<32>::log2floor(value) ;
+
       #else
 
       // At the end, x will have the same most significant 1 as value and all '1's below
@@ -257,7 +302,7 @@ template<> struct bit_traits<8> {
       x |= (x >> 1) ;
       x |= (x >> 2) ;
       x |= (x >> 4) ;
-      return (int)bitcount((utype)x) - 1 ;
+      return (int)popcount((utype)x) - 1 ;
 
       #endif
    }
@@ -268,61 +313,6 @@ template<> struct bit_traits<8> {
       return log2floor(value) + !!(correction & (correction - 1)) ;
    }
 } ;
-
-/*******************************************************************************
- Generic bitcount
-*******************************************************************************/
-template<typename I>
-inline size_t native_bitcount(I v, generic_isa_tag)
-{
-   return bit_traits<sizeof(I)*8>::bitcount(v) ;
-}
-
-template<typename I>
-inline size_t native_rzcnt(I v, generic_isa_tag)
-{
-   // Get rightmost non-zero bit
-   // 00001010 -> 00000010
-   const I rnzb = static_cast<I>(v & (0 - v)) ;
-   // Convert rigthmost 0-sequence to 1-sequence and count bits
-   return native_bitcount(static_cast<I>(rnzb - 1), native_isa_tag()) ;
-}
-
-/*******************************************************************************
- x86_64
-*******************************************************************************/
-#ifdef PCOMN_PL_X86
-#if defined(PCOMN_COMPILER_GNU)
-__forceinline size_t builtin_popcount(unsigned long long v) { return __builtin_popcountll(v) ; }
-__forceinline size_t builtin_popcount(unsigned long v) { return __builtin_popcountl(v) ; }
-__forceinline size_t builtin_popcount(unsigned int v) { return __builtin_popcount(v) ; }
-__forceinline size_t builtin_popcount(unsigned short v) { return __builtin_popcount(v) ; }
-__forceinline size_t builtin_popcount(unsigned char v) { return __builtin_popcount(v) ; }
-
-template<typename I>
-inline size_t native_bitcount(I v, sse42_isa_tag)
-{
-   return builtin_popcount((std::make_unsigned_t<I>)v) ;
-}
-
-template<typename I>
-inline size_t native_rzcnt(I v, x86_64_isa_tag)
-{
-   size_t result ;
-   const uintmax_t source = (std::make_unsigned_t<I>)v ;
-   const uintmax_t bitsize = bitsizeof(I) ;
-   asm(
-      "bsf   %[source],  %[result]\n\t"
-      "cmovz %[bitsize], %[result]"
-      : [result]"=r"(result)
-      : [source]"rm"(source),
-        [bitsize]"r"(bitsize)
-      : "cc") ;
-   return result ;
-}
-
-#endif
-#endif
 
 /// @cond
 namespace detail {
@@ -336,8 +326,8 @@ template<unsigned v, unsigned s> struct _ct_shl<v, s, false> :
 } // end of namespace pcomn::detail
 /// @endcond
 
-/******************************************************************************/
-/** A traits class template that abstracts properties for a given integral type.
+/***************************************************************************//**
+ A traits class template that abstracts properties for a given integral type.
 
 The defined property set is such that to allow to implement generic
 bit-manipulation algorithms.
@@ -350,7 +340,7 @@ struct int_traits {
       typedef typename std::make_signed_t<type>    stype ;
       typedef typename std::make_unsigned_t<type>  utype ;
 
-      static constexpr const bool     is_signed = std::numeric_limits<type>::is_signed ;
+      static constexpr const bool     is_signed = std::is_signed<type>::value ;
       static constexpr const unsigned bitsize = bitsizeof(type) ;
       static constexpr const type     ones = (type)~type() ;
       static constexpr const type     signbit = (type)((type)1 << (bitsize - 1)) ;
@@ -365,8 +355,8 @@ constexpr const T int_traits<T>::ones ;
 template<typename T>
 constexpr const T int_traits<T>::signbit ;
 
-/******************************************************************************/
-/** Type trait checks whether T is an integral type and @em not bool.
+/***************************************************************************//**
+ Type trait checks whether T is an integral type and @em not bool.
 *******************************************************************************/
 template<typename T>
 struct is_integer : std::bool_constant<std::is_integral<T>::value && !std::is_same<T, bool>::value> {} ;
@@ -374,8 +364,14 @@ struct is_integer : std::bool_constant<std::is_integral<T>::value && !std::is_sa
 template<typename T>
 struct is_numeric : std::bool_constant<std::is_arithmetic<T>::value && !std::is_same<T, bool>::value> {} ;
 
-/******************************************************************************/
-/** Overload enabler, a la enable_if<>.
+template<typename T>
+struct is_signed_integer : std::bool_constant<is_integer<T>() && std::is_signed<T>()> {} ;
+
+template<typename T>
+struct is_unsigned_integer : std::bool_constant<is_integer<T>() && !std::is_signed<T>()> {} ;
+
+/***************************************************************************//**
+ Overload enabler, a la enable_if<>.
  If T is an integer type, returns (as internal typedef) R as 'type'
 *******************************************************************************/
 template<typename T, typename R = T> struct
@@ -385,10 +381,10 @@ template<typename T, typename R = T> struct
 if_not_integer : disable_if<is_integer<T>::value, R> {} ;
 
 template<typename T, typename R = T> struct
-if_signed_int : std::enable_if<(is_integer<T>::value && std::numeric_limits<T>::is_signed), R> {} ;
+if_signed_int : std::enable_if<is_signed_integer<T>::value, R> {} ;
 
 template<typename T, typename R = T> struct
-if_unsigned_int : std::enable_if<(is_integer<T>::value && !std::numeric_limits<T>::is_signed), R> {} ;
+if_unsigned_int : std::enable_if<is_unsigned_integer<T>::value, R> {} ;
 
 template<typename T, typename R = T> struct
 if_numeric : std::enable_if<is_numeric<T>::value, R> {} ;
@@ -409,6 +405,9 @@ using if_numeric_t = typename if_numeric<T, R>::type ;
 template<typename T, typename R = T>
 using if_arithmetic_t = typename if_arithmetic<T, R>::type ;
 
+template<typename T, typename R = T>
+using if_bool_t = std::enable_if_t<std::is_same_v<T, bool>, R> ;
+
 template<typename T>
 inline constexpr if_signed_int_t<T> sign_bit(T value)
 {
@@ -423,6 +422,52 @@ inline typename if_signed_int<T, T>::type iabs(T v) { return std::abs(v) ; }
 
 template<typename T>
 inline typename if_unsigned_int<T, T>::type iabs(T v) { return v ; }
+
+/******************************************************************************/
+/** @name Function objects for performing bitwise ANDN and ORN.
+
+ Effectively call `&~` and `|~` on their arguments.
+ Amend missing standard library functionality (there are std::bit_op operations,
+ e.g std::bit_and).
+
+ Both bit_andnot and bit_ornot have "transparent" specializations bit_andnot<void>
+ and bit_ornot<void>, deducing their argument and return types.
+*******************************************************************************/
+template<typename T = void>
+struct bit_andnot {
+      constexpr T operator()(const T &x, const T &y) const { return x &~ y ; }
+} ;
+
+template<>
+struct bit_andnot<void> {
+      typedef std::true_type is_transparent ;
+
+      template<class T, class U>
+      constexpr auto operator()(T&& x, U&& y) const
+         -> decltype(std::forward<T>(x) &~ std::forward<U>(y))
+      {
+         return std::forward<T>(x) &~ std::forward<U>(y) ;
+      }
+} ;
+
+template<typename T = void>
+struct bit_ornot {
+      constexpr T operator()(const T &x, const T &y) const { return x |~ y ; }
+} ;
+
+template<>
+struct bit_ornot<void> {
+      typedef std::true_type is_transparent ;
+
+      template<typename T, typename U>
+      constexpr auto operator()(T&& x, U&& y) const
+         -> decltype(std::forward<T>(x) |~ std::forward<U>(y))
+      {
+         return std::forward<T>(x) |~ std::forward<U>(y) ;
+      }
+} ;
+/**@}*/
+
 /*******************************************************************************
  namespace pcomn::bitop
  Bit operations (like bit counts, etc.)
@@ -443,18 +488,18 @@ constexpr inline if_integer_t<I> bitextend(bool bit)
 
 /// Count 1s in a value of some integral type
 template<typename I>
-inline unsigned bitcount(I i)
+constexpr inline unsigned popcount(I v)
 {
-   return native_bitcount(i, native_isa_tag()) ;
+   return bit_traits<sizeof(I)*8>::popcount(v) ;
 }
 
 /// Count 1s in a bit vector
 template<typename InputIterator>
-size_t bitcount(InputIterator data, size_t nelements)
+size_t popcount(InputIterator data, size_t nelements)
 {
    size_t cnt = 0 ;
    for (; nelements-- ; ++data)
-      cnt += bitcount(*data) ;
+      cnt += popcount(*data) ;
    return cnt ;
 }
 
@@ -515,26 +560,48 @@ constexpr inline if_integer_t<I> getrzbseq(I x)
 /// 00101000 -> 3
 /// 00101001 -> 0
 /// 0 -> bitsizeof(I)
+/// @note Analog of TZCNT
 template<typename I>
-constexpr inline if_integer_t<I, size_t> rzcnt(I x)
+constexpr inline if_integer_t<I, unsigned> rzcnt(I v)
 {
-   return native_rzcnt(x, native_isa_tag()) ;
+   #ifdef PCOMN_GCC_INTRINSICS
+   #if PCOMN_PL_BMI2
+
+   const size_t count = bitsizeof(v) <= 32 ? _tzcnt_u32(v) : _tzcnt_u64(v) ;
+   return bitsizeof(v) >= 32 ? count : std::min(count, bitsizeof(v)) ;
+
+   #else /* !PCOMN_PL_BMI2 */
+
+   const size_t count = bitsizeof(v) <= 32 ? __builtin_ctz(v) : __builtin_ctzl(v) ;
+   return !v ? bitsizeof(v) : bitsizeof(v) >= 32 ? count : std::min(count, bitsizeof(v)) ;
+
+   #endif /* PCOMN_PL_BMI2 */
+
+   #else /* !PCOMN_GCC_INTRINSICS */
+
+   // Get rightmost non-zero bit
+   // 00001010 -> 00000010
+   const I rnzb = static_cast<I>(v & (0 - v)) ;
+   // Convert rigthmost 0-sequence to 1-sequence and count bits
+   return popcount(static_cast<I>(rnzb - 1)) ;
+
+   #endif
 }
 
 /// Test if Power of 2 or Zero.
 template<typename I>
-constexpr inline if_integer_t<I, bool> tstpow2z(I x)
+constexpr inline if_integer_t<underlying_integral_t<I>, bool> tstpow2z(I x)
 {
-   return !clrrnzb(x) ;
+   return !clrrnzb(underlying_int(x)) ;
 }
 
 /// Test if Power of 2.
 /// 00001000 -> true
 /// 00101000 -> false
 template<typename I>
-constexpr inline if_integer_t<I, bool> tstpow2(I x)
+constexpr inline if_integer_t<underlying_integral_t<I>, bool> tstpow2(I x)
 {
-   return tstpow2z(x) && x ;
+   return tstpow2z(x) && underlying_int(x) ;
 }
 
 /// Rotate Left.
@@ -555,34 +622,6 @@ constexpr inline if_unsigned_int_t<I> rotr(I x, int r)
    return (x >> r) | (x << (int_traits<I>::bitsize - r)) ;
 }
 
-/// Given a bit position, get the position of a cell containing specified bit in the
-/// array of integral-type items.
-template<typename I>
-constexpr inline if_integer_t<I, size_t> cellndx(size_t pos)
-{
-   return pos / int_traits<I>::bitsize ;
-}
-
-/// Given a bit position, get the bit index inside the corresponding cell.
-/// @return 0 <= bitndx(pos) < bisizeof(I)
-template<typename I>
-constexpr inline if_integer_t<I, size_t> bitndx(size_t pos)
-{
-   return pos & (int_traits<I>::bitsize - 1) ;
-}
-
-template<typename I>
-constexpr inline if_integer_t<I> bitmask(size_t pos)
-{
-   return std::integral_constant<I, 1>::value << bitndx<I>(pos) ;
-}
-
-template<typename I>
-constexpr inline if_integer_t<I> tailmask(size_t bitcnt)
-{
-   return ~(~I(1) << bitndx<I>(bitcnt - 1)) ;
-}
-
 /// Broadcast integral operand into integral value.
 /// sizeof(result) must be >= sizeof(operand).
 /// E.g.
@@ -598,6 +637,108 @@ constexpr inline std::enable_if_t<(is_integer<R>() &&
 broadcasti(I value)
 {
    return ((std::make_unsigned_t<R>)~0ULL/(std::make_unsigned_t<I>)~0ULL) * value ;
+}
+
+/// Set bits in the @a target selected by the @a mask to corresponding bits from the
+/// second arguments (@a bits).
+///
+template<typename T>
+constexpr inline std::enable_if_t<ct_and<std::is_integral<T>, ct_not<is_same_unqualified<T, bool>>>::value, T>
+set_bits_masked(T target, T bits, T mask) noexcept
+{
+   return target &~ mask | bits & mask ;
+}
+
+template<typename I>
+constexpr inline if_integer_t<I, bool> bit_test(I word, uint8_t pos) noexcept
+{
+   return (word >> pos) & 1 ;
+}
+
+template<typename I>
+constexpr inline if_integer_t<I> bit_set(I word, uint8_t pos, bool bit) noexcept
+{
+   const I mask = I(1) << pos ;
+   const I on = word | mask ;
+   const I off = word &~ mask ;
+   return bit ? on : off ;
+}
+
+/*******************************************************************************
+ Bit manipulations for bitvectors
+*******************************************************************************/
+/// Given a bit position, get the position of a cell containing specified bit in the
+/// array of integral-type items.
+template<typename I>
+constexpr inline if_integer_t<I, size_t> cellndx(size_t pos)
+{
+   return pos / int_traits<I>::bitsize ;
+}
+
+template<typename I>
+constexpr inline if_integer_t<I, size_t> cellcount(size_t bitcount)
+{
+   return cellndx<I>(bitcount + int_traits<I>::bitsize - 1) ;
+}
+
+/// Given a bit position, get the bit index inside the corresponding cell.
+/// @return 0 <= bitndx(pos) < bisizeof(I)
+template<typename I>
+constexpr inline if_integer_t<I, size_t> bitndx(size_t pos)
+{
+   return pos & (int_traits<I>::bitsize - 1) ;
+}
+
+/// Get the mask to select a bit from a bitvector cell.
+///
+/// @tparam I  The type of bitvector cell (e.g. uint64_t).
+/// @param pos The position in the bitvector.
+///
+/// bitmask<uint64_t>(63)==0x80'00'00'00'00'00'00'00
+/// bitmask<uint64_t>(67)==0b1000
+///
+template<typename I>
+constexpr inline if_integer_t<I> bitmask(size_t pos)
+{
+   return std::integral_constant<I, 1>::value << bitndx<I>(pos) ;
+}
+
+/// Get the mask to select tail bits from the last cell of a bitvector.
+/// @tparam I     The type of bitvector cell (e.g. uint64_t)
+/// @param bitcnt Bitvector size
+///
+/// tailmask<uint64_t>(67)==0b111
+///
+template<typename I>
+constexpr inline if_integer_t<I> tailmask(size_t bitcnt)
+{
+   return ~(~I(1) << bitndx<I>(bitcnt - 1)) ;
+}
+
+template<typename I>
+constexpr inline if_integer_t<I> headmask(size_t bitcnt)
+{
+   return
+      #if defined(PCOMN_PL_BMI2) && !PCOMN_WORKAROUND(__GNUC_VER__, < 900)
+      !__builtin_is_constant_evaluated() ? ~_bzhi_u64(-1, bitndx<I>(bitcnt)) :
+      #endif
+
+      ~tailmask<I>(bitcnt) | -!bitndx<I>(bitcnt) ;
+}
+
+/// Get the end of the range of equal bits starting from the given position of specified
+/// word.
+template<typename I>
+inline if_integer_t<I, size_t> find_range_boundary(I word, size_t start_bit)
+{
+   const unsigned start = bitndx<I>(start_bit) ;
+   const I startmask = int_traits<std::make_signed_t<I>>::signbit >> (start - 1) ;
+   const I leading_ones = start ? startmask : 0 ;
+
+   word >>= start ;
+   word ^= -(word & 1) ;
+
+   return start_bit + popcount(getrzbseq(I(word | leading_ones))) ;
 }
 
 /// Get the position of first nonzero bit between 'start' and 'finish'.
@@ -617,7 +758,7 @@ if_integer_t<I, size_t> find_first_bit(const I *bits, size_t start, size_t finis
 
    if (!cell)
    {
-      const size_t to = cellndx<cell_type>(finish) ;
+      const size_t to = cellcount<cell_type>(finish) ;
       do {
          if (++ndx >= to)
             return finish ;
@@ -628,18 +769,8 @@ if_integer_t<I, size_t> find_first_bit(const I *bits, size_t start, size_t finis
    return std::min<size_t>(start + rzcnt(cell), finish) ;
 }
 
-/// Set bits in the @a target selected by the @a mask to corresponding bits from the
-/// second arguments (@a bits).
-///
-template<typename T>
-constexpr inline std::enable_if_t<ct_and<std::is_integral<T>, ct_not<is_same_unqualified<T, bool>>>::value, T>
-set_bits_masked(T target, T bits, T mask)
-{
-   return target &~ mask | bits & mask ;
-}
-
-/******************************************************************************/
-/** Iterate over nonzero bits of an integer, from LSB to MSB.
+/***************************************************************************//**
+ Iterate over nonzero bits of an integer, from LSB to MSB.
 
  operator *() returns the currently selected nonsero bit.
  E.g.
@@ -766,6 +897,213 @@ constexpr inline if_integer_t<T, nzbitpos_iterator<T>> bitpos_end(T)
    return nzbitpos_iterator<T>() ;
 }
 
+template<typename T>
+inline if_integer_t<T, unipair<nzbitpos_iterator<T>>> bitpos_range(T value, bool v = true)
+{
+   return {bitpos_begin(value, v), bitpos_end(value)} ;
+}
+
+/***************************************************************************//**
+ Convert array<bool> <-> bitword
+*******************************************************************************/
+/**@{*/
+uint8_t  array_bools_to_bits(const std::array<bool, 8> &) ;
+uint16_t array_bools_to_bits(const std::array<bool, 16> &) ;
+uint32_t array_bools_to_bits(const std::array<bool, 32> &) ;
+uint64_t array_bools_to_bits(const std::array<bool, 64> &) ;
+
+std::array<bool, 8>  bits_to_array_bools(uint8_t) ;
+std::array<bool, 16> bits_to_array_bools(uint16_t) ;
+std::array<bool, 32> bits_to_array_bools(uint32_t) ;
+std::array<bool, 64> bits_to_array_bools(uint64_t) ;
+
+inline uint8_t array_bools_to_bits(const std::array<bool, 8> &ab)
+{
+   const union { std::array<bool, 8> a ; uint64_t data ; } _ = {ab} ;
+
+   #ifndef PCOMN_PL_BMI2
+   return _.data * 0x0102040810204080ULL >> 56 ;
+   #else
+   return _pext_u64(_.data, 0x0101010101010101ULL) ;
+   #endif
+}
+
+inline std::array<bool, 8> bits_to_array_bools(uint8_t bits)
+{
+   #ifndef PCOMN_PL_BMI2
+   const uint64_t rawdata = value_to_big_endian(bits * 0x8040201008040201ULL) ;
+   const union { uint64_t data ; std::array<bool, 8> a ; } _ = {(rawdata & 0x8080808080808080ULL) >> 7} ;
+   #else
+   const union { uint64_t data ; std::array<bool, 8> a ; } _ = {_pdep_u64(bits, 0x0101010101010101ULL)} ;
+   #endif
+   return _.a ;
+}
+
+template<size_t bitsize>
+inline bit_utype_t<bitsize> array_bools_to_bits_generic(const std::array<bool, bitsize> &ab)
+{
+   const union { std::array<bool, bitsize> a ; std::array<bool, bitsize/2>  data[2] ; } _ = {ab} ;
+   return
+      array_bools_to_bits(_.data[0]) |
+      ((bit_utype_t<bitsize>)array_bools_to_bits(_.data[1]) << (bitsize/2)) ;
+}
+
+template<typename I>
+inline std::array<bool, bitsizeof(I)> bits_to_array_bools_generic(I bits)
+{
+   PCOMN_STATIC_CHECK(is_integer<I>() && sizeof(I) >= 2) ;
+
+   constexpr size_t bitsize = bitsizeof(I) ;
+   constexpr size_t halfsize = bitsize/2 ;
+
+   const union { std::array<bool, halfsize> data[2] ; std::array<bool, bitsize> a ; } _ =
+   {{
+         bits_to_array_bools(bit_utype_t<halfsize>(bits)),
+         bits_to_array_bools(bit_utype_t<halfsize>(bits >> halfsize))
+   }} ;
+
+   return _.a ;
+}
+
+inline uint16_t array_bools_to_bits(const std::array<bool, 16> &ab)
+{
+   #if !defined(PCOMN_PL_SIMD_SSE42) || PCOMN_WORKAROUND(__clang_major__, <6)
+   return array_bools_to_bits_generic(ab) ;
+
+   #else
+   typedef uint64_t v2x8  __attribute__ ((vector_size(16))) ;
+   typedef char v1x16     __attribute__ ((vector_size(16))) ;
+   const union { std::array<bool, 16> a ; v2x8 data ; } _ = {ab} ;
+
+   return __builtin_ia32_pmovmskb128((v1x16)(_.data << 7)) ;
+
+   #endif
+}
+
+inline std::array<bool, 16> bits_to_array_bools(uint16_t bits)
+{
+   #if !defined(PCOMN_PL_SIMD_AVX) || PCOMN_WORKAROUND(__clang_major__, <6)
+   return bits_to_array_bools_generic(bits) ;
+
+   #else
+   typedef int8_t v16i8  __attribute__ ((vector_size(16))) ;
+   union {
+         uint16_t vv8u16 __attribute__ ((vector_size(16))) ;
+         uint64_t vv2u64 __attribute__ ((vector_size(16))) ;
+         v16i8    vv16i8 ;
+         std::array<bool, 16> a ;
+   } result = {bits} ;
+
+   result.vv16i8 = shuffle_simd_vector(result.vv16i8, 0,0,0,0,0,0,0,0, 1,1,1,1,1,1,1,1) ;
+   result.vv2u64 |= uint64_t(0b01111111'10111111'11011111'11101111'11110111'11111011'11111101'11111110) ;
+   result.vv16i8 = (result.vv16i8 == -1) & 1 ;
+
+   return result.a ;
+
+   #endif
+}
+
+inline uint32_t array_bools_to_bits(const std::array<bool, 32> &ab)
+{
+   #if !defined(PCOMN_PL_SIMD_AVX2) || PCOMN_WORKAROUND(__clang_major__, <6)
+   return array_bools_to_bits_generic(ab) ;
+
+   #else
+   typedef uint64_t v4u64  __attribute__ ((vector_size(32))) ;
+   typedef char v1x32     __attribute__ ((vector_size(32))) ;
+   const union { std::array<bool, 32> a ; v4u64 data ; } _ = {ab} ;
+
+   return __builtin_ia32_pmovmskb256((v1x32)(_.data << 7)) ;
+
+   #endif
+}
+
+inline std::array<bool, 32> bits_to_array_bools(uint32_t bits)
+{
+   #if !defined(PCOMN_PL_SIMD_AVX2) || PCOMN_WORKAROUND(__clang_major__, <6)
+   return bits_to_array_bools_generic(bits) ;
+
+   #else
+   typedef int8_t v32i8  __attribute__ ((vector_size(32))) ;
+   union {
+         uint32_t vv8u32 __attribute__ ((vector_size(32))) ;
+         uint64_t vv4u64 __attribute__ ((vector_size(32))) ;
+         v32i8    vv32i8 ;
+         std::array<bool, 32> a ;
+   } result = {bits} ;
+
+   result.vv32i8 = shuffle_simd_vector(result.vv32i8,
+                                       0,0,0,0,0,0,0,0, 1,1,1,1,1,1,1,1, 2,2,2,2,2,2,2,2, 3,3,3,3,3,3,3,3) ;
+   result.vv4u64 |= uint64_t(0b01111111'10111111'11011111'11101111'11110111'11111011'11111101'11111110) ;
+   result.vv32i8 = (result.vv32i8 == -1) & 1 ;
+
+   return result.a ;
+
+   #endif
+}
+
+inline uint64_t array_bools_to_bits(const std::array<bool, 64> &ab)
+{
+   return array_bools_to_bits_generic(ab) ;
+}
+
+inline std::array<bool, 64> bits_to_array_bools(uint64_t bits)
+{
+   return bits_to_array_bools_generic(bits) ;
+}
+
+/**@}*/
+
+/******************************************************************************/
+/** @name Extract bits from unsigned integer `source` at the corresponding bit locations
+ specified by `mask` to contiguous low bits of the result; the remaining upper bits
+ in the result are set to zero.
+
+ Matches the logic of PEXT - Parallel Bits Extract from BMI2 ISA, and on platforms
+ supporting BMI2 is implemented with this instruction.
+
+ bits_extract<uint8_t>(0b11110010, 0b00100111) -> 0b1010
+ bits_extract<uint8_t>(0b11110000, 0b10100000) -> 0b11 ;
+
+ bits_extract<uint32_t>(0b11110000'00000000'00000000'10000010,
+                        0b00100001'00000000'00000000'11111111) -> 0b1010000010
+*******************************************************************************/
+/**@{*/
+#ifdef PCOMN_PL_BMI2
+template<typename I>
+inline if_unsigned_int_t<I> bits_extract(I source, I mask)
+{
+   return bitsizeof(I) <= 32 ? _pext_u32(source, mask) : _pext_u64(source, mask) ;
+}
+#else
+template<typename I>
+inline if_unsigned_int_t<I> bits_extract(I source, I mask)
+{
+   if (mask == bitextend<I>(1))
+      return source ;
+
+   I result = 0 ;
+   for (unsigned result_bitpos = 0 ; mask ; ++result_bitpos)
+   {
+      const unsigned bitpos =
+         #ifdef PCOMN_GCC_INTRINSICS
+         // In absence of BMI, __builtin_ctz() is slightly faster than bitop::rzcnt();
+         // with BMI there's no difference.
+         bitsizeof(mask) <= 32 ? __builtin_ctz(mask) : __builtin_ctzl(mask)
+         #else
+         rzcnt(mask)
+         #endif
+         ;
+
+      (mask >>= bitpos) >>= 1 ;
+      result |= ((source >>= bitpos) & 1) << result_bitpos ;
+      source >>= 1 ;
+   }
+   return result ;
+}
+#endif
+/**@}*/
+
 /*******************************************************************************
  Compile-time calculations
 *******************************************************************************/
@@ -793,15 +1131,15 @@ template<unsigned v> struct ibc<8, v> : public std::integral_constant
 <unsigned, (ibc<4, v>::value + (ibc<4, v>::value >> 8U))> {} ;
 }
 
-/// Count nonzero bits in unsigned N at compile-time (the same as bitop::bitcount(),
+/// Count nonzero bits in unsigned N at compile-time (the same as bitop::popcount(),
 /// but at compile-time).
 template<unsigned x>
-struct ct_bitcount : std::integral_constant
+struct ct_popcount : std::integral_constant
 <unsigned, (detail::ibc<8, x>::value + (detail::ibc<8, x>::value >> 16U)) & 0x0000003fU> {} ;
 
 /// Get a position of the rightmost nonzero bit at compile-time.
 template<unsigned x>
-struct ct_rnzbpos : std::integral_constant<int, (int)ct_bitcount<~(-(int)(x & -(int)x))>::value - 1> {} ;
+struct ct_rnzbpos : std::integral_constant<int, (int)ct_popcount<~(-(int)(x & -(int)x))>::value - 1> {} ;
 
 template<typename U, U i>
 struct ct_lnzbpos_value ;
@@ -843,6 +1181,20 @@ struct ct_log2ceil : std::integral_constant
 template<uint64_t i>
 using ct_log2floor = ct_lnzbpos<i> ;
 
+/***************************************************************************//**
+ Backward compatibility
+*******************************************************************************/
+/**@{*/
+template<unsigned x>
+using ct_bitcount = ct_popcount<x> ;
+
+template<typename... Args>
+auto inline bitcount(Args && ...args) -> decltype(popcount(std::forward<Args>(args)...))
+{
+   return popcount(std::forward<Args>(args)...) ;
+}
+/**@}*/
+
 } // pcomn::bitop
 
 template<unsigned v, unsigned s>
@@ -870,7 +1222,8 @@ template<typename T, typename M1, typename... Ms>
 constexpr inline bool is_in(T v, M1 m1, Ms...ms)
 {
    return fold_bitor<unsigned long long>
-      ((1ULL << underlying_int(m1)), (1ULL << underlying_int(ms))...) & (1ULL << underlying_int(v)) ;
+      ((1ULL << underlying_int(m1)), (1ULL << underlying_int(ms))...) &
+      (1ULL << underlying_int(v)) & -((uint64_t)underlying_int(v) < 64) ;
 }
 
 } // end of namespace pcomn

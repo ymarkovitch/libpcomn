@@ -3,7 +3,7 @@
 #define __PCSTRING_CC
 /*******************************************************************************
  FILE         :   pcstring.cc
- COPYRIGHT    :   Yakov Markovitch, 1998-2016. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1998-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Implementation of memory and string functions from pcstring.h
@@ -12,6 +12,7 @@
 *******************************************************************************/
 #include <ctype.h>
 #include <pcomn_platform.h>
+#include <string.h>
 
 /*
    Turning off boring Borland's messages about inlining and

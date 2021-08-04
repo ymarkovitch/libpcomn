@@ -3,7 +3,7 @@
 #define __PCOMN_FMEMOPEN_H
 /*******************************************************************************
  FILE         :   pcomn_fmemopen.h
- COPYRIGHT    :   Yakov Markovitch, 2010-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2010-2020. All rights reserved.
 
  DESCRIPTION  :   A C memory stream (FILE *) for Linux and FreeBSD
 

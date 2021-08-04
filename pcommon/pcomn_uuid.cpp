@@ -1,7 +1,7 @@
 /*-*- tab-width: 3; indent-tabs-mode: nil; c-file-style: "ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   pcomn_uuid.cpp
- COPYRIGHT    :   Yakov Markovitch, 2014-2019
+ COPYRIGHT    :   Yakov Markovitch, 2014-2020
 
  DESCRIPTION  :   UUID and network MAC data types implementation
 
@@ -17,8 +17,11 @@ namespace pcomn {
 /*******************************************************************************
  uuid
 *******************************************************************************/
-uuid::uuid(const strslice &str, RaiseError raise_error)
+uuid::uuid(const strslice &str, std::errc *ec)
 {
+   if (ec)
+      *ec = {} ;
+
    if (!str)
    {
       _idata[1] = _idata[0] = 0 ;
@@ -39,7 +42,8 @@ uuid::uuid(const strslice &str, RaiseError raise_error)
 
        || !cvt(buf, buf + 18, _idata[0]) || !cvt(buf + 19, std::end(buf), _idata[1]))
    {
-      PCOMN_THROW_IF(raise_error, invalid_str_repr, "Invalid UUID format " P_STRSLICEQF, P_STRSLICEV(str)) ;
+      PCOMN_THROW_IF(!ec, invalid_str_repr, "Invalid UUID format " P_STRSLICEQF, P_STRSLICEV(str)) ;
+      *ec = std::errc::invalid_argument ;
       _idata[1] = _idata[0] = 0 ;
    }
    else
@@ -64,8 +68,13 @@ char *uuid::to_strbuf(char *buf) const
 /*******************************************************************************
  MAC
 *******************************************************************************/
-MAC::MAC(const strslice &str, RaiseError raise_error)
+GCC_DIAGNOSTIC_PUSH_IGNORE(stringop-overflow)
+
+MAC::MAC(const strslice &str, std::errc *ec)
 {
+   if (ec)
+      *ec = {} ;
+
    if (!str)
    {
       _idata = 0 ;
@@ -80,16 +89,26 @@ MAC::MAC(const strslice &str, RaiseError raise_error)
 
    char buf[slen() + 1] ;
    int64_t result ;
-   if (str.size() != slen()
-       || strslicecpy(buf, str)[2] != ':' || buf[5] != ':' || buf[8] != ':' || buf[11] != ':' || buf[14] != ':'
+
+   buf[2] = 0 ;
+   strslicecpy(buf, str) ;
+
+   const char delim = buf[2] ;
+
+   if (!is_in(delim, '-', ':', '.', ' ')
+       || str.size() != slen()
+       || (buf[5] != delim | buf[8] != delim | buf[11] != delim | buf[14] != delim)
        || (result = cvt(std::begin(buf), std::end(buf))) < 0)
    {
-      PCOMN_THROW_IF(raise_error, invalid_str_repr, "Invalid MAC format " P_STRSLICEQF, P_STRSLICEV(str)) ;
+      PCOMN_THROW_IF(!ec, invalid_str_repr, "Invalid MAC format " P_STRSLICEQF, P_STRSLICEV(str)) ;
+      *ec = std::errc::invalid_argument ;
       _idata = 0 ;
    }
    else
       _idata = value_to_little_endian(result) ;
 }
+
+GCC_DIAGNOSTIC_POP()
 
 char *MAC::to_strbuf(char *buf) const
 {

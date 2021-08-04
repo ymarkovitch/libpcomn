@@ -3,7 +3,7 @@
 #define __PCOMN_TERNARY_H
 /*******************************************************************************
  FILE         :   pcomn_ternary.h
- COPYRIGHT    :   Yakov Markovitch, 2017-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2017-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Ternary logic.
@@ -112,9 +112,9 @@ public:
     /// to the arument.
     /// @param nothing_is How to interpret the "Unknown" state: if `true`, convert
     /// `Unknown` to `true`, otherwise to `false`.
-    constexpr bool as_bool(bool nothing_is) const
+    constexpr bool as_bool(bool unknown_is) const
     {
-        return data() + nothing_is >= True ;
+        return data() + unknown_is >= True ;
     }
 
     /***************************************************************************

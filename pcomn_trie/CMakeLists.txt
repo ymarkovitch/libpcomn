@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 # FILE         :  CMakeLists.txt
-# COPYRIGHT    :  Yakov Markovitch, 2019
+# COPYRIGHT    :  Yakov Markovitch, 2019-2020
 #                 See LICENSE for information on usage/redistribution.
 #
 # DESCRIPTION  :

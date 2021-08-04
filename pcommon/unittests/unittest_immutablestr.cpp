@@ -1,7 +1,7 @@
 /*-*- tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   unittest_immutablestr.cpp
- COPYRIGHT    :   Yakov Markovitch, 2006-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2006-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Unittest for pcomn::immutable_str<> template class
@@ -169,7 +169,7 @@ template<class ImmutableString>
 void ImmutableStringTests<ImmutableString>::Test_Constructors_Invariants()
 {
    const char_type (&empty)[1] = literals<char_type>::empty_string;
-   //const char_type (&some_string)[37] = literals<char_type>::some_string;
+   const char_type (&some_string)[37] = literals<char_type>::some_string;
 
    { // equality / inequality
       istring a;
@@ -217,7 +217,6 @@ void ImmutableStringTests<ImmutableString>::Test_Constructors_Invariants()
          CPPUNIT_EQUAL(random_stdstr.size(),
                        (size_t)std::distance(from_stdstr.rbegin(), from_stdstr.rend())) ;
 
-
          const char_type* const random_cstr(random_stdstr.c_str());
          istring from_cstr(random_cstr) ;
          CPPUNIT_ASSERT(from_cstr == random_cstr) ;
@@ -244,6 +243,15 @@ void ImmutableStringTests<ImmutableString>::Test_Constructors_Invariants()
          CPPUNIT_EQUAL(istring(random_stdstr, 0, random_stdstr.size()),
                        istring(random_stdstr)) ;
       }
+   }
+
+   { // move construction
+       istring a (some_string), b, c (std::move(a)) ;
+
+       CPPUNIT_LOG_EQUAL(c, istring(some_string)) ;
+
+       CPPUNIT_LOG_ASSERT(a == b) ;
+       CPPUNIT_LOG_EQUAL(a.c_str(), b.c_str()) ;
    }
 }
 

@@ -1,10 +1,10 @@
 /*-*- tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
- FILE         :   unittest_integer.cpp
- COPYRIGHT    :   Yakov Markovitch, 2006-2019. All rights reserved.
+ FILE         :   unittest_bitops.cpp
+ COPYRIGHT    :   Yakov Markovitch, 2006-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
- DESCRIPTION  :   Unittest for pcomn_integer classes/functions
+ DESCRIPTION  :   Unittest for advanced bit operations (pcomn::bitops namespace)
 
  PROGRAMMED BY:   Yakov Markovitch
  CREATION DATE:   28 Nov 2006
@@ -16,31 +16,8 @@
 
 using namespace pcomn ;
 
-/*******************************************************************************
- NativeBitopsTests
-*******************************************************************************/
-class NativeBitopsTests : public CppUnit::TestFixture {
-
-      template<typename T>
-      void Test_Native_Bitcount() ;
-
-      CPPUNIT_TEST_SUITE(NativeBitopsTests) ;
-
-      CPPUNIT_TEST(Test_Native_Bitcount<generic_isa_tag>) ;
-      CPPUNIT_TEST(Test_Native_Bitcount<native_isa_tag>) ;
-
-      #ifdef PCOMN_PL_SIMD_AVX2
-      CPPUNIT_TEST(Test_Native_Bitcount<avx2_isa_tag>) ;
-      #endif
-      #ifdef PCOMN_PL_SIMD_AVX
-      CPPUNIT_TEST(Test_Native_Bitcount<avx_isa_tag>) ;
-      #endif
-      #ifdef PCOMN_PL_SIMD_SSE42
-      CPPUNIT_TEST(Test_Native_Bitcount<sse42_isa_tag>) ;
-      #endif
-
-      CPPUNIT_TEST_SUITE_END() ;
-} ;
+template<size_t n>
+using barray = std::array<bool, n> ;
 
 /*******************************************************************************
  BitOperationsTests
@@ -56,8 +33,12 @@ class BitOperationsTests : public CppUnit::TestFixture {
       void Test_Getrnzb() ;
       void Test_NzbitIterator() ;
       void Test_NzbitPosIterator() ;
+      void Test_BitRangeBoundary() ;
       void Test_OneOf() ;
       void Test_Log2() ;
+      void Test_BoolsToBits() ;
+      void Test_BitsExtract() ;
+      void Test_CellOps() ;
 
       CPPUNIT_TEST_SUITE(BitOperationsTests) ;
 
@@ -70,51 +51,17 @@ class BitOperationsTests : public CppUnit::TestFixture {
       CPPUNIT_TEST(Test_Getrnzb) ;
       CPPUNIT_TEST(Test_NzbitIterator) ;
       CPPUNIT_TEST(Test_NzbitPosIterator) ;
+      CPPUNIT_TEST(Test_BitRangeBoundary) ;
       CPPUNIT_TEST(Test_OneOf) ;
       CPPUNIT_TEST(Test_Log2) ;
+      CPPUNIT_TEST(Test_BoolsToBits) ;
+      CPPUNIT_TEST(Test_BitsExtract) ;
+      CPPUNIT_TEST(Test_CellOps) ;
 
       CPPUNIT_TEST_SUITE_END() ;
 
       template<typename T> bool isSigned(T) { return std::numeric_limits<T>::is_signed ; }
 } ;
-
-/*******************************************************************************
- NativeBitopsTests
-*******************************************************************************/
-template<typename T>
-void NativeBitopsTests::Test_Native_Bitcount()
-{
-   typedef T isa_tag ;
-
-   CPPUNIT_LOG_LINE("**** " << PCOMN_CLASSNAME(isa_tag) << '\n') ;
-
-   CPPUNIT_LOG_EQ(native_bitcount(int8_t(), isa_tag()), 0U) ;
-   CPPUNIT_LOG_EQ(native_bitcount(uint8_t(), isa_tag()), 0U) ;
-   CPPUNIT_LOG_EQ(native_bitcount(int16_t(), isa_tag()), 0U) ;
-   CPPUNIT_LOG_EQ(native_bitcount(uint16_t(), isa_tag()), 0U) ;
-   CPPUNIT_LOG_EQ(native_bitcount(int32_t(), isa_tag()), 0U) ;
-   CPPUNIT_LOG_EQ(native_bitcount(uint32_t(), isa_tag()), 0U) ;
-   CPPUNIT_LOG_EQ(native_bitcount(int64_t(), isa_tag()), 0U) ;
-   CPPUNIT_LOG_EQ(native_bitcount(uint64_t(), isa_tag()), 0U) ;
-
-   CPPUNIT_LOG_EQ(native_bitcount((int8_t)-1, isa_tag()), 8U) ;
-   CPPUNIT_LOG_EQ(native_bitcount((uint8_t)-1, isa_tag()), 8U) ;
-   CPPUNIT_LOG_EQ(native_bitcount((int16_t)-1, isa_tag()), 16U) ;
-   CPPUNIT_LOG_EQ(native_bitcount((uint16_t)-1, isa_tag()), 16U) ;
-   CPPUNIT_LOG_EQ(native_bitcount((int32_t)-1, isa_tag()), 32U) ;
-   CPPUNIT_LOG_EQ(native_bitcount((uint32_t)-1, isa_tag()), 32U) ;
-   CPPUNIT_LOG_EQ(native_bitcount((int64_t)-1, isa_tag()), 64U) ;
-   CPPUNIT_LOG_EQ(native_bitcount((uint64_t)(-1), isa_tag()), 64U) ;
-
-   CPPUNIT_LOG_EQ(native_bitcount((int8_t)0x41, isa_tag()), 2U) ;
-   CPPUNIT_LOG_EQ(native_bitcount((int8_t)-1, isa_tag()), 8U) ;
-   CPPUNIT_LOG_EQ(native_bitcount((uint8_t)0x41, isa_tag()), 2U) ;
-   CPPUNIT_LOG_EQ(native_bitcount((uint8_t)0x43, isa_tag()), 3U) ;
-   CPPUNIT_LOG_EQ(native_bitcount((uint8_t)0x80, isa_tag()), 1U) ;
-   CPPUNIT_LOG_EQ(native_bitcount((int32_t)0xF1, isa_tag()), 5U) ;
-   CPPUNIT_LOG_EQ(native_bitcount((int64_t)0xF1, isa_tag()), 5U) ;
-   CPPUNIT_LOG_EQ(native_bitcount((int32_t)0x10000001, isa_tag()), 2U) ;
-}
 
 /*******************************************************************************
  BitOperationsTests
@@ -154,39 +101,48 @@ void BitOperationsTests::Test_SignTraits()
 
 void BitOperationsTests::Test_Bitcount()
 {
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<int8_t>(0)), 0U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<uint8_t>(0)), 0U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<int16_t>(0)), 0U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<uint16_t>(0)), 0U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<int32_t>(0)), 0U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<uint32_t>(0)), 0U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<int64_t>(0)), 0U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<uint64_t>(0)), 0U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<int8_t>(0)), 0U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<uint8_t>(0)), 0U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<int16_t>(0)), 0U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<uint16_t>(0)), 0U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<int32_t>(0)), 0U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<uint32_t>(0)), 0U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<int64_t>(0)), 0U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<uint64_t>(0)), 0U) ;
 
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<int8_t>(-1)), 8U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<uint8_t>(-1)), 8U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<int16_t>(-1)), 16U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<uint16_t>(-1)), 16U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<int32_t>(-1)), 32U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<uint32_t>(-1)), 32U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<int64_t>(-1)), 64U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<uint64_t>((int64_t)-1)), 64U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<int8_t>(-1)), 8U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<uint8_t>(-1)), 8U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<int16_t>(-1)), 16U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<uint16_t>(-1)), 16U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<int32_t>(-1)), 32U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<uint32_t>(-1)), 32U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<int64_t>(-1)), 64U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<uint64_t>((int64_t)-1)), 64U) ;
 
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<int8_t>(0x41)), 2U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<int8_t>(-1)), 8U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<uint8_t>(0x41)), 2U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<uint8_t>(0x43)), 3U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<uint8_t>(0x80)), 1U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<int32_t>(0xF1)), 5U) ;
-   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<int64_t>(0xF1)), 5U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<int8_t>(0x41)), 2U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<int8_t>(-1)), 8U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<uint8_t>(0x41)), 2U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<uint8_t>(0x43)), 3U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<uint8_t>(0x80)), 1U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<int32_t>(0xF1)), 5U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<int64_t>(0xF1)), 5U) ;
+   CPPUNIT_LOG_EQUAL(bitop::popcount(static_cast<int32_t>(0x10000001)), 2U) ;
+
+   // Test backward compatibility
    CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<int32_t>(0x10000001)), 2U) ;
+   CPPUNIT_LOG_EQUAL(bitop::bitcount(static_cast<int8_t>(0x41)), 2U) ;
 }
 
 void BitOperationsTests::Test_Bitcount_CompileTime()
 {
-   CPPUNIT_LOG_EQUAL(bitop::ct_bitcount<0>::value, 0U) ;
-   CPPUNIT_LOG_EQUAL(bitop::ct_bitcount<0x55>::value, 4U) ;
-   CPPUNIT_LOG_EQUAL(bitop::ct_bitcount<(unsigned)-1>::value, int_traits<unsigned>::bitsize) ;
+   CPPUNIT_LOG_EQUAL(bitop::ct_popcount<0>::value, 0U) ;
+   CPPUNIT_LOG_EQUAL(uint_constant<bitop::popcount(0)>(), uint_constant<0>()) ;
+
+   CPPUNIT_LOG_EQUAL(bitop::ct_popcount<0x55>::value, 4U) ;
+   CPPUNIT_LOG_EQUAL(bitop::ct_popcount<(unsigned)-1>::value, int_traits<unsigned>::bitsize) ;
+   CPPUNIT_LOG_EQUAL(bitop::ct_popcount<0x20030055>::value, 7U) ;
+
+   // Test backward compatibility
    CPPUNIT_LOG_EQUAL(bitop::ct_bitcount<0x20030055>::value, 7U) ;
 }
 
@@ -212,9 +168,21 @@ void BitOperationsTests::Test_Clrrnzb()
 void BitOperationsTests::Test_Getrnzb()
 {
    CPPUNIT_LOG_EQUAL(bitop::getrnzb(0xF0), 0x10) ;
+   CPPUNIT_LOG_EQ(bitop::rzcnt(0xF0), 4) ;
+   CPPUNIT_LOG_EQUAL(bitop::getrnzb(0xF0ULL), 0x10ULL) ;
+   CPPUNIT_LOG_EQ(bitop::rzcnt(0xF0ULL), 4) ;
+
    CPPUNIT_LOG_EQUAL(bitop::getrnzb(1), 1) ;
    CPPUNIT_LOG_EQUAL(bitop::getrnzb(-1), 1) ;
    CPPUNIT_LOG_EQUAL(bitop::getrnzb(6), 2) ;
+   CPPUNIT_LOG_EQ(bitop::rzcnt(6), 1) ;
+
+   CPPUNIT_LOG_EQ(bitop::rzcnt((uint64_t)0), 64) ;
+   CPPUNIT_LOG_EQ(bitop::rzcnt((uint32_t)0), 32) ;
+   CPPUNIT_LOG_EQ(bitop::rzcnt((uint16_t)0), 16) ;
+   CPPUNIT_LOG_EQ(bitop::rzcnt((uint8_t)0),   8) ;
+   CPPUNIT_LOG_EQ(bitop::rzcnt(1), 0) ;
+
    CPPUNIT_LOG_EQUAL(bitop::getrnzb((char)0x50), (char)0x10) ;
    CPPUNIT_LOG_EQUAL(bitop::getrnzb(0x5500000000000000ll), 0x100000000000000ll) ;
 }
@@ -286,6 +254,114 @@ void BitOperationsTests::Test_NzbitPosIterator()
    typedef bitop::nzbitpos_iterator<unsigned, TestEnum> te_iter ;
    te_iter iter_te((1 << TE_1) | (1 << TE_3)) ;
    CPPUNIT_LOG_EQUAL(std::vector<TestEnum>(iter_te, te_iter()), (std::vector<TestEnum>{TE_1, TE_3})) ;
+}
+
+void BitOperationsTests::Test_BitRangeBoundary()
+{
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint8_t)0, 0), 8) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int8_t)0, 0), 8) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint16_t)0, 0), 16) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int16_t)0, 0), 16) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint32_t)0, 0), 32) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int32_t)0, 0), 32) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint64_t)0, 0), 64) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int64_t)0, 0), 64) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint8_t)~0ULL, 0), 8) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int8_t)~0ULL, 0), 8) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint16_t)~0ULL, 0), 16) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int16_t)~0ULL, 0), 16) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint32_t)~0ULL, 0), 32) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int32_t)~0ULL, 0), 32) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint64_t)~0ULL, 0), 64) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int64_t)~0ULL, 0), 64) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint8_t)1, 0), 1) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int8_t)1, 0), 1) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint16_t)1, 0), 1) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int16_t)1, 0), 1) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint32_t)1, 0), 1) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int32_t)1, 0), 1) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint64_t)1, 0), 1) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int64_t)1, 0), 1) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint8_t)0b10, 0), 1) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int8_t)0b10, 0), 1) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint16_t)0b10, 0), 1) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int16_t)0b10, 0), 1) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint32_t)0b10, 0), 1) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int32_t)0b10, 0), 1) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint64_t)0b10, 0), 1) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int64_t)0b10, 0), 1) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint8_t)0b10, 1), 2) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int8_t)0b10, 1), 2) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint16_t)0b10, 1), 2) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int16_t)0b10, 1), 2) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint32_t)0b10, 1), 2) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int32_t)0b10, 1), 2) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint64_t)0b10, 1), 2) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int64_t)0b10, 1), 2) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint8_t)0b11111110, 1), 8) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int8_t)0b11111110, 1), 8) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint16_t)0b11111110, 1), 8) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int16_t)0b11111110, 1), 8) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint32_t)0b11111110, 1), 8) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int32_t)0b11111110, 1), 8) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint64_t)0b11111110, 1), 8) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int64_t)0b11111110, 1), 8) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint8_t)0b11111110, 7), 8) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int8_t)0b11111110, 7), 8) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint16_t)0b11111110, 7), 8) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int16_t)0b11111110, 7), 8) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint32_t)0b11111110, 7), 8) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int32_t)0b11111110, 7), 8) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint64_t)0b11111110, 7), 8) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int64_t)0b11111110, 7), 8) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint64_t)0x80'000000'00000000ULL, 63), 64) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int64_t) 0x80'000000'00000000ULL, 63), 64) ;
+
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint64_t)0x80'000000'00000000ULL, 62), 63) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int64_t) 0x80'000000'00000000ULL, 62), 63) ;
+
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint64_t)0x80'000000'00000000ULL, 61), 63) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int64_t) 0x80'000000'00000000ULL, 61), 63) ;
+
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint64_t)0x80'000000'00000000ULL, 0), 63) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int64_t) 0x80'000000'00000000ULL, 0), 63) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint64_t)0xf0'000000'00000000ULL, 63), 64) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int64_t) 0xf0'000000'00000000ULL, 63), 64) ;
+
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint64_t)0xf0'000000'00000000ULL, 62), 64) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int64_t) 0xf0'000000'00000000ULL, 62), 64) ;
+
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint64_t)0xf0'000000'00000000ULL, 60), 64) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int64_t) 0xf0'000000'00000000ULL, 60), 64) ;
+
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((uint64_t)0xf0'000000'00000000ULL, 59), 60) ;
+   CPPUNIT_LOG_EQ(bitop::find_range_boundary((int64_t) 0xf0'000000'00000000ULL, 59), 60) ;
+
+   CPPUNIT_LOG(std::endl) ;
 }
 
 void BitOperationsTests::Test_OneOf()
@@ -391,6 +467,277 @@ void BitOperationsTests::Test_Log2()
    CPPUNIT_LOG_EQUAL(bitop::round2z((uint8_t)9), uint8_t(16)) ;
 }
 
+void BitOperationsTests::Test_BoolsToBits()
+{
+   using namespace bitop ;
+
+   #define CPPUNIT_LOG_BOOLS_TO_BITS(bools, bits) \
+      CPPUNIT_LOG_EQUAL(bitop::array_bools_to_bits((bools)), (bits)) ; \
+      CPPUNIT_LOG_EQUAL(bitop::bits_to_array_bools((bits)), (bools))
+
+   CPPUNIT_LOG_IS_FALSE(bit_test(uint8_t(0b10010), 0)) ;
+   CPPUNIT_LOG_ASSERT(bit_test(uint8_t(0b10010), 1)) ;
+   CPPUNIT_LOG_IS_FALSE(bit_test(uint8_t(0b10010), 2)) ;
+   CPPUNIT_LOG_IS_FALSE(bit_test(uint8_t(0b10010), 3)) ;
+   CPPUNIT_LOG_ASSERT(bit_test(uint8_t(0b10010), 4)) ;
+   CPPUNIT_LOG_IS_FALSE(bit_test(uint8_t(0b10010), 6)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<8>()), uint8_t(0)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<8>{1,1,1,1,1,1,1,1}), uint8_t(0xff)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<8>{0,1,1,1,1,1,1,1}), uint8_t(0b11111110)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<8>{0,1,0,0,1,0,0,0}), uint8_t(0b00010010)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<8>{1,0,0,0,0,0,0,0}), uint8_t(0b00000001)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<8>{0,0,0,0,0,0,0,1}), uint8_t(0b10000000)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<8>{1,0,1,0,1,0,1,0}), uint8_t(0b01010101)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<8>{0,1,0,1,0,1,0,1}), uint8_t(0b10101010)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<8>{1,0,0,0,0,0,0,1}), uint8_t(0b10000001)) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_IS_FALSE(bit_test(uint16_t(0b10010), 0)) ;
+   CPPUNIT_LOG_ASSERT(bit_test(uint16_t(0b10010), 1)) ;
+   CPPUNIT_LOG_IS_FALSE(bit_test(uint16_t(0b10010), 2)) ;
+   CPPUNIT_LOG_IS_FALSE(bit_test(uint16_t(0b10010), 3)) ;
+   CPPUNIT_LOG_ASSERT(bit_test(uint16_t(0b10010), 4)) ;
+   CPPUNIT_LOG_IS_FALSE(bit_test(uint16_t(0b10010), 6)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<16>()), uint16_t(0)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<16>{1,1,1,1,1,1,1,1}), uint16_t(0xff)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<16>{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}), uint16_t(0xffff)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<16>{0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}), uint16_t(0b11111111'11111110)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<16>{0,1,0,0,1,0,0,0}), uint16_t(0b00010010)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<16>{1,0,0,0,0,0,0,0}), uint16_t(0b00000001)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<16>{0,0,0,0,0,0,0,1}), uint16_t(0b10000000)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<16>{1,0,1,0,1,0,1,0}), uint16_t(0b01010101)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<16>{0,1,0,1,0,1,0,1}), uint16_t(0b10101010)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<16>{1,0,0,0,0,0,0,1}), uint16_t(0b10000001)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<16>{0,1,0,1,1,1,1,1,1,1,1,1,1,1,1,1}), uint16_t(0b11111111'11111010)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<16>{0,1,0,1,1,1,1,1,1,1,1,1,0,1,1,1}), uint16_t(0b11101111'11111010)) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_IS_FALSE(bit_test(uint32_t(0b10010), 0)) ;
+   CPPUNIT_LOG_ASSERT(bit_test(uint32_t(0b10010), 1)) ;
+   CPPUNIT_LOG_IS_FALSE(bit_test(uint32_t(0b10010), 2)) ;
+   CPPUNIT_LOG_IS_FALSE(bit_test(uint32_t(0b10010), 3)) ;
+   CPPUNIT_LOG_ASSERT(bit_test(uint32_t(0b10010), 4)) ;
+   CPPUNIT_LOG_IS_FALSE(bit_test(uint32_t(0b10010), 6)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<32>()), uint32_t(0)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<32>{1,1,1,1,1,1,1,1}), uint32_t(0xff)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<32>{0,1,1,1,1,1,1,1}), uint32_t(0b11111110)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<32>{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}), uint32_t(0xffff)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<32>{0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}), uint32_t(0b11111111'11111110)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<32>{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+                                         1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}),
+      uint32_t(0xffffffff)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<32>{0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+                                         1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}),
+      uint32_t(0b11111111'11111111'11111111'11111110)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<32>{0,1,0,0,1,0,0,0}), uint32_t(0b00010010)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<32>{1,0,0,0,0,0,0,0}), uint32_t(0b00000001)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<32>{0,0,0,0,0,0,0,1}), uint32_t(0b10000000)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<32>{1,0,1,0,1,0,1,0}), uint32_t(0b01010101)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<32>{0,1,0,1,0,1,0,1}), uint32_t(0b10101010)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<32>{1,0,0,0,0,0,0,1}), uint32_t(0b10000001)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<32>{0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+                                         1,1,1,1,1,0,1,1,1,1,1,1,1,1,0,1}),
+      uint32_t(0b10111111'11011111'11111111'11111110)) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_IS_FALSE(bit_test(uint64_t(0b10010), 0)) ;
+   CPPUNIT_LOG_ASSERT(bit_test(uint64_t(0b10010), 1)) ;
+   CPPUNIT_LOG_IS_FALSE(bit_test(uint64_t(0b10010), 2)) ;
+   CPPUNIT_LOG_IS_FALSE(bit_test(uint64_t(0b10010), 3)) ;
+   CPPUNIT_LOG_ASSERT(bit_test(uint64_t(0b10010), 4)) ;
+   CPPUNIT_LOG_IS_FALSE(bit_test(uint64_t(0b10010), 6)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<64>()), uint64_t(0)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<64>{1,1,1,1,1,1,1,1}), uint64_t(0xff)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<64>{0,1,1,1,1,1,1,1}), uint64_t(0b11111110)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<64>{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}), uint64_t(0xffff)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<64>{0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}), uint64_t(0b11111111'11111110)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<64>{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+                                         1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}),
+      uint64_t(0xffffffff)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<64>{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+                                         1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+                                         1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+                                         1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}),
+      uint64_t(0xffffffffffffffffULL)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<64>{0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+                                         1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+                                         1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+                                         1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}),
+      uint64_t(0b11111111'11111111'11111111'11111111'11111111'11111111'11111111'11111110)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<64>{0,1,0,0,1,0,0,0}), uint64_t(0b00010010)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<64>{1,0,0,0,0,0,0,0}), uint64_t(0b00000001)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<64>{0,0,0,0,0,0,0,1}), uint64_t(0b10000000)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<64>{1,0,1,0,1,0,1,0}), uint64_t(0b01010101)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<64>{0,1,0,1,0,1,0,1}), uint64_t(0b10101010)) ;
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<64>{1,0,0,0,0,0,0,1}), uint64_t(0b10000001)) ;
+
+   CPPUNIT_LOG_BOOLS_TO_BITS((barray<64>{0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,
+                                         0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+                                         1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+                                         0,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1}),
+      uint64_t(0b11101111'11111110'11111111'11111111'11111111'11111110'00011111'11111110)) ;
+
+}
+
+void BitOperationsTests::Test_BitsExtract()
+{
+   using namespace bitop ;
+
+   CPPUNIT_LOG_EQUAL(bits_extract(uint32_t(0b11110000'00000000'00000000'00000000),
+                                  uint32_t(0)),
+                     uint32_t(0)) ;
+
+   CPPUNIT_LOG_EQUAL(bits_extract(uint32_t(0b11110000'00000000'00000000'00000000),
+                                  uint32_t(-1)),
+                     uint32_t(0b11110000'00000000'00000000'00000000)) ;
+
+   CPPUNIT_LOG_EQUAL(bits_extract(uint32_t(0b11110000'00000000'00000000'00000000),
+                                  uint32_t(0b10100000'00000000'00000000'00000000)),
+                     uint32_t(0b11)) ;
+   CPPUNIT_LOG_EQUAL(bits_extract(uint32_t(0b11110000'00000000'00000000'00000000),
+                                  uint32_t(0b10100000'00000000'00000000'00000001)),
+                     uint32_t(0b110)) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_EQUAL(bits_extract(uint64_t(0b11110000'00000000'00000000'00000000'00000000'00000000'00000000'10000010),
+                                  uint64_t(0)),
+                     uint64_t(0)) ;
+
+   CPPUNIT_LOG_EQUAL(bits_extract(uint64_t(0b11110000'00000000'00000000'00000000'00000000'00000000'00000000'10000010),
+                                  uint64_t(-1)),
+                     uint64_t(0b11110000'00000000'00000000'00000000'00000000'00000000'00000000'10000010)) ;
+
+   CPPUNIT_LOG_EQUAL(bits_extract(uint64_t(0b11110000'00000000'00000000'00000000'00000000'00000000'00000000'10000010),
+                                  uint64_t(0b10100000'00000000'00000000'00000000'00000000'00000000'00000000'00000000)),
+                     uint64_t(0b11)) ;
+   CPPUNIT_LOG_EQUAL(bits_extract(uint64_t(0b11110000'00000000'00000000'00000000'00000000'00000000'00000000'10000010),
+                                  uint64_t(0b10100000'00000000'00000000'00000001'00000000'00000000'00000000'00000000)),
+                     uint64_t(0b110)) ;
+
+   CPPUNIT_LOG_EQUAL(bits_extract(uint64_t(0b11110000'00000000'00000000'00000000'00000000'00000000'00000000'10000010),
+                                  uint64_t(0b00100001'00000000'00000000'00000000'00000000'00000000'00000000'11111111)),
+                     uint64_t(0b1010000010)) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_EQUAL(bits_extract(uint8_t(0b11110000), uint8_t(0)), uint8_t(0)) ;
+   CPPUNIT_LOG_EQUAL(bits_extract(uint8_t(0b11110000), uint8_t(-1)), uint8_t(0b11110000)) ;
+
+   CPPUNIT_LOG_EQUAL(bits_extract(uint8_t(0b11110000), uint8_t(0b10100000)), uint8_t(0b11)) ;
+   CPPUNIT_LOG_EQUAL(bits_extract(uint8_t(0b11110000), uint8_t(0b10100001)), uint8_t(0b110)) ;
+
+   CPPUNIT_LOG_EQUAL(bits_extract(uint8_t(0b11110010), uint8_t(0b00100111)), uint8_t(0b1010)) ;
+}
+
+void BitOperationsTests::Test_CellOps()
+{
+   using namespace bitop ;
+
+   CPPUNIT_LOG_EQ(cellndx<uint64_t>(0), 0) ;
+   CPPUNIT_LOG_EQ(cellndx<uint64_t>(1), 0) ;
+   CPPUNIT_LOG_EQ(cellndx<uint64_t>(63), 0) ;
+   CPPUNIT_LOG_EQ(cellndx<uint64_t>(64), 1) ;
+   CPPUNIT_LOG_EQ(cellndx<uint64_t>(127), 1) ;
+   CPPUNIT_LOG_EQ(cellndx<uint64_t>(128), 2) ;
+
+   CPPUNIT_LOG_EQ(cellndx<uint8_t>(0), 0) ;
+   CPPUNIT_LOG_EQ(cellndx<uint8_t>(1), 0) ;
+   CPPUNIT_LOG_EQ(cellndx<uint8_t>(63), 7) ;
+   CPPUNIT_LOG_EQ(cellndx<uint8_t>(64), 8) ;
+   CPPUNIT_LOG_EQ(cellndx<uint8_t>(127), 15) ;
+   CPPUNIT_LOG_EQ(cellndx<uint8_t>(128), 16) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_EQ(cellcount<uint64_t>(0), 0) ;
+   CPPUNIT_LOG_EQ(cellcount<uint64_t>(1), 1) ;
+   CPPUNIT_LOG_EQ(cellcount<uint64_t>(63), 1) ;
+   CPPUNIT_LOG_EQ(cellcount<uint64_t>(64), 1) ;
+   CPPUNIT_LOG_EQ(cellcount<uint64_t>(65), 2) ;
+   CPPUNIT_LOG_EQ(cellcount<uint64_t>(127), 2) ;
+   CPPUNIT_LOG_EQ(cellcount<uint64_t>(128), 2) ;
+   CPPUNIT_LOG_EQ(cellcount<uint64_t>(129), 3) ;
+
+   CPPUNIT_LOG_EQ(cellcount<uint8_t>(0), 0) ;
+   CPPUNIT_LOG_EQ(cellcount<uint8_t>(1), 1) ;
+   CPPUNIT_LOG_EQ(cellcount<uint8_t>(63), 8) ;
+   CPPUNIT_LOG_EQ(cellcount<uint8_t>(64), 8) ;
+   CPPUNIT_LOG_EQ(cellcount<uint8_t>(65), 9) ;
+   CPPUNIT_LOG_EQ(cellcount<uint8_t>(127), 16) ;
+   CPPUNIT_LOG_EQ(cellcount<uint8_t>(128), 16) ;
+   CPPUNIT_LOG_EQ(cellcount<uint8_t>(129), 17) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   CPPUNIT_LOG_EQUAL(tailmask<uint64_t>(0),   uint64_t(0b11111111'11111111'11111111'11111111'11111111'11111111'11111111'11111111)) ;
+   CPPUNIT_LOG_EQUAL(tailmask<uint64_t>(5),   uint64_t(0b00000000'00000000'00000000'00000000'00000000'00000000'00000000'00011111)) ;
+   CPPUNIT_LOG_EQUAL(tailmask<uint64_t>(64),  uint64_t(0b11111111'11111111'11111111'11111111'11111111'11111111'11111111'11111111)) ;
+   CPPUNIT_LOG_EQUAL(tailmask<uint64_t>(65),  uint64_t(0b1)) ;
+   CPPUNIT_LOG_EQUAL(tailmask<uint64_t>(127), uint64_t(0b01111111'11111111'11111111'11111111'11111111'11111111'11111111'11111111)) ;
+
+   CPPUNIT_LOG_EQUAL(headmask<uint64_t>(0),   uint64_t(0b11111111'11111111'11111111'11111111'11111111'11111111'11111111'11111111)) ;
+   CPPUNIT_LOG_EQUAL(headmask<uint64_t>(5),   uint64_t(0b11111111'11111111'11111111'11111111'11111111'11111111'11111111'11100000)) ;
+   CPPUNIT_LOG_EQUAL(headmask<uint64_t>(63),  uint64_t(0b10000000'00000000'00000000'00000000'00000000'00000000'00000000'00000000)) ;
+   CPPUNIT_LOG_EQUAL(headmask<uint64_t>(64),  uint64_t(0b11111111'11111111'11111111'11111111'11111111'11111111'11111111'11111111)) ;
+
+   CPPUNIT_LOG_EQUAL(tailmask<uint8_t>(0), uint8_t(0b11111111)) ;
+   CPPUNIT_LOG_EQUAL(tailmask<uint8_t>(1), uint8_t(0b00000001)) ;
+   CPPUNIT_LOG_EQUAL(tailmask<uint8_t>(2), uint8_t(0b00000011)) ;
+   CPPUNIT_LOG_EQUAL(tailmask<uint8_t>(3), uint8_t(0b00000111)) ;
+   CPPUNIT_LOG_EQUAL(tailmask<uint8_t>(4), uint8_t(0b00001111)) ;
+   CPPUNIT_LOG_EQUAL(tailmask<uint8_t>(5), uint8_t(0b00011111)) ;
+   CPPUNIT_LOG_EQUAL(tailmask<uint8_t>(6), uint8_t(0b00111111)) ;
+   CPPUNIT_LOG_EQUAL(tailmask<uint8_t>(7), uint8_t(0b01111111)) ;
+   CPPUNIT_LOG_EQUAL(tailmask<uint8_t>(8), uint8_t(0b11111111)) ;
+   CPPUNIT_LOG_EQUAL(tailmask<uint8_t>(9), uint8_t(0b00000001)) ;
+
+   CPPUNIT_LOG_EQUAL(headmask<uint8_t>(0), uint8_t(0b11111111)) ;
+   CPPUNIT_LOG_EQUAL(headmask<uint8_t>(1), uint8_t(0b11111110)) ;
+   CPPUNIT_LOG_EQUAL(headmask<uint8_t>(2), uint8_t(0b11111100)) ;
+   CPPUNIT_LOG_EQUAL(headmask<uint8_t>(3), uint8_t(0b11111000)) ;
+   CPPUNIT_LOG_EQUAL(headmask<uint8_t>(4), uint8_t(0b11110000)) ;
+   CPPUNIT_LOG_EQUAL(headmask<uint8_t>(5), uint8_t(0b11100000)) ;
+   CPPUNIT_LOG_EQUAL(headmask<uint8_t>(6), uint8_t(0b11000000)) ;
+   CPPUNIT_LOG_EQUAL(headmask<uint8_t>(7), uint8_t(0b10000000)) ;
+   CPPUNIT_LOG_EQUAL(headmask<uint8_t>(8), uint8_t(0b11111111)) ;
+   CPPUNIT_LOG_EQUAL(headmask<uint8_t>(9), uint8_t(0b11111110)) ;
+
+   CPPUNIT_LOG(std::endl) ;
+
+   // Get bits [3:6) (note the bit addressing is from the _left_)
+   CPPUNIT_LOG_EQ(0b01101000 & headmask<uint8_t>(3) & tailmask<uint8_t>(6), 0b00'101'000) ;
+   CPPUNIT_LOG_EQ(0b01110100 & headmask<uint8_t>(3) & tailmask<uint8_t>(6), 0b00'110'000) ;
+   CPPUNIT_LOG_EQ(0b01110101 & headmask<uint8_t>(3) & tailmask<uint8_t>(6), 0b00'110'000) ;
+
+   // Get bits 0:8
+   CPPUNIT_LOG_EQ(0b11110100 & headmask<uint8_t>(0) & tailmask<uint8_t>(8), 0b11110100) ;
+}
+
 /*******************************************************************************
  main
 *******************************************************************************/
@@ -398,7 +745,6 @@ int main(int argc, char *argv[])
 {
    return unit::run_tests
        <
-          NativeBitopsTests,
           BitOperationsTests
        >
        (argc, argv) ;

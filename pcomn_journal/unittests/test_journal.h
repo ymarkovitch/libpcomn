@@ -3,7 +3,7 @@
 #define __TEST_JOURNAL_H
 /*******************************************************************************
  FILE         :   test_journal.h
- COPYRIGHT    :   Yakov Markovitch, 2008-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2008-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Journal test classes

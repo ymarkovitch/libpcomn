@@ -3,7 +3,7 @@
 #define __PREGUTIL_H
 /*******************************************************************************
  FILE         :   pregutil.h
- COPYRIGHT    :   Yakov Markovitch, 1998-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1998-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Some useful regular expressions.

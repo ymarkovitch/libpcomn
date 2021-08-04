@@ -1,7 +1,7 @@
 /*-*- tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   unittest_uuid.cpp
- COPYRIGHT    :   Yakov Markovitch, 2014-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2014-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Unittests for uuid and network MAC classes/functions
@@ -221,7 +221,6 @@ void MACFixture::Test_MAC()
    const MAC other_mac  ("e0:CB:4E:8C:4f:5C") ;
    const MAC small_mac  ("E0:CB:4E:8C:4f:50") ;
    const MAC other_mac_2 (0xE0, 0xCB, 0x4E, 0x8C, 0x4f, 0x5C) ;
-   const MAC other_mac_3 (0xE0CB4E8C4f5CULL) ;
 
    union raw_mac {
          constexpr raw_mac() : _u64() {}
@@ -266,6 +265,17 @@ void MACFixture::Test_MAC()
    CPPUNIT_LOG_EXCEPTION(MAC("E0:CB 4E:8C:FF:5C", RAISE_ERROR), std::invalid_argument) ;
    CPPUNIT_LOG_EXCEPTION(MAC("E0:CB:4E:8C:FF05C", RAISE_ERROR), std::invalid_argument) ;
    CPPUNIT_LOG_EXCEPTION(MAC("E0:CB:4E:8CFFFF5C", RAISE_ERROR), std::invalid_argument) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_EQUAL(MAC("e0-cb-4e-8c-ff-5c"), random_mac) ;
+   CPPUNIT_LOG_EQUAL(MAC("e0.cb.4e.8c.4f.5c"), other_mac) ;
+   CPPUNIT_LOG_EQUAL(MAC("e0 cb 4e 8c 4f 50"), small_mac) ;
+
+   CPPUNIT_LOG_EQUAL(MAC("e0-cb-4e-8c-ff-5c"), MAC("e0.cb.4e.8c.ff.5c")) ;
+   CPPUNIT_LOG_EQUAL(MAC("e0-cb-4e-8c-ff-5c"), MAC("e0 cb 4e 8c ff 5c")) ;
+
+   CPPUNIT_LOG_EXCEPTION(MAC("e0-cb-4e-8c-ff:5c", RAISE_ERROR), std::invalid_argument) ;
+   CPPUNIT_LOG_EXCEPTION(MAC("e0 cb-4e-8c-ff-5c", RAISE_ERROR), std::invalid_argument) ;
 
    CPPUNIT_LOG(std::endl) ;
    CPPUNIT_LOG_ASSERT(other_mac < random_mac) ;

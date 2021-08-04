@@ -1,7 +1,7 @@
 /*-*- tab-width:4;indent-tabs-mode:nil;c-file-style:"ellemtel";c-basic-offset:4;c-file-offsets:((innamespace . 0)(inlambda . 0)) -*-*/
 /*******************************************************************************
  FILE         :   unittest_binary128.cpp
- COPYRIGHT    :   Yakov Markovitch, 2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2019-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Unittests for large fixed binary types (128- and 256-bit)
@@ -46,6 +46,9 @@ void LargeBinaryTests::Test_Binary128()
 
     const binary128_t binary128_3 (0x123456780a0b0c0dULL,
                                    0x1a1b1c1d2a2b2c2dULL) ;
+    (void)binary128_1 ;
+    (void)binary128_2 ;
+    (void)binary128_3 ;
 }
 
 void LargeBinaryTests::Test_Binary128_Operators()

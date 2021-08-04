@@ -3,7 +3,7 @@
 #define __PCOMN_EXCEPT_H
 /*******************************************************************************
  FILE         :   pcomn_except.h
- COPYRIGHT    :   Yakov Markovitch, 2000-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2000-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Base PCOMMON exception classes
@@ -18,6 +18,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+
+#if defined(PCOMN_PL_WINDOWS)
+#include <wtypes.h>
+extern "C" DECLSPEC_IMPORT DWORD WINAPI GetLastError() ;
+#endif
 
 /*******************************************************************************
  Exception throwing convenience macros
@@ -95,13 +100,13 @@ while(false)
 
 #define PCOMN_ASSERT_ENOERR(result, exception, format, ...)             \
 do if (const int errno__##__LINE__ = (result)))                         \
-      pcomn::throw_sysreason<exception >(errno__##__LINE__, format, ##__VA_ARGS__) ; \
+      pcomn::throw_sysreason<exception>(errno__##__LINE__, format, ##__VA_ARGS__) ; \
 while(false)
 
 #define PCOMN_THROW_SYSREASON(exception, format, ...)                   \
 do {                                                                    \
    const int errno##__LINE__ = pcomn::system_error::lasterr() ;         \
-   pcomn::throw_sysreason<exception >(errno##__LINE__, format, ##__VA_ARGS__) ; \
+   pcomn::throw_sysreason<exception>(errno##__LINE__, format, ##__VA_ARGS__) ; \
 } while(false)
 
 #define PCOMN_ERRNO(call) (::pcomn::posix_errno((call)))
@@ -112,7 +117,7 @@ namespace pcomn {
 /** Template class for creation of "compound" exceptions
 
  A compound exception has two bases: a virtual public "addmix" base and public
- "main" base. Admittedly, the "main" base is an exception class based, directly
+ "main" base. Supposedly the "main" base is an exception class based, directly
  or indirectly, on std::exception.
 *******************************************************************************/
 template<class V, class E>
@@ -134,134 +139,87 @@ __noinline compound_exception<V, E>::compound_exception(const char *begin, const
     V(), E(std::string(begin, end))
 {}
 
-/******************************************************************************/
-/** The base class for errors that can occur in OS/system library environment,
- like I/O errors, system API errors, etc.
+/***************************************************************************//**
+ Indicates OS/system library call error.
 *******************************************************************************/
-class _PCOMNEXP environment_error : public std::runtime_error {
-      typedef std::runtime_error ancestor ;
-   public:
-      environment_error() : ancestor("") {}
-
-      explicit environment_error(const std::string &msg) : environment_error()
-      {
-         set_message(msg) ;
-      }
-
-      ~environment_error() throw() {}
-
-      const char *what() const throw() { return _message.c_str() ; }
-
-      void set_message(const std::string &msg) { _message = msg ; }
-
-   private:
-      std::string _message ;
-} ;
-
-/******************************************************************************/
-/** Indicates OS/system library call error.
-*******************************************************************************/
-class _PCOMNEXP system_error : public virtual environment_error {
-      #ifdef PCOMN_PL_UNIX
-      struct errcode {
-            errcode(int posix_code, int platform_specific) :
-               _code(posix_code ? posix_code : platform_specific)
-            {}
-            int posix_code() const { return _code ; }
-            int platform_code() const { return _code ; }
-            __noinline static int lasterr() { return errno ; }
-            static const char *errmsg(int code) { return strerror(code) ; }
-
-            const int _code ;
-      } ;
-      #else
-      struct errcode {
-            errcode(int posix_code, int platform_code) :
-               _platform_code(platform_code),
-               _posix_code(posix_code)
-            {}
-            int posix_code() const { return _posix_code ; }
-            int platform_code() const { return _platform_code ; }
-            static _PCOMNEXP int lasterr() ;
-            static _PCOMNEXP std::string errmsg(int code) ;
-
-            const int _platform_code ;
-            const int _posix_code ;
-      } ;
-      #endif
-
+class _PCOMNEXP system_error : public std::system_error {
+      typedef std::system_error ancestor ;
    public:
       enum PlatformSpecific { platform_specific } ;
 
-      __noinline system_error() : _errcode(errno, 0)
-      {
-         set_message(strerror(posix_code())) ;
-      }
+      system_error() : system_error(errno) {}
 
       /// Creates an exception object with the message based on the Posix errorcode.
-      explicit system_error(int errcode) : _errcode(errcode, 0)
-      {
-         set_message(strerror(errcode)) ;
-      }
-      /// Creates an exception object with the message based on the Posix errorcode.
-      __noinline explicit system_error(const std::string &msg) : _errcode(errno, 0)
-      {
-         set_message(msg + ": " + strerror(posix_code())) ;
-      }
+      __noinline explicit system_error(int errcode) :
+         ancestor(errcode, generic_error_category())
+      {}
 
-      explicit system_error(const std::string &msg, int errcode) : _errcode(errcode, 0)
-      {
-         set_message(msg + ": " + strerror(errcode)) ;
-      }
+      __noinline explicit system_error(const char *msg, int errcode = errno) :
+         ancestor(errcode, generic_error_category(), msg)
+      {}
+
+      system_error(const std::string &msg, int errcode) :
+         system_error(msg.c_str(), errcode)
+      {}
 
       /// Creates an exception object with the message based on the platform-specific OS errorcode.
       /// @param errcode System error code; the default value of this parameter is the
       /// system last error (errno on *Nix, GetLastError on Windows).
-      system_error(PlatformSpecific, int errcode = errcode::lasterr()) :
-         _errcode(0, errcode)
-      {
-         set_message(errcode::errmsg(errcode)) ;
-      }
+      system_error(PlatformSpecific, int errcode = lasterr()) :
+         ancestor(errcode, std::system_category())
+      {}
 
       /// Creates an exception object with the message based on the platform-specific OS errorcode.
       /// @param errcode   System error code; the default value of this parameter is the
       /// system last error (errno on *Nix, GetLastError on Windows).
       /// @param msg       The message that prepends system error message.
-      system_error(PlatformSpecific, const std::string &msg, int errcode = errcode::lasterr()) :
-         _errcode(0, errcode)
+      __noinline system_error(PlatformSpecific, const char *msg, int errcode = lasterr()) :
+         ancestor(errcode, std::system_category(), msg)
+      {}
+
+      system_error(PlatformSpecific, const std::string &msg, int errcode = lasterr()) :
+         system_error(platform_specific, msg.c_str(), errcode)
+      {}
+
+      int code() const { return ancestor::code().value() ; }
+
+      /// Get the last system error code (errno for Linux, GetLastError() for Windows)
+      static int lasterr()
       {
-         set_message(msg + ": " + errcode::errmsg(errcode)) ;
+         #ifdef PCOMN_PL_UNIX
+         return errno ;
+         #else
+         return GetLastError() ;
+         #endif
       }
 
-      int posix_code() const { return _errcode.posix_code() ; }
-
-      int platform_code() const { return _errcode.platform_code() ; }
-
-      int code() const { return posix_code() ; }
-
-      static int lasterr() { return errcode::lasterr() ; }
-
-      static
       #ifdef PCOMN_PL_UNIX
-      const char *
+      static const char *syserrmsg(int code) { return strerror(code) ; }
       #else
-      std::string
+      static std::string syserrmsg(int code) { return std::system_category().message(code) ; }
       #endif
-      syserrmsg(int code) { return errcode::errmsg(code) ; }
 
-   private:
-      errcode _errcode ;
+      static const std::error_category &generic_error_category()
+      {
+         return
+         #ifdef PCOMN_PL_UNIX
+            std::system_category()
+         #else
+            std::generic_category()
+         #endif
+            ;
+      }
 } ;
 
-/******************************************************************************/
-/** Indicates timeout expiration.
+/***************************************************************************//**
+ Indicates timeout expiration.
 *******************************************************************************/
-class _PCOMNEXP timeout_error : public virtual environment_error {
+class _PCOMNEXP timeout_error : public system_error {
+      typedef system_error ancestor ;
    public:
-      explicit timeout_error(const std::string &msg = std::string())
-      {
-         set_message(msg) ;
-      }
+      timeout_error() : ancestor(ETIMEDOUT) {}
+      explicit timeout_error(const char *msg) : ancestor(msg, ETIMEDOUT) {}
+      explicit timeout_error(const std::string &msg) : timeout_error(msg.c_str()) {}
 } ;
 
 /*******************************************************************************
@@ -270,11 +228,13 @@ class _PCOMNEXP timeout_error : public virtual environment_error {
 struct _PCOMNEXP object_closed : public std::runtime_error {
       object_closed() : std::runtime_error("The object is already closed") {}
 
-      object_closed(const std::string &object) : std::runtime_error(object + ": the object is already closed") {}
+      __noinline object_closed(const std::string &object) :
+         std::runtime_error(object + " is already closed")
+      {}
 } ;
 
-/******************************************************************************/
-/** Exception that indicates that a sequence is already closed and cannot be read/written.
+/***************************************************************************//**
+ Exception that indicates that a sequence is already closed and cannot be read/written.
 *******************************************************************************/
 struct _PCOMNEXP sequence_closed : public object_closed {
       using object_closed::object_closed ;
@@ -292,13 +252,13 @@ struct _PCOMNEXP invalid_str_repr : std::invalid_argument {
  System/POSIX errors handling functions
 *******************************************************************************/
 template<bool>
-__noreturn __noinline
+__noreturn __cold
 void throw_syserror(const char *, const char *, int err = system_error::lasterr()) ;
 template<bool>
-__noreturn __noinline void throw_syserror(int, const char *, ...) PCOMN_ATTR_PRINTF(2, 3) ;
+__noreturn __cold void throw_syserror(int, const char *, ...) PCOMN_ATTR_PRINTF(2, 3) ;
 
 template<bool>
-__noreturn __noinline
+__noreturn __cold
 void throw_syserror(int err, const char *format, ...)
 {
    char buf[PCOMN_MSGBUFSIZE] ;
@@ -310,12 +270,19 @@ void throw_syserror(int err, const char *format, ...)
 }
 
 template<bool dummy>
-__noreturn __noinline
-void throw_syserror(const char *function_name, const char *call_name_or_message, int err)
+__noreturn __cold
+void throw_syserror(const char *caller_name, const char *callee_name_or_message, int err)
 {
-   if (!strchr(call_name_or_message, ' '))
-      throw_syserror<dummy>(err, "In '%s' calling '%s()'", function_name, call_name_or_message) ;
-   throw_exception<system_error>(system_error::platform_specific, call_name_or_message, err) ;
+   if (!strchr(callee_name_or_message, ' '))
+      throw_syserror<dummy>(err, "In '%s' calling '%s()'", caller_name, callee_name_or_message) ;
+   throw_exception<system_error>(system_error::platform_specific, callee_name_or_message, err) ;
+}
+
+template<typename Msg>
+__noreturn __cold
+void throw_syserror(std::errc errcode, const Msg &msg)
+{
+   throw_exception<system_error>(msg, std::make_error_code(errcode).value()) ;
 }
 
 template<typename T>
@@ -340,10 +307,11 @@ inline T ensure_posix(T result, const char *message)
    return result ;
 }
 
-inline void ensure_enoerr(int result, const char *function_name, const char *call_name_or_message)
+inline bool ensure_enoerr(int result, const char *function_name, const char *call_name_or_message)
 {
    if (unlikely(result))
       throw_syserror<true>(function_name, call_name_or_message, result) ;
+   return true ;
 }
 
 template<class X>

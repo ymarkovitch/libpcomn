@@ -1,7 +1,7 @@
 /*-*- tab-width:3;indent-tabs-mode:nil;c-file-style:"ellemtel";c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   pcomn_trace.cpp
- COPYRIGHT    :   Yakov Markovitch, 1995-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 1995-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Tracing engine
@@ -191,7 +191,7 @@ unsigned PDiagBase::mode() { return global_mode ; }
  PDiagBase: trace context initialization and locking
 *******************************************************************************/
 static constexpr const unsigned DIAG_LOGMAXPATH  = 2048 ;
-static constexpr const unsigned DIAG_MAXMESSAGE  = 4096 ; /* Buffer size for diagnostic messages */
+static constexpr const unsigned DIAG_MAXMESSAGE  = 8192 ; /* Buffer size for diagnostic messages */
 static constexpr const unsigned DIAG_MAXPREFIX   = 256 ;
 
 // How often (in seconds) diag_isenabled_diag() should check if the tracing
@@ -587,23 +587,19 @@ void PDiagBase::setlog(int fd)
    setlog(fd, fd != STDERR_FILENO && fd != STDOUT_FILENO) ;
 }
 
-void PDiagBase::setlog(int fd, bool owned)
+void PDiagBase::do_setlog(int fd, bool owned, bool reset_fname)
 {
    ctx::LOCK() ;
+   auto lock_guard = pcomn::make_finalizer(&ctx::UNLOCK) ;
 
-   *ctx::log_name = 0 ;
-   do_setlog(fd, owned) ;
-
-   ctx::UNLOCK() ;
-}
-
-void PDiagBase::do_setlog(int fd, bool owned)
-{
    if (fd == ctx::log_fd)
    {
       ctx::log_owned = owned ;
       return ;
    }
+
+   if (reset_fname)
+      *ctx::log_name = 0 ;
 
    const int  prev_fd = ctx::log_fd ;
    const bool prev_owned = ctx::log_owned ;
@@ -612,9 +608,15 @@ void PDiagBase::do_setlog(int fd, bool owned)
    ctx::log_owned = false ;
 
    if (prev_fd >= 0 && prev_owned)
-      ::close(prev_fd) ;
+   {
+      if (fd < 0)
+         lock_guard.finalize() ;
 
-   if (fd < 0)
+      ::close(prev_fd) ;
+      if (fd < 0)
+         return ;
+   }
+   else if (fd < 0)
       return ;
 
    if (check_diag_fd(fd))
@@ -636,15 +638,17 @@ const char *PDiagBase::logname()
 
 void PDiagBase::setlog(const char *logname)
 {
+   if (!logname || !*logname) {
+      do_setlog(-1, false, true) ;
+      return ;
+   }
+
    ctx::LOCK() ;
 
-   if (!logname || !*logname)
-      do_setlog(-1, false) ;
-
-   else if (!stricmp(logname, "stdout"))
-      do_setlog(STDOUT_FILENO, false) ;
+   if (!stricmp(logname, "stdout"))
+      do_setlog(STDOUT_FILENO, false, false) ;
    else if (!stricmp(logname, "stderr") || !stricmp(logname, "stdlog"))
-      do_setlog(STDERR_FILENO, false) ;
+      do_setlog(STDERR_FILENO, false, false) ;
    else
    {
       const int fd = open(logname,
@@ -656,7 +660,7 @@ void PDiagBase::setlog(const char *logname)
       {
          strncpy(ctx::log_name, logname, sizeof ctx::log_name - 1) ;
          ctx::log_name[sizeof ctx::log_name - 1] = 0 ;
-         do_setlog(fd, true) ;
+         do_setlog(fd, true, false) ;
       }
    }
 
@@ -783,6 +787,68 @@ void tee_syslog(LogLevel level, int fd, const char *s)
    if (fd >= 0 && ctx::syslog_write != output_fdlog_msg && (intptr_t)ctx::syslog_data != fd)
       output_fdlog_msg((void *)(intptr_t)fd, level, "%s", s) ;
 }
+
+/*******************************************************************************
+ print_exception
+*******************************************************************************/
+__noinline static std::ostream &print_exception(std::ostream &os, const std::exception_ptr *xptr)
+{
+   const auto run_noexcept = [](const auto &fn) { try { fn() ; } catch (...) {} ; } ;
+
+   #ifdef PCOMN_COMPILER_GNU
+   const auto print_unknown = [&] { os << PCOMN_DEMANGLE(abi::__cxa_current_exception_type()->name()) ; } ;
+   #else
+   const auto print_unknown = [&] { os << "UNKNOWN" ; } ;
+   #endif
+
+	try {
+      if (xptr) { if (*xptr) std::rethrow_exception(*xptr) ; }
+      else if (std::current_exception()) throw ;
+   }
+	catch (const std::exception &x)
+	{
+		run_noexcept([&] { os << PCOMN_TYPENAME(x) << ": " << x.what() ; }) ;
+	}
+	catch (...)
+	{
+      run_noexcept(print_unknown) ;
+	}
+
+   return os ;
+}
+
+std::ostream &print_exception(std::ostream &os, const std::exception_ptr &xptr)
+{
+   return print_exception(os, &xptr) ;
+}
+
+std::ostream &print_current_exception(std::ostream &os)
+{
+   return print_exception(os, nullptr) ;
+}
+
+/*******************************************************************************
+ print_file
+*******************************************************************************/
+std::ostream &print_file(std::ostream &os, FILE *file)
+{
+   if (!file || feof(file) || ferror(file))
+      return os ;
+   const long pos = ftell(file) ;
+   if (pos < 0)
+      return os ;
+
+   char buf[4096] ;
+   do os.write(buf, fread(buf, 1, sizeof buf, file)) ;
+   while (!feof(file) && !ferror(file)) ;
+
+   if (pos)
+      fseek(file, pos, SEEK_SET) ;
+   else
+      rewind(file) ;
+   return os ;
+}
+
 } // end of namespace diag
 
 /*******************************************************************************

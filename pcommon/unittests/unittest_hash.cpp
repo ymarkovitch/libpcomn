@@ -1,7 +1,7 @@
 /*-*- tab-width:3;indent-tabs-mode:nil;c-file-style:"ellemtel";c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   unittest_hash.cpp
- COPYRIGHT    :   Yakov Markovitch, 2008-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2008-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Unittests for hash functions/classes.
@@ -56,11 +56,13 @@ struct trivial {
 
 void HashFnTests::Test_Hash_Functions()
 {
-   CPPUNIT_LOG_NOT_EQUAL(pcomn::hash_fn<int>()(0), (size_t)0) ;
    CPPUNIT_LOG_NOT_EQUAL(pcomn::hash_fn<int>()(1), (size_t)1) ;
    CPPUNIT_LOG_NOT_EQUAL(pcomn::hash_fn<int>()(1), pcomn::hash_fn<int>()(0)) ;
 
-   CPPUNIT_LOG_EQUAL(pcomn::hash_fn<int>()(13), size_t(12198420960622345777ULL)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::wang_hash64to64(13), uint64_t(12198420960622345777ULL)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::degski_hash64(13),   uint64_t(5445562050957587147ULL)) ;
+
+   CPPUNIT_LOG_EQUAL(pcomn::hash_fn<int>()(13), size_t(5445562050957587147ULL)) ;
 
    CPPUNIT_LOG_EQUAL(pcomn::hash_fn<int>()(13), pcomn::hash_fn<long>()(13)) ;
    CPPUNIT_LOG_EQUAL(pcomn::hash_fn<unsigned short>()(13), pcomn::hash_fn<size_t>()(13)) ;

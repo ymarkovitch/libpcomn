@@ -1,7 +1,7 @@
 /*-*- tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   unittest_strnum.cpp
- COPYRIGHT    :   Yakov Markovitch, 2006-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2006-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Unittests of conversions string<->integer
@@ -15,10 +15,13 @@
 #include <vector>
 #include <iterator>
 
+template<typename T> using optipair = std::pair<T, bool> ;
+
 class StrNumTests : public CppUnit::TestFixture {
 
       void Test_NumToStr() ;
       void Test_NumToIter() ;
+      void Test_StrToNum_Safe() ;
       void Test_StrToNum() ;
 
       CPPUNIT_TEST_SUITE(StrNumTests) ;
@@ -26,6 +29,7 @@ class StrNumTests : public CppUnit::TestFixture {
       CPPUNIT_TEST(Test_NumToStr) ;
       CPPUNIT_TEST(Test_NumToIter) ;
       CPPUNIT_TEST(Test_StrToNum) ;
+      CPPUNIT_TEST(Test_StrToNum_Safe) ;
 
       CPPUNIT_TEST_SUITE_END() ;
 } ;
@@ -140,12 +144,105 @@ void StrNumTests::Test_StrToNum()
    CPPUNIT_LOG_EQUAL(pcomn::strtonum_def<long long>("-123 ", 15), 15LL) ;
 }
 
+void StrNumTests::Test_StrToNum_Safe()
+{
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<int>("0"), optipair<int>(0, true)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<int>("123"), optipair<int>(123, true)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<int>("+123"), optipair<int>(123, true)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<int>("-123"), optipair<int>(-123, true)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<int>("-123 "), optipair<int>(0, false)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<int>("--123"), optipair<int>(0, false)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<int>(""), optipair<int>(0, false)) ;
+
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<unsigned>("-123"), optipair<unsigned>(0, false)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<unsigned>("+123"), optipair<unsigned>(123, true)) ;
+
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<uint8_t>("0"), optipair<uint8_t>(0, true)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<uint8_t>("255"), optipair<uint8_t>(255, true)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<uint8_t>("127"), optipair<uint8_t>(127, true)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<uint8_t>("+127"), optipair<uint8_t>(127, true)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<uint8_t>("+"), optipair<uint8_t>(0, false)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<uint8_t>("-0"), optipair<uint8_t>(0, false)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<uint8_t>("256"), optipair<uint8_t>(0, false)) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<int8_t>("127"), optipair<int8_t>(127, true)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<int8_t>("+127"), optipair<int8_t>(127, true)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<int8_t>("-128"), optipair<int8_t>(-128, true)) ;
+
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<int8_t>("128"), optipair<int8_t>(0, false)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<int8_t>("-129"), optipair<int8_t>(0, false)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<int8_t>("256"), optipair<int8_t>(0, false)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<int8_t>("257"), optipair<int8_t>(0, false)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<int8_t>("256"), optipair<int8_t>(0, false)) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<int16_t>("32767"), optipair<int16_t>(32767, true)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<int16_t>("+32767"), optipair<int16_t>(32767, true)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<int16_t>("-32768"), optipair<int16_t>(-32768, true)) ;
+
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<int16_t>("32768"), optipair<int16_t>(0, false)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<int16_t>("-32769"), optipair<int16_t>(0, false)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<int16_t>("65535"), optipair<int16_t>(0, false)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<int16_t>("65536"), optipair<int16_t>(0, false)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<int16_t>("65537"), optipair<int16_t>(0, false)) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<uint16_t>("65535"), optipair<uint16_t>(65535, true)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<uint16_t>("+65535"), optipair<uint16_t>(65535, true)) ;
+
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<uint16_t>("65536"), optipair<uint16_t>(0, false)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<uint16_t>("-0"), optipair<uint16_t>(0, false)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<uint16_t>("65537"), optipair<uint16_t>(0, false)) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<int32_t>("2147483647"),  optipair<int32_t>(2147483647, true)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<int32_t>("+2147483647"), optipair<int32_t>(2147483647, true)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<int32_t>("-2147483648"), optipair<int32_t>(-2147483648, true)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<int32_t>("-0"), optipair<int32_t>(0, true)) ;
+
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<int32_t>("2147483648"), optipair<int32_t>(0, false)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<int32_t>("-2147483649"), optipair<int32_t>(0, false)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<int32_t>("9223372036854775807"), optipair<int32_t>(0, false)) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<uint32_t>("2147483648"), optipair<uint32_t>(2147483648, true)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<uint32_t>("+4294967295"), optipair<uint32_t>(4294967295, true)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<uint32_t>("4294967295"), optipair<uint32_t>(4294967295, true)) ;
+
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<uint32_t>("4294967296"), optipair<uint32_t>(0, false)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<uint32_t>("-0"), optipair<uint32_t>(0, false)) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<int64_t>("9223372036854775807"),  optipair<int64_t>(9223372036854775807LL, true)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<int64_t>("009223372036854775807"),  optipair<int64_t>(9223372036854775807LL, true)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<int64_t>("+9223372036854775807"), optipair<int64_t>(9223372036854775807LL, true)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<int64_t>("-9223372036854775808"), optipair<int64_t>(std::numeric_limits<int64_t>::min(), true)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<int64_t>("-009223372036854775808"), optipair<int64_t>(std::numeric_limits<int64_t>::min(), true)) ;
+
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<int64_t>("9223372036854775808"), optipair<int64_t>(0, false)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<int64_t>("-9223372036854775809"), optipair<int64_t>(0, false)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<int64_t>("19223372036854775807"), optipair<int64_t>(0, false)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<int64_t>("-19223372036854775807"), optipair<int64_t>(0, false)) ;
+
+   CPPUNIT_LOG(std::endl) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<uint64_t>("18446744073709551615"),   optipair<uint64_t>(std::numeric_limits<uint64_t>::max(), true)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<uint64_t>("+18446744073709551615"),  optipair<uint64_t>(std::numeric_limits<uint64_t>::max(), true)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<uint64_t>("0018446744073709551615"), optipair<uint64_t>(std::numeric_limits<uint64_t>::max(), true)) ;
+
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<uint64_t>("18446744073709551616"), optipair<uint64_t>(0, false)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<uint64_t>("-0"), optipair<uint64_t>(0, false)) ;
+   CPPUNIT_LOG_EQUAL(pcomn::strtonum_safe<uint64_t>("100000000000000000000"), optipair<uint64_t>(0, false)) ;
+}
+
+/*******************************************************************************
+ main
+*******************************************************************************/
 int main(int argc, char *argv[])
 {
-   pcomn::unit::TestRunner runner ;
-   runner.addTest(StrNumTests::suite()) ;
-
-   return
-      pcomn::unit::run_tests(runner, argc, argv,
-                             "unittest.diag.ini", "Test of conversions string<->integer") ;
+    return pcomn::unit::run_tests
+        <
+            StrNumTests
+        >
+        (argc, argv) ;
 }

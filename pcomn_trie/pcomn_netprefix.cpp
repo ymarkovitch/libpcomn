@@ -1,7 +1,7 @@
 /*-*- tab-width:4;indent-tabs-mode:nil;c-file-style:"ellemtel";c-basic-offset:4;c-file-offsets:((innamespace . 0)(inlambda . 0)) -*-*/
 /*******************************************************************************
  FILE         :   pcomn_netprefix.cpp
- COPYRIGHT    :   Yakov Markovitch, 2019
+ COPYRIGHT    :   Yakov Markovitch, 2019-2020
 
  DESCRIPTION  :   Network address prefix tables.
 
@@ -30,6 +30,7 @@ shortest_netprefix_set::shortest_netprefix_set(std::false_type, const simple_csl
 
 template<typename Subnet>
 shortest_netprefix_set::shortest_netprefix_set(std::true_type, std::vector<Subnet> &&data) :
+    _nodes(),
     _depth(pack_nodes(compile_nodes(make_simple_slice(prepare_source_data(data)),
                                     std::array<unsigned,trie_maxdepth>().data()))),
 
@@ -226,7 +227,7 @@ bool shortest_netprefix_set::is_member(const Addr &addr) const
         if (!(node->children_bits() & level_bit))
             return node->leaves_bits() & level_bit ;
 
-        node = node->child(bitop::bitcount(node->children_bits() & (level_bit-1))) ;
+        node = node->child(bitop::popcount(node->children_bits() & (level_bit-1))) ;
     }
     while(++level < maxlevels) ;
 

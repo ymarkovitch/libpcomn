@@ -3,7 +3,7 @@
 #define __PCOMN_OMANIP_H
 /*******************************************************************************
  FILE         :   pcomn_omanip.h
- COPYRIGHT    :   Yakov Markovitch, 2000-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2000-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Output manipulators
@@ -337,6 +337,17 @@ inline auto ocall(F &&fn)
 template<typename Enum>
 inline auto oenum(Enum value)
    PCOMN_MAKE_OMANIP(print_enum<Enum>, value) ;
+
+template<typename T>
+inline auto ohex(const T &value) PCOMN_MAKE_OMANIP(([](std::ostream &os, auto &v) -> std::ostream &
+{
+   const auto oldflags = os.flags(std::ios::basefield) ;
+
+   os.setf(std::ios::hex, std::ios::basefield) ;
+   const auto on_exit = make_finalizer([&] { os.setf(oldflags, std::ios::basefield) ; }) ;
+
+   return os << v ;
+}), value) ;
 
 /******************************************************************************/
 /** Apply pcomn::omanip<F> manipulator object to an output stream

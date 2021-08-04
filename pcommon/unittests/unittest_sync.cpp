@@ -1,7 +1,7 @@
 /*-*- tab-width:3;indent-tabs-mode:nil;c-file-style:"ellemtel";c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
  FILE         :   unittest_mutex.cpp
- COPYRIGHT    :   Yakov Markovitch, 2009-2019. All rights reserved.
+ COPYRIGHT    :   Yakov Markovitch, 2009-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Unittests for mutexes.
@@ -275,11 +275,10 @@ void PromiseLockTests::Test_Promise_MultiThreaded()
 
 int main(int argc, char *argv[])
 {
-   pcomn::unit::TestRunner runner ;
-   runner.addTest(MutexTests::suite()) ;
-   runner.addTest(PromiseLockTests::suite()) ;
-
-   return
-      pcomn::unit::run_tests(runner, argc, argv,
-                             "sync.diag.ini", "Tests of various synchronization primitives") ;
+    return pcomn::unit::run_tests
+        <
+            MutexTests,
+            PromiseLockTests
+        >
+        (argc, argv) ;
 }
