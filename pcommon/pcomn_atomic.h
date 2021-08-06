@@ -221,7 +221,8 @@ inline void atomic_process_fence()
 *******************************************************************************/
 /// Ordered load value
 template<typename T>
-inline atomic_value_t<T> load(T *value, std::memory_order order = std::memory_order_acquire)
+inline enable_if_atomic_t<atomic_value_t<T>>
+load(T *value, std::memory_order order = std::memory_order_acquire)
 {
    return reinterpret_cast<const atomic_type_t<T> *>(value)
       ->load(order) ;
@@ -229,7 +230,7 @@ inline atomic_value_t<T> load(T *value, std::memory_order order = std::memory_or
 
 /// Ordered store value
 template<typename T>
-inline std::void_t<atomic_value_t<T>>
+inline enable_if_atomic_t<T, void>
 store(T *value, atomic_value_t<T> new_value, std::memory_order order = std::memory_order_release)
 {
    reinterpret_cast<atomic_type_t<T> *>(value)->store(new_value, order) ;
@@ -297,11 +298,7 @@ cas2_weak(T *target, T *expected_value, T new_value, std::memory_order = std::me
    __int128 * const target128 = reinterpret_cast<__int128 *>(target) ;
    __int128 * const old128 = reinterpret_cast<__int128 *>(expected_value) ;
    const __int128 expected128 = *old128 ;
-   #if (!__CLANG_VER__)
-   const __int128 * const desired128 = reinterpret_cast<__int128 *>(&new_value) ;
-   #else
    const __int128 desired128 = *reinterpret_cast<__int128 *>(&new_value) ;
-   #endif
 
    *old128 = __sync_val_compare_and_swap(target128, expected128, desired128) ;
    return *old128 == expected128 ;
@@ -344,11 +341,7 @@ cas2_strong(T *target, T *expected_value, T new_value, std::memory_order = std::
    __int128 * const target128 = reinterpret_cast<__int128 *>(target) ;
    __int128 * const old128 = reinterpret_cast<__int128 *>(expected_value) ;
    const __int128 expected128 = *old128 ;
-   #if (!__CLANG_VER__)
-   const __int128 * const desired128 = reinterpret_cast<__int128 *>(&new_value) ;
-   #else
    const __int128 desired128 = *reinterpret_cast<__int128 *>(&new_value) ;
-   #endif
 
    *old128 = __sync_val_compare_and_swap(target128, expected128, desired128) ;
    return *old128 == expected128 ;
