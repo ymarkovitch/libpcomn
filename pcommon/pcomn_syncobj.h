@@ -176,7 +176,6 @@ class shared_mutex {
 *******************************************************************************/
 template<typename Mutex>
 class shared_lock {
-      shared_lock(const shared_lock&) = delete ;
       void operator=(const shared_lock&) = delete ;
    public:
       typedef Mutex mutex_type;
@@ -196,6 +195,12 @@ class shared_lock {
       {
          other._lock = 0 ;
          other._owns = false ;
+      }
+
+      shared_lock(const shared_lock &other) : _lock(other._lock), _owns(other._owns)
+      {
+         if (_owns)
+            _lock->lock_shared() ;
       }
 
       shared_lock &operator=(shared_lock &&other) noexcept
@@ -242,7 +247,7 @@ class shared_lock {
          mutex_type * const ret = mutex() ;
          _lock = 0 ;
          _owns = false ;
-         return ret;
+         return ret ;
       }
 
       bool owns_lock() const noexcept { return _owns ; }
