@@ -294,13 +294,12 @@ using tagged_cptr_union = tagged_ptr_union<const T1, const T2, const T ...> ;
 
 /**}@*/
 
-/***************************************************************************//**
- Strong typedef is a type wrapper that guarentees that two types are distinguished
- even when they share the same underlying implementation.
+/**{@**************************************************************************/
+/** @name Strong typedef is a type wrapper that guarentees that two types are
+ distinguished even when they share the same underlying implementation.
 
  Unlike typedef, strong typedef _does_ create a new type.
 *******************************************************************************/
-/**{@*/
 template<typename Principal, typename Tag, bool=std::is_literal_type<Principal>::value> struct tdef ;
 
 template<typename Principal, typename Tag>
@@ -389,6 +388,51 @@ template<typename P, typename G>
 inline std::ostream &operator<<(std::ostream &os, const tdef<P,G> &v) { return os << v.data() ; }
 
 /**}@*/
+
+/***************************************************************************//**
+
+*******************************************************************************/
+template<typename T>
+struct auto_value {
+      PCOMN_STATIC_CHECK(std::is_literal_type<T>()) ;
+
+      constexpr auto_value() = default ;
+      constexpr auto_value(const T &v) : _data(v) {}
+      constexpr auto_value(const auto_value &) = default ;
+      constexpr auto_value(auto_value &&other) : _data(std::exchange(other._data, T())) {}
+
+      auto_value &operator=(const T &other)
+      {
+         _data = other ;
+         return *this ;
+      }
+
+      auto_value &operator=(const auto_value &) = default ;
+      auto_value &operator=(auto_value &&other) { return *this = std::exchange(other._data, T()) ; }
+
+      constexpr const T &data() const { return _data ; }
+      constexpr operator const T &() const { return _data ; }
+      operator T &() & { return _data ; }
+      operator T &&() && { return std::move(_data) ; }
+
+      const T &get() const & { return _data ; }
+      T &get() & { return _data ; }
+      T &&get() && { return std::move(_data) ; }
+
+      constexpr auto &operator*() const { return *_data ; }
+      constexpr auto *operator->() const { return _data ; }
+
+      void swap(auto_value &other) noexcept
+      {
+         using std::swap ;
+         swap(_data, other._data) ;
+      }
+
+   private:
+      T _data {} ;
+} ;
+
+PCOMN_DEFINE_SWAP(auto_value<T>, template<typename T>) ;
 
 /***************************************************************************//**
  Memory buffer with a fixed size threshold specified as its template argument;
