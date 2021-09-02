@@ -273,6 +273,8 @@ class shared_lock {
       }
 } ;
 
+PCOMN_DEFINE_SWAP(shared_lock<Mutex>, template<typename Mutex>) ;
+
 /***************************************************************************//**
  Promise lock is a binary semaphore with only possible state change from locked
  to unlocked.
