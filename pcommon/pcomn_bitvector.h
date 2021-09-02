@@ -517,9 +517,9 @@ inline basic_bitvector<E> make_bitvector(E (&data)[n])
 }
 
 template<typename E>
-inline basic_bitvector<E> make_bitvector(size_t sz, E *data)
+inline basic_bitvector<E> make_bitvector(size_t bitcount, E *data)
 {
-   return {sz, data} ;
+   return {bitcount, data} ;
 }
 
 /*******************************************************************************

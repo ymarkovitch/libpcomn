@@ -960,8 +960,8 @@ constexpr inline bool is_aligned_as(const void *p) { return is_aligned_to<aligno
 
 } // end of namespace pcomn
 
-/******************************************************************************/
-/** Swap wrapper that calls std::swap on the arguments, but may also use ADL
+/***************************************************************************//**
+ Swap wrapper that calls std::swap on the arguments, but may also use ADL
  (Argument-Dependent Lookup, Koenig lookup) to use a specialised form.
 
  Use this instead of std::swap to enable namespace-level swap functions, defined in the
