@@ -116,6 +116,9 @@ using bit_stype_t = typename bit_traits<nbits>::stype ;
 template<int nbits>
 using bit_utype_t = typename bit_traits<nbits>::utype ;
 
+template<int nbits, bool issigned>
+using bit_type_t = std::conditional_t<issigned, bit_stype_t<nbits>, bit_utype_t<nbits>> ;
+
 /***************************************************************************//**
  bit_traits specialization for 64-bit integers
 *******************************************************************************/
