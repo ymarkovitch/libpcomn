@@ -357,6 +357,9 @@ class shared_intrusive_ptr {
       }
 
    private:
+      element_type *_object = nullptr ;
+
+   private:
       template<typename U>
       shared_intrusive_ptr(U *&src_object, int_constant<42>) noexcept :
          _object(static_cast<element_type *>(src_object))
@@ -422,8 +425,7 @@ class shared_intrusive_ptr {
             this_policy_type::dec_ref(as_ptr_mutable(old_this_object)) ;
       }
 
-   private:
-      element_type *_object = nullptr ;
+      PCOMN_DEBUG_INTERFACE(auto debug_use_count() const { return use_count() ; }) ;
 } ;
 
 /// Create a new instance of shared_intrusive_ptr whose stored pointer is obtained from

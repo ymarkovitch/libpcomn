@@ -219,6 +219,12 @@ do {                                                        \
    __VA_ARGS__ inline enum_type &operator&=(enum_type &x, enum_type y) { return x = x & y ; } \
    __VA_ARGS__ inline enum_type &operator^=(enum_type &x, enum_type y) { return x = x ^ y ; }
 
+#ifdef PCOMN_COMPILER_GNU
+#define PCOMN_DEBUG_INTERFACE(function_definition) __attribute__((__used__)) __noinline function_definition
+#else
+#define PCOMN_DEBUG_INTERFACE(function_definition)
+#endif
+
 /*******************************************************************************
 *******************************************************************************/
 
