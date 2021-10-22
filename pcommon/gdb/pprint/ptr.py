@@ -1,22 +1,18 @@
 ########################################
 # Pointer-likes
 ########################################
-from utils import *
+from .utils import *
+from .ppregister import *
 
-class PComnPrinter(object):
-    """The base class for pcommon pretty printers"""
+__all__ = []
 
-    __slots__ = 'value' ;
-
-    def __init__(self, value):
-        assert isinstance(value, GDBValueWrapper)
-        self.value = value
-
-    @property
-    def typename(self):
-        return self.value.type_name
-
-#@add_printer
+########################################
+# Printers for
+#  - pcomn::shared_intrusive_ptr
+#  - pcomn::PTRefCounter
+#  - pcomn::active_counter
+########################################
+@add_printer
 class PComnSharedPtr(PComnPrinter):
     """Pretty printer for pcomn::shared_intrusive_ptr"""
 
