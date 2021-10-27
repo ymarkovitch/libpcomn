@@ -424,8 +424,6 @@ class shared_intrusive_ptr {
          if (old_this_object)
             this_policy_type::dec_ref(as_ptr_mutable(old_this_object)) ;
       }
-
-      PCOMN_DEBUG_INTERFACE(auto debug_use_count() const { return use_count() ; }) ;
 } ;
 
 /// Create a new instance of shared_intrusive_ptr whose stored pointer is obtained from
