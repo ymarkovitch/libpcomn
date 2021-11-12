@@ -201,7 +201,7 @@ template<typename Value,
 class closed_hashtable {
       // Only TriviallyCopyable items are allowed!
       PCOMN_STATIC_CHECK(std::is_trivially_copyable<Value>::value ||
-                         std::is_literal_type<Value>::value) ;
+                         pcomn::is_literal_type<Value>::value) ;
 
       PCOMN_NONASSIGNABLE(closed_hashtable) ;
 

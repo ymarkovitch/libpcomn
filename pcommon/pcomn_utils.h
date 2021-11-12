@@ -300,7 +300,7 @@ using tagged_cptr_union = tagged_ptr_union<const T1, const T2, const T ...> ;
 
  Unlike typedef, strong typedef _does_ create a new type.
 *******************************************************************************/
-template<typename Principal, typename Tag, bool=std::is_literal_type<Principal>::value> struct tdef ;
+template<typename Principal, typename Tag, bool=pcomn::is_literal_type<Principal>::value> struct tdef ;
 
 template<typename Principal, typename Tag>
 using strong_typedef = tdef<Principal, Tag> ;
@@ -394,7 +394,7 @@ inline std::ostream &operator<<(std::ostream &os, const tdef<P,G> &v) { return o
 *******************************************************************************/
 template<typename T>
 struct auto_value {
-      PCOMN_STATIC_CHECK(std::is_literal_type<T>()) ;
+      PCOMN_STATIC_CHECK(pcomn::is_literal_type<T>()) ;
 
       constexpr auto_value() = default ;
       constexpr auto_value(const T &v) : _data(v) {}
