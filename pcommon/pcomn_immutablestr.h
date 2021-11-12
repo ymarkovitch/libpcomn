@@ -177,12 +177,7 @@ class refcounted_storage {
       // Sets actually allocated memory size into char_count.
       void *do_alloc(size_type &char_count) const ;
 
-      void do_dealloc(data_type *d) const noexcept
-      {
-         // Zero stings are _never_ deleted, they are static
-         NOXCHECK(d->_size) ;
-         actual_allocator().deallocate(reinterpret_cast<aligner *>(d), aligner_count(d->_size)) ;
-      }
+      void do_dealloc(data_type *d) const noexcept ;
 
       void clear()
       {
@@ -233,6 +228,7 @@ class refcounted_storage {
          data_type *d = &str_data() ;
          if (d->_size && !d->_refcount.dec_passive())
             do_dealloc(d) ;
+
       }
 } ;
 
