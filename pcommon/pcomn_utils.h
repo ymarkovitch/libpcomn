@@ -42,7 +42,7 @@
   - std::experimental::optional into pcomn::fwd when compiling for C++14,
   - std::optional when compiling for C++17 and later
 
- and use pcomn::fwd::optional in poth cases.
+ and use pcomn::fwd::optional in both cases.
 *******************************************************************************/
 #include <pcommon.h>
 #include <pcomn_assert.h>
