@@ -539,12 +539,14 @@ private:
         int64_t expected_count() const { return (int64_t)_running + _diff ; }
 
         // Increment running threads count keeping expected_count() unchanged.
+        // I.e. "start" `threads` threads.
         thread_count &operator+=(int threads)
         {
             _diff -= threads ;
             _running += threads ;
             return *this ;
         }
+
         thread_count &operator-=(int threads) { return operator+=(-threads) ; }
 
         static constexpr thread_count stopped() { return {-1, 0} ; }
@@ -552,8 +554,11 @@ private:
         uint64_t _data ;
 
         struct {
-            int32_t _diff ;    /* The difference between the expected and current
-                                * threads counts. */
+            int32_t _diff ;    /* The difference between the expected and current threads
+                                * counts: how many threads to start to reach the
+                                * expected_count() running threads.
+                                * So, _diff<0 means there are more than expected_count()
+                                * running threads and we must stop -_diff threads. */
             int32_t _running ; /* The actual count of currently running threads.
                                 * When the pool is in the steady state it is equal to
                                 * the size set by the last resize() or by the constructor,

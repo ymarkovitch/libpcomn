@@ -263,8 +263,7 @@ void threadpool::resize(size_t threadcount)
 
         count = atomic_op::fetch_and_F(&_thread_count, [increment](thread_count prev_count)
         {
-            prev_count._diff += increment ;
-            return prev_count ;
+            return thread_count(prev_count._running,  prev_count._diff + increment) :
         }) ;
 
         count._diff += increment ;
@@ -341,10 +340,10 @@ std::pair<bool, threadpool::thread_count> threadpool::check_dismiss_itself(threa
              return oldcount._diff < 0 ;
          },
 
-         [](thread_count newcount) /* Apply */
+         [](thread_count oldcount) /* Apply, convert oldcount to newcount */
          {
-             PCOMN_VERIFY(newcount.expected_count() >= 0) ;
-             return newcount -= 1 ;
+             PCOMN_VERIFY(oldcount.expected_count() >= 0) ;
+             return oldcount -= 1 ;
          }) ;
 
     if (!std::get<bool>(dismissed))
