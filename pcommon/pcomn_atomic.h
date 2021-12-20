@@ -222,18 +222,18 @@ inline void atomic_process_fence()
 /// Ordered load value
 template<typename T>
 inline enable_if_atomic_t<atomic_value_t<T>>
-load(T *value, std::memory_order order = std::memory_order_acquire)
+load(volatile T * value, std::memory_order order = std::memory_order_acquire)
 {
-   return reinterpret_cast<const atomic_type_t<T> *>(value)
+   return reinterpret_cast<const volatile atomic_type_t<T> *>(value)
       ->load(order) ;
 }
 
 /// Ordered store value
 template<typename T>
 inline enable_if_atomic_t<T, void>
-store(T *value, atomic_value_t<T> new_value, std::memory_order order = std::memory_order_release)
+store(volatile T *value, atomic_value_t<T> new_value, std::memory_order order = std::memory_order_release)
 {
-   reinterpret_cast<atomic_type_t<T> *>(value)->store(new_value, order) ;
+   reinterpret_cast<volatile atomic_type_t<T> *>(value)->store(new_value, order) ;
 }
 
 /*******************************************************************************
@@ -245,9 +245,9 @@ store(T *value, atomic_value_t<T> new_value, std::memory_order order = std::memo
 ///
 template<typename T>
 inline atomic_value_t<T>
-xchg(T *target, atomic_value_t<T> newvalue, std::memory_order order = std::memory_order_acq_rel)
+xchg(volatile T *target, atomic_value_t<T> newvalue, std::memory_order order = std::memory_order_acq_rel)
 {
-   return reinterpret_cast<atomic_type_t<T> *>(target)
+   return reinterpret_cast<volatile atomic_type_t<T> *>(target)
       ->exchange(newvalue, order) ;
 }
 
@@ -262,16 +262,16 @@ xchg(T *target, atomic_value_t<T> newvalue, std::memory_order order = std::memor
 /// (and thus *target is replaced), false otherwise.
 ///
 template<typename T>
-inline bool cas(T *target, atomic_value_t<T> *expected_value, atomic_value_t<T> new_value,
+inline bool cas(volatile T *target, atomic_value_t<T> *expected_value, atomic_value_t<T> new_value,
                 std::memory_order order = std::memory_order_acq_rel)
 {
-   return reinterpret_cast<atomic_type_t<T> *>(target)
+   return reinterpret_cast<volatile atomic_type_t<T> *>(target)
       ->compare_exchange_weak(*expected_value, new_value, order) ;
 }
 
 /// @overload
 template<typename T>
-inline bool cas(T *target, atomic_value_t<T> expected_value, atomic_value_t<T> new_value,
+inline bool cas(volatile T *target, atomic_value_t<T> expected_value, atomic_value_t<T> new_value,
                 std::memory_order order = std::memory_order_acq_rel)
 {
    return cas(target, &expected_value, new_value, order) ;
@@ -288,25 +288,25 @@ inline bool cas(T *target, atomic_value_t<T> expected_value, atomic_value_t<T> n
 ///
 template<typename T>
 inline enable_if_atomic2_t<T, bool>
-cas2_weak(T *target, T *expected_value, T new_value, std::memory_order = std::memory_order_acq_rel)
+cas2_weak(volatile T *target, T *expected_value, T new_value, std::memory_order = std::memory_order_acq_rel)
 {
    static_assert(PCOMN_ATOMIC_WIDTH >=2,
                  "CAS2 is only available on CPU platforms with 2-pointer-wide-enabled atomic operation(s).") ;
 
    #if !defined(PCOMN_PL_MS)
 
-   __int128 * const target128 = reinterpret_cast<__int128 *>(target) ;
-   __int128 * const old128 = reinterpret_cast<__int128 *>(expected_value) ;
+   volatile __int128 * const target128 = reinterpret_cast<volatile __int128 *>(target) ;
+   volatile __int128 * const old128 = reinterpret_cast<volatile __int128 *>(expected_value) ;
    const __int128 expected128 = *old128 ;
-   const __int128 desired128 = *reinterpret_cast<__int128 *>(&new_value) ;
+   const __int128 desired128 = *reinterpret_cast<volatile __int128 *>(&new_value) ;
 
    *old128 = __sync_val_compare_and_swap(target128, expected128, desired128) ;
    return *old128 == expected128 ;
 
    #else /*PCOMN_PL_MS*/
 
-   __int64 * const begin_target = reinterpret_cast<__int64 *>(target) ;
-   __int64 * const begin_expected = reinterpret_cast<__int64 *>(expected_value) ;
+   volatile __int64 * const begin_target = reinterpret_cast<volatile __int64 *>(target) ;
+   volatile __int64 * const begin_expected = reinterpret_cast<volatile __int64 *>(expected_value) ;
    const __int64 * const begin_new = reinterpret_cast<__int64 *>(&new_value) ;
 
    return !!_InterlockedCompareExchange128(begin_target,
@@ -317,7 +317,7 @@ cas2_weak(T *target, T *expected_value, T new_value, std::memory_order = std::me
 
 template<typename T>
 inline enable_if_atomic2_t<T, bool>
-cas2_weak(T *target, T expected_value, T new_value, std::memory_order order = std::memory_order_acq_rel)
+cas2_weak(volatile T *target, T expected_value, T new_value, std::memory_order order = std::memory_order_acq_rel)
 {
    return cas2_weak(target, &expected_value, new_value, order) ;
 }
@@ -333,15 +333,15 @@ cas2_strong(T *target, T *expected_value, T new_value, std::memory_order order =
 
 template<typename T>
 inline enable_if_atomic2_t<T, bool>
-cas2_strong(T *target, T *expected_value, T new_value, std::memory_order = std::memory_order_acq_rel)
+cas2_strong(volatile T *target, T *expected_value, T new_value, std::memory_order = std::memory_order_acq_rel)
 {
    static_assert(PCOMN_ATOMIC_WIDTH >=2,
                  "CAS2 is only available on CPU platforms with 2-pointer-wide-enabled atomic operation(s).") ;
 
-   __int128 * const target128 = reinterpret_cast<__int128 *>(target) ;
-   __int128 * const old128 = reinterpret_cast<__int128 *>(expected_value) ;
+   volatile __int128 * const target128 = reinterpret_cast<volatile __int128 *>(target) ;
+   volatile __int128 * const old128 = reinterpret_cast<volatile __int128 *>(expected_value) ;
    const __int128 expected128 = *old128 ;
-   const __int128 desired128 = *reinterpret_cast<__int128 *>(&new_value) ;
+   const __int128 desired128 = *reinterpret_cast<volatile __int128 *>(&new_value) ;
 
    *old128 = __sync_val_compare_and_swap(target128, expected128, desired128) ;
    return *old128 == expected128 ;
@@ -351,14 +351,14 @@ cas2_strong(T *target, T *expected_value, T new_value, std::memory_order = std::
 
 template<typename T>
 inline enable_if_atomic2_t<T, bool>
-cas2_strong(T *target, T expected_value, T new_value, std::memory_order order = std::memory_order_acq_rel)
+cas2_strong(volatile T *target, T expected_value, T new_value, std::memory_order order = std::memory_order_acq_rel)
 {
    return cas2_strong(target, &expected_value, new_value, order) ;
 }
 
 template<typename T>
 inline enable_if_atomic2_t<T>
-load(T *value, std::memory_order order = std::memory_order_acq_rel)
+load(volatile T *value, std::memory_order order = std::memory_order_acq_rel)
 {
    T result = *value ;
    while(!cas2_strong(value, &result, result, order)) ;
@@ -367,7 +367,7 @@ load(T *value, std::memory_order order = std::memory_order_acq_rel)
 
 template<typename T>
 inline enable_if_atomic2_t<T, void>
-store(T *target, T value, std::memory_order order = std::memory_order_acq_rel)
+store(volatile T *target, T value, std::memory_order order = std::memory_order_acq_rel)
 {
    T expected = value ;
    while(!cas2_strong(target, &expected, value, order)) ;
@@ -381,7 +381,7 @@ store(T *target, T value, std::memory_order order = std::memory_order_acq_rel)
 /// @return Old value
 template<typename T, typename F>
 inline atomic_value_t<T>
-fetch_and_F(T *value, F &&fn, std::memory_order order = std::memory_order_acq_rel)
+fetch_and_F(volatile T *value, F &&fn, std::memory_order order = std::memory_order_acq_rel)
 {
    for (atomic_value_t<T> oldval = load(value, std::memory_order_relaxed) ;;)
    {
@@ -394,24 +394,24 @@ fetch_and_F(T *value, F &&fn, std::memory_order order = std::memory_order_acq_re
 /// Atomic check_and_apply
 template<typename T, typename F, typename C>
 inline std::pair<bool, atomic_value_t<T>>
-check_and_apply(T *value, C &&check_value, F &&convert_value,
+check_and_apply(volatile T *value, C &&check_value, F &&convert_value,
                 std::memory_order order = std::memory_order_acq_rel)
 {
-   atomic_value_t<T> oldval = load(value, std::memory_order_relaxed) ;
+   atomic_value_t<T> current = load(value, std::memory_order_acquire) ;
 
-   while(std::forward<C>(check_value)(oldval))
+   while(std::forward<C>(check_value)(current))
    {
-      const atomic_value_t<T> newval = std::forward<F>(convert_value)(oldval) ;
+      const atomic_value_t<T> newval = std::forward<F>(convert_value)(current) ;
 
-      if (cas(value, &oldval, newval, order))
-         return {true, oldval} ;
+      if (cas(value, &current, newval, order))
+         return {true, current} ;
    }
-   return {false, oldval} ;
+   return {false, current} ;
 }
 
 template<typename T, typename C>
 inline std::pair<bool, atomic_value_t<T>>
-check_and_swap(T *target, atomic_value_t<T> newval, C &&compare_values,
+check_and_swap(volatile T *target, atomic_value_t<T> newval, C &&compare_values,
                std::memory_order order = std::memory_order_acq_rel)
 {
    auto check_value = [&](atomic_value_t<T> oldval)
@@ -428,23 +428,23 @@ check_and_swap(T *target, atomic_value_t<T> newval, C &&compare_values,
 /// Atomic add
 template<typename T, typename I>
 inline enable_if_atomic_arithmetic_t<atomic_value_t<T>>
-add(T *value, I addend, std::memory_order order = std::memory_order_acq_rel)
+add(volatile T *value, I addend, std::memory_order order = std::memory_order_acq_rel)
 {
-   return reinterpret_cast<atomic_type_t<T> *>(value)->fetch_add(addend, order) + addend ;
+   return reinterpret_cast<volatile atomic_type_t<T> *>(value)->fetch_add(addend, order) + addend ;
 }
 
 /// Atomic subtract
 template<typename T, typename I>
 inline enable_if_atomic_arithmetic_t<atomic_value_t<T>>
-sub(T *value, I subtrahend, std::memory_order order = std::memory_order_acq_rel)
+sub(volatile T *value, I subtrahend, std::memory_order order = std::memory_order_acq_rel)
 {
-   return reinterpret_cast<atomic_type_t<T> *>(value)->fetch_sub(subtrahend, order) - subtrahend ;
+   return reinterpret_cast<volatile atomic_type_t<T> *>(value)->fetch_sub(subtrahend, order) - subtrahend ;
 }
 
 /// Atomic preincrement
 template<typename T>
 inline enable_if_atomic_arithmetic_t<atomic_value_t<T>>
-preinc(T *value, std::memory_order order = std::memory_order_acq_rel)
+preinc(volatile T *value, std::memory_order order = std::memory_order_acq_rel)
 {
    return add(value, 1, order) ;
 }
@@ -452,7 +452,7 @@ preinc(T *value, std::memory_order order = std::memory_order_acq_rel)
 /// Atomic predecrement
 template<typename T>
 inline enable_if_atomic_arithmetic_t<atomic_value_t<T>>
-predec(T *value, std::memory_order order = std::memory_order_acq_rel)
+predec(volatile T *value, std::memory_order order = std::memory_order_acq_rel)
 {
    return sub(value, 1, order) ;
 }
@@ -460,43 +460,43 @@ predec(T *value, std::memory_order order = std::memory_order_acq_rel)
 /// Atomic postincrement
 template<typename T>
 inline enable_if_atomic_arithmetic_t<atomic_value_t<T>>
-postinc(T *value, std::memory_order order = std::memory_order_acq_rel)
+postinc(volatile T *value, std::memory_order order = std::memory_order_acq_rel)
 {
-   return reinterpret_cast<atomic_type_t<T> *>(value)->fetch_add(1, order) ;
+   return reinterpret_cast<volatile atomic_type_t<T> *>(value)->fetch_add(1, order) ;
 }
 
 /// Atomic postdecrement
 template<typename T>
 inline enable_if_atomic_arithmetic_t<atomic_value_t<T>>
-postdec(T *value, std::memory_order order = std::memory_order_acq_rel)
+postdec(volatile T *value, std::memory_order order = std::memory_order_acq_rel)
 {
-   return reinterpret_cast<atomic_type_t<T> *>(value)->fetch_sub(1, order) ;
+   return reinterpret_cast<volatile atomic_type_t<T> *>(value)->fetch_sub(1, order) ;
 }
 
 template<typename T>
 inline enable_if_atomic_arithmetic_t<atomic_value_t<T>>
-bit_and(T *value, atomic_value_t<T> bits, std::memory_order order = std::memory_order_acq_rel)
+bit_and(volatile T *value, atomic_value_t<T> bits, std::memory_order order = std::memory_order_acq_rel)
 {
-   return reinterpret_cast<atomic_type_t<T> *>(value)->fetch_and(bits, order) ;
+   return reinterpret_cast<volatile atomic_type_t<T> *>(value)->fetch_and(bits, order) ;
 }
 
 template<typename T>
 inline enable_if_atomic_arithmetic_t<atomic_value_t<T>>
-bit_or(T *value, atomic_value_t<T> bits, std::memory_order order = std::memory_order_acq_rel)
+bit_or(volatile T *value, atomic_value_t<T> bits, std::memory_order order = std::memory_order_acq_rel)
 {
-   return reinterpret_cast<atomic_type_t<T> *>(value)->fetch_or(bits, order) ;
+   return reinterpret_cast<volatile atomic_type_t<T> *>(value)->fetch_or(bits, order) ;
 }
 
 template<typename T>
 inline enable_if_atomic_arithmetic_t<atomic_value_t<T>>
-bit_xor(T *value, atomic_value_t<T> bits, std::memory_order order = std::memory_order_acq_rel)
+bit_xor(volatile T *value, atomic_value_t<T> bits, std::memory_order order = std::memory_order_acq_rel)
 {
-   return reinterpret_cast<atomic_type_t<T> *>(value)->fetch_xor(bits, order) ;
+   return reinterpret_cast<volatile atomic_type_t<T> *>(value)->fetch_xor(bits, order) ;
 }
 
 template<typename T>
 inline enable_if_atomic_arithmetic_t<atomic_value_t<T>>
-bit_set(T *value, atomic_value_t<T> bits, atomic_value_t<T> mask, std::memory_order order = std::memory_order_acq_rel)
+bit_set(volatile T *value, atomic_value_t<T> bits, atomic_value_t<T> mask, std::memory_order order = std::memory_order_acq_rel)
 {
    bits &= mask ;
    return fetch_and_F(value, [=](atomic_value_t<T> v){ return v &~ mask | bits ; }, order) ;
@@ -508,7 +508,7 @@ bit_set(T *value, atomic_value_t<T> bits, atomic_value_t<T> mask, std::memory_or
 ///
 template<typename T>
 inline enable_if_atomic_arithmetic_t<T, bool>
-bit_cas(T *target, atomic_value_t<T> expected_bits, atomic_value_t<T> new_bits, atomic_value_t<T> mask,
+bit_cas(volatile T *target, atomic_value_t<T> expected_bits, atomic_value_t<T> new_bits, atomic_value_t<T> mask,
         std::memory_order order = std::memory_order_acq_rel)
 {
    typedef atomic_value_t<T> type ;
@@ -528,10 +528,10 @@ bit_cas(T *target, atomic_value_t<T> expected_bits, atomic_value_t<T> new_bits, 
 /// The pointed-to type must have alignment at least 2; it is checked at compile time.
 template<typename T>
 inline enable_if_atomic_ptr_t<atomic_value_t<T>>
-tag_ptr(T *pptr, std::memory_order order)
+tag_ptr(volatile T *pptr, std::memory_order order)
 {
    const uintptr_t tag = 1 ;
-   uintptr_t * const data_ptr = reinterpret_cast<uintptr_t *>(pptr) ;
+   volatile uintptr_t * const data_ptr = reinterpret_cast<volatile uintptr_t *>(pptr) ;
    return reinterpret_cast<atomic_value_t<T>>
       (bit_or(data_ptr, tag, order)) ;
 }
@@ -540,10 +540,10 @@ tag_ptr(T *pptr, std::memory_order order)
 /// The pointed-to type must have alignment at least 2; it is checked at compile time.
 template<typename T>
 inline enable_if_atomic_ptr_t<atomic_value_t<T>>
-untag_ptr(T *pptr, std::memory_order order)
+untag_ptr(volatile T *pptr, std::memory_order order)
 {
    const uintptr_t mask = alignof(T) - 1 ;
-   uintptr_t * const data_ptr = reinterpret_cast<uintptr_t *>(pptr) ;
+   volatile uintptr_t * const data_ptr = reinterpret_cast<volatile uintptr_t *>(pptr) ;
    return reinterpret_cast<atomic_value_t<T>>
       (bit_and(data_ptr, mask, order)) ;
 }
@@ -552,10 +552,10 @@ untag_ptr(T *pptr, std::memory_order order)
 /// The pointed-to type must have alignment at least 2; it is checked at compile time.
 template<typename T>
 inline enable_if_atomic_ptr_t<atomic_value_t<T>>
-fliptag_ptr(T *pptr, std::memory_order order)
+fliptag_ptr(volatile T *pptr, std::memory_order order)
 {
    const uintptr_t tag = 1 ;
-   uintptr_t * const data_ptr = reinterpret_cast<uintptr_t *>(pptr) ;
+   volatile uintptr_t * const data_ptr = reinterpret_cast<volatile uintptr_t *>(pptr) ;
    return reinterpret_cast<atomic_value_t<T>>
       (bit_xor(data_ptr, tag, order)) ;
 }
