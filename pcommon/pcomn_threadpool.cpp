@@ -247,32 +247,43 @@ unsigned threadpool::clear_queue()
 
 void threadpool::resize(size_t threadcount)
 {
-    thread_count count ;
-    const int32_t new_count = std::min(threadcount, max_threadcount()) ;
+    // Atomically preincrement or decrement _pending, return new counter
+    const thread_count expect = [this, new_size=(int32_t)std::min(threadcount, max_threadcount())]
     {
         PCOMN_SCOPE_LOCK(lock, _pool_mutex) ;
 
-        const int32_t current_count = size() ;
-        if (current_count == new_count)
-            return ;
+        thread_count oldcount ;
+        bool needs_resize ;
 
-        ensure<object_closed>(current_count >= 0, "Thread pool") ;
+        // Atomically increment _thread_count._pending by the count of threads to start
+        // (negative, if there are too many running threads and some must be stopped
+        // instead of started).
+        // TODO: structured binding when C++17
 
-        // How many threads to start? (negative, if there are too many threads).
-        const int32_t increment = new_count - current_count ;
+        std::tie(needs_resize, oldcount) = atomic_op::check_and_apply
+            (&_thread_count,
 
-        count = atomic_op::fetch_and_F(&_thread_count, [increment](thread_count prev_count)
-        {
-            return thread_count(prev_count._running,  prev_count._diff + increment) :
-        }) ;
+             [new_size](thread_count current) /* Check */
+             {
+                 return current.expected_count() != new_size & current.expected_count() >= 0 ;
+             },
 
-        count._diff += increment ;
-    }
+             [new_size](thread_count current) /* Apply */
+             {
+                 return thread_count(current.running_count(), new_size - current.running_count()) ;
+             }) ;
 
-    if (count._diff >= 0)
+        ensure<object_closed>(oldcount.expected_count() >= 0, "Thread pool") ;
+
+        return needs_resize ? thread_count(oldcount.running_count(), new_size - oldcount.running_count()) : thread_count() ;
+    }() ;
+
+    if (!expect)
+        return ;
+
+    if (expect.pending_count() >= 0)
         // Check if we need a new thread and, if so, make single attempt to start one.
-        check_launch_new_thread(count) ;
-
+        check_launch_new_thread(expect) ;
     else
         // Gentle attempt to force dismissing threads.
         try_force_dismiss_spare_threads() ;
@@ -296,15 +307,25 @@ void threadpool::worker_thread_function(thread_list::iterator self)
 threadpool::Dismiss threadpool::handle_pool_resize(thread_list::iterator self) noexcept
 {
     // Check if there are too many threads, and if so, dismiss itself.
-    auto result = check_dismiss_itself(self) ;
+    const auto result = check_dismiss_itself(self) ;
 
-    const Dismiss dismiss = (Dismiss)std::get<bool>(result) ;
+    const bool dismiss = std::get<bool>(result) ;
     const thread_count current_count = std::get<thread_count>(result) ;
 
-    NOXCHECK(dismiss || current_count._diff >= 0) ;
+    NOXCHECK(dismiss || current_count.pending_count() >= 0) ;
+
+    if (dismiss)
+        return DISMISS ;
 
     // If there is not enough threads, attempt to launch a new thread
     SUPPRESS_EXCEPTION(check_launch_new_thread(current_count)) ;
+
+    // Use try_lock() while aquiring _pool_mutex, avoid waiting: this is just
+    // an opportunistic attempt, not a mandatory action.
+    if (!_dropped.load(std::memory_order_acquire) || !_pool_mutex.try_lock())
+    {
+        return CONTINUE ;
+    }
 
     // If there is a pending dropped thread, and it's not the current thread,
     // attempt to join it.
@@ -312,38 +333,36 @@ threadpool::Dismiss threadpool::handle_pool_resize(thread_list::iterator self) n
     // destructor of `drop` is called to avoid deadlock, the destructor calls join().
     thread_list drop ;
 
-    if (!dismiss &&
-        _dropped.load(std::memory_order_relaxed) &&
-        // Use try_lock(), avoid waiting: this is just an opportunistic attempt,
-        // not a mandatory action.
-        _pool_mutex.try_lock())
-    {
-        PCOMN_SCOPE_LOCK(lock, _pool_mutex, std::adopt_lock) ;
+    // Note the _pool_mutex is already acquired (see above)
+    PCOMN_SCOPE_LOCK(lock, _pool_mutex, std::adopt_lock) ;
 
-        if (!_destroying && _dropped_thread.size())
-        {
-            std::swap(_dropped_thread, drop) ;
-            _dropped.store(false, std::memory_order_release) ;
-        }
+    if (!_destroying && !_dropped_thread.empty())
+    {
+        std::swap(_dropped_thread, drop) ;
+        _dropped.store(false, std::memory_order_release) ;
     }
 
-    return dismiss ;
+    return CONTINUE ;
 }
 
 std::pair<bool, threadpool::thread_count> threadpool::check_dismiss_itself(thread_list::iterator self) noexcept
 {
-    auto dismissed = atomic_op::check_and_apply
+    // If there are threads to stop (i.e. pending_count()<0), atomically set the new
+    // threads count.
+    const auto dismissed = atomic_op::check_and_apply
         (&_thread_count,
 
-         [](thread_count oldcount) /* Check */
+         [](thread_count current_value) /* Check */
          {
-             return oldcount._diff < 0 ;
+             // Are there threads to stop?
+             return current_value.pending_count() < 0 ;
          },
 
-         [](thread_count oldcount) /* Apply, convert oldcount to newcount */
+         [](thread_count current_value) /* Apply, convert the current count to newcount */
          {
-             PCOMN_VERIFY(oldcount.expected_count() >= 0) ;
-             return oldcount -= 1 ;
+             PCOMN_VERIFY(current_value.expected_count() >= 0) ;
+
+             return thread_count(current_value, -1) ;
          }) ;
 
     if (!std::get<bool>(dismissed))
@@ -375,7 +394,7 @@ std::pair<bool, threadpool::thread_count> threadpool::check_dismiss_itself(threa
 
 bool threadpool::check_launch_new_thread(thread_count current_count)
 {
-    if (current_count._diff <= 0)
+    if (current_count.pending_count() <= 0)
         return false ;
 
     TRACEPX(PCOMN_ThreadPool, DBGL_NORMAL, "Worker thread " << pthread::id::this_thread()
@@ -384,13 +403,12 @@ bool threadpool::check_launch_new_thread(thread_count current_count)
     // Prepare allocated list item before entering critical section:
     // reduce potential exception points.
     thread_list new_thread (1) ;
-
-    thread_count newcount = current_count ;
-    newcount += 1 ;
+    // The count after the new thread is launched
+    const thread_count newcount (current_count, +1) ;
 
     if (!_thread_count.compare_exchange_strong(current_count, newcount, std::memory_order_acq_rel))
     {
-        return current_count._diff > 0 ;
+        return current_count.pending_count() > 0 ;
     }
 
     PCOMN_SCOPE_LOCK(lock, _pool_mutex) ;
@@ -403,7 +421,7 @@ bool threadpool::check_launch_new_thread(thread_count current_count)
         LOGPXERR(PCOMN_ThreadPool,
                  "Exception attempting to launch a new thread for " << *this << ": " << oexception()) ;
 
-        atomic_op::fetch_and_F(&_thread_count, [](thread_count c) { return c -= 1 ; }) ;
+        atomic_op::fetch_and_F(&_thread_count, [](thread_count current) { return thread_count(current, -1) ; }) ;
 
         NOXCHECK(new_thread.empty()) ;
         _threads.erase(_threads.begin()) ;
@@ -420,20 +438,22 @@ bool threadpool::check_launch_new_thread(thread_count current_count)
     TRACEPX(PCOMN_ThreadPool, DBGL_NORMAL, "Worker thread " << pthread::id::this_thread()
             << " started a new worker thread, new thread count is " << newcount) ;
 
-    return newcount._diff > 0 ;
+    // true, if there are still threads to start
+    return current_count.pending_count() > 0 ;
 }
 
 void threadpool::try_force_dismiss_spare_threads()
 {
     static constexpr auto null_timeout = 100us ;
 
-    for (int diff = _thread_count.load(std::memory_order_relaxed)._diff ; diff < 0 ; ++diff)
+    for (int dismiss_count = -_thread_count.load(std::memory_order_relaxed).pending_count() ; dismiss_count > 0 ; --dismiss_count)
     {
         PCOMN_SCOPE_LOCK(lock, _pool_mutex) ;
 
-        const ssize_t spare_threads = -_thread_count.load(std::memory_order_acquire)._diff - _task_queue.size() ;
-        if (spare_threads <= 0)
-            break ;
+        const ssize_t actual_dismiss_count = -_thread_count.load(std::memory_order_acquire).pending_count() ;
+
+        if (actual_dismiss_count <= (ssize_t)_task_queue.size())
+            return ;
 
         // Try to put a null task into the queue to raise chances a worker thread will
         // check_dismiss_itself() ASAP.

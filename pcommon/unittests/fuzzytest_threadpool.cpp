@@ -276,6 +276,7 @@ void ThreadPoolFuzzyTests::MultiDynamicResize(milliseconds test_duration,
 
 void ThreadPoolFuzzyTests::Test_ThreadPool_MultiDynamicResize()
 {
+    MultiDynamicResize(2s,    16, 4, 4, 1'000'000) ;
     MultiDynamicResize(300ms, 2, 1,  2048, 1'000'000) ;
     MultiDynamicResize(1s,    16, 8, 32*KiB, 1'000'000) ;
     MultiDynamicResize(500ms, 16, 4, 4, 1'000'000) ;
