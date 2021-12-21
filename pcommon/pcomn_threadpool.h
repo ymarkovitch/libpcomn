@@ -549,6 +549,7 @@ private:
         constexpr int running_count() const { return _running ; }
 
         static constexpr thread_count stopped() { return {-1, 0} ; }
+        static constexpr bool is_stopped(thread_count v) { return v._running < 0 ; }
 
         uint64_t _data ;
 

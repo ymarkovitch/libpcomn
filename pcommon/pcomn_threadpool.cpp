@@ -413,6 +413,9 @@ bool threadpool::check_launch_new_thread(thread_count current_count)
 
     PCOMN_SCOPE_LOCK(lock, _pool_mutex) ;
 
+    if (thread_count::is_stopped(_thread_count.load(std::memory_order_acquire)))
+        return false ;
+
     // If pthread constructor has thrown exception, roll back all the already
     // taken actions: decrement thread count and delete new thread placeholder
     // from _threads.
