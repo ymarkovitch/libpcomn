@@ -26,23 +26,74 @@ class IdentDispenserTests : public CppUnit::TestFixture {
 
    private:
       template<typename AtomicInt>
-      void Test_IdentDispenser_SingleThread() ;
+      void Test_Dispenser_SingleThread() ;
       template<typename AtomicInt>
-      void Test_IdentDispenser_MultiThread() ;
+      void Test_Dispenser_MultiThread() ;
+
+      template<typename AtomicInt>
+      void Test_LocalIdentDispenser_SingleThread() ;
+      template<typename AtomicInt>
+      void Test_LocalIdentDispenser_MultiThread() ;
 
       CPPUNIT_TEST_SUITE(IdentDispenserTests) ;
 
-      CPPUNIT_TEST(Test_IdentDispenser_SingleThread<int32_t>) ;
-      CPPUNIT_TEST(Test_IdentDispenser_SingleThread<int64_t>) ;
-      CPPUNIT_TEST(Test_IdentDispenser_SingleThread<uint64_t>) ;
-      CPPUNIT_TEST(Test_IdentDispenser_MultiThread<int32_t>) ;
-      CPPUNIT_TEST(Test_IdentDispenser_MultiThread<int64_t>) ;
-      CPPUNIT_TEST(Test_IdentDispenser_MultiThread<uint64_t>) ;
+      CPPUNIT_TEST(Test_Dispenser_SingleThread<int32_t>) ;
+      CPPUNIT_TEST(Test_Dispenser_SingleThread<int64_t>) ;
+      CPPUNIT_TEST(Test_Dispenser_SingleThread<uint64_t>) ;
+      CPPUNIT_TEST(Test_Dispenser_MultiThread<int32_t>) ;
+      CPPUNIT_TEST(Test_Dispenser_MultiThread<int64_t>) ;
+      CPPUNIT_TEST(Test_Dispenser_MultiThread<uint64_t>) ;
 
       CPPUNIT_TEST_SUITE_END() ;
 } ;
 
+/*******************************************************************************
+                     class LocalIdentDispenserTests
+*******************************************************************************/
+class LocalIdentDispenserTests : public CppUnit::TestFixture {
+   private:
+      template<typename AtomicInt, int increment=1>
+      void Test_LocalDispenser_SingleThread() ;
+      template<typename AtomicInt, int increment=1>
+      void Test_LocalDispenser_MultiThread() ;
 
+      CPPUNIT_TEST_SUITE(LocalIdentDispenserTests) ;
+
+      CPPUNIT_TEST(Test_LocalDispenser_SingleThread<int32_t>) ;
+      CPPUNIT_TEST(Test_LocalDispenser_SingleThread<int64_t>) ;
+      CPPUNIT_TEST(Test_LocalDispenser_SingleThread<uint64_t>) ;
+      CPPUNIT_TEST(Test_LocalDispenser_MultiThread<int32_t>) ;
+      CPPUNIT_TEST(Test_LocalDispenser_MultiThread<int64_t>) ;
+      CPPUNIT_TEST(Test_LocalDispenser_MultiThread<uint64_t>) ;
+
+      CPPUNIT_TEST_SUITE_END() ;
+} ;
+
+/*******************************************************************************
+ Common utilities
+*******************************************************************************/
+template<typename I>
+struct eq_diff : std::binary_function<I, I, bool> {
+      eq_diff(I d) : diff(d) {}
+
+      bool operator()(I lhs, I rhs) const { return rhs - lhs == diff ; }
+
+      I diff ;
+} ;
+
+template<typename I, typename ForwardIterator>
+static void check_dispensed(I front, ForwardIterator from, ForwardIterator to)
+{
+   if (from == to)
+      return ;
+   CPPUNIT_LOG_EQUAL(*from, front) ;
+   CPPUNIT_LOG_ASSERT(std::adjacent_find(from, to, std::not2(eq_diff<I>(1))) == to) ;
+}
+
+
+/*******************************************************************************
+ IdentDispenserTests
+*******************************************************************************/
 template<typename Int>
 struct TestRangeProvider  {
 
@@ -68,27 +119,8 @@ struct TestRangeProvider  {
       }
 } ;
 
-template<typename I>
-struct eq_diff : std::binary_function<I, I, bool> {
-      eq_diff(I d) : diff(d) {}
-
-      bool operator()(I lhs, I rhs) const { return rhs - lhs == diff ; }
-
-      I diff ;
-} ;
-
-template<typename I, typename ForwardIterator>
-static void check_dispensed(I front, ForwardIterator from, ForwardIterator to)
-{
-   if (from == to)
-      return ;
-   CPPUNIT_LOG_EQUAL(*from, front) ;
-   CPPUNIT_LOG_ASSERT(std::adjacent_find(from, to, std::not2(eq_diff<I>(1))) == to) ;
-}
-
 template<typename AtomicInt, typename RangeProvider>
 class IdDispenserThread {
-      typedef std::thread ancestor ;
    public:
       typedef std::vector<AtomicInt> result_type ;
       typedef pcomn::ident_dispenser<AtomicInt, RangeProvider> dispenser_type ;
@@ -123,11 +155,11 @@ class IdDispenserThread {
 } ;
 
 template<typename AtomicInt>
-void IdentDispenserTests::Test_IdentDispenser_SingleThread()
+void IdentDispenserTests::Test_Dispenser_SingleThread()
 {
    typedef std::vector<AtomicInt> result_type ;
 
-   pcomn::ident_dispenser<AtomicInt, TestRangeProvider<int> >
+   pcomn::ident_dispenser<AtomicInt, TestRangeProvider<int>>
       Dispenser (TestRangeProvider<int>(0, 1111)) ;
 
    result_type Result (1000) ;
@@ -140,11 +172,11 @@ void IdentDispenserTests::Test_IdentDispenser_SingleThread()
 
 
 template<typename AtomicInt>
-void IdentDispenserTests::Test_IdentDispenser_MultiThread()
+void IdentDispenserTests::Test_Dispenser_MultiThread()
 {
-   typedef IdDispenserThread<AtomicInt, TestRangeProvider<int> > TestThread ;
+   typedef IdDispenserThread<AtomicInt, TestRangeProvider<int>> TestThread ;
 
-   pcomn::ident_dispenser<AtomicInt, TestRangeProvider<int> >
+   pcomn::ident_dispenser<AtomicInt, TestRangeProvider<int>>
       Dispenser (TestRangeProvider<int>(0, 509)) ;
 
    const size_t setsize = 32 ;
@@ -188,6 +220,23 @@ void IdentDispenserTests::Test_IdentDispenser_MultiThread()
    check_dispensed((AtomicInt)0, ResultSet[0].begin(), ResultSet[0].end()) ;
 }
 
+/*******************************************************************************
+ LocalIdentDispenserTests
+*******************************************************************************/
+template<typename AtomicInt, int increment>
+void LocalIdentDispenserTests::Test_LocalDispenser_SingleThread()
+{
+}
+
+
+template<typename AtomicInt, int increment>
+void LocalIdentDispenserTests::Test_LocalDispenser_MultiThread()
+{
+}
+
+/*******************************************************************************
+ main
+*******************************************************************************/
 int main(int argc, char *argv[])
 {
    pcomn::unit::TestRunner runner ;
