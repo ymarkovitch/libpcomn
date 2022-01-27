@@ -1,11 +1,10 @@
 /*-*- tab-width:3; indent-tabs-mode:nil; c-file-style:"ellemtel"; c-file-offsets:((innamespace . 0)(inclass . ++)) -*-*/
 /*******************************************************************************
- FILE         :   unittest_synccomplex.cpp
+ FILE         :   unittest_ident_dispenser.cpp
  COPYRIGHT    :   Yakov Markovitch, 2009-2020. All rights reserved.
                   See LICENSE for information on usage/redistribution.
 
- DESCRIPTION  :   Unittests for the some obscure synchronization objects:
-                  identifier dispenser, keyed mutex, etc..
+ DESCRIPTION  :   Unittests for ident_dispenser and local_ident_dispenser.
 
  PROGRAMMED BY:   Yakov Markovitch
  CREATION DATE:   22 Feb 2009
@@ -244,6 +243,6 @@ int main(int argc, char *argv[])
 
    return
       pcomn::unit::run_tests
-      (runner, argc, argv, "synccomplex.diag.ini",
+      (runner, argc, argv, "ident_dispenser.diag.ini",
        "Tests of nontrivial synchronization objects (queues, producer/consumer, etc.)") ;
 }
