@@ -60,10 +60,15 @@ class LocalIdentDispenserTests : public CppUnit::TestFixture {
 
       CPPUNIT_TEST(Test_LocalDispenser_SingleThread<int32_t>) ;
       CPPUNIT_TEST(Test_LocalDispenser_SingleThread<int64_t>) ;
+      CPPUNIT_TEST(Test_LocalDispenser_SingleThread<P_PASS(int64_t,256)>) ;
+      CPPUNIT_TEST(Test_LocalDispenser_SingleThread<P_PASS(int64_t,16)>) ;
       CPPUNIT_TEST(Test_LocalDispenser_SingleThread<uint64_t>) ;
+      CPPUNIT_TEST(Test_LocalDispenser_SingleThread<P_PASS(uint64_t,2)>) ;
       CPPUNIT_TEST(Test_LocalDispenser_MultiThread<int32_t>) ;
       CPPUNIT_TEST(Test_LocalDispenser_MultiThread<int64_t>) ;
+      CPPUNIT_TEST(Test_LocalDispenser_MultiThread<P_PASS(int64_t,256)>) ;
       CPPUNIT_TEST(Test_LocalDispenser_MultiThread<uint64_t>) ;
+      CPPUNIT_TEST(Test_LocalDispenser_MultiThread<P_PASS(uint64_t,16)>) ;
 
       CPPUNIT_TEST_SUITE_END() ;
 } ;
@@ -81,12 +86,27 @@ struct eq_diff : std::binary_function<I, I, bool> {
 } ;
 
 template<typename I, typename ForwardIterator>
-static void check_dispensed(I front, ForwardIterator from, ForwardIterator to)
+static void check_dispensed(I front, ForwardIterator from, ForwardIterator to, int increment = 1)
 {
    if (from == to)
       return ;
    CPPUNIT_LOG_EQUAL(*from, front) ;
-   CPPUNIT_LOG_ASSERT(std::adjacent_find(from, to, std::not2(eq_diff<I>(1))) == to) ;
+
+   const auto bad = std::adjacent_find(from, to, [increment](auto prev, auto next)
+   {
+      return !(prev < next && !((next - prev) % increment)) ;
+   }) ;
+
+   if (bad != to)
+   {
+      auto next_to_bad = bad ;
+      ++next_to_bad ;
+      CPPUNIT_LOG_EXPRESSION(std::make_pair(*bad, *next_to_bad)) ;
+      CPPUNIT_LOG_EXPRESSION(std::distance(from, bad)) ;
+      CPPUNIT_LOG_EXPRESSION(std::distance(from, to)) ;
+      CPPUNIT_LOG_EXPRESSION(*std::next(from, std::distance(from, to) - 1)) ;
+   }
+   CPPUNIT_LOG_ASSERT(bad == to) ;
 }
 
 
@@ -94,7 +114,7 @@ static void check_dispensed(I front, ForwardIterator from, ForwardIterator to)
  IdentDispenserTests
 *******************************************************************************/
 template<typename Int>
-struct TestRangeProvider  {
+struct TestRangeProvider {
 
       typedef std::pair<Int, Int> result_type ;
 
@@ -111,7 +131,7 @@ struct TestRangeProvider  {
          const Int from = _next ;
          const Int to = from + _step ;
          // Introduce a race condition
-         msleep((int)(5 * (rand() / (RAND_MAX + 0.0)))) ;
+         msleep((int)(4 * (rand() / (RAND_MAX + 0.0)))) ;
          _next = to ;
 
          return result_type(from, to) ;
@@ -143,7 +163,7 @@ class IdDispenserThread {
             _result.push_back(_dispenser.allocate_id()) ;
             const unsigned r = rand_r(&seed) ;
             if ((r & 0x70) == 0x70)
-               msleep(r & 2) ;
+               usleep((r & 2)*100) ;
          }
       }
    private:
@@ -222,15 +242,108 @@ void IdentDispenserTests::Test_Dispenser_MultiThread()
 /*******************************************************************************
  LocalIdentDispenserTests
 *******************************************************************************/
+constexpr int blocksize = 256 ;
+
+template<typename AtomicInt, int increment>
+using dispenser_st = pcomn::local_ident_dispenser<LocalIdentDispenserTests, AtomicInt, blocksize, increment> ;
+
+template<typename AtomicInt, int increment>
+class LocalIdDispenserThread {
+   public:
+      typedef std::vector<AtomicInt> result_type ;
+      typedef pcomn::local_ident_dispenser<LocalIdDispenserThread, AtomicInt, blocksize, increment> dispenser_type ;
+
+      LocalIdDispenserThread(result_type &result, unsigned count) :
+         _result(result),
+         _count(count),
+         _thread([this]{ run() ; })
+      {}
+
+      void join() { _thread.join() ; }
+
+   protected:
+      void run()
+      {
+         unsigned seed ;
+
+         for (unsigned cnt = _count ; cnt ; --cnt)
+         {
+            _result.push_back(dispenser_type::allocate_id()) ;
+            const unsigned r = rand_r(&seed) ;
+            if ((r & 0x70) == 0x70)
+               usleep((r & 2)*50) ;
+         }
+      }
+   private:
+      result_type &     _result ;
+      const unsigned    _count ;
+      std::thread       _thread ;
+} ;
+
 template<typename AtomicInt, int increment>
 void LocalIdentDispenserTests::Test_LocalDispenser_SingleThread()
 {
-}
+   typedef std::vector<AtomicInt> result_type ;
+   typedef dispenser_st<AtomicInt, increment> dispenser_type ;
 
+   result_type Result (1000) ;
+   for (auto &id: Result)
+      id = dispenser_type::allocate_id() ;
+
+   check_dispensed((AtomicInt)blocksize, Result.begin(), Result.end(), increment) ;
+}
 
 template<typename AtomicInt, int increment>
 void LocalIdentDispenserTests::Test_LocalDispenser_MultiThread()
 {
+   typedef LocalIdDispenserThread<AtomicInt, increment> TestThread ;
+
+   constexpr size_t setsize = 16 ;
+   constexpr size_t count =
+#ifdef __PCOMN_DEBUG
+      10000
+#else
+      20000
+#endif
+      ;
+
+   std::vector<AtomicInt> ResultSet[setsize] ;
+   std::unique_ptr<TestThread> ThreadSet[setsize] ;
+
+   for (unsigned t = 0 ; t < setsize ; ++t)
+      ThreadSet[t].reset(new TestThread(ResultSet[t], count)) ;
+
+   for (unsigned t = 0 ; t < setsize ; ++t)
+      ThreadSet[t]->join() ;
+
+   for (unsigned t = 0 ; t < setsize ; ++t)
+      CPPUNIT_EQUAL(ResultSet[t].size(), count) ;
+
+   for (unsigned t = 0 ; t < setsize ; ++t)
+   {
+      const auto bad = std::adjacent_find(ResultSet[t].begin(), ResultSet[t].end(), [](auto prev, auto next)
+      {
+         return !(prev + increment <= next && !((next - prev) % increment)) ;
+      }) ;
+      if (bad != ResultSet[t].end())
+      {
+         CPPUNIT_LOG_EXPRESSION(std::make_pair(*bad, *(bad+1))) ;
+      }
+      CPPUNIT_ASSERT(bad == ResultSet[t].end()) ;
+   }
+
+   // Merge 'em
+   std::vector<AtomicInt> result ;
+   result.reserve(setsize*count) ;
+   for (const auto &rv: ResultSet)
+   {
+      result.insert(result.end(), rv.begin(), rv.end()) ;
+   }
+
+   CPPUNIT_LOG_EQUAL(result.size(), setsize*count) ;
+   CPPUNIT_LOG_RUN(std::sort(result.begin(), result.end())) ;
+
+   check_dispensed((AtomicInt)blocksize, result.begin(), result.end(), increment) ;
 }
 
 /*******************************************************************************
@@ -238,11 +351,10 @@ void LocalIdentDispenserTests::Test_LocalDispenser_MultiThread()
 *******************************************************************************/
 int main(int argc, char *argv[])
 {
-   pcomn::unit::TestRunner runner ;
-   runner.addTest(IdentDispenserTests::suite()) ;
-
-   return
-      pcomn::unit::run_tests
-      (runner, argc, argv, "ident_dispenser.diag.ini",
-       "Tests of nontrivial synchronization objects (queues, producer/consumer, etc.)") ;
+   return pcomn::unit::run_tests
+       <
+          IdentDispenserTests,
+          LocalIdentDispenserTests
+       >
+       (argc, argv) ;
 }
