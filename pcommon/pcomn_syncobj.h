@@ -455,6 +455,7 @@ class local_ident_dispenser {
       PCOMN_STATIC_CHECK(!(blocksize % increment)) ;
    public:
       typedef Int type ;
+      typedef Tag tag_type ;
 
       /// Atomically allocate new ID.
       /// The returned ID is nonzero and unique in the process run.
