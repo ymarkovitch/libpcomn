@@ -302,7 +302,7 @@ using tagged_cptr_union = tagged_ptr_union<const T1, const T2, const T ...> ;
 *******************************************************************************/
 template<typename Principal, typename Tag, bool=pcomn::is_literal_type<Principal>::value> struct tdef ;
 
-template<typename Principal, typename Tag>
+template<typename Principal, typename Tag = void>
 using strong_typedef = tdef<Principal, Tag> ;
 
 /// If T is a strong typedef type, provides a member typedef type that names the
@@ -349,8 +349,14 @@ template<typename Principal, typename Tag>
 struct tdef<Principal, Tag, false> {
       tdef() = default ;
       explicit tdef(const Principal &v) : _data(v) {}
+      explicit tdef(Principal &&v) : _data(std::move(v)) {}
       tdef(const tdef &) = default ;
       tdef(tdef &&) = default ;
+
+      template<typename Arg1, typename... Args>
+      tdef(std::piecewise_construct_t, Arg1 &&a1, Args && ...as) :
+         _data(std::forward<Arg1>(a1), std::forward<Args>(as)...)
+      {}
 
       tdef &operator=(const tdef &) = default ;
       tdef &operator=(tdef &&) = default ;
