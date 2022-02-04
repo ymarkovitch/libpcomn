@@ -459,7 +459,7 @@ class local_ident_dispenser {
 
       /// Atomically allocate new ID.
       /// The returned ID is nonzero and unique in the process run.
-      static type allocate_id()
+      static type allocate_id() noexcept
       {
          if (_next_id == _range_end)
          {
