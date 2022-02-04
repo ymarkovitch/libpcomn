@@ -396,7 +396,8 @@ inline std::ostream &operator<<(std::ostream &os, const tdef<P,G> &v) { return o
 /**}@*/
 
 /***************************************************************************//**
-
+ A template that provides "zero-when-moved-from" logic for any type, including
+ literal types.
 *******************************************************************************/
 template<typename T>
 struct auto_value {
