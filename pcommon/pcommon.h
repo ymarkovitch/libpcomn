@@ -447,6 +447,16 @@ struct deep_copy_t { explicit deep_copy_t() = default ; } ;
 constexpr deep_copy_t deep_copy {} ;
 /**@{*/
 
+
+/***************************************************************************//**
+
+*******************************************************************************/
+template<typename T>
+struct pseudocopyable : public T {
+      using T::T ;
+      pseudocopyable(const pseudocopyable &) : T() {}
+} ;
+
 /*******************************************************************************
  void * pointer arithmetics
 *******************************************************************************/
