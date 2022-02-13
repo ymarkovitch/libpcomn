@@ -30,9 +30,9 @@
  C++ code starts here
 *******************************************************************************/
 #ifdef __cplusplus
+#include <pcomn_meta.h>
 #include <stdexcept>
 #include <system_error>
-#include <type_traits>
 #include <utility>
 #include <array>
 
@@ -294,14 +294,14 @@ class vsaver {
          _var(&variable)
       {}
 
-      vsaver(T &variable, const T &new_value) :
+      vsaver(T &variable, const std::type_identity_t<T> &new_value) :
          _saved(variable),
          _var(&variable)
       {
          variable = new_value ;
       }
 
-      vsaver(T &variable, T &&new_value) :
+      vsaver(T &variable, std::type_identity_t<T> &&new_value) :
          _saved(variable),
          _var(&variable)
       {
