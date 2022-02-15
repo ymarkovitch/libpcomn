@@ -198,8 +198,10 @@ using ulonglong_constant = std::integral_constant<unsigned long long, v> ;
 template<size_t v>
 using size_constant = std::integral_constant<size_t, v> ;
 
+#ifdef PCOMN_COMPILER_CXX17
 template<auto v>
 using integral_constval = std::integral_constant<decltype(v), v> ;
+#endif
 
 /***************************************************************************//**
  @name TypeTraits
