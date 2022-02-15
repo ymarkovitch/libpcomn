@@ -541,6 +541,11 @@ DECLARE_DIAG_GROUP(Def, _PCOMNEXP) ;
 /// Output debug message both into the diagnostics trace and system log, if tracing and
 /// specified diagnostics group are enabled.
 ///
+/// Tracing:    ENABLED
+/// Supergroup: ENABLED
+/// Group:      ENABLED (i.e. at least `1 0`)
+/// Level:      IGNORED
+///
 /// This macro closely resembles TRACEPX, but in contrast to the latter its code doesn't
 /// disappear from compiled code in release mode. While in release mode it never writes
 /// into the diagnostics trace log, it can write into syslog, subject to @a GRP.
@@ -552,9 +557,14 @@ DECLARE_DIAG_GROUP(Def, _PCOMNEXP) ;
 
 /// Output DEBUG message
 ///   - into the system log if diagnostics output is overall enabled
-///     (@see DiagMode::DisableDebugOutpu, @see diag_isenabled_diag()), and
+///     (@see DiagMode::DisableDebugOutput, @see diag_isenabled_diag()), and
 ///   - into the diagnostics trace if tracing and **supergroup** of the specified @a GRP
 ///     are enabled
+///
+/// Tracing:    ENABLED
+/// Supergroup: ENABLED
+/// Group:      IGNORED
+/// Level:      IGNORED
 ///
 #define LOGPXDBG(GRP, MSG)                                              \
    (::diag_isenabled_diag() && ::diag::PDiagBase::Lock() &&             \
@@ -564,8 +574,10 @@ DECLARE_DIAG_GROUP(Def, _PCOMNEXP) ;
 /// Output INFO message into the system log and, if *both* tracing and **supergroup**
 /// of the specified @a GRP are enabled, also into diagnostics trace.
 ///
-/// @note Doesn't take subgroup and diagnostics level into account (i.e. it is enough
-/// that the **supergroup** is enabled).
+/// Tracing:    ENABLED
+/// Supergroup: ENABLED
+/// Group:      IGNORED
+/// Level:      IGNORED
 ///
 #define LOGPXINFO(GRP, MSG)                                             \
    (::diag::PDiagBase::Lock() &&                                        \
@@ -575,8 +587,10 @@ DECLARE_DIAG_GROUP(Def, _PCOMNEXP) ;
 /// Output NOTICE message into the system log and, if *both* tracing and **supergroup**
 /// of the specified @a GRP are enabled, also into diagnostics trace.
 ///
-/// @note Doesn't take subgroup and diagnostics level into account (i.e. it is enough
-/// that the **supergroup** is enabled).
+/// Tracing:    ENABLED
+/// Supergroup: ENABLED
+/// Group:      IGNORED
+/// Level:      IGNORED
 ///
 #define LOGPXNOTE(GRP, MSG)                                             \
    (::diag::PDiagBase::Lock() &&                                        \
@@ -587,6 +601,11 @@ DECLARE_DIAG_GROUP(Def, _PCOMNEXP) ;
 /// of the specified @a GRP are enabled, also into diagnostics trace.
 /// @note On Unix, writes into syslog with LOG_WARNING priority.
 ///
+/// Tracing:    ENABLED
+/// Supergroup: ENABLED
+/// Group:      IGNORED
+/// Level:      IGNORED
+///
 #define LOGPXWARN(GRP, MSG)                                             \
    (::diag::PDiagBase::Lock() &&                                        \
     LOGMSGPX(GRP, WARNING, MSG) &&                                      \
@@ -595,6 +614,11 @@ DECLARE_DIAG_GROUP(Def, _PCOMNEXP) ;
 /// Output  ERROR message into the system log and, if tracing enabled, also into
 /// diagnostics trace.
 /// @note On Unix, writes into syslog with LOG_ERR priority.
+///
+/// Tracing:    ENABLED
+/// Supergroup: IGNORED
+/// Group:      IGNORED
+/// Level:      IGNORED
 ///
 #define LOGPXERR(GRP, MSG)                                              \
    (::diag::PDiagBase::Lock() &&                                        \
@@ -606,6 +630,11 @@ DECLARE_DIAG_GROUP(Def, _PCOMNEXP) ;
 /// @note When writes to the diagnostics trace, takes neither group enabled state nore
 /// diagnostics level into account (i.e. it is enough that the @em tracing is enabled).
 ///
+/// Tracing:    ENABLED
+/// Supergroup: IGNORED
+/// Group:      IGNORED
+/// Level:      IGNORED
+///
 #define LOGPXCRIT(GRP, MSG)                                             \
    (::diag::PDiagBase::Lock() &&                                        \
     LOGMSGPX(GRP, CRIT, MSG) &&                                         \
@@ -615,6 +644,11 @@ DECLARE_DIAG_GROUP(Def, _PCOMNEXP) ;
 /// diagnostics trace.
 /// @note When writes to the diagnostics trace, takes neither group enabled state nore
 /// diagnostics level into account (i.e. it is enough that the @em tracing is enabled).
+///
+/// Tracing:    ENABLED
+/// Supergroup: IGNORED
+/// Group:      IGNORED
+/// Level:      IGNORED
 ///
 #define LOGPXALERT(GRP, MSG)                                            \
    (::diag::PDiagBase::Lock() &&                                        \

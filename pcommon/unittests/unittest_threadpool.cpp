@@ -264,6 +264,30 @@ void JobBatchTests::Test_JobBatch_Run()
         if (finished > 4)
             CPPUNIT_LOG_EXCEPTION_MSG(results[4].get(), test_error, "011") ;
     }
+
+    // Check for movable-only result
+    CPPUNIT_LOG(std::endl) ;
+    {
+        job_batch b5 (2, "Movable") ;
+
+        std::future<std::unique_ptr<std::string>> result ;
+
+        auto test_job = [](const char *name)
+        {
+            CPPUNIT_LOG_LINE("    Task " << squote(name) << " has started") ;
+
+            std::this_thread::sleep_for(20ms) ;
+            CPPUNIT_LOG_EXPRESSION(get_threadcount()) ;
+            CPPUNIT_LOG_LINE("    Task " << squote(name) << " has finished") ;
+
+            return std::make_unique<std::string>(name) ;
+        } ;
+
+        CPPUNIT_LOG_RUN(result = b5.add_task(test_job, "Hello!")) ;
+        CPPUNIT_LOG_RUN(b5.wait()) ;
+        CPPUNIT_LOG_ASSERT(result.wait_for(0ns) == std::future_status::ready) ;
+        CPPUNIT_LOG_EQ(*result.get(), "Hello!") ;
+    }
 }
 
 /*******************************************************************************

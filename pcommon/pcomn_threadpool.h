@@ -349,7 +349,7 @@ public:
     /// Get the count of threads in the pool.
     size_t size() const
     {
-        return _thread_count.load(std::memory_order_relaxed).expected_count() ;
+        return _thread_count.load(std::memory_order_acquire).expected_count() ;
     }
 
     /// Get the pool capacitiy, which is the sum of thread count and task queue capacity.
@@ -532,28 +532,33 @@ private:
 
     union thread_count {
         constexpr thread_count() noexcept : _data(0) {}
-        constexpr thread_count(int32_t running, int32_t diff) noexcept :
-            _diff(diff), _running(running)
+        constexpr thread_count(int32_t running, int32_t pending) noexcept :
+            _pending(pending), _running(running)
         {}
 
-        int64_t expected_count() const { return (int64_t)_running + _diff ; }
+        // Change running threads count keeping expected_count() unchanged.
+        // I.e. "start" (if delta>0) or "stop" (if delta<0) `delta` threads.
+        thread_count(thread_count initcount, int32_t delta) :
+            thread_count(initcount._running + delta, initcount._pending - delta)
+        {}
 
-        // Increment running threads count keeping expected_count() unchanged.
-        thread_count &operator+=(int threads)
-        {
-            _diff -= threads ;
-            _running += threads ;
-            return *this ;
-        }
-        thread_count &operator-=(int threads) { return operator+=(-threads) ; }
+        explicit constexpr operator bool() const { return _data ; }
+
+        constexpr long expected_count() const { return (int64_t)_running + _pending ; }
+        constexpr int pending_count() const { return _pending ; }
+        constexpr int running_count() const { return _running ; }
 
         static constexpr thread_count stopped() { return {-1, 0} ; }
+        static constexpr bool is_stopped(thread_count v) { return v._running < 0 ; }
 
         uint64_t _data ;
 
         struct {
-            int32_t _diff ;    /* The difference between the expected and current
-                                * threads counts. */
+            int32_t _pending ; /* The difference between the expected and currently
+                                * running threads counts: how many threads to start to
+                                * reach the  expected_count() running threads.
+                                * So, _pending<0 means there are more than expected_count()
+                                * running threads and we must stop -_pending threads. */
             int32_t _running ; /* The actual count of currently running threads.
                                 * When the pool is in the steady state it is equal to
                                 * the size set by the last resize() or by the constructor,
@@ -566,7 +571,7 @@ private:
         if (v._data == thread_count::stopped()._data)
             os << "{stopped}" ;
         else
-            os << '{' << v.expected_count() << '/' << v._running << '/' << v._diff << '}' ;
+            os << '{' << v.expected_count() << '/' << v._running << '/' << v._pending << '}' ;
         return os ;
     }
 
@@ -592,6 +597,7 @@ private:
     void start_thread() ;
 
     Dismiss handle_pool_resize(thread_list::iterator self) noexcept ;
+    // Returns {dismiss,count_with_updated_pending}
     std::pair<bool, thread_count> check_dismiss_itself(thread_list::iterator self) noexcept ;
     bool check_launch_new_thread(thread_count current_count) ;
     void try_force_dismiss_spare_threads() ;

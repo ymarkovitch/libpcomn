@@ -17,6 +17,8 @@
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
 
+GCC_DIAGNOSTIC_PUSH_IGNORE(format-truncation)
+
 namespace pcomn {
 namespace unit {
 
@@ -236,6 +238,8 @@ generate_file(const S &filename, const pcomn::strslice &content)
 
 } // end of namespace pcomn::unit
 } // end of namespace pcomn
+
+GCC_DIAGNOSTIC_POP()
 
 /*******************************************************************************
  "Hello, world!" in different languages and encodings.

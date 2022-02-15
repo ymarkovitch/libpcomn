@@ -447,7 +447,7 @@ public:
         ancestor(from_string(address_string, &ec, flags))
     {}
 
-    explicit constexpr operator bool() const { return static_cast<bool>(data()) ; }
+    explicit constexpr operator bool() const { return static_cast<bool>(value()) ; }
 
     static constexpr ipv6_addr localhost() { return {0, 0, 0, 0, 0, 0, 0, 1} ; }
 
@@ -469,7 +469,7 @@ public:
         union {
             binary128_t addr ;
             in6_addr    result ;
-        } _ = { data() } ;
+        } _ = { value() } ;
         return _.result ;
     }
     operator struct in6_addr() const { return inaddr() ; }
@@ -509,12 +509,12 @@ public:
 
     friend constexpr bool operator==(const ipv6_addr &x, const ipv6_addr &y)
     {
-        return x.data() == y.data() ;
+        return x.value() == y.value() ;
     }
 
     friend constexpr bool operator<(const ipv6_addr &x, const ipv6_addr &y)
     {
-        return x.data() < y.data() ;
+        return x.value() < y.value() ;
     }
 
     friend std::ostream &operator<<(std::ostream &os, const ipv6_addr &addr)
@@ -526,7 +526,7 @@ public:
 private:
     typedef char addr_strbuf[INET6_ADDRSTRLEN] ;
 
-    constexpr const binary128_t &data() const { return *this ; }
+    constexpr const binary128_t &value() const { return *this ; }
 
     static binary128_t from_string(const strslice &address_string, std::errc *ec, CFlags flags) ;
 

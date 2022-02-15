@@ -30,9 +30,9 @@
  C++ code starts here
 *******************************************************************************/
 #ifdef __cplusplus
+#include <pcomn_meta.h>
 #include <stdexcept>
 #include <system_error>
-#include <type_traits>
 #include <utility>
 #include <array>
 
@@ -194,30 +194,36 @@ do {                                                        \
    __VA_ARGS__ inline auto pend(const type &x) -> decltype(&*std::end(x)) { return std::end(x) ; }
 
 /// Define bit flag operations (|,&,~) over the specified enum type.
-#define PCOMN_DEFINE_FLAG_ENUM(enum_type)                               \
+#define PCOMN_DEFINE_FLAG_ENUM(enum_type, ...)                          \
    PCOMN_STATIC_CHECK(std::is_enum<enum_type>()) ;                      \
-   constexpr inline enum_type operator&(enum_type x, enum_type y)       \
+   __VA_ARGS__ constexpr inline enum_type operator&(enum_type x, enum_type y) \
    {                                                                    \
       typedef std::underlying_type_t<enum_type> int_type ;              \
       return (enum_type)((int_type)x & (int_type)y) ;                   \
    }                                                                    \
-   constexpr inline enum_type operator|(enum_type x, enum_type y)       \
+   __VA_ARGS__ constexpr inline enum_type operator|(enum_type x, enum_type y) \
    {                                                                    \
       typedef std::underlying_type_t<enum_type> int_type ;              \
       return (enum_type)((int_type)x | (int_type)y) ;                   \
    }                                                                    \
-   constexpr inline enum_type operator^(enum_type x, enum_type y)       \
+   __VA_ARGS__ constexpr inline enum_type operator^(enum_type x, enum_type y) \
    {                                                                    \
       typedef std::underlying_type_t<enum_type> int_type ;              \
       return (enum_type)((int_type)x ^ (int_type)y) ;                   \
    }                                                                    \
-   constexpr inline enum_type operator~(enum_type x)                    \
+   __VA_ARGS__ constexpr inline enum_type operator~(enum_type x)        \
    {                                                                    \
       return (enum_type)(~(std::underlying_type_t<enum_type>)x) ;       \
    }                                                                    \
-   inline enum_type &operator|=(enum_type &x, enum_type y) { return x = x | y ; } \
-   inline enum_type &operator&=(enum_type &x, enum_type y) { return x = x & y ; } \
-   inline enum_type &operator^=(enum_type &x, enum_type y) { return x = x ^ y ; }
+   __VA_ARGS__ inline enum_type &operator|=(enum_type &x, enum_type y) { return x = x | y ; } \
+   __VA_ARGS__ inline enum_type &operator&=(enum_type &x, enum_type y) { return x = x & y ; } \
+   __VA_ARGS__ inline enum_type &operator^=(enum_type &x, enum_type y) { return x = x ^ y ; }
+
+#ifdef PCOMN_COMPILER_GNU
+#define PCOMN_DEBUG_INTERFACE(function_definition) __attribute__((__used__)) __noinline function_definition
+#else
+#define PCOMN_DEBUG_INTERFACE(function_definition)
+#endif
 
 /*******************************************************************************
 *******************************************************************************/
@@ -288,14 +294,14 @@ class vsaver {
          _var(&variable)
       {}
 
-      vsaver(T &variable, const T &new_value) :
+      vsaver(T &variable, const std::type_identity_t<T> &new_value) :
          _saved(variable),
          _var(&variable)
       {
          variable = new_value ;
       }
 
-      vsaver(T &variable, T &&new_value) :
+      vsaver(T &variable, std::type_identity_t<T> &&new_value) :
          _saved(variable),
          _var(&variable)
       {
@@ -440,6 +446,16 @@ constexpr shallow_copy_t shallow_copy {} ;
 struct deep_copy_t { explicit deep_copy_t() = default ; } ;
 constexpr deep_copy_t deep_copy {} ;
 /**@{*/
+
+
+/***************************************************************************//**
+
+*******************************************************************************/
+template<typename T>
+struct pseudocopyable : public T {
+      using T::T ;
+      pseudocopyable(const pseudocopyable &) : T() {}
+} ;
 
 /*******************************************************************************
  void * pointer arithmetics
@@ -960,8 +976,8 @@ constexpr inline bool is_aligned_as(const void *p) { return is_aligned_to<aligno
 
 } // end of namespace pcomn
 
-/******************************************************************************/
-/** Swap wrapper that calls std::swap on the arguments, but may also use ADL
+/***************************************************************************//**
+ Swap wrapper that calls std::swap on the arguments, but may also use ADL
  (Argument-Dependent Lookup, Koenig lookup) to use a specialised form.
 
  Use this instead of std::swap to enable namespace-level swap functions, defined in the

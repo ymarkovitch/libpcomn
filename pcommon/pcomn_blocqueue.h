@@ -94,8 +94,13 @@ public:
 protected:
     struct SlotsKind : bool_value<SlotsKind> { using bool_value::bool_value ; } ;
     // Slot kinds
+    #ifdef PCOMN_COMPILER_CXX17
+    constexpr inline static SlotsKind EMPTY {false} ;
+    constexpr inline static SlotsKind FULL  {!EMPTY} ;
+    #else
     constexpr static SlotsKind EMPTY {false} ;
     constexpr static SlotsKind FULL  {!EMPTY} ;
+    #endif
 
     enum class TimeoutKind {
         NONE,       /**< No timeout, wait until the pop end if closed */

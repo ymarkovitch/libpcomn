@@ -34,6 +34,14 @@ void *refcounted_storage<C,A>::do_alloc(size_type &char_count) const
 }
 
 template<typename C, class A>
+void refcounted_storage<C,A>::do_dealloc(data_type *d) const noexcept
+{
+    // Zero stings are _never_ deleted, they are static
+    NOXCHECK(d->_size) ;
+    actual_allocator().deallocate(reinterpret_cast<aligner *>(d), aligner_count(d->_size)) ;
+}
+
+template<typename C, class A>
 inline typename refcounted_storage<C,A>::data_type *
 refcounted_storage<C,A>::create_str_data(size_type &char_count) const
 {

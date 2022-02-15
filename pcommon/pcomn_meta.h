@@ -107,7 +107,6 @@ using std::experimental::is_trivial_v ;
 using std::experimental::is_trivially_copyable_v ;
 using std::experimental::is_standard_layout_v ;
 using std::experimental::is_pod_v ;
-using std::experimental::is_literal_type_v ;
 using std::experimental::is_empty_v ;
 using std::experimental::is_polymorphic_v ;
 using std::experimental::is_abstract_v ;
@@ -198,6 +197,9 @@ using ulonglong_constant = std::integral_constant<unsigned long long, v> ;
 
 template<size_t v>
 using size_constant = std::integral_constant<size_t, v> ;
+
+template<auto v>
+using integral_constval = std::integral_constant<decltype(v), v> ;
 
 /***************************************************************************//**
  @name TypeTraits
@@ -482,6 +484,19 @@ constexpr bool is_trivially_swappable_v = is_trivially_swappable<T>::value ;
 
 template<typename T>
 constexpr bool is_memmovable_v = is_memmovable<T>::value ;
+
+template<typename T>
+struct is_literal_type : std::bool_constant<std::is_trivial<T>::value &&
+                                            !std::is_reference<T>::value &&
+                                            !std::is_void<T>::value> {} ;
+
+template<typename T>
+constexpr bool is_literal_type_v = is_literal_type<T>::value ;
+
+template<typename T1, typename T2>
+struct is_literal_type<std::pair<T1, T2>> :
+   ct_and<is_literal_type<T1>, is_literal_type<T2>>
+{} ;
 
 /*******************************************************************************
  Parameter type

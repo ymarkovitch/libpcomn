@@ -176,7 +176,6 @@ class shared_mutex {
 *******************************************************************************/
 template<typename Mutex>
 class shared_lock {
-      shared_lock(const shared_lock&) = delete ;
       void operator=(const shared_lock&) = delete ;
    public:
       typedef Mutex mutex_type;
@@ -196,6 +195,12 @@ class shared_lock {
       {
          other._lock = 0 ;
          other._owns = false ;
+      }
+
+      shared_lock(const shared_lock &other) : _lock(other._lock), _owns(other._owns)
+      {
+         if (_owns)
+            _lock->lock_shared() ;
       }
 
       shared_lock &operator=(shared_lock &&other) noexcept
@@ -242,7 +247,7 @@ class shared_lock {
          mutex_type * const ret = mutex() ;
          _lock = 0 ;
          _owns = false ;
-         return ret;
+         return ret ;
       }
 
       bool owns_lock() const noexcept { return _owns ; }
@@ -267,6 +272,8 @@ class shared_lock {
          }
       }
 } ;
+
+PCOMN_DEFINE_SWAP(shared_lock<Mutex>, template<typename Mutex>) ;
 
 /***************************************************************************//**
  Promise lock is a binary semaphore with only possible state change from locked
@@ -424,7 +431,7 @@ class ident_dispenser {
 } ;
 
 /***************************************************************************//**
- Generator of integral identifiers which are unique insdide a process run.
+ Generator of nonzero integral identifiers which are unique insdide a process run.
 
  Atomically allocates a range of integral numbers for a thread and then allocates
  successive numbers from that range upon request from this thread until the range
@@ -433,23 +440,36 @@ class ident_dispenser {
  Range allocation is atomic, but the ident allocation is needn't be atomic since
  it is thread-local, so only one interlocked operation per range is required
  (by default, per 65536 identifiers allocated).
+
+ The dispenser never allocates IDs from the frist block (i.e. no IDs in `[0,blocksize)`
+ range).
+
+ @note `increment` must be an exact divisor of `blocksize`.
 *******************************************************************************/
-template<typename Tag, typename Int = uint64_t, Int blocksize = 0x10000U>
+template<typename Tag, typename Int = uint64_t,
+         Int blocksize = 0x10000U, Int increment = 1>
 class local_ident_dispenser {
       PCOMN_STATIC_CHECK(is_atomic<Int>::value) ;
-      PCOMN_STATIC_CHECK(blocksize > 0) ;
+      PCOMN_STATIC_CHECK(increment > 0 && blocksize > 0) ;
+      PCOMN_STATIC_CHECK(increment <= blocksize) ;
+      PCOMN_STATIC_CHECK(!(blocksize % increment)) ;
    public:
       typedef Int type ;
+      typedef Tag tag_type ;
 
       /// Atomically allocate new ID.
-      static type allocate_id()
+      /// The returned ID is nonzero and unique in the process run.
+      static type allocate_id() noexcept
       {
          if (_next_id == _range_end)
          {
             _next_id = _next_start.fetch_add(blocksize) ;
             _range_end = _next_id + blocksize ;
          }
-         return _next_id++ ;
+
+         const type allocated = _next_id ;
+         _next_id += increment ;
+         return allocated ;
       }
    private:
       thread_local static type _next_id ;
@@ -457,12 +477,12 @@ class local_ident_dispenser {
       static std::atomic<type> _next_start ;
 } ;
 
-template<typename Tag, typename Int, Int bsz>
-thread_local Int local_ident_dispenser<Tag, Int, bsz>::_next_id {0} ;
-template<typename Tag, typename Int, Int bsz>
-thread_local Int local_ident_dispenser<Tag, Int, bsz>::_range_end {0} ;
-template<typename Tag, typename Int, Int bsz>
-std::atomic<Int> local_ident_dispenser<Tag, Int, bsz>::_next_start {bsz} ;
+template<typename Tag, typename Int, Int bsz, Int inc>
+thread_local Int local_ident_dispenser<Tag, Int, bsz, inc>::_next_id {0} ;
+template<typename Tag, typename Int, Int bsz, Int inc>
+thread_local Int local_ident_dispenser<Tag, Int, bsz, inc>::_range_end {0} ;
+template<typename Tag, typename Int, Int bsz, Int inc>
+std::atomic<Int> local_ident_dispenser<Tag, Int, bsz, inc>::_next_start {bsz} ;
 
 } // end of namespace pcomn
 

@@ -17,8 +17,10 @@ PCOMN_STATIC_CHECK(2*blocqueue_controller::max_allowed_capacity() < (size_t)coun
 /*******************************************************************************
  blocqueue_controller
 *******************************************************************************/
+#ifndef PCOMN_COMPILER_CXX17
 constexpr blocqueue_controller::SlotsKind blocqueue_controller::EMPTY ;
 constexpr blocqueue_controller::SlotsKind blocqueue_controller::FULL ;
+#endif
 
 blocqueue_controller::blocqueue_controller(unsigned capacity) :
     _capacity(validate_capacity(capacity))

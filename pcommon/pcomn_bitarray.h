@@ -161,7 +161,7 @@ struct bitarray_base {
       void op_assign(const bitarray_base &source, Operator op) ;
 
       template<typename Operator>
-      void op_assign_skip_same(const bitarray_base &source, Operator op)
+      void op_assign_skip_self(const bitarray_base &source, Operator op)
       {
          if (cbits() != source.cbits())
             op_assign(source, op) ;
@@ -546,13 +546,13 @@ class bitarray : private bitarray_base<uintptr_t> {
 
       bitarray &operator&=(const bitarray &source)
       {
-         op_assign_skip_same(source, std::bit_and<element_type>()) ;
+         op_assign_skip_self(source, std::bit_and<element_type>()) ;
          return *this ;
       }
 
       bitarray &operator|=(const bitarray &source)
       {
-         op_assign_skip_same(source, std::bit_or<element_type>()) ;
+         op_assign_skip_self(source, std::bit_or<element_type>()) ;
          return *this ;
       }
 

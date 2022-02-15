@@ -215,6 +215,7 @@ class time_point {
       char *string(char *buf, size_t size, Zone zone = LOCAL) const
       {
          GCC_DIAGNOSTIC_PUSH_IGNORE(stringop-overflow) ;
+         GCC_IGNORE_WARNING(stringop-truncation) ;
 
          if (!buf || !size)
             return NULL ;

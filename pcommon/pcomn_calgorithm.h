@@ -228,6 +228,12 @@ has_item(KeyedContainer &&container, const Value &item)
    return !!std::forward<KeyedContainer>(container).count(item) ;
 }
 
+template<class Sequence, typename Value>
+inline bool binary_search(const Sequence &sorted_sequence, const Value &item)
+{
+   return std::binary_search(std::begin(sorted_sequence), std::end(sorted_sequence), item) ;
+}
+
 template<class Container, class Test>
 inline bool any_of(Container &&c, Test &&test)
 {
