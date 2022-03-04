@@ -7,8 +7,15 @@
                   See LICENSE for information on usage/redistribution.
 
  DESCRIPTION  :   Safe pointer templates
-
  CREATION DATE:   25 Nov 1994
+*******************************************************************************/
+/** @file
+ Safe pointers.
+
+  - ptr_shim
+  - safe_ref
+  - safe_ptr
+  - malloc_ptr
 *******************************************************************************/
 #include <pcomn_meta.h>
 #include <pcommon.h>
@@ -19,8 +26,14 @@
 
 namespace pcomn {
 
-/******************************************************************************/
-/** Proxy object for any pointer-like or pointer type
+/***************************************************************************//**
+ Safepointer for malloc-allocated objects
+*******************************************************************************/
+template<typename T>
+using malloc_ptr = std::unique_ptr<T, malloc_delete> ;
+
+/***************************************************************************//**
+ Proxy object for any pointer-like or pointer type
 
  Useful as a function parameter object where serves as a "shim" converting any
  pointer-like objects to plain pointers
@@ -49,6 +62,8 @@ struct ptr_shim {
 /***************************************************************************//**
  Reference wrapper object, which may, depending on construction mode, delete the
  object whose reference it holds.
+
+ Have two modes: owning and unowning.
 *******************************************************************************/
 template<typename T>
 class safe_ref {
@@ -86,14 +101,68 @@ class safe_ref {
       type &                        _ref ;
 } ;
 
-/******************************************************************************/
-/** Safepointer for malloc-allocated objects
+/***************************************************************************//**
+ Reference wrapper object
 *******************************************************************************/
-template<typename T>
-using malloc_ptr = std::unique_ptr<T, malloc_delete> ;
+template<typename T, const T &default_value = pcomn::default_constructed<T>::value>
+class unique_value {
+   public:
+      PCOMN_STATIC_CHECK(!std::is_reference<T>() && !std::is_void<T>()&& !std::is_array<T>()) ;
 
-/******************************************************************************/
-/** Safe pointer @em without move semantics
+      typedef const T type ; /**< For compatibility with std::reference_wrapper */
+      typedef type element_type ;
+
+      unique_value() ;
+
+      unique_value(const T &value) :
+         _owner(is_default(&value) ? default_value_unsafe_ptr() : new T(value))
+      {}
+
+      unique_value(T &&value) ;
+
+      unique_value(unique_value &&other) ;
+      unique_value(const unique_value &other) ;
+
+      /// Make a safe reference that owns the passed object.
+      /// @throw std::invalid_argument if `owned_object` is nullptr.
+      unique_value(std::unique_ptr<T> &&value) :
+         _owner(std::move(PCOMN_ENSURE_ARG(value)))
+      {}
+
+      ~unique_value()
+      {
+         if (is_default())
+            _owner.release() ;
+      }
+
+      unique_value &operator=(unique_value &&other) ;
+      unique_value &operator=(const unique_value &other) ;
+
+      constexpr const T &get() const { return *_owner ; }
+      constexpr operator const T&() const { return get() ; }
+      constexpr const T *operator->() const { return _owner.get() ; }
+
+   private:
+      std::unique_ptr<T> _owner ;
+
+   private:
+      static T *default_value_unsafe_ptr() { return const_cast<T*>(&default_constructed) ; }
+
+      static constexpr bool is_default(type *value) { return value == &default_constructed ; }
+      bool is_default() const { return is_default(_owner.get()) ; }
+
+      void release_reference()
+      {
+         if (is_default())
+            return ;
+         _owner.release() ;
+         _owner.reset(const_cast<T*>(&default_value)) ;
+      }
+} ;
+
+
+/***************************************************************************//**
+ Safe pointer like std::unique_ptr but with *no* move semantics.
 *******************************************************************************/
 template<typename T>
 class safe_ptr : private std::unique_ptr<T> {
@@ -145,9 +214,9 @@ class safe_ptr : private std::unique_ptr<T> {
 
 PCOMN_DEFINE_SWAP(safe_ptr<T>, template<typename T>) ;
 
-/******************************************************************************/
-/** Both std::unique_ptr and pcomn::safe_ptr are trivially swappable,
- but only with standard deleter object.
+/***************************************************************************//**
+ Both std::unique_ptr and pcomn::safe_ptr are trivially swappable, but only with
+ the standard deleter object.
 *******************************************************************************/
 template<typename T>
 struct is_trivially_swappable<std::unique_ptr<T>> : std::true_type {} ;
