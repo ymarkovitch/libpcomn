@@ -603,6 +603,10 @@
 #define __deprecated(...) __attribute__((deprecated(__VA_ARGS__)))
 #endif
 
+#ifndef __used
+#define __used __attribute__((used))
+#endif
+
 #elif defined(PCOMN_COMPILER_MS)
 /*******************************************************************************
  Microsoft
@@ -621,6 +625,10 @@
 
 #ifndef __deprecated
 #define __deprecated(...) __declspec(deprecated(__VA_ARGS__))
+#endif
+
+#ifndef __used
+#define __used
 #endif
 
 #else
