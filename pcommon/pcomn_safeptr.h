@@ -146,17 +146,17 @@ class unique_value {
       std::unique_ptr<T> _owner ;
 
    private:
-      static T *default_value_unsafe_ptr() { return const_cast<T*>(&default_constructed) ; }
+      static constexpr T *default_value_unsafe_ptr() { return const_cast<T*>(&default_value) ; }
 
-      static constexpr bool is_default(type *value) { return value == &default_constructed ; }
-      bool is_default() const { return is_default(_owner.get()) ; }
+      static constexpr bool is_default(type *value) { return value == default_value_unsafe_ptr() ; }
+      constexpr bool is_default() const { return is_default(_owner.get()) ; }
 
       void release_reference()
       {
          if (is_default())
             return ;
          _owner.release() ;
-         _owner.reset(const_cast<T*>(&default_value)) ;
+         _owner.reset(default_value_unsafe_ptr()) ;
       }
 } ;
 
