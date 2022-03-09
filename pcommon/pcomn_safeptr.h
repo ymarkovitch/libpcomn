@@ -102,7 +102,52 @@ class safe_ref {
 } ;
 
 /***************************************************************************//**
- Reference wrapper object
+ A smart reference with value semantics, like std::reference_ptr crossed with
+ std::unique_ptr, with shared default value.
+
+ Has an extra non-type template parameter of type T, which specifies a reference
+ to the *global default value*, pointer to which is used instead of nullptr.
+ Default-constructed objects of the instance of this template refer to this
+ default object.
+
+ For any two different unique_value<T> objects x and y, the following holds:
+
+ @code
+ &x.get() != &y.get() || &x.get() == unique_value<T>::unique_value_ptr()
+ @endcode
+
+ That is, every unique_value<T> refers either to the single global constant default
+ object of type T, or to a *unique* T object allocated with operator new; no two
+ different unique_value<T> objects can refer to the same *non-default* T object.
+
+ @code
+ struct Foo {
+     Foo() ;
+     int bar() const ;
+     void set_bar(int) ;
+     friend bool operator==(const Foo&,const Foo&) ;
+ } ;
+
+ // Default constructor: after this there will be
+ // &foo0.get()==&pcomn::default_constructed<Foo>::value
+ // No Foo constructors called, no dynamic allocations, foo0 is an unowning reference
+ // to &pcomn::default_constructed<Foo>::value.
+ pcomn::unique_value<Foo> foo0 ;
+
+ // &foo1.get()==&foo0.get(), both foo0 and foo1 refer to pcomn::default_constructed<Foo>::value
+ pcomn::unique_value<Foo> foo1 ;
+
+ // Note that
+ // foo2.get()==pcomn::default_constructed<Foo>::value, but
+ // &foo2.get()!=&pcomn::default_constructed<Foo>::value
+ pcomn::unique_value<Foo> foo2 (Foo()) ;
+
+ // The underlying object of foo2 is copied by value.
+ // Now foo1.get(), foo2.get(), and pcomn::default_constructed<Foo>::value are
+ // different objects.
+ foo1 = foo2 ;
+
+ @endcode
 *******************************************************************************/
 template<typename T, const T &default_value = pcomn::default_constructed<T>::value>
 class unique_value {
@@ -112,54 +157,109 @@ class unique_value {
       typedef const T type ; /**< For compatibility with std::reference_wrapper */
       typedef type element_type ;
 
-      unique_value() ;
+      /// Create a reference to default_value.
+      /// After this constructor, `&this->get()==default_value_ptr()`
+      constexpr unique_value() = default ;
 
+      /// Create an owning reference to the copy of the argument.
+      /// This is "by value" constructor, except for the case when `value` is the
+      /// reference to `default_value`.
+      ///
       unique_value(const T &value) :
          _owner(is_default(&value) ? default_value_unsafe_ptr() : new T(value))
       {}
 
-      unique_value(T &&value) ;
+      unique_value(T &&value) :
+         _owner(is_default(&value) ? default_value_unsafe_ptr() : new T(std::move(value)))
+      {}
 
-      unique_value(unique_value &&other) ;
-      unique_value(const unique_value &other) ;
+      unique_value(const unique_value &other) : unique_value(other.get()) {}
+
+      unique_value(unique_value &&other) : unique_value()
+      {
+         _owner.swap(other._owner) ;
+      }
 
       /// Make a safe reference that owns the passed object.
+      ///
       /// @throw std::invalid_argument if `owned_object` is nullptr.
       unique_value(std::unique_ptr<T> &&value) :
          _owner(std::move(PCOMN_ENSURE_ARG(value)))
       {}
 
+      /// Destructor deletes the object referred to *iff* the internal reference does not
+      /// refer to `default_value`.
       ~unique_value()
       {
-         if (is_default())
-            _owner.release() ;
+         discharge_default_reference() ;
       }
 
-      unique_value &operator=(unique_value &&other) ;
-      unique_value &operator=(const unique_value &other) ;
+      unique_value &operator=(unique_value &&other)
+      {
+         if (_owner == other._owner)
+            return *this ;
+
+         if (other.is_default())
+            _owner = std::unique_ptr(default_value_unsafe_ptr()) ;
+         else
+            _owner.swap(other._owner) ;
+
+         return *this ;
+      }
+
+      unique_value &operator=(const unique_value &other)
+      {
+         if (_owner == other._owner)
+            return *this ;
+
+         std::unique_ptr<T> value_copy (other.is_default() ? default_value_unsafe_ptr() : new T(other.get())) ;
+
+         discharge_default_reference() ;
+         _owner = std::move(value_copy) ;
+
+         return *this ;
+      }
 
       constexpr const T &get() const { return *_owner ; }
       constexpr operator const T&() const { return get() ; }
       constexpr const T *operator->() const { return _owner.get() ; }
 
-   private:
-      std::unique_ptr<T> _owner ;
+      /// Get a nonconstant reference to the underlying value, doing copy-on-write if the
+      /// internal reference is to `default_value`.
+      ///
+      T &mutable_value()
+      {
+         PCOMN_STATIC_CHECK(!std::is_const_v<T>) ;
+
+         if (is_default())
+         {
+            _owner.release() ;
+            _owner.reset(new T(*default_value_ptr())) ;
+         }
+         return *_owner ;
+      }
+
+      /// Get the pointer to the (global) default value.
+      /// This is a pointer to `default_value` template parameter.
+      /// @note Never nullptr.
+      ///
+      static constexpr const T *default_value_ptr() { return &default_value ; }
 
    private:
-      static constexpr T *default_value_unsafe_ptr() { return const_cast<T*>(&default_value) ; }
+      std::unique_ptr<T> _owner {default_value_unsafe_ptr()} ;
+
+   private:
+      static constexpr T *default_value_unsafe_ptr() { return const_cast<T*>(default_value_ptr()) ; }
 
       static constexpr bool is_default(type *value) { return value == default_value_unsafe_ptr() ; }
       constexpr bool is_default() const { return is_default(_owner.get()) ; }
 
-      void release_reference()
+      void discharge_default_reference()
       {
          if (is_default())
-            return ;
-         _owner.release() ;
-         _owner.reset(default_value_unsafe_ptr()) ;
+            _owner.release() ;
       }
 } ;
-
 
 /***************************************************************************//**
  Safe pointer like std::unique_ptr but with *no* move semantics.

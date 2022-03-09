@@ -29,6 +29,7 @@ unittest(unittest_immutablestr)
 unittest(unittest_smartptr)
 unittest(unittest_strshims)
 unittest(unittest_strslice)
+unittest(unittest_unique_value)
 
 unittest(unittest_algorithms)
 unittest(unittest_base64)
