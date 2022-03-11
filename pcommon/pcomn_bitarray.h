@@ -85,7 +85,7 @@ struct bitarray_base {
       bool all() const
       {
          const element_type * const b = cbits() ;
-         GCC_DIAGNOSTIC_PUSH_IGNORE(implicit-fallthrough)
+         GCC_DIAGNOSTIC_PUSH_IGNORE_v7(implicit-fallthrough)
          switch (const size_t n = nelements())
          {
             default:
@@ -725,9 +725,6 @@ template<typename Operator>
 void bitarray_base<Element>::op_assign(const bitarray_base &source, Operator op)
 {
    const element_type *source_bits = source.cbits() ;
-   if (cbits() == source_bits)
-      return ;
-
    bitarray_base input (source) ;
    if (source.size() > size())
    {
