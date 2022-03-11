@@ -17,6 +17,17 @@
 #include <memory>
 #include <string>
 
+using namespace pcomn ;
+
+template<typename T, typename U>
+static bool unique_value_invariant_holds(const T &x, const U &y)
+{
+    if (&x == &y) return true ;
+    return &x.get() != &y.get() || &x.get() == y.default_value_ptr() ;
+}
+
+#define CPPUNIT_ASSERT_VALUE_INVARIANT(x, y) CPPUNIT_LOG_ASSERT(unique_value_invariant_holds((x), (y)))
+
 /*******************************************************************************
                      class UniqueValueTests
 *******************************************************************************/
@@ -38,167 +49,154 @@ class UniqueValueTests : public CppUnit::TestFixture {
 *******************************************************************************/
 void UniqueValueTests::Test_Constructors()
 {
-    LifetimeRegister foo_reg ;
-    LifetimeRegister bar_reg ;
-    LifetimeRegister quux_reg ;
+    CPPUNIT_LOG_ASSERT(unique_value<std::string>::default_value_ptr()) ;
+    CPPUNIT_LOG_EQUAL(*unique_value<std::string>::default_value_ptr(), std::string()) ;
 
-    pcomn::shared_intrusive_ptr<Foo> foo (new Foo(foo_reg)) ;
-    pcomn::shared_intrusive_ptr<Foo> bar (new Bar(bar_reg)) ;
+    unique_value<std::string> v1 ;
+    unique_value<std::string> v2 ;
 
-    auto quux (sptr_cast(new Quux(quux_reg))) ;
-    pcomn::shared_intrusive_ptr<Foo> quux1 (quux) ;
-
-    CPPUNIT_LOG_EQUAL(typeid(quux), typeid(pcomn::shared_intrusive_ptr<Quux>)) ;
-    CPPUNIT_LOG_ASSERT(quux.get()) ;
-
-    CPPUNIT_LOG_IS_TRUE(foo_reg.constructed) ;
-    CPPUNIT_LOG_IS_FALSE(foo_reg.destructed) ;
-    CPPUNIT_LOG_EQ(foo.instances(), 1) ;
-    CPPUNIT_LOG_IS_TRUE(bar_reg.constructed) ;
-    CPPUNIT_LOG_IS_FALSE(bar_reg.destructed) ;
-    CPPUNIT_LOG_EQ(bar.instances(), 1) ;
-    CPPUNIT_LOG_IS_TRUE(quux_reg.constructed) ;
-    CPPUNIT_LOG_IS_FALSE(quux_reg.destructed) ;
-    CPPUNIT_LOG_EQ(quux.instances(), 2) ;
-    CPPUNIT_LOG_EQ(quux1.instances(), 2) ;
-    CPPUNIT_LOG_EQUAL(static_cast<Foo *>(&*quux), &*quux1) ;
+    CPPUNIT_LOG_EQUAL(&v1.get(), unique_value<std::string>::default_value_ptr()) ;
+    CPPUNIT_LOG_EQUAL(&v2.get(), unique_value<std::string>::default_value_ptr()) ;
+    CPPUNIT_LOG_EQUAL(v1.get(), std::string()) ;
 
     CPPUNIT_LOG(std::endl) ;
-    CPPUNIT_LOG_RUN(foo = bar) ;
-    CPPUNIT_LOG_IS_TRUE(foo_reg.destructed) ;
-    CPPUNIT_LOG_EQ(foo.instances(), 2) ;
-    CPPUNIT_LOG_EQ(bar.instances(), 2) ;
-    CPPUNIT_LOG_EQUAL(foo, bar) ;
-    CPPUNIT_LOG_RUN(bar = foo) ;
-    CPPUNIT_LOG_IS_FALSE(bar_reg.destructed) ;
-    CPPUNIT_LOG_EQ(foo.instances(), 2) ;
-    CPPUNIT_LOG_EQ(bar.instances(), 2) ;
-    CPPUNIT_LOG_EQUAL(foo, bar) ;
-    CPPUNIT_LOG_RUN(foo = NULL) ;
-    CPPUNIT_LOG_IS_FALSE(foo) ;
-    CPPUNIT_LOG_IS_FALSE(bar_reg.destructed) ;
-    CPPUNIT_LOG_EQ(bar.instances(), 1) ;
-    CPPUNIT_LOG_RUN(bar = foo) ;
-    CPPUNIT_LOG_IS_FALSE(bar) ;
-    CPPUNIT_LOG_IS_TRUE(bar_reg.destructed) ;
+
+    unique_value<std::string> v0 (*unique_value<std::string>::default_value_ptr()) ;
+
+    CPPUNIT_LOG_EQUAL(&v0.get(), unique_value<std::string>::default_value_ptr()) ;
+
+    unique_value<std::string> v3 ("") ;
+    unique_value<std::string> v4 ("Hello") ;
+
+    CPPUNIT_LOG_NOT_EQUAL(&v3.get(), unique_value<std::string>::default_value_ptr()) ;
+    CPPUNIT_LOG_NOT_EQUAL(&v4.get(), unique_value<std::string>::default_value_ptr()) ;
+
+    CPPUNIT_ASSERT_VALUE_INVARIANT(v3, v4) ;
+    CPPUNIT_ASSERT_VALUE_INVARIANT(v1, v3) ;
+
+    CPPUNIT_LOG_EQUAL(v3.get(), std::string()) ;
+    CPPUNIT_LOG_EQUAL(v4.get(), std::string("Hello")) ;
 
     CPPUNIT_LOG(std::endl) ;
-    CPPUNIT_LOG_RUN(foo = bar = quux) ;
-    CPPUNIT_LOG_EQ(foo.instances(), 4) ;
-    CPPUNIT_LOG_EQ(quux.instances(), 4) ;
 
-    LifetimeRegister newbar_reg ;
-    CPPUNIT_LOG_RUN(foo = new Bar(newbar_reg)) ;
-    CPPUNIT_LOG_EQ(foo.instances(), 1) ;
-    CPPUNIT_LOG_EQ(quux.instances(), 3) ;
+    const std::string * const v3p = &v3.get() ;
+    const std::string * const v4p = &v4.get() ;
+
+    // Test copy constructors
+    unique_value<std::string> v1_1 (v1) ;
+    unique_value<std::string> v3_1 (v3) ;
+    unique_value<std::string> v4_1 (v4) ;
+
+    CPPUNIT_LOG_EQUAL(v3_1.get(), std::string()) ;
+    CPPUNIT_LOG_EQUAL(v4_1.get(), std::string("Hello")) ;
+
+    CPPUNIT_LOG_EQUAL(&v3.get(), v3p) ;
+    CPPUNIT_LOG_EQUAL(&v4.get(), v4p) ;
+
+    CPPUNIT_ASSERT_VALUE_INVARIANT(v3, v3_1) ;
+    CPPUNIT_ASSERT_VALUE_INVARIANT(v4, v4_1) ;
+
+    CPPUNIT_LOG_EQUAL(&v1.get(), &v1_1.get()) ;
+    CPPUNIT_ASSERT_VALUE_INVARIANT(v1, v1_1) ;
 
     CPPUNIT_LOG(std::endl) ;
-    LifetimeRegister constfoo_reg ;
-    pcomn::shared_intrusive_ptr<const Foo> cfoo (new Foo(constfoo_reg)) ;
-    CPPUNIT_LOG_IS_TRUE(constfoo_reg.constructed) ;
-    CPPUNIT_LOG_IS_FALSE(constfoo_reg.destructed) ;
-    CPPUNIT_LOG_EQ(cfoo.instances(), 1) ;
-    CPPUNIT_LOG_EQ(quux.instances(), 3) ;
-    CPPUNIT_LOG_EQ((cfoo = quux).instances(), 4) ;
-    CPPUNIT_LOG_IS_TRUE(constfoo_reg.destructed) ;
+
+    // Test move constructors
+    unique_value<std::string> v2_2 (std::move(v2)) ;
+    unique_value<std::string> v4_2 (std::move(v4)) ;
+
+    CPPUNIT_LOG_EQUAL(&v2.get(), unique_value<std::string>::default_value_ptr()) ;
+    CPPUNIT_LOG_EQUAL(&v2_2.get(), unique_value<std::string>::default_value_ptr()) ;
+    CPPUNIT_LOG_EQUAL(&v4.get(), unique_value<std::string>::default_value_ptr()) ;
+
+    CPPUNIT_LOG_EQUAL(v4_2.get(), std::string("Hello")) ;
+    CPPUNIT_LOG_EQUAL(&v4_2.get(), v4p) ;
+
+    std::string bar ("bar") ;
+
+    const unique_value<std::string> v5_2 (std::move(bar)) ;
+
+    CPPUNIT_LOG_EQUAL(v5_2.get(), std::string("bar")) ;
+    CPPUNIT_LOG_EQUAL(bar, std::string()) ;
+
+    std::unique_ptr<std::string> hello_uniq = std::make_unique<std::string>("Hello, world!") ;
+    const std::string * const hello_uniqp = hello_uniq.get() ;
+
+    const unique_value<std::string> v6_2 (std::move(hello_uniq)) ;
+
+    CPPUNIT_LOG_EQUAL(v6_2.get(), std::string("Hello, world!")) ;
+    CPPUNIT_LOG_EQUAL(&v6_2.get(), hello_uniqp) ;
+    CPPUNIT_LOG_IS_NULL(hello_uniq) ;
 }
 
 void UniqueValueTests::Test_Assignment()
 {
-    LifetimeRegister foo_reg ;
-    LifetimeRegister bar_reg ;
-    LifetimeRegister quux_reg ;
+    CPPUNIT_LOG_ASSERT(std::is_nothrow_swappable_v<unique_value<std::string>>) ;
 
-    typedef pcomn::shared_intrusive_ptr<Foo> foo_ptr ;
-    typedef pcomn::shared_intrusive_ptr<Bar> bar_ptr ;
+    unique_value<std::string> v1 ;
+    unique_value<std::string> v2 ;
 
-    foo_ptr foo1 (new Foo(foo_reg)) ;
+    CPPUNIT_LOG_EQUAL(&v1.get(), &v2.get()) ;
+    CPPUNIT_ASSERT_VALUE_INVARIANT(v1, v2) ;
 
-    CPPUNIT_LOG_ASSERT(foo1.get()) ;
-    CPPUNIT_LOG_EQ(foo1.use_count(), 1) ;
+    // Assignment default -> default
+    CPPUNIT_LOG_RUN(v1 = v2) ;
+    CPPUNIT_LOG_EQUAL(&v1.get(), unique_value<std::string>::default_value_ptr()) ;
+    CPPUNIT_LOG_EQUAL(&v2.get(), unique_value<std::string>::default_value_ptr()) ;
 
-    foo_ptr foo2 (foo1.get()) ;
+    unique_value<std::string> v4 ("Hello") ;
 
-    CPPUNIT_LOG_EQUAL(foo1.get(), foo2.get()) ;
-    CPPUNIT_LOG_ASSERT(foo1.get()) ;
-    CPPUNIT_LOG_EQ(foo1.use_count(), 2) ;
+    CPPUNIT_LOG_RUN(v1 = v4) ;
+    CPPUNIT_LOG_EQUAL(v4.get(), std::string("Hello")) ;
+    CPPUNIT_LOG_EQUAL(v1.get(), std::string("Hello")) ;
+    CPPUNIT_ASSERT_VALUE_INVARIANT(v1, v4) ;
 
-    foo_ptr foo3 (foo2) ;
+    CPPUNIT_LOG_EQUAL(v1.mutable_value(), std::string("Hello")) ;
 
-    CPPUNIT_LOG_EQUAL(foo3.get(), foo1.get()) ;
-    CPPUNIT_LOG_ASSERT(foo3.get()) ;
-    CPPUNIT_LOG_EQ(foo1.use_count(), 3) ;
+    CPPUNIT_LOG_RUN(v1.mutable_value() = "foobar") ;
+    CPPUNIT_LOG_EQUAL(v1.get(), std::string("foobar")) ;
+    CPPUNIT_LOG_EQUAL(v4.get(), std::string("Hello")) ;
 
-    CPPUNIT_LOG_RUN(foo3 = foo3) ;
-    CPPUNIT_LOG_EQUAL(foo3.get(), foo1.get()) ;
-    CPPUNIT_LOG_EQ(foo3.use_count(), 3) ;
+    unique_value<std::string> v0 ;
 
-    CPPUNIT_LOG(std::endl) ;
+    CPPUNIT_LOG_EQUAL(&v0.get(), unique_value<std::string>::default_value_ptr()) ;
 
-    CPPUNIT_LOG_RUN(foo3 = std::move(foo3)) ;
-    CPPUNIT_LOG_EQUAL(foo3.get(), foo1.get()) ;
-    CPPUNIT_LOG_EQ(foo3.use_count(), 3) ;
+    CPPUNIT_LOG_RUN(v0.mutable_value() = "foo") ;
 
-    CPPUNIT_LOG_RUN(foo3 = std::move(foo2)) ;
-    CPPUNIT_LOG_EQUAL(foo3.get(), foo1.get()) ;
-    CPPUNIT_LOG_EQ(foo2.get(), nullptr) ;
-    CPPUNIT_LOG_EQ(foo3.use_count(), 2) ;
-
-    CPPUNIT_LOG_RUN(foo2 = std::move(foo3)) ;
-    CPPUNIT_LOG_EQUAL(foo2.get(), foo1.get()) ;
-    CPPUNIT_LOG_EQ(foo3.get(), nullptr) ;
-    CPPUNIT_LOG_EQ(foo2.use_count(), 2) ;
+    CPPUNIT_LOG_EQUAL(v0.get(), std::string("foo")) ;
+    CPPUNIT_LOG_NOT_EQUAL(&v0.get(), unique_value<std::string>::default_value_ptr()) ;
+    CPPUNIT_LOG_EQUAL(*unique_value<std::string>::default_value_ptr(), std::string()) ;
 
     CPPUNIT_LOG(std::endl) ;
 
-    foo_ptr foo4 (std::move(foo3)) ;
+    // Assign default to nondefault
 
-    CPPUNIT_LOG_EQ(foo4.get(), nullptr) ;
-    CPPUNIT_LOG_RUN(foo4 = foo4) ;
-    CPPUNIT_LOG_EQ(foo4.get(), nullptr) ;
-    CPPUNIT_LOG_RUN(foo4 = std::move(foo4)) ;
-    CPPUNIT_LOG_EQ(foo4.get(), nullptr) ;
-
-    CPPUNIT_LOG_RUN(foo4 = foo1.get()) ;
-    CPPUNIT_LOG_EQUAL(foo4.get(), foo1.get()) ;
-    CPPUNIT_LOG_EQ(foo4.use_count(), 3) ;
-
-    CPPUNIT_LOG(std::endl) ;
-    CPPUNIT_LOG_RUN(foo2 = {}) ;
-    CPPUNIT_LOG_RUN(foo3 = nullptr) ;
-    CPPUNIT_LOG_RUN(foo4 = foo3) ;
-
-    CPPUNIT_LOG_IS_NULL(foo2.get()) ;
-    CPPUNIT_LOG_IS_NULL(foo3.get()) ;
-    CPPUNIT_LOG_IS_NULL(foo4.get()) ;
-    CPPUNIT_LOG_ASSERT(foo1.get()) ;
-    CPPUNIT_LOG_EQ(foo1.use_count(), 1) ;
-
-    CPPUNIT_LOG(std::endl) ;
-    CPPUNIT_LOG_IS_TRUE(foo_reg.constructed) ;
-    CPPUNIT_LOG_IS_FALSE(foo_reg.destructed) ;
+    CPPUNIT_LOG_RUN(v0 = v2) ;
+    CPPUNIT_LOG_EQUAL(&v2.get(), unique_value<std::string>::default_value_ptr()) ;
+    CPPUNIT_LOG_EQUAL(&v0.get(), unique_value<std::string>::default_value_ptr()) ;
 
     CPPUNIT_LOG(std::endl) ;
 
-    bar_ptr bar1 (new Bar(bar_reg)) ;
+    // Move-assign
+    const std::string * const hellop = &v4.get() ;
 
-    CPPUNIT_LOG_EQ(bar1.use_count(), 1) ;
-    CPPUNIT_LOG_RUN(foo2 = bar1) ;
-    CPPUNIT_LOG_EQ(bar1.use_count(), 2) ;
-    CPPUNIT_LOG_EQ(foo2.get(), bar1.get()) ;
+    CPPUNIT_LOG_RUN(v0 = std::move(v4)) ;
+    CPPUNIT_LOG_EQUAL(v0.get(), std::string("Hello")) ;
+    CPPUNIT_LOG_EQUAL(&v4.get(), unique_value<std::string>::default_value_ptr()) ;
+    CPPUNIT_LOG_EQUAL(&v0.get(), hellop) ;
 
-    CPPUNIT_LOG_IS_FALSE(foo_reg.destructed) ;
-    CPPUNIT_LOG_IS_TRUE(bar_reg.constructed) ;
-    CPPUNIT_LOG_IS_FALSE(bar_reg.destructed) ;
+    // Swap
+    CPPUNIT_LOG_EQUAL(v1.get(), std::string("foobar")) ;
 
-    CPPUNIT_LOG(std::endl) ;
-    CPPUNIT_LOG_RUN(foo1 = std::move(bar1)) ;
-    CPPUNIT_LOG_EQ(foo1.use_count(), 2) ;
-    CPPUNIT_LOG_IS_NULL(bar1.get()) ;
+    const std::string * const foobarp = &v1.get() ;
 
-    CPPUNIT_LOG_IS_TRUE(foo_reg.destructed) ;
-    CPPUNIT_LOG_IS_TRUE(bar_reg.constructed) ;
-    CPPUNIT_LOG_IS_FALSE(bar_reg.destructed) ;
+    CPPUNIT_LOG_RUN(swap(v1, v0)) ;
+
+    CPPUNIT_LOG_EQUAL(v0.get(), std::string("foobar")) ;
+    CPPUNIT_LOG_EQUAL(v1.get(), std::string("Hello")) ;
+
+    CPPUNIT_LOG_EQUAL(&v1.get(), hellop) ;
+    CPPUNIT_LOG_EQUAL(&v0.get(), foobarp) ;
 }
 
 /*******************************************************************************

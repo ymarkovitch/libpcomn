@@ -159,23 +159,31 @@ class unique_value {
 
       /// Create a reference to default_value.
       /// After this constructor, `&this->get()==default_value_ptr()`
-      constexpr unique_value() = default ;
+      constexpr unique_value() noexcept = default ;
 
       /// Create an owning reference to the copy of the argument.
-      /// This is "by value" constructor, except for the case when `value` is the
-      /// reference to `default_value`.
+      /// This is "by value" constructor that calls T copy constructor, *except* for the
+      /// case when `value` is the  reference to `default_value`.
       ///
       unique_value(const T &value) :
          _owner(is_default(&value) ? default_value_unsafe_ptr() : new T(value))
       {}
 
+      /// Value-move constructor.
+      /// Calls T move constructor, *except* for the case when `value` is the  reference
+      /// to `default_value`.
+      ///
       unique_value(T &&value) :
          _owner(is_default(&value) ? default_value_unsafe_ptr() : new T(std::move(value)))
       {}
 
       unique_value(const unique_value &other) : unique_value(other.get()) {}
 
-      unique_value(unique_value &&other) : unique_value()
+      /// Move constructor.
+      /// No allocations, no T copy/move constructor calls.
+      /// After this constructor `other` always refers to default_value.
+      ///
+      unique_value(unique_value &&other) noexcept : unique_value()
       {
          _owner.swap(other._owner) ;
       }
@@ -194,13 +202,13 @@ class unique_value {
          discharge_default_reference() ;
       }
 
-      unique_value &operator=(unique_value &&other)
+      unique_value &operator=(unique_value &&other) noexcept
       {
          if (_owner == other._owner)
             return *this ;
 
          if (other.is_default())
-            _owner = std::unique_ptr(default_value_unsafe_ptr()) ;
+            _owner = std::unique_ptr<T>(default_value_unsafe_ptr()) ;
          else
             _owner.swap(other._owner) ;
 
@@ -220,9 +228,14 @@ class unique_value {
          return *this ;
       }
 
-      constexpr const T &get() const { return *_owner ; }
-      constexpr operator const T&() const { return get() ; }
-      constexpr const T *operator->() const { return _owner.get() ; }
+      void swap(unique_value &other) noexcept
+      {
+         _owner.swap(other._owner) ;
+      }
+
+      constexpr const T &get() const noexcept { return *_owner ; }
+      constexpr operator const T&() const noexcept { return get() ; }
+      constexpr const T *operator->() const noexcept { return _owner.get() ; }
 
       /// Get a nonconstant reference to the underlying value, doing copy-on-write if the
       /// internal reference is to `default_value`.
@@ -243,23 +256,25 @@ class unique_value {
       /// This is a pointer to `default_value` template parameter.
       /// @note Never nullptr.
       ///
-      static constexpr const T *default_value_ptr() { return &default_value ; }
+      static constexpr const T *default_value_ptr() noexcept { return &default_value ; }
 
    private:
       std::unique_ptr<T> _owner {default_value_unsafe_ptr()} ;
 
    private:
-      static constexpr T *default_value_unsafe_ptr() { return const_cast<T*>(default_value_ptr()) ; }
+      static constexpr T *default_value_unsafe_ptr() noexcept { return const_cast<T*>(default_value_ptr()) ; }
 
-      static constexpr bool is_default(type *value) { return value == default_value_unsafe_ptr() ; }
-      constexpr bool is_default() const { return is_default(_owner.get()) ; }
+      static constexpr bool is_default(type *value) noexcept { return value == default_value_unsafe_ptr() ; }
+      constexpr bool is_default() const noexcept { return is_default(_owner.get()) ; }
 
-      void discharge_default_reference()
+      void discharge_default_reference() noexcept
       {
          if (is_default())
             _owner.release() ;
       }
 } ;
+
+PCOMN_DEFINE_SWAP(unique_value<T>, template<typename T, const T &>) ;
 
 /***************************************************************************//**
  Safe pointer like std::unique_ptr but with *no* move semantics.
@@ -323,6 +338,9 @@ struct is_trivially_swappable<std::unique_ptr<T>> : std::true_type {} ;
 
 template<typename T>
 struct is_trivially_swappable<safe_ptr<T>> : std::true_type {} ;
+
+template<typename T>
+struct is_trivially_swappable<unique_value<T>> : std::true_type {} ;
 
 /******************************************************************************/
 /** unique_ptr creation helper
