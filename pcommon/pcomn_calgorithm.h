@@ -82,11 +82,11 @@ append_container(C1 &&c1, const C2 &c2)
 
 template<class C1, class C2, typename UnaryOperation>
 inline disable_if_t<has_key_type<valtype_t<C1>>::value, C1 &&>
-append_container(C1 &&c1, const C2 &c2, UnaryOperation &&xform)
+append_container(C1 &&c1, C2 &&c2, UnaryOperation &&xform)
 {
-   c1.insert(c1.end(),
-             xform_iter(std::begin(c2), std::ref(xform)),
-             xform_iter(std::end(c2), std::ref(xform))) ;
+   std::forward<C1>(c1).insert(std::forward<C1>(c1).end(),
+                               xform_iter(std::begin(std::forward<C2>(c2)), std::ref(xform)),
+                               xform_iter(std::end(std::forward<C2>(c2)), std::ref(xform))) ;
    return std::forward<C1>(c1) ;
 }
 /**@}*/
