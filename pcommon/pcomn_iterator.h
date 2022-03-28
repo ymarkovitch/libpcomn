@@ -402,11 +402,13 @@ template<typename C> struct container_reference<C, 1> :
 
 // Vector-like
 template<typename C> struct container_reference<C, 0> : container_reference<C, (-1)>,
-   std::conditional<std::is_const<C>::value, typename C::const_reference, typename C::reference> {} ;
+   std::type_identity<decltype(std::declval<C>()[0])> {} ;
 
 // Map-like
 template<typename C> struct container_reference<C, 2> : container_reference<C, (-1)>,
-   std::conditional<std::is_const<C>::value, typename C::mapped_type const &, typename C::mapped_type &> {} ;
+   std::conditional<std::is_const<C>::value,
+                    typename C::mapped_type const &,
+                    typename C::mapped_type &> {} ;
 }
 /// @endcond
 
@@ -722,6 +724,14 @@ inline mapped_iterator<const Container, Iter>
 const_mapped_iter(const Container &c, const Iter &i)
 {
    return mapped_iterator<const Container, Iter>(c, i) ;
+}
+
+template<typename Container, typename Indices>
+inline auto mapped_range(Container &&c, const Indices &i)
+{
+   using namespace std ;
+   return make_pair(mapped_iter(forward<Container>(c), begin(i)),
+                    mapped_iter(forward<Container>(c), end(i))) ;
 }
 
 template<typename Converter, typename Iterator>

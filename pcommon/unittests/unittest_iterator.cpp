@@ -132,6 +132,8 @@ void IteratorTests::Test_Mapped_Iterator()
 
    decltype(const_mapped_iter(num_names_ptr, numvec.cbegin())) itest ;
    itest = const_mapped_iter(num_names_ptr, numvec.cbegin()) ;
+
+   CPPUNIT_LOG_EXPRESSION(PCOMN_TYPENAME(std::type_identity<detail::container_reference<const std::vector<int>>::type>)) ;
 }
 
 void IteratorTests::Test_XForm_Iterator()
