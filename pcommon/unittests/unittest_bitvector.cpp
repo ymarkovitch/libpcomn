@@ -38,6 +38,7 @@ class BitVectorTests : public CppUnit::TestFixture {
     void Test_Basic_Positional_Iterator() ;
     void Test_Boundary_Iterator() ;
     void Test_Atomic_Set_Reset_Bits() ;
+    void Test_Equality() ;
 
     CPPUNIT_TEST_SUITE(BitVectorTests) ;
 
@@ -50,6 +51,7 @@ class BitVectorTests : public CppUnit::TestFixture {
     CPPUNIT_TEST(Test_Basic_Positional_Iterator) ;
     CPPUNIT_TEST(Test_Boundary_Iterator) ;
     CPPUNIT_TEST(Test_Atomic_Set_Reset_Bits) ;
+    CPPUNIT_TEST(Test_Equality) ;
 
     CPPUNIT_TEST_SUITE_END() ;
 } ;
@@ -462,6 +464,57 @@ void BitVectorTests::Test_Boundary_Iterator()
     CPPUNIT_LOG_EQ(std::distance(boundary_iterator(bv, 69), e), 1) ;
     CPPUNIT_LOG_EQ(std::distance(boundary_iterator(bv, 1024), e), 1) ;
     CPPUNIT_LOG_EQ(std::distance(boundary_iterator(bv, 1025), e), 0) ;
+}
+
+void BitVectorTests::Test_Equality()
+{
+    typedef basic_bitvector<uint64_t> bvec ;
+    typedef basic_bitvector<const uint64_t> cbvec ;
+
+    uint32_t v1[] = { 0, 4 } ;
+    uint64_t v2[] = { 0, 0, 0x8000000000000002ULL } ;
+    uint64_t v3[] = { 0b1111100000111111000000000000000000000000000000000000000000000000ULL, 0b0000000000111111111000000000000000000011111, 0x8000000000000002ULL } ;
+    uint64_t v4[] = { 0, 0, 0x8000000000000002ULL } ;
+    uint64_t v5[] = { 0b1111100000111110111111111111110000000000000000000000000000000000ULL } ;
+
+    auto bv1_0 = make_bitvector(v1) ;
+    auto bv2_0 = make_bitvector(v2) ;
+    auto bv2_1 = make_bitvector(v2 + 0, 2) ;
+    auto bv2_2 = make_bitvector(189, v2) ;
+    auto bv3_0 = make_bitvector(v3) ;
+    auto bv4_0 = make_bitvector(v4) ;
+
+    CPPUNIT_LOG(std::endl) ;
+    CPPUNIT_LOG_EXPRESSION(bv1_0) ;
+    CPPUNIT_LOG_EXPRESSION(bv2_0) ;
+    CPPUNIT_LOG_EXPRESSION(bv2_1) ;
+    CPPUNIT_LOG_EXPRESSION(bv2_2) ;
+    CPPUNIT_LOG_EXPRESSION(bv3_0) ;
+    CPPUNIT_LOG_EXPRESSION(bv4_0) ;
+
+    CPPUNIT_LOG(std::endl) ;
+
+    CPPUNIT_LOG_ASSERT(bvec() == bvec()) ;
+    CPPUNIT_LOG_ASSERT(bvec() == cbvec()) ;
+    CPPUNIT_LOG_ASSERT(cbvec() == bvec()) ;
+    CPPUNIT_LOG_ASSERT(cbvec() == cbvec()) ;
+
+    CPPUNIT_LOG_IS_FALSE(bvec() != bvec()) ;
+    CPPUNIT_LOG_IS_FALSE(bvec() != cbvec()) ;
+    CPPUNIT_LOG_IS_FALSE(cbvec() != bvec()) ;
+    CPPUNIT_LOG_IS_FALSE(cbvec() != cbvec()) ;
+
+    CPPUNIT_LOG(std::endl) ;
+
+    CPPUNIT_LOG_EQUAL(bv1_0, bv1_0) ;
+
+    CPPUNIT_LOG_NOT_EQUAL(bv2_0, bv2_1) ;
+    CPPUNIT_LOG_NOT_EQUAL(bv2_1, bv2_2) ;
+
+    CPPUNIT_LOG_EQUAL(bv2_0, bvec(v4)) ;
+    CPPUNIT_LOG_NOT_EQUAL(bvec(v3), bvec(v5)) ;
+
+    CPPUNIT_LOG_EQUAL(bvec(15, v3), bvec(15, v5)) ;
 }
 
 void BitVectorTests::Test_Atomic_Set_Reset_Bits()

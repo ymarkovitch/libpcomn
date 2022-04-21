@@ -101,6 +101,7 @@ struct basic_bitvector<const E> {
 
       /// Get the size of this vector in bits.
       constexpr size_t size() const { return _size ; }
+      constexpr bool empty() const { return !_size ; }
 
       constexpr element_type *data() const { return _elements ; }
       constexpr element_type *cdata() const { return _elements ; }
@@ -520,6 +521,28 @@ template<typename E>
 inline basic_bitvector<E> make_bitvector(size_t bitcount, E *data)
 {
    return {bitcount, data} ;
+}
+
+/*******************************************************************************
+ basic_bitvector (in)equality
+*******************************************************************************/
+template<typename E1, typename E2,
+         typename = std::enable_if_t<sizeof(E1)==sizeof(E2)>>
+inline bool operator==(const basic_bitvector<E1> &x, const basic_bitvector<E2> &y)
+{
+   const size_t lastndx = x.nelements() - 1 ;
+   return
+      x.size() == y.size() &&
+      (!x.size() ||
+       (std::equal(x.cdata(), x.cdata() + lastndx, y.cdata()) &&
+        !((x.cdata()[lastndx] ^ y.cdata()[lastndx]) & x.tailmask()))) ;
+}
+
+template<typename E1, typename E2,
+         typename = std::enable_if_t<sizeof(E1)==sizeof(E2)>>
+inline bool operator!=(const basic_bitvector<E1> &x, const basic_bitvector<E2> &y)
+{
+   return !(x == y) ;
 }
 
 /*******************************************************************************
