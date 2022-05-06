@@ -135,7 +135,6 @@ struct collection_iterator {
       {}
 
       reference operator*() const { return container()[_index] ; }
-      reference operator->() const { return **this ; }
       reference operator[](difference_type ndx) const { return container()[_index + ndx] ; }
 
       collection_iterator &operator++()
