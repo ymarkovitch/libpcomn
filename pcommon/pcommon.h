@@ -1188,5 +1188,25 @@ inline const char *demangled_typename()
 
 } // end of pcomn namespace
 
+#ifndef PCOMN_STL_CXX17
+
+namespace std {
+
+template<typename T>
+inline void destroy_at(T *p)
+{
+   pcomn::destroy(p) ;
+}
+
+template<typename ForwardIterator>
+inline void destroy(ForwardIterator first, ForwardIterator last)
+{
+   for (; first != last; ++first)
+      pcomn::destroy(std::addressof(*first)) ;
+}
+} // end of namespace std
+
+#endif /* PCOMN_STL_CXX17 */
+
 #endif /* __cplusplus */
 #endif /* __PCOMMON_H */
