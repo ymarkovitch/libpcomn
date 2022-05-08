@@ -36,18 +36,30 @@ template<typename T, typename Alloc=void>
 class fixed_ring_buffer {
 public:
     typedef T value_type ;
+    typedef std::conditional_t<std::is_void<Alloc>::value, std::allocator<T>, Alloc> allocator_type ;
 
     /**@{**********************************************************************/
-    /** @name Iterators
+    /** @name Iterators.
+     The iterator is a random-access iterator.
+
+     Both the iterator inself and the result of its derefencing are stable with
+     respect to any ring modification (of course deleting the item referenced by
+     the iterator *does* invalidate the iterator).
+
+     Also provides operator bool, which is false for a default-constructed iterator
+     and true otherwise - this particularly means that it is true for non-dereferenceable
+     but valid end() iterator.
     ***************************************************************************/
     struct const_iterator {
-        typedef std::forward_iterator_tag iterator_category ;
-        typedef T                         value_type ;
-        typedef ptrdiff_t                 difference_type ;
-        typedef value_type *              pointer ;
-        typedef value_type &              reference ;
+        typedef std::random_access_iterator_tag iterator_category ;
+        typedef T                               value_type ;
+        typedef ptrdiff_t                       difference_type ;
+        typedef value_type *                    pointer ;
+        typedef value_type &                    reference ;
 
         constexpr const_iterator() noexcept = default ;
+
+        constexpr explicit operator bool() noexcept { return _ring ; }
 
         reference operator*() const { return _ring->item(_idx) ; }
         pointer operator->() const { return &**this ; }
@@ -174,16 +186,58 @@ public:
     /// A moving constructor: the source object becomes zero-capacity.
     /// No (de)allocations or items copy.
     ///
-    fixed_ring_buffer(fixed_ring_buffer &&other) noexcept ;
+    fixed_ring_buffer(fixed_ring_buffer &&other) noexcept :
+        _capacity(std::move(other._capacity)),
+        _pushcnt(std::exchange(other._pushcnt, 0)),
+        _popcnt(std::exchange(other._popcnt, 0)),
+        _data(std::exchange(other._data, 0))
+    {}
 
     ~fixed_ring_buffer() ;
+
+    /// Get a pointer to the start of the ring items memory.
+    /// Can be used as a ring identifier as it doesn't change since construction until
+    /// destruction.
+    ///
+    /// @note Do *not* dereference, use only as a tag: it is not named `data()` for a
+    /// reason.
+    const value_type *ringmem() const { return _data ; }
+
+    /// Convert a pointer to supposed ring's item to a ring iterator.
+    ///
+    /// The passed argument may be any pointer, including pointer to an object which
+    /// is not inside the ring, or even nullptr.
+    ///
+    /// If `item` does not point into the ring, this function returns
+    /// a default-constructed iterator, which evaluated as `false` in bool context, so
+    /// that `foo.member(bar)` is true if `bar` is inside the ring's memory (but not
+    /// necessary valid item).
+    ///
+    /// If `item` points into the ring *and* points to an item between begin() and
+    /// end(), this function returns a dereferenceable iterator.
+    ///
+    /// Otherwise, returns end().
+    ///
+    iterator member(value_type *item)
+    {
+        if (!item | !xinrange(_data, _data + capacity()))
+            return {} ;
+        const uint64_t i = item - _data ;
+        return {} ;
+    }
+
+    /// @overload
+    const_iterator member(const value_type *item) const
+    {
+        return as_ptr_mutable(this)->member(as_ptr_mutable(item)) ;
+    }
 
     /// Get the current count of items in the ring.
     constexpr size_t size() const noexcept { return _pushcnt - _popcnt ; }
 
     /// Get the ring capacity.
     /// @note Always the power of 2 or 0.
-    constexpr size_t capacity() const noexcept { return ~_capacity_mask ; }
+    constexpr size_t capacity() const noexcept { return _capacity._capacity_mask + 1 ; }
 
     /// Indicate if the ring is empty (no items).
     constexpr bool empty() const noexcept { return _pushcnt == _popcnt ; }
@@ -213,6 +267,14 @@ public:
         ++_popcnt ;
     }
 
+    void pop_front(size_t count)
+    {
+        NOXCHECK(count < size()) ;
+
+        while (count--)
+            std::destroy_at(unsafe_item(_popcnt++)) ;
+    }
+
     template<typename... Args>
     value_type &emplace_back(Args &&...args)
     {
@@ -236,23 +298,52 @@ public:
     void swap(fixed_ring_buffer &other) noexcept
     {
         using namespace std ;
-        swap(_capacity_mask, other._capacity_mask) ;
+        _capacity.swap(other._capacity) ;
         swap(_pushcnt, other._pushcnt) ;
         swap(_popcnt, other._popcnt) ;
     }
 
 private:
-    size_t   _capacity_mask = -1LL ;
-    uint64_t _pushcnt = 0 ; /* Overall pushed items count */
-    uint64_t _popcnt = 0 ;  /* Overall popped items count */
+    typedef std::allocator_traits<allocator_type> alloc_traits ;
+
+    struct capacity_data : public allocator_type {
+        constexpr capacity_data(size_t capacity = 0) noexcept :
+            _capacity_mask(round2z(capacity) - 1)
+        {}
+
+        capacity_data(size_t capacity, allocator_type &&alloc) noexcept :
+            allocator_type(std::move(alloc)),
+            _capacity_mask(round2z(capacity) - 1)
+        {}
+
+        capacity_data(capacity_data &&other) noexcept :
+            allocator_type(static_cast<allocator_type&&>(other)),
+            _capacity_mask(std::exchange(other._capacity_mask, -1LL))
+        {}
+
+        void swap(capacity_data &other) noexcept
+        {
+            using namespace std ;
+            swap(*static_cast<allocator_type*>(this), *static_cast<allocator_type*>(&other)) ;
+            swap(_capacity_mask, other._capacity_mask) ;
+        }
+
+        size_t _capacity_mask = -1LL ;
+    } ;
+private:
+    capacity_data _capacity ;
+    uint64_t      _pushcnt = 0 ; /* Overall pushed items count */
+    uint64_t      _popcnt = 0 ;  /* Overall popped items count */
+    value_type *  _data = nullptr ;
 
 private:
+
     const value_type *ring_data() const noexcept ;
     value_type *ring_data() noexcept ;
 
     constexpr size_t ring_pos(size_t idx) const noexcept
     {
-        return idx & _capacity_mask ;
+        return idx & _capacity._capacity_mask ;
     }
 
     value_type *unsafe_item(size_t idx) noexcept
@@ -276,9 +367,19 @@ private:
  fixed_ring_buffer
 *******************************************************************************/
 template<typename T, typename A>
+fixed_ring_buffer<T,A>::fixed_ring_buffer(size_t capac) :
+    _capacity(capac),
+    _data(alloc_traits::allocate(_capacity, capacity()))
+{}
+
+template<typename T, typename A>
 fixed_ring_buffer<T,A>::~fixed_ring_buffer()
 {
-    std::destroy(begin(), end()) ;
+    if (const size_t c = capacity())
+    {
+        std::destroy(begin(), end()) ;
+        alloc_traits::deallocate(_capacity, _data, c) ;
+    }
 }
 
 /*******************************************************************************
