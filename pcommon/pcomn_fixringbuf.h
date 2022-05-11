@@ -201,7 +201,7 @@ public:
     ///
     /// @note Do *not* dereference, use only as a tag: it is not named `data()` for a
     /// reason.
-    const value_type *ringmem() const { return _data ; }
+    constexpr const value_type *ringmem() const noexcept { return _data ; }
 
     /// Convert a pointer to supposed ring's item to a ring iterator.
     ///
@@ -301,6 +301,7 @@ public:
         _capacity.swap(other._capacity) ;
         swap(_pushcnt, other._pushcnt) ;
         swap(_popcnt, other._popcnt) ;
+        swap(_data, other._data) ;
     }
 
 private:
@@ -308,12 +309,12 @@ private:
 
     struct capacity_data : public allocator_type {
         constexpr capacity_data(size_t capacity = 0) noexcept :
-            _capacity_mask(round2z(capacity) - 1)
+            _capacity_mask(bitop::round2z(capacity) - 1)
         {}
 
         capacity_data(size_t capacity, allocator_type &&alloc) noexcept :
             allocator_type(std::move(alloc)),
-            _capacity_mask(round2z(capacity) - 1)
+            _capacity_mask(bitop::round2z(capacity) - 1)
         {}
 
         capacity_data(capacity_data &&other) noexcept :

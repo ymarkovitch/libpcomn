@@ -183,6 +183,7 @@ add_library(pcommon STATIC
   $<$<NOT:$<PLATFORM_ID:Windows>>:
   pcomn_blocqueue.cpp
   pcomn_crypthash.cpp
+  pcomn_memringbuf.cpp
   pcomn_pthread.cpp
   pcomn_semaphore.cpp
   pcomn_syncobj.cpp

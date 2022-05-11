@@ -16,6 +16,9 @@
 #error This platform does not support pcomn::memory_ring_buffer, it is supported only on Linux.
 #endif
 #include <pcomn_meta.h>
+#include <pcommon.h>
+
+#include <new>
 
 namespace pcomn {
 
@@ -25,12 +28,19 @@ namespace pcomn {
 
  One can (sub)allocate the memory from this buffer at its back and deallocate both
  at the front *and* at the back, i.e. use it both as a memory queue and a stack.
+
  Due to virtual memory allocation trick, free (yet unallocated) volume can always
- be allocated as a linear buffer, i.e. there is no wraparound boundary.
+ be allocated as a *linear buffer*, i.e. there is no wraparound boundary.
 
  The buffer memory is allocated by mmap. The capacity of the buffer is specified
  in the constructor and automatically rounded up to the closest cpu_page_size*power_of_2;
  the buffer cannot be resized.
+
+ There are the following member functions to allocate memory from the buffer and
+ return it back to the buffer:
+    - allocate()
+    - dealloc_head()
+    - dealloc_tail()
 
  No concurrency supported. Simple, fast.
 *******************************************************************************/
@@ -55,9 +65,9 @@ public:
     ///
     memory_ring_buffer(memory_ring_buffer &&other) noexcept :
         _capacity_mask(std::exchange(other._capacity_mask, 0)),
-        _pushcnt(std::exchange(other._pushcnt, 0)),
-        _popcnt(std::exchange(other._popcnt, 0)),
-        _data(std::exchange(other._data, 0))
+        _pushoffs(std::exchange(other._pushoffs, 0)),
+        _popoffs(std::exchange(other._popoffs, 0)),
+        _memory(std::exchange(other._memory, nullptr))
     {}
 
     ~memory_ring_buffer() ;
@@ -66,125 +76,101 @@ public:
     /// Can be used as a ring identifier as it doesn't change since construction until
     /// destruction.
     ///
-    const value_type *ringmem() const { return _data ; }
+    const void *ringmem() const noexcept { return memory() ; }
 
-    /// Get the size of memory alocated from the buffer.
-    constexpr size_t allocated_size() const noexcept { return _pushcnt - _popcnt ; }
+    /// Get the size of memory alocated from the ring.
+    constexpr size_t allocated_size() const noexcept { return _pushoffs - _popoffs ; }
 
-    /// Get the buffer capacity.
+    /// Get the whole ring capacity, in bytes.
     /// @note Always the power of 2 or 0.
-    constexpr size_t capacity() const noexcept { return _capacity._capacity_mask + 1 ; }
+    constexpr size_t capacity() const noexcept { return _capacity_mask + 1 ; }
 
-    /// Indicate if the ring is empty (no items).
-    constexpr bool empty() const noexcept { return _pushcnt == _popcnt ; }
+    /// Get the available ring capacity (bot yet allocated), in bytes.
+    constexpr size_t available_capacity() const noexcept
+    {
+        return capacity() - allocated_size() ;
+    }
+
+    /// Indicate if the ring is empty.
+    constexpr bool empty() const noexcept { return _pushoffs == _popoffs ; }
 
     /// Indicate if the ring is full.
     /// @note For zero-capacity ring both empty() and full() are always true.
-    constexpr bool full() const noexcept { return size() == capacity() ; }
+    constexpr bool full() const noexcept { return allocated_size() == capacity() ; }
 
-    const value_type &back() const { return item(_pushcnt - 1) ; }
-    value_type &back() { return item(_pushcnt - 1) ; }
-
-    void pop_front()
+    /// Allocate the specified memory amount from the back of the ring.
+    /// The allocation is not aligned.
+    /// @note Can be seen as "uninitialized push back".
+    ///
+    void *allocate(size_t bytes)
     {
-        std::destroy_at(&front()) ;
-        ++_popcnt ;
+        if (void * const allocated_start = allocate(bytes, std::nothrow))
+            return allocated_start ;
+        allocation_failed(bytes) ;
     }
 
-    void pop_front(size_t count)
+    void *allocate(size_t bytes, const std::nothrow_t &) noexcept
     {
-        NOXCHECK(count < size()) ;
+        if (bytes > available_capacity())
+            return nullptr ;
 
-        while (count--)
-            std::destroy_at(unsafe_item(_popcnt++)) ;
+        void * const allocated_start = unsafe_memptr(_pushoffs) ;
+        _pushoffs += bytes ;
+        return allocated_start ;
     }
 
-    template<typename... Args>
-    value_type &emplace_back(Args &&...args)
+    /// Deallocate specified count of bytes at the head of the queue.
+    /// @return The new head of the queue.
+    const void *dealloc_head(size_t dealloc_bytes)
     {
-        NOXCHECK(!full()) ;
+        NOXCHECK(dealloc_bytes < allocated_size()) ;
 
-        value_type &pushed_value = *new (unsafe_item(_pushcnt)) value_type(std::forward<Args>(args)...) ;
-        ++_pushcnt ;
-        return pushed_value ;
+        _popoffs = std::min(_pushoffs, _popoffs + dealloc_bytes) ;
+        return unsafe_memptr(_popoffs) ;
     }
 
-    value_type &push_back(const value_type &value)
+    const void *dealloc_tail(size_t dealloc_bytes)
     {
-        return emplace_back(value) ;
-    }
-
-    value_type &push_back(value_type &value)
-    {
-        return emplace_back(std::move(value)) ;
+        NOXCHECK(dealloc_bytes < allocated_size()) ;
+        _pushoffs -= std::min(dealloc_bytes, allocated_size()) ;
     }
 
     void swap(memory_ring_buffer &other) noexcept
     {
-        using namespace std ;
-        _capacity.swap(other._capacity) ;
-        swap(_pushcnt, other._pushcnt) ;
-        swap(_popcnt, other._popcnt) ;
+        using std::swap ;
+        swap(_capacity_mask, other._capacity_mask) ;
+        swap(_pushoffs, other._pushoffs) ;
+        swap(_popoffs, other._popoffs) ;
+        swap(_memory, other._memory) ;
     }
 
 private:
-    typedef std::allocator_traits<allocator_type> alloc_traits ;
-
-    struct capacity_data : public allocator_type {
-        constexpr capacity_data(size_t capacity = 0) noexcept :
-            _capacity_mask(round2z(capacity) - 1)
-        {}
-
-        capacity_data(size_t capacity, allocator_type &&alloc) noexcept :
-            allocator_type(std::move(alloc)),
-            _capacity_mask(round2z(capacity) - 1)
-        {}
-
-        capacity_data(capacity_data &&other) noexcept :
-            allocator_type(static_cast<allocator_type&&>(other)),
-            _capacity_mask(std::exchange(other._capacity_mask, -1LL))
-        {}
-
-        void swap(capacity_data &other) noexcept
-        {
-            using namespace std ;
-            swap(*static_cast<allocator_type*>(this), *static_cast<allocator_type*>(&other)) ;
-            swap(_capacity_mask, other._capacity_mask) ;
-        }
-
-        size_t _capacity_mask = -1LL ;
-    } ;
-private:
-    capacity_data _capacity ;
-    uint64_t      _pushcnt = 0 ; /* Overall pushed items count */
-    uint64_t      _popcnt = 0 ;  /* Overall popped items count */
-    value_type *  _data = nullptr ;
+    size_t      _capacity_mask = -1LL ;
+    uint64_t    _pushoffs = 0 ;
+    uint64_t    _popoffs = 0 ;
+    uint8_t *   _memory = nullptr ;
 
 private:
+    // Get the address of the start of the ring.
+    uint8_t *memory() const noexcept { return _memory ; }
 
-    const value_type *ring_data() const noexcept ;
-    value_type *ring_data() noexcept ;
-
-    constexpr size_t ring_pos(size_t idx) const noexcept
+    constexpr size_t ring_pos(size_t offset) const noexcept
     {
-        return idx & _capacity._capacity_mask ;
+        return offset & _capacity_mask ;
     }
 
-    value_type *unsafe_item(size_t idx) noexcept
+    uint8_t *unsafe_memptr(size_t offset) const noexcept
     {
-        return ring_data() + ring_pos(idx) ;
+        return memory() + ring_pos(offset) ;
     }
 
-    value_type &item(size_t idx) noexcept
+    uint8_t *memptr(size_t offset) const noexcept
     {
         NOXCHECK(!empty()) ;
-        return *unsafe_item(idx) ;
+        return unsafe_memptr(offset) ;
     }
 
-    const value_type &item(size_t idx) const noexcept
-    {
-        return as_mutable(*this).item(idx) ;
-    }
+    __noreturn void allocation_failed(size_t bytes) const ;
 } ;
 
 /*******************************************************************************
