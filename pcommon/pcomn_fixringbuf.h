@@ -183,14 +183,14 @@ public:
     /// Create a ring buffer with capacity rounded up to power of 2 (or 0 for zero).
     explicit fixed_ring_buffer(size_t capac) ;
 
-    /// A moving constructor: the source object becomes zero-capacity.
+    /// A move constructor: the source object becomes zero-capacity.
     /// No (de)allocations or items copy.
     ///
     fixed_ring_buffer(fixed_ring_buffer &&other) noexcept :
         _capacity(std::move(other._capacity)),
         _pushcnt(std::exchange(other._pushcnt, 0)),
         _popcnt(std::exchange(other._popcnt, 0)),
-        _data(std::exchange(other._data, 0))
+        _data(std::exchange(other._data, nullptr))
     {}
 
     ~fixed_ring_buffer() ;
