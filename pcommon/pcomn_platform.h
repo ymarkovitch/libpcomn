@@ -603,8 +603,8 @@
 #define __deprecated(...) __attribute__((deprecated(__VA_ARGS__)))
 #endif
 
-#ifndef __used
-#define __used __attribute__((used))
+#ifndef __used__
+#define __used__ __attribute__((used))
 #endif
 
 #elif defined(PCOMN_COMPILER_MS)

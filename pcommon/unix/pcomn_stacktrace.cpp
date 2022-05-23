@@ -26,6 +26,7 @@
 
 #include <unistd.h>
 #include <signal.h>
+#include <spawn.h>
 
 #include <sys/mman.h>
 #include <sys/types.h>
@@ -628,7 +629,12 @@ static __noinline void putstrerror(const char *errtext)
     puterror(strcat(errbuf, "\n")) ;
 }
 
+// This function forks and starts GDB as a child with a special script that attaches tot
+// this process and prints its detailed state.
 static void print_state_with_debugger(const void *errsp, const void *errpc) ;
+// Prints stack using eu-stack
+static void print_state_stack_only(const void *errsp, const void *errpc) ;
+
 static void gdb_print_state(const char *tempscript_filename) ;
 static int create_tempscript(pid_t guilty_thread, const void *frame_sp, const void *frame_pc,
                              char *filename_buf, size_t filename_bufsz) ;
@@ -638,6 +644,8 @@ static unipair<const void *> context_frame(const ucontext_t *uctx) ;
 /*******************************************************************************
  Backtracing signal handler
 *******************************************************************************/
+static void (*print_state)(const void *errsp, const void *errpc) = &print_state_stack_only ;
+
 static
 #ifdef PCOMN_COMPILER_GNU
 __attribute__((no_sanitize_address))
@@ -667,14 +675,95 @@ __noreturn void backtrace_handler(int, siginfo_t *info, void *ctx)
     } ;
 
     backtrace_time = time(NULL) ;
-    print_state_with_debugger(errsp, errpc) ;
+
+    // Print the header
+    char printbuf[128] ;
+
+    puterror("\n----------------------------------------------------------------\n") ;
+    putmsg(ssafe_rfc3339_localtime(backtrace_time, printbuf)) ;
+    putmsg("Got signal ") ;
+    puterror(numtostr(info->si_signo, printbuf)) ;
+    puterror("\n\n----------------------------------------------------------------\n") ;
+
+    // This is a pointer to the state printer; default is &print_stack
+    print_state(errsp, errpc) ;
 
     forward_signal() ;
     _exit(EXIT_FAILURE) ;
 }
 
+/*******************************************************************************
+ State and stack printer through eu-stack
+*******************************************************************************/
+static void print_state_stack_only(const void *sp, const void *pc)
+{
+    (void)print_state_with_debugger ;
+
+    // Get current thread's TID
+    const pid_t tid = syscall(SYS_gettid) ;
+
+    char self_pidstr[16] ;
+    char self_tidstr[16] ;
+    char self_progpath[PATH_MAX] ;
+
+    // Get PID, TID, and the program name
+    numtostr(getpid(), self_pidstr) ;
+    numtostr(tid, self_tidstr) ;
+    ssafe_progname(self_progpath) ;
+
+    // Prepare posix_spawnp
+
+    // Set both the stderr and stdout to backtrace fd.
+    // Cannot use posix_spawn_file_actions: it calls realloc()
+    const int stdout_saved = dup(STDOUT_FILENO) ;
+    const int stderr_saved = dup(STDERR_FILENO) ;
+
+    if (stdout_saved >= 0)
+        dup2(backtrace_fd, STDOUT_FILENO) ;
+    if (stderr_saved >= 0)
+        dup2(backtrace_fd, STDERR_FILENO) ;
+
+    finalizer restore_stdstreams ([stdout_saved,stderr_saved]
+    {
+        if (stdout_saved >= 0)
+            dup2(stdout_saved, STDOUT_FILENO) ;
+        if (stderr_saved >= 0)
+            dup2(stderr_saved, STDERR_FILENO) ;
+    }) ;
+
+    if (IsDebuggerPresent())
+    {
+        putmsg("Already under debugger, skipping state printing by eu-stack\n") ;
+        return ;
+    }
+
+    // Avoid ECHILD from waitpid()
+    signal(SIGCHLD, SIG_DFL) ;
+
+    char * const argv[] = {as_mutable("eu-stack"), as_mutable("-p"), self_tidstr, as_mutable("-1"), as_mutable("-i"), as_mutable("-s"), NULL} ;
+    pid_t stackprint_pid = {} ;
+    // Launch eu-stack
+    const int err = posix_spawnp(&stackprint_pid, *argv, {}, {}, argv, environ) ;
+
+    if (!err && stackprint_pid > 0)
+    {
+        wait_n_kill(stackprint_pid, 60) ;
+        fsync(STDERR_FILENO) ;
+    }
+    else
+    {
+        errno = err ;
+        putstrerror("FAILURE: Unable to lauch eu-stack to print stack trace: ") ;
+    }
+}
+
+/*******************************************************************************
+ State and stack printer through GDB
+*******************************************************************************/
 static void print_state_with_debugger(const void *sp, const void *pc)
 {
+    (void)print_state_stack_only ;
+
     if (is_valgrind_present())
     {
         putmsg("Running under Valgrind, skipping state printing by gdb\n") ;
